@@ -6,7 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "tokens": "tsx design-system/generate-css.ts",
+    "tokens:check": "tsx design-system/generate-css.ts --check",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "setup": "node scripts/setup.js",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -39,6 +48,19 @@
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "storybook": "^10.3.3",
+    "@storybook/nextjs-vite": "^10.3.3",
+    "@chromatic-com/storybook": "^5.0.2",
+    "@storybook/addon-vitest": "^10.3.3",
+    "@storybook/addon-a11y": "^10.3.3",
+    "@storybook/addon-docs": "^10.3.3",
+    "@storybook/addon-onboarding": "^10.3.3",
+    "vite": "^8.0.2",
+    "eslint-plugin-storybook": "^10.3.3",
+    "vitest": "^4.1.1",
+    "playwright": "^1.58.2",
+    "@vitest/browser-playwright": "^4.1.1",
+    "@vitest/coverage-v8": "^4.1.1"
   }
 }
