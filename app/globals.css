@@ -46,9 +46,115 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* ── QAgrotis Semantic Tokens ── */
+  --color-brand-primary: var(--brand-primary);
+  --color-surface-default: var(--surface-default);
+  --color-surface-card: var(--surface-card);
+  --color-surface-input: var(--surface-input);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-border-default: var(--border-default);
+
+  /* ── QAgrotis Primary Scale (10 shades) ── */
+  --color-primary-50: var(--qagrotis-primary-50);
+  --color-primary-100: var(--qagrotis-primary-100);
+  --color-primary-200: var(--qagrotis-primary-200);
+  --color-primary-300: var(--qagrotis-primary-300);
+  --color-primary-400: var(--qagrotis-primary-400);
+  --color-primary-500: var(--qagrotis-primary-500);
+  --color-primary-600: var(--qagrotis-primary-600);
+  --color-primary-700: var(--qagrotis-primary-700);
+  --color-primary-800: var(--qagrotis-primary-800);
+  --color-primary-900: var(--qagrotis-primary-900);
+
+  /* ── QAgrotis Secondary Scale (10 shades) ── */
+  --color-secondary-50: var(--qagrotis-secondary-50);
+  --color-secondary-100: var(--qagrotis-secondary-100);
+  --color-secondary-200: var(--qagrotis-secondary-200);
+  --color-secondary-300: var(--qagrotis-secondary-300);
+  --color-secondary-400: var(--qagrotis-secondary-400);
+  --color-secondary-500: var(--qagrotis-secondary-500);
+  --color-secondary-600: var(--qagrotis-secondary-600);
+  --color-secondary-700: var(--qagrotis-secondary-700);
+  --color-secondary-800: var(--qagrotis-secondary-800);
+  --color-secondary-900: var(--qagrotis-secondary-900);
+
+  /* ── QAgrotis Neutral-Grey Scale ── */
+  --color-neutral-grey-50: var(--neutral-grey-50);
+  --color-neutral-grey-100: var(--neutral-grey-100);
+  --color-neutral-grey-200: var(--neutral-grey-200);
+  --color-neutral-grey-300: var(--neutral-grey-300);
+  --color-neutral-grey-400: var(--neutral-grey-400);
+  --color-neutral-grey-500: var(--neutral-grey-500);
+  --color-neutral-grey-600: var(--neutral-grey-600);
+  --color-neutral-grey-700: var(--neutral-grey-700);
+  --color-neutral-grey-800: var(--neutral-grey-800);
+  --color-neutral-grey-900: var(--neutral-grey-900);
+
+  /* ── QAgrotis Radius / Font / Shadow ── */
+  --radius-custom: 4px;
+  --font-roboto: var(--font-roboto);
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+
+  /* ── QAgrotis Spacing (base-8px grid) ── */
+  --spacing-agro-1: 8px;
+  --spacing-agro-2: 16px;
+  --spacing-agro-3: 24px;
+  --spacing-agro-4: 32px;
 }
 
 :root {
+  /* ── QAgrotis Design Tokens ── */
+  /* Primitive */
+  --primitive-blue: #5c7cfa;
+
+  /* Semantic */
+  --brand-primary: var(--primitive-blue);
+  --surface-default: #f4f5f9;
+  --surface-card: #ffffff;
+  --surface-input: #f8f9fc;
+  --text-primary: #333333;
+  --text-secondary: #6b7280;
+  --border-default: #e5e7eb;
+
+  /* Primary Scale (10 shades, hue 228°) */
+  --qagrotis-primary-50:  #eef2ff;
+  --qagrotis-primary-100: #e0e9ff;
+  --qagrotis-primary-200: #c7d5ff;
+  --qagrotis-primary-300: #a4bcfd;
+  --qagrotis-primary-400: #819bfb;
+  --qagrotis-primary-500: #5c7cfa;
+  --qagrotis-primary-600: #4360e8;
+  --qagrotis-primary-700: #3549c5;
+  --qagrotis-primary-800: #2c3a99;
+  --qagrotis-primary-900: #1e2a6e;
+
+  /* Secondary Scale (cool slate) */
+  --qagrotis-secondary-50:  #f8fafc;
+  --qagrotis-secondary-100: #f1f5f9;
+  --qagrotis-secondary-200: #e2e8f0;
+  --qagrotis-secondary-300: #cbd5e1;
+  --qagrotis-secondary-400: #94a3b8;
+  --qagrotis-secondary-500: #64748b;
+  --qagrotis-secondary-600: #475569;
+  --qagrotis-secondary-700: #334155;
+  --qagrotis-secondary-800: #1e293b;
+  --qagrotis-secondary-900: #0f172a;
+
+  /* Neutral-Grey Scale (cold grey) */
+  --neutral-grey-50: #f9fafb;
+  --neutral-grey-100: #f3f4f6;
+  --neutral-grey-200: #e5e7eb;
+  --neutral-grey-300: #d1d5db;
+  --neutral-grey-400: #9ca3af;
+  --neutral-grey-500: #6b7280;
+  --neutral-grey-600: #4b5563;
+  --neutral-grey-700: #374151;
+  --neutral-grey-800: #1f2937;
+  --neutral-grey-900: #111827;
+
+  /* Base UI vars */
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

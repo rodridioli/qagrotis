@@ -271,3 +271,113 @@ export const tokens: DesignTokens = {
 }
 
 export default tokens
+
+// ─────────────────────────────────────────────────────────────
+// QAgrotis Design Tokens — single source of truth
+// All values below are consumed by app/globals.css via @theme
+// ─────────────────────────────────────────────────────────────
+export const qagrotisTokens = {
+  /** Primitive palette */
+  colors: {
+    primitives: {
+      blue: "#5c7cfa",
+    },
+    /** Semantic tokens — refer to primitives or raw hex */
+    semantic: {
+      brandPrimary: "var(--primitive-blue)",
+      surfaceDefault: "#f4f5f9",
+      surfaceCard: "#ffffff",
+      surfaceInput: "#f8f9fc",
+      textPrimary: "#333333",
+      textSecondary: "#6b7280",
+      borderDefault: "#e5e7eb",
+    },
+    /**
+     * Brand primary scale — 10 shades built around #5c7cfa (hue 228°).
+     * Use bg-primary-500 / text-primary-900 etc. as Tailwind utilities.
+     */
+    primary: {
+      "50":  "#eef2ff",
+      "100": "#e0e9ff",
+      "200": "#c7d5ff",
+      "300": "#a4bcfd",
+      "400": "#819bfb",
+      "500": "#5c7cfa", // ← brand-primary / primitive-blue
+      "600": "#4360e8",
+      "700": "#3549c5",
+      "800": "#2c3a99",
+      "900": "#1e2a6e",
+    },
+    /**
+     * Secondary scale — cool slate, 10 shades.
+     * Use bg-secondary-500 / text-secondary-700 etc.
+     */
+    secondary: {
+      "50":  "#f8fafc",
+      "100": "#f1f5f9",
+      "200": "#e2e8f0",
+      "300": "#cbd5e1",
+      "400": "#94a3b8",
+      "500": "#64748b",
+      "600": "#475569",
+      "700": "#334155",
+      "800": "#1e293b",
+      "900": "#0f172a",
+    },
+    /** Cold neutral-grey scale (Tailwind cool-gray compatible) */
+    neutralGrey: {
+      "50": "#f9fafb",
+      "100": "#f3f4f6",
+      "200": "#e5e7eb",
+      "300": "#d1d5db",
+      "400": "#9ca3af",
+      "500": "#6b7280",
+      "600": "#4b5563",
+      "700": "#374151",
+      "800": "#1f2937",
+      "900": "#111827",
+    },
+  },
+
+  /** Typography — Roboto, base-8 scale */
+  typography: {
+    fontFamily: {
+      roboto: "var(--font-roboto), ui-sans-serif, system-ui, sans-serif",
+    },
+    fontSize: {
+      sm: "14px",   // text-sm
+      base: "16px", // text-base
+      lg: "18px",   // text-lg
+      xl: "20px",   // text-xl
+      "2xl": "24px",// text-2xl
+    },
+    fontWeight: {
+      regular: "400",
+      medium: "500",
+      semibold: "600",
+      bold: "700",
+    },
+    lineHeight: {
+      default: "1.5",
+    },
+  },
+
+  /** Spacing — base-8px grid */
+  spacing: {
+    "1": "8px",  // spacing-1
+    "2": "16px", // spacing-2
+    "3": "24px", // spacing-3
+    "4": "32px", // spacing-4
+  },
+
+  /** Border radius */
+  radius: {
+    default: "4px", // rounded-custom
+  },
+
+  /** Shadows */
+  shadows: {
+    /** Soft card shadow — maps to shadow-card utility */
+    card: "0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06)",
+  },
+} as const
