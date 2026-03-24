@@ -6,7 +6,7 @@ import { CheckIcon, ChevronDownIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // ── Root ──────────────────────────────────────────────────────
-function Select({ ...props }: SelectPrimitive.Root.Props) {
+function Select({ ...props }: SelectPrimitive.Root.Props<string>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />
 }
 
