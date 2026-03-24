@@ -163,52 +163,78 @@ function ScaleChip({
 
 // ── Opacity palette ───────────────────────────────────────────
 
-const OPACITIES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+/** 5 opacity steps displayed per colour row */
+const OPACITIES = [20, 40, 60, 80, 100]
 
-function OpacityRow({
-  label,
-  hex,
-  cssVar,
-}: {
-  label: string
-  hex: string
-  cssVar: string
-}) {
-  const rgb = hexToRgb(hex)
-  if (!rgb) return null
+const OPACITY_COLORS = [
+  { label: "Brand",     sublabel: "bg-brand-primary/{op}",       hex: "#5c7cfa" },
+  { label: "Primary",   sublabel: "bg-primary-500/{op}",         hex: "#5c7cfa" },
+  { label: "Secondary", sublabel: "bg-secondary-500/{op}",       hex: "#64748b" },
+  { label: "Grayscale", sublabel: "bg-neutral-grey-900/{op}",    hex: "#111827" },
+]
 
+function OpacityGrid() {
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm font-semibold text-text-primary">{label}</p>
-      <div className="grid grid-cols-5 gap-3 sm:grid-cols-10">
+    <div className="flex flex-col gap-5">
+      {/* Column headers */}
+      <div className="flex items-center gap-3">
+        <div className="w-28 shrink-0" />
         {OPACITIES.map((op) => (
-          <div key={op} className="flex flex-col gap-1.5">
-            {/* Checkerboard to show transparency */}
-            <div
-              className="h-14 rounded-custom border border-border-default"
-              style={{
-                background: `linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%) 0 0 / 10px 10px,
-                             linear-gradient(45deg, #ccc 25%, #fff 25%, #fff 75%, #ccc 75%) 5px 5px / 10px 10px`,
-                position: "relative",
-              }}
-            >
-              <div
-                className="absolute inset-0 rounded-custom"
-                style={{
-                  background: `rgb(${rgb.r} ${rgb.g} ${rgb.b} / ${op}%)`,
-                }}
-              />
-            </div>
-            <p className="font-mono text-[10px] text-text-secondary text-center">
-              /{op}
-            </p>
+          <div
+            key={op}
+            className="flex-1 text-center font-mono text-xs font-semibold text-text-secondary"
+          >
+            /{op}
           </div>
         ))}
       </div>
-      <p className="font-mono text-xs text-neutral-grey-400">
-        Uso: <code>bg-{cssVar.replace("--", "")}/{"{opacity}"}</code> ou{" "}
-        <code>text-{cssVar.replace("--", "")}/{"{opacity}"}</code>
-      </p>
+
+      {OPACITY_COLORS.map(({ label, sublabel, hex }) => {
+        const rgb = hexToRgb(hex)
+        if (!rgb) return null
+        return (
+          <div key={label} className="flex items-center gap-3">
+            {/* Row label */}
+            <div className="flex w-28 shrink-0 flex-col gap-0.5">
+              <span className="text-sm font-semibold text-text-primary">{label}</span>
+              <span className="font-mono text-[10px] leading-tight text-neutral-grey-400">
+                {sublabel}
+              </span>
+            </div>
+
+            {/* 5 swatches */}
+            {OPACITIES.map((op) => (
+              <div key={op} className="flex-1">
+                {/* Checkerboard background to expose transparency */}
+                <div
+                  className="relative h-14 rounded-custom border border-border-default"
+                  style={{
+                    background:
+                      "linear-gradient(45deg,#d1d5db 25%,transparent 25%,transparent 75%,#d1d5db 75%) 0 0/12px 12px," +
+                      "linear-gradient(45deg,#d1d5db 25%,#f9fafb 25%,#f9fafb 75%,#d1d5db 75%) 6px 6px/12px 12px",
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 rounded-custom"
+                    style={{
+                      background: `rgb(${rgb.r} ${rgb.g} ${rgb.b} / ${op}%)`,
+                    }}
+                  />
+                  {/* Percentage label inside swatch */}
+                  <span
+                    className="absolute inset-0 flex items-center justify-center font-mono text-[10px] font-bold"
+                    style={{
+                      color: op >= 60 ? (hexToRgb(hex) ? contrastColor(hex) : "#fff") : "#374151",
+                    }}
+                  >
+                    {op}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -310,34 +336,10 @@ function ColorsPage() {
       {/* Opacity */}
       <Section
         title="Cores com Opacidade"
-        description="Todas as utilities de cor aceitam modificador de opacidade nativo do Tailwind v4. Ex: bg-brand-primary/20, text-primary-500/50."
+        description="4 escalas de cor × 5 níveis de opacidade. Sintaxe Tailwind: bg-brand-primary/40, text-secondary-500/80, etc."
       >
-        <div className="flex flex-col gap-6 rounded-custom border border-border-default bg-surface-card p-5 shadow-card">
-          <OpacityRow
-            label="brand-primary (--primitive-blue)"
-            hex={colors.primitives.blue}
-            cssVar="--brand-primary"
-          />
-          <OpacityRow
-            label="primary-500"
-            hex={colors.primary["500"]}
-            cssVar="--qagrotis-primary-500"
-          />
-          <OpacityRow
-            label="secondary-500"
-            hex={colors.secondary["500"]}
-            cssVar="--qagrotis-secondary-500"
-          />
-          <OpacityRow
-            label="text-primary (dark)"
-            hex={colors.semantic.textPrimary}
-            cssVar="--text-primary"
-          />
-          <OpacityRow
-            label="neutral-grey-900"
-            hex={colors.neutralGrey["900"]}
-            cssVar="--neutral-grey-900"
-          />
+        <div className="rounded-custom border border-border-default bg-surface-card p-5 shadow-card">
+          <OpacityGrid />
         </div>
       </Section>
     </div>

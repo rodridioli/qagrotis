@@ -9,6 +9,26 @@ import "../app/globals.css"
 
 const preview: Preview = {
   parameters: {
+    options: {
+      storySort: {
+        order: [
+          "Design Tokens",
+          [
+            "Colors",
+            "Typography",
+            "Spaces",
+            "Shadows",
+            "Border Size",
+            "Border Radius",
+            "Icons",
+            "Grid",
+            "Breakpoints",
+          ],
+          "Components",
+          ["Button", "Badge", "Input", "Select", "Dialog"],
+        ],
+      },
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,
