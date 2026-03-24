@@ -3,8 +3,13 @@ import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { createCheckoutSession } from "@/lib/stripe"
 import { checkoutSchema } from "@/lib/validations"
+import { isSameOriginUrl, validateOrigin } from "@/lib/security"
 
 export async function POST(req: Request) {
+  // CSRF: reject cross-origin requests
+  const csrfError = validateOrigin(req)
+  if (csrfError) return csrfError
+
   try {
     const session = await auth()
     if (!session?.user?.id) {
@@ -15,6 +20,14 @@ export async function POST(req: Request) {
     const parsed = checkoutSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+    }
+
+    // Open redirect protection: returnUrl must be same-origin
+    if (!isSameOriginUrl(parsed.data.returnUrl)) {
+      return NextResponse.json(
+        { error: "Invalid return URL" },
+        { status: 400 }
+      )
     }
 
     const user = await db.user.findUnique({
@@ -36,7 +49,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: checkoutSession.url })
   } catch (error) {
-    console.error("[stripe/checkout]", error)
+    if (process.env.NODE_ENV === "development") {
+      console.error("[stripe/checkout]", error)
+    } else {
+      console.error("[stripe/checkout] Internal error")
+    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

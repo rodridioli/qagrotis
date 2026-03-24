@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { daysLeftInTrial, hasAccess, isSubscribed } from "@/lib/subscription"
+import { UpgradeButton } from "@/components/billing/UpgradeButton"
+import { env } from "@/lib/env"
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -47,7 +49,9 @@ export default async function DashboardPage() {
           )}
           <div className="flex gap-2">
             <span className="text-muted-foreground">Access:</span>
-            <span className={`font-medium ${access ? "text-green-600" : "text-destructive"}`}>
+            <span
+              className={`font-medium ${access ? "text-green-600" : "text-destructive"}`}
+            >
               {access ? "Active" : "Expired"}
             </span>
           </div>
@@ -55,21 +59,16 @@ export default async function DashboardPage() {
 
         {!subscribed && (
           <div className="mt-6">
-            <a
-              href="/api/stripe/checkout"
-              className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-            >
-              Upgrade to Pro
-            </a>
+            <UpgradeButton priceId={env.STRIPE_PRICE_ID_PRO} />
           </div>
         )}
       </div>
 
-      {/* Product features will be added here */}
+      {/* Product features — add in separate prompts */}
       <div className="mt-8 rounded-lg border border-dashed p-12 text-center text-muted-foreground">
         <p className="text-lg font-medium">Your product features go here</p>
         <p className="mt-2 text-sm">
-          This dashboard is a placeholder. Add your features in separate prompts.
+          This dashboard is a placeholder. Add features in separate prompts.
         </p>
       </div>
     </div>

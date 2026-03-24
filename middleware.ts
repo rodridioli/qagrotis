@@ -2,36 +2,45 @@ import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-// Routes that don't require authentication
-const publicRoutes = ["/", "/login", "/pricing", "/api/auth"]
+// Exact public paths (no auth required)
+const PUBLIC_PATHS = new Set(["/", "/login", "/pricing"])
 
-// Routes that require authentication
-const protectedRoutes = ["/dashboard", "/settings", "/billing"]
+// Public path prefixes (and all sub-paths)
+const PUBLIC_PREFIXES = ["/api/auth"]
+
+// Protected path prefixes (auth required)
+const PROTECTED_PREFIXES = ["/dashboard", "/settings", "/billing"]
+
+function isPublic(pathname: string): boolean {
+  if (PUBLIC_PATHS.has(pathname)) return true
+  return PUBLIC_PREFIXES.some(
+    (prefix) =>
+      pathname === prefix || pathname.startsWith(`${prefix}/`)
+  )
+}
+
+function isProtected(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some(
+    (prefix) =>
+      pathname === prefix || pathname.startsWith(`${prefix}/`)
+  )
+}
 
 export default auth((req: NextRequest & { auth: unknown }) => {
-  const { nextUrl, auth: session } = req as NextRequest & {
-    auth: { user?: { id: string } } | null
-  }
-  const isLoggedIn = !!session?.user
+  const { nextUrl } = req
+  const session = (req as NextRequest & { auth: { user?: { id: string } } | null }).auth
+  const isLoggedIn = !!session?.user?.id
+  const { pathname } = nextUrl
 
-  const isPublicRoute = publicRoutes.some(
-    (route) =>
-      nextUrl.pathname === route || nextUrl.pathname.startsWith(`${route}/`)
-  )
-  const isProtectedRoute = protectedRoutes.some(
-    (route) =>
-      nextUrl.pathname === route || nextUrl.pathname.startsWith(`${route}/`)
-  )
-
-  // Redirect unauthenticated users from protected routes to login
-  if (isProtectedRoute && !isLoggedIn) {
+  // Redirect unauthenticated users from protected routes
+  if (isProtected(pathname) && !isLoggedIn) {
     const loginUrl = new URL("/login", nextUrl)
-    loginUrl.searchParams.set("callbackUrl", nextUrl.pathname)
+    loginUrl.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Redirect authenticated users away from login page
-  if (nextUrl.pathname === "/login" && isLoggedIn) {
+  // Redirect authenticated users away from login
+  if (pathname === "/login" && isLoggedIn) {
     return NextResponse.redirect(new URL("/dashboard", nextUrl))
   }
 
@@ -40,13 +49,6 @@ export default auth((req: NextRequest & { auth: unknown }) => {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths EXCEPT:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico
-     * - public folder files
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }

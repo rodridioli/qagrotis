@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { stripe } from "@/lib/stripe"
+import { env } from "@/lib/env"
 import { db } from "@/lib/db"
 import type Stripe from "stripe"
 
@@ -12,16 +13,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing signature" }, { status: 400 })
   }
 
+  // Validate webhook secret is configured before using it
+  const webhookSecret = env.STRIPE_WEBHOOK_SECRET
+
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    )
-  } catch (err) {
-    console.error("[webhook] Invalid signature:", err)
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+  } catch {
+    // Don't log the raw error — it may contain signature bytes
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
   }
 
@@ -51,7 +51,12 @@ export async function POST(req: Request) {
         break
     }
   } catch (error) {
-    console.error(`[webhook] Error handling ${event.type}:`, error)
+    // Log event type but never the raw error object in production
+    if (process.env.NODE_ENV === "development") {
+      console.error(`[webhook] Error handling ${event.type}:`, error)
+    } else {
+      console.error(`[webhook] Error handling event type: ${event.type}`)
+    }
     return NextResponse.json(
       { error: "Webhook handler failed" },
       { status: 500 }
@@ -61,16 +66,35 @@ export async function POST(req: Request) {
   return NextResponse.json({ received: true })
 }
 
-/** Get current_period_end from the first subscription item (Stripe API 2026+) */
+/**
+ * Get current_period_end from the first subscription item (Stripe API 2026+).
+ * Returns null safely if the subscription has no items.
+ */
 function getPeriodEnd(subscription: Stripe.Subscription): Date | null {
-  const item = subscription.items.data[0]
-  if (!item?.current_period_end) return null
-  return new Date(item.current_period_end * 1000)
+  const items = subscription.items?.data
+  if (!items || items.length === 0) return null
+  const end = items[0]?.current_period_end
+  if (!end || typeof end !== "number") return null
+  return new Date(end * 1000)
+}
+
+/**
+ * Extract a valid userId string from Stripe metadata.
+ */
+function extractUserId(
+  metadata: Stripe.Metadata | null | undefined
+): string | null {
+  const id = metadata?.userId
+  if (!id || typeof id !== "string" || id.trim() === "") return null
+  return id
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const userId = session.metadata?.userId
-  if (!userId || typeof session.subscription !== "string") return
+  const userId = extractUserId(session.metadata)
+  if (!userId) return
+
+  if (typeof session.subscription !== "string" || !session.subscription) return
+  if (typeof session.customer !== "string" || !session.customer) return
 
   const subscription = await stripe.subscriptions.retrieve(session.subscription)
   const periodEnd = getPeriodEnd(subscription)
@@ -79,7 +103,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     where: { id: userId },
     data: {
       plan: "PRO",
-      stripeCustomerId: session.customer as string,
+      stripeCustomerId: session.customer,
       stripeSubscriptionId: subscription.id,
       stripeCurrentPeriodEnd: periodEnd,
     },
@@ -87,20 +111,31 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  // Subscription ID lives in invoice.parent.subscription_details in new API
-  const parent = invoice.parent as
-    | { type: string; subscription_details?: { subscription: string | Stripe.Subscription } }
-    | null
+  // In Stripe API 2026+, subscription info lives in invoice.parent.subscription_details
+  const parent = invoice.parent
+  if (!parent || typeof parent !== "object") return
+
+  const parentObj = parent as unknown as Record<string, unknown>
+  const subscriptionDetails = parentObj["subscription_details"]
+  if (!subscriptionDetails || typeof subscriptionDetails !== "object") return
+
+  const subDetails = subscriptionDetails as Record<string, unknown>
+  const rawSubscription = subDetails["subscription"]
 
   const subscriptionId =
-    typeof parent?.subscription_details?.subscription === "string"
-      ? parent.subscription_details.subscription
-      : (parent?.subscription_details?.subscription as Stripe.Subscription | undefined)?.id
+    typeof rawSubscription === "string"
+      ? rawSubscription
+      : typeof rawSubscription === "object" &&
+          rawSubscription !== null &&
+          "id" in rawSubscription &&
+          typeof (rawSubscription as { id: unknown }).id === "string"
+        ? (rawSubscription as { id: string }).id
+        : null
 
   if (!subscriptionId) return
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-  const userId = subscription.metadata?.userId
+  const userId = extractUserId(subscription.metadata)
   if (!userId) return
 
   const periodEnd = getPeriodEnd(subscription)
@@ -115,7 +150,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const userId = subscription.metadata?.userId
+  const userId = extractUserId(subscription.metadata)
   if (!userId) return
 
   const isPro = subscription.status === "active"
@@ -131,7 +166,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const userId = subscription.metadata?.userId
+  const userId = extractUserId(subscription.metadata)
   if (!userId) return
 
   await db.user.update({

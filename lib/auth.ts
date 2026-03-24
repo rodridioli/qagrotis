@@ -3,17 +3,18 @@ import Google from "next-auth/providers/google"
 import Resend from "next-auth/providers/resend"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { db } from "@/lib/db"
+import { env } from "@/lib/env"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
   providers: [
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+      clientId: env.AUTH_GOOGLE_ID,
+      clientSecret: env.AUTH_GOOGLE_SECRET,
     }),
     Resend({
-      apiKey: process.env.AUTH_RESEND_KEY!,
-      from: process.env.EMAIL_FROM ?? "noreply@yourdomain.com",
+      apiKey: env.AUTH_RESEND_KEY,
+      from: env.EMAIL_FROM,
     }),
   ],
   pages: {
@@ -34,7 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   events: {
     async createUser({ user }) {
-      // First login: set TRIAL plan + trialEndsAt
+      // First login: assign TRIAL plan with 14-day window
       const trialEndsAt = new Date()
       trialEndsAt.setDate(trialEndsAt.getDate() + 14)
 
