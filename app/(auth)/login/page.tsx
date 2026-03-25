@@ -1,46 +1,45 @@
 import { LoginForm } from "@/components/forms/LoginForm"
+import { QAgrotisLogo } from "@/components/qagrotis/QAgrotisLogo"
+import { AuthErrorToast } from "@/components/auth/AuthErrorToast"
+import { Suspense } from "react"
 import type { Metadata } from "next"
-import { House, Mail, Lock } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "QAgrotis — Entrar",
-  description: "Entre na sua conta QAgrotis",
+  description: "Entre na sua conta QAgrotis — Gestão de Qualidade de Software",
 }
 
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: { callbackUrl?: string; error?: string; verify?: string }
+  searchParams: Promise<{ callbackUrl?: string; error?: string; verify?: string }>
 }) {
+  const params = await searchParams
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-default px-4">
+    <main className="flex min-h-screen items-center justify-center bg-surface-default px-4">
+      <Suspense>
+        <AuthErrorToast />
+      </Suspense>
+
       <div className="w-full max-w-sm">
-        <div className="rounded-2xl bg-surface-card p-8 shadow-card space-y-6">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex size-12 items-center justify-center rounded-xl bg-brand-primary text-white">
-              <House className="size-6" />
-            </div>
-            <h1 className="text-xl font-bold text-text-primary">QAgrotis</h1>
-            <p className="text-sm text-text-secondary">
-              Gestão de Qualidade de Software
-            </p>
+        <div className="rounded-2xl bg-surface-card px-8 py-10 shadow-card space-y-6">
+
+          {/* Header — logo */}
+          <div className="flex flex-col items-center gap-1 text-center">
+            <QAgrotisLogo height={32} />
+            <p className="mt-1 text-sm text-text-secondary">Gestão de Qualidade de Software</p>
           </div>
 
-          {searchParams.verify && (
-            <div className="rounded-lg bg-green-50 p-4 text-sm text-green-800">
+          {params.verify && (
+            <div role="status" className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800">
               Verifique seu e-mail — enviamos um link de acesso.
             </div>
           )}
 
-          {searchParams.error && (
-            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-800">
-              Ocorreu um erro. Por favor, tente novamente.
-            </div>
-          )}
-
-          <LoginForm callbackUrl={searchParams.callbackUrl ?? "/dashboard"} />
+          <LoginForm callbackUrl={params.callbackUrl ?? "/dashboard"} />
         </div>
       </div>
-    </div>
+    </main>
   )
 }

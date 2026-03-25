@@ -1,5 +1,3 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
 import {
   DASHBOARD_METRICS,
   AUTOMATION_COVERAGE_DATA,
@@ -36,12 +34,9 @@ function MetricCard({
 }
 
 export default async function DashboardPage() {
-  const session = await auth()
-  if (!session?.user?.id) redirect("/login")
-
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {DASHBOARD_METRICS.map((m) => (
           <MetricCard key={m.label} {...m} />
         ))}

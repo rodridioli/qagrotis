@@ -58,7 +58,7 @@ function ResultadoBadge({ resultado }: { resultado: HistoricoItem["resultado"] }
   const map: Record<string, string> = {
     Sucesso: "bg-green-100 text-green-700",
     Erro: "bg-red-100 text-red-700",
-    Pendente: "bg-orange-100 text-orange-700",
+    Pendente: "bg-yellow-100 text-yellow-700",
   }
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${map[resultado]}`}>
@@ -71,7 +71,7 @@ function TipoBadge({ tipo }: { tipo: string }) {
   const map: Record<string, string> = {
     Automatizado: "bg-green-100 text-green-700",
     Manual: "bg-primary-100 text-primary-700",
-    "Man./Auto.": "bg-orange-100 text-orange-700",
+    "Man./Auto.": "bg-yellow-100 text-yellow-700",
   }
   const cls = map[tipo] ?? "bg-neutral-grey-100 text-neutral-grey-700"
   return (
@@ -156,7 +156,7 @@ export function SuiteForm({ mode, suite }: SuiteFormProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm">
           <Link href="/suites" className="flex items-center gap-1 text-text-secondary hover:text-brand-primary">
             <ArrowLeft className="size-4" />
@@ -170,7 +170,7 @@ export function SuiteForm({ mode, suite }: SuiteFormProps) {
         <Button>Salvar</Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-xl bg-surface-card p-5 shadow-card space-y-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">
@@ -251,9 +251,9 @@ export function SuiteForm({ mode, suite }: SuiteFormProps) {
           </div>
         </div>
 
-        <div className="col-span-2 space-y-4">
+        <div className="space-y-4 lg:col-span-2">
           <div className="rounded-xl bg-surface-card p-5 shadow-card space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-semibold text-text-primary">
                 Cenários: {cenarios.length}
               </h2>
@@ -305,7 +305,7 @@ export function SuiteForm({ mode, suite }: SuiteFormProps) {
                         <td className="px-3 py-2">
                           <Link href={`/cenarios/${c.id}`} className="font-medium text-brand-primary hover:underline">{c.id}</Link>
                         </td>
-                        <td className="px-3 py-2 max-w-[160px]">
+                        <td className="px-3 py-2 max-w-40">
                           <span className="block truncate text-text-primary">{c.name}</span>
                         </td>
                         <td className="px-3 py-2 text-text-secondary">{c.module}</td>

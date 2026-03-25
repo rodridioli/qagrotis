@@ -1,10 +1,9 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
-import { Filter, Search, MoreVertical, Plus, X, SlidersHorizontal } from "lucide-react"
+import { Filter, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
@@ -26,32 +25,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
+import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
+import { TableToolbar } from "@/components/qagrotis/TableToolbar"
+import { TablePagination } from "@/components/qagrotis/TablePagination"
+import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { MOCK_CENARIOS, MODULE_LIST, CLIENT_LIST, type MockCenario } from "@/lib/qagrotis-constants"
 import { toast } from "sonner"
+import { MoreVertical } from "lucide-react"
 
 const ITEMS_PER_PAGE = 10
-
-function TipoBadge({ tipo }: { tipo: MockCenario["tipo"] }) {
-  if (tipo === "Automatizado") {
-    return (
-      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
-        {tipo}
-      </span>
-    )
-  }
-  if (tipo === "Manual") {
-    return (
-      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-700">
-        {tipo}
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700">
-      {tipo}
-    </span>
-  )
-}
 
 interface FilterState {
   modulo: string
@@ -95,7 +77,12 @@ export default function CenariosPage() {
     currentPage * ITEMS_PER_PAGE
   )
 
-  const activeFilterCount = [filters.modulo, filters.cliente, filters.tipo, filters.apenasInativos ? "1" : ""].filter(Boolean).length
+  const activeFilterCount = [
+    filters.modulo,
+    filters.cliente,
+    filters.tipo,
+    filters.apenasInativos ? "1" : "",
+  ].filter(Boolean).length
 
   function toggleRow(id: string) {
     setSelectedIds((prev) => {
@@ -133,14 +120,12 @@ export default function CenariosPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button
           variant="outline"
           disabled={selectedIds.size === 0}
           onClick={() => {
-            if (selectedIds.size > 0) {
-              handleInativar([...selectedIds][0])
-            }
+            if (selectedIds.size > 0) handleInativar([...selectedIds][0])
           }}
         >
           Inativar
@@ -154,36 +139,15 @@ export default function CenariosPage() {
       </div>
 
       <div className="rounded-xl bg-surface-card shadow-card">
-        <div className="flex items-center justify-between border-b border-border-default px-5 py-4">
-          <span className="text-sm font-medium text-text-primary">
-            Total de cenários:{" "}
-            <span className="font-bold">{filtered.length.toLocaleString("pt-BR")}</span>
-          </span>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary" />
-              <input
-                type="text"
-                placeholder="Buscar por Id e Cenário"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
-                className="h-9 rounded-custom border border-border-default bg-surface-input pl-9 pr-3 text-sm text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 placeholder:text-text-secondary w-64"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => { setPendingFilters(filters); setFilterOpen(true) }}
-              className="relative flex items-center justify-center size-9 rounded-lg border border-border-default bg-surface-input text-text-secondary hover:bg-neutral-grey-100 transition-colors"
-            >
-              <SlidersHorizontal className="size-4" />
-              {activeFilterCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-brand-primary text-xs text-white">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
+        <TableToolbar
+          search={search}
+          onSearchChange={(v) => { setSearch(v); setCurrentPage(1) }}
+          searchPlaceholder="Buscar por Id e Cenário"
+          activeFilterCount={activeFilterCount}
+          onFilterOpen={() => { setPendingFilters(filters); setFilterOpen(true) }}
+          totalLabel="Total de cenários"
+          totalCount={filtered.length}
+        />
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -210,23 +174,17 @@ export default function CenariosPage() {
               {pageItems.map((c) => (
                 <tr
                   key={c.id}
-                  className="border-b border-border-default last:border-0 hover:bg-neutral-grey-50 transition-colors"
+                  className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
                 >
                   <td className="px-4 py-3">
-                    <Checkbox
-                      checked={selectedIds.has(c.id)}
-                      onChange={() => toggleRow(c.id)}
-                    />
+                    <Checkbox checked={selectedIds.has(c.id)} onChange={() => toggleRow(c.id)} />
                   </td>
                   <td className="px-4 py-3">
-                    <Link
-                      href={`/cenarios/${c.id}`}
-                      className="font-medium text-brand-primary hover:underline"
-                    >
+                    <Link href={`/cenarios/${c.id}`} className="font-medium text-brand-primary hover:underline">
                       {c.id}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 max-w-[200px]">
+                  <td className="px-4 py-3 max-w-50">
                     <span className="block truncate text-text-primary">{c.scenarioName}</span>
                   </td>
                   <td className="px-4 py-3 text-text-secondary">{c.module}</td>
@@ -235,7 +193,7 @@ export default function CenariosPage() {
                   <td className="px-4 py-3 text-text-secondary">{c.erros}</td>
                   <td className="px-4 py-3 text-text-secondary">{c.suites}</td>
                   <td className="px-4 py-3">
-                    <TipoBadge tipo={c.tipo} />
+                    <CenarioTipoBadge tipo={c.tipo} />
                   </td>
                   <td className="px-4 py-3">
                     <DropdownMenu>
@@ -243,7 +201,7 @@ export default function CenariosPage() {
                         render={
                           <button
                             type="button"
-                            className="flex size-7 items-center justify-center rounded-md hover:bg-neutral-grey-100 text-text-secondary"
+                            className="flex size-7 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                           />
                         }
                       >
@@ -270,40 +228,13 @@ export default function CenariosPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between border-t border-border-default px-5 py-3">
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <span>Itens por página:</span>
-            <span className="font-medium">10</span>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-text-secondary">
-            <span>
-              {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
-              {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} de{" "}
-              {filtered.length} items
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-                className="flex size-7 items-center justify-center rounded-md border border-border-default disabled:opacity-40 hover:bg-neutral-grey-100"
-              >
-                &lt;
-              </button>
-              <span className="px-2">
-                {currentPage} de {totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-                className="flex size-7 items-center justify-center rounded-md border border-border-default disabled:opacity-40 hover:bg-neutral-grey-100"
-              >
-                &gt;
-              </button>
-            </div>
-          </div>
-        </div>
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
@@ -316,7 +247,9 @@ export default function CenariosPage() {
               <label className="text-sm font-medium text-text-primary">Módulo</label>
               <Select
                 value={pendingFilters.modulo}
-                onValueChange={(v: string | null) => setPendingFilters((p) => ({ ...p, modulo: v ?? "" }))}
+                onValueChange={(v: string | null) =>
+                  setPendingFilters((p) => ({ ...p, modulo: v ?? "" }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -333,7 +266,9 @@ export default function CenariosPage() {
               <label className="text-sm font-medium text-text-primary">Cliente</label>
               <Select
                 value={pendingFilters.cliente}
-                onValueChange={(v: string | null) => setPendingFilters((p) => ({ ...p, cliente: v ?? "" }))}
+                onValueChange={(v: string | null) =>
+                  setPendingFilters((p) => ({ ...p, cliente: v ?? "" }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -350,7 +285,9 @@ export default function CenariosPage() {
               <label className="text-sm font-medium text-text-primary">Tipo</label>
               <Select
                 value={pendingFilters.tipo}
-                onValueChange={(v: string | null) => setPendingFilters((p) => ({ ...p, tipo: v ?? "" }))}
+                onValueChange={(v: string | null) =>
+                  setPendingFilters((p) => ({ ...p, tipo: v ?? "" }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -367,7 +304,10 @@ export default function CenariosPage() {
               label="Exibir somente inativos"
               checked={pendingFilters.apenasInativos}
               onChange={(e) =>
-                setPendingFilters((p) => ({ ...p, apenasInativos: (e.target as HTMLInputElement).checked }))
+                setPendingFilters((p) => ({
+                  ...p,
+                  apenasInativos: (e.target as HTMLInputElement).checked,
+                }))
               }
             />
           </div>
@@ -384,30 +324,14 @@ export default function CenariosPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={inativarOpen} onOpenChange={setInativarOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Deseja inativar?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-text-secondary">
-            O cenário {inativarId} será inativado de forma definitiva e não
-            poderá ser recuperado. Caso seja necessário utilizá-lo novamente,
-            será preciso cadastrar um novo cenário.
-          </p>
-          <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setInativarOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={confirmInativar}
-            >
-              Inativar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={inativarOpen}
+        onOpenChange={setInativarOpen}
+        title="Deseja inativar?"
+        description={`O cenário ${inativarId} será inativado de forma definitiva e não poderá ser recuperado. Caso seja necessário utilizá-lo novamente, será preciso cadastrar um novo cenário.`}
+        confirmLabel="Inativar"
+        onConfirm={confirmInativar}
+      />
     </div>
   )
 }

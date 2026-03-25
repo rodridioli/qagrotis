@@ -51,11 +51,11 @@ function SelectPopup({
 }: SelectPrimitive.Popup.Props) {
   return (
     <SelectPrimitive.Portal>
-      <SelectPrimitive.Positioner sideOffset={4}>
+      <SelectPrimitive.Positioner sideOffset={4} className="z-200">
         <SelectPrimitive.Popup
           data-slot="select-popup"
           className={cn(
-            "z-50 min-w-[8rem] overflow-hidden rounded-custom border border-border-default bg-surface-card shadow-card outline-none",
+            "min-w-32 overflow-hidden rounded-custom border border-border-default bg-surface-card shadow-card outline-none",
             "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95",
             "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
             className

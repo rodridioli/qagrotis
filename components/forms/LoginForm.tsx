@@ -1,117 +1,309 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useId, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react"
 import { signIn } from "next-auth/react"
-import { Button } from "@/components/ui/button"
-import { loginSchema } from "@/lib/validations"
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+import { Captcha, type CaptchaHandle } from "@/components/ui/captcha"
+import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 
-interface LoginFormProps {
-  callbackUrl?: string
+// ── Google brand icon ─────────────────────────────────────────
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true" focusable="false">
+      <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908C16.98 14.01 17.64 11.71 17.64 9.205z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-6.16-4.53H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+      <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
+  )
 }
 
-export function LoginForm({ callbackUrl = "/dashboard" }: LoginFormProps) {
+// ── Icon-wrapped input ────────────────────────────────────────
+interface IconInputProps extends React.ComponentProps<"input"> {
+  leadingIcon: React.ReactNode
+  trailingElement?: React.ReactNode
+  error?: string
+}
+
+function IconInput({ leadingIcon, trailingElement, error, className, id, ...props }: IconInputProps) {
+  return (
+    <div className="flex w-full flex-col gap-1">
+      <div className="relative flex items-center">
+        <span className="pointer-events-none absolute left-3.5 flex items-center text-text-secondary">
+          {leadingIcon}
+        </span>
+        <input
+          id={id}
+          aria-invalid={!!error}
+          className={cn(
+            "flex h-12 w-full rounded-xl border border-border-default bg-surface-input",
+            "pl-10 text-sm text-text-primary outline-none transition-colors",
+            "placeholder:text-text-secondary",
+            "focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/20",
+            "aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20",
+            "disabled:cursor-not-allowed disabled:opacity-50",
+            trailingElement ? "pr-11" : "pr-3.5",
+            className
+          )}
+          {...props}
+        />
+        {trailingElement && (
+          <span className="absolute right-1.5 flex items-center">{trailingElement}</span>
+        )}
+      </div>
+      {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
+    </div>
+  )
+}
+
+// ── Primary button ────────────────────────────────────────────
+function PrimaryButton({ children, loading = false, className, ...props }: React.ComponentProps<"button"> & { loading?: boolean }) {
+  return (
+    <button
+      type="submit"
+      disabled={loading || props.disabled}
+      aria-busy={loading}
+      style={{ color: "#ffffff" }}
+      className={cn(
+        "flex h-12 w-full items-center justify-center gap-2 rounded-xl",
+        "bg-brand-primary text-base font-semibold",
+        "transition-opacity hover:opacity-90 active:opacity-80",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-2",
+        className
+      )}
+      {...props}
+    >
+      {loading && <Loader2 className="size-4 animate-spin" />}
+      {children}
+    </button>
+  )
+}
+
+// ── Divider ───────────────────────────────────────────────────
+function Divider({ label = "ou" }: { label?: string }) {
+  return (
+    <div className="relative flex items-center gap-2" aria-hidden="true">
+      <span className="flex-1 border-t border-border-default" />
+      <span className="text-xs text-text-secondary">{label}</span>
+      <span className="flex-1 border-t border-border-default" />
+    </div>
+  )
+}
+
+// ── Login view ────────────────────────────────────────────────
+function LoginView({ onForgotPassword, callbackUrl }: { onForgotPassword: () => void; callbackUrl: string }) {
+  const router = useRouter()
+  const emailId = useId()
+  const passwordId = useId()
+  const captchaRef = useRef<CaptchaHandle>(null)
+
   const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const [emailError, setEmailError] = useState("")
+  const [passwordError, setPasswordError] = useState("")
+  const [captchaError, setCaptchaError] = useState("")
 
-  const handleMagicLink = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setError(null)
+    setEmailError("")
+    setPasswordError("")
+    setCaptchaError("")
 
-    const parsed = loginSchema.safeParse({ email })
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Invalid email")
-      return
+    let hasError = false
+
+    if (!email.trim()) {
+      setEmailError("Informe seu e-mail.")
+      hasError = true
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError("E-mail inválido.")
+      hasError = true
     }
+
+    if (!password) {
+      setPasswordError("Informe sua senha.")
+      hasError = true
+    }
+
+    if (!captchaRef.current?.isValid()) {
+      setCaptchaError("Caracteres incorretos. Tente novamente.")
+      captchaRef.current?.reset()
+      hasError = true
+    }
+
+    if (hasError) return
 
     setLoading(true)
     try {
-      await signIn("resend", { email, callbackUrl, redirect: true })
+      await new Promise((r) => setTimeout(r, 800))
+
+      if (PROTOTYPE_USERS[email.toLowerCase()] !== password) {
+        toast.error("E-mail ou senha incorretos.", {
+          description: "Verifique suas credenciais e tente novamente.",
+        })
+        captchaRef.current?.reset()
+        return
+      }
+
+      toast.success("Acesso autorizado!", { description: "Redirecionando para o painel..." })
+      router.push(callbackUrl)
     } catch {
-      setError("Failed to send magic link. Please try again.")
+      toast.error("Erro ao autenticar. Tente novamente.")
     } finally {
       setLoading(false)
     }
   }
 
   const handleGoogle = () => {
+    setGoogleLoading(true)
     signIn("google", { callbackUrl })
   }
 
   return (
-    <div className="space-y-4">
-      {/* Google OAuth */}
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={handleGoogle}
-        type="button"
-      >
-        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-            fill="hsl(var(--color-blue-600))"
-          />
-          <path
-            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-            fill="hsl(var(--color-green-500))"
-          />
-          <path
-            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-            fill="hsl(var(--color-yellow-400))"
-          />
-          <path
-            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-            fill="hsl(var(--color-red-500))"
-          />
-        </svg>
-        Continue with Google
-      </Button>
+    <div className="space-y-3">
+      <form onSubmit={handleSubmit} noValidate className="space-y-3" aria-label="Formulário de acesso">
+        <IconInput
+          id={emailId}
+          type="email"
+          placeholder="E-mail"
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); setEmailError("") }}
+          autoComplete="email"
+          inputMode="email"
+          leadingIcon={<Mail className="size-4" />}
+          error={emailError}
+        />
 
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">or</span>
-        </div>
-      </div>
+        <IconInput
+          id={passwordId}
+          type={showPassword ? "text" : "password"}
+          placeholder="Senha"
+          value={password}
+          onChange={(e) => { setPassword(e.target.value); setPasswordError("") }}
+          autoComplete="current-password"
+          leadingIcon={<Lock className="size-4" />}
+          error={passwordError}
+          trailingElement={
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              className="flex size-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-neutral-grey-100"
+            >
+              {showPassword ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+            </button>
+          }
+        />
 
-      {/* Magic Link */}
-      <form onSubmit={handleMagicLink} className="space-y-3">
-        <div className="space-y-1">
-          <label htmlFor="email" className="text-sm font-medium">
-            Email address
-          </label>
-          <input
-            id="email"
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+        <Captcha ref={captchaRef} error={captchaError} />
+
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            className="text-sm text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 rounded"
+          >
+            Esqueci minha senha
+          </button>
         </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
-
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Sending link..." : "Continue with Email"}
-        </Button>
+        <PrimaryButton loading={loading}>Entrar</PrimaryButton>
       </form>
 
-      <p className="text-center text-xs text-muted-foreground">
-        By continuing, you agree to our{" "}
-        <a href="/terms" className="underline underline-offset-4 hover:text-foreground">
-          Terms
-        </a>{" "}
-        and{" "}
-        <a href="/privacy" className="underline underline-offset-4 hover:text-foreground">
-          Privacy Policy
-        </a>
-        .
-      </p>
+      <Divider />
+
+      <button
+        type="button"
+        onClick={handleGoogle}
+        disabled={loading || googleLoading}
+        aria-busy={googleLoading}
+        className={cn(
+          "flex h-12 w-full items-center justify-center gap-2.5 rounded-xl",
+          "border border-border-default bg-surface-card text-sm font-medium text-text-primary",
+          "transition-colors hover:bg-neutral-grey-50",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-2"
+        )}
+      >
+        {googleLoading ? <Loader2 className="size-4 animate-spin" /> : <GoogleIcon />}
+        Entrar com Google
+      </button>
     </div>
   )
+}
+
+// ── Forgot password view ──────────────────────────────────────
+function ForgotPasswordView({ onBack }: { onBack: () => void }) {
+  const emailId = useId()
+  const [email, setEmail] = useState("")
+  const [emailError, setEmailError] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setEmailError("")
+
+    if (!email.trim()) { setEmailError("Informe seu e-mail."); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setEmailError("E-mail inválido."); return }
+
+    setLoading(true)
+    try {
+      const res = await fetch("/api/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { toast.error(data.error ?? "Erro ao enviar o e-mail."); return }
+      toast.success("E-mail enviado!", { description: `Verifique sua caixa de entrada em ${email}.` })
+      onBack()
+    } catch {
+      toast.error("Sem conexão. Verifique sua internet e tente novamente.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} noValidate className="space-y-3" aria-label="Recuperação de senha">
+      <IconInput
+        id={emailId}
+        type="email"
+        placeholder="E-mail"
+        value={email}
+        onChange={(e) => { setEmail(e.target.value); setEmailError("") }}
+        autoComplete="email"
+        inputMode="email"
+        leadingIcon={<Mail className="size-4" />}
+        error={emailError}
+      />
+
+      <PrimaryButton loading={loading}>Lembrar senha</PrimaryButton>
+
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary focus-visible:outline-none"
+        >
+          <ArrowLeft className="size-3.5" />
+          Voltar ao login
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// ── Export ────────────────────────────────────────────────────
+export function LoginForm({ callbackUrl = "/dashboard" }: { callbackUrl?: string }) {
+  const [mode, setMode] = useState<"login" | "forgot">("login")
+
+  if (mode === "forgot") return <ForgotPasswordView onBack={() => setMode("login")} />
+  return <LoginView callbackUrl={callbackUrl} onForgotPassword={() => setMode("forgot")} />
 }

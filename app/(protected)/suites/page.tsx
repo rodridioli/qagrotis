@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
-import { Search, SlidersHorizontal, Plus, MoreVertical, X, Filter, Calendar } from "lucide-react"
+import { Filter, Plus, X, Calendar, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -25,35 +25,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { MOCK_SUITES, MODULE_LIST, CLIENT_LIST, type MockSuite } from "@/lib/qagrotis-constants"
+import { AutomacaoBadge, SuiteTipoBadge } from "@/components/qagrotis/StatusBadge"
+import { TableToolbar } from "@/components/qagrotis/TableToolbar"
+import { TablePagination } from "@/components/qagrotis/TablePagination"
+import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
+import { MOCK_SUITES, MODULE_LIST } from "@/lib/qagrotis-constants"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 10
-
-function AutomacaoBadge({ pct }: { pct: number }) {
-  let cls = "bg-red-100 text-red-700"
-  if (pct === 100) cls = "bg-green-100 text-green-700"
-  else if (pct >= 50) cls = "bg-yellow-100 text-yellow-700"
-  else if (pct > 0) cls = "bg-orange-100 text-orange-700"
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
-      {pct}%
-    </span>
-  )
-}
-
-function TipoBadge({ tipo }: { tipo: MockSuite["tipo"] }) {
-  const map: Record<string, string> = {
-    Sprint: "bg-green-100 text-green-700",
-    Kanban: "bg-primary-100 text-primary-700",
-    Outro: "bg-orange-100 text-orange-700",
-  }
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${map[tipo]}`}>
-      {tipo}
-    </span>
-  )
-}
 
 interface FilterState {
   modulo: string
@@ -73,7 +52,8 @@ export default function SuitesPage() {
 
   const filtered = useMemo(() => {
     return MOCK_SUITES.filter((s) => {
-      const matchSearch = !search ||
+      const matchSearch =
+        !search ||
         s.id.toLowerCase().includes(search.toLowerCase()) ||
         s.suiteName.toLowerCase().includes(search.toLowerCase())
       const matchModulo = !filters.modulo || s.modulo === filters.modulo
@@ -89,7 +69,11 @@ export default function SuitesPage() {
     currentPage * ITEMS_PER_PAGE
   )
 
-  const activeFilterCount = [filters.modulo, filters.tipo, filters.apenasInativos ? "1" : ""].filter(Boolean).length
+  const activeFilterCount = [
+    filters.modulo,
+    filters.tipo,
+    filters.apenasInativos ? "1" : "",
+  ].filter(Boolean).length
 
   function toggleRow(id: string) {
     setSelectedIds((prev) => {
@@ -125,9 +109,18 @@ export default function SuitesPage() {
     setCurrentPage(1)
   }
 
+  const calendarButton = (
+    <button
+      type="button"
+      className="flex size-9 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100"
+    >
+      <Calendar className="size-4" />
+    </button>
+  )
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button
           variant="outline"
           disabled={selectedIds.size === 0}
@@ -144,42 +137,16 @@ export default function SuitesPage() {
       </div>
 
       <div className="rounded-xl bg-surface-card shadow-card">
-        <div className="flex items-center justify-between border-b border-border-default px-5 py-4">
-          <span className="text-sm font-medium text-text-primary">
-            Suítes de teste:{" "}
-            <span className="font-bold">{filtered.length.toLocaleString("pt-BR")}</span>
-          </span>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary" />
-              <input
-                type="text"
-                placeholder="Buscar por Id e Suíte"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
-                className="h-9 rounded-custom border border-border-default bg-surface-input pl-9 pr-3 text-sm text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 placeholder:text-text-secondary w-64"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => { setPendingFilters(filters); setFilterOpen(true) }}
-              className="relative flex items-center justify-center size-9 rounded-lg border border-border-default bg-surface-input text-text-secondary hover:bg-neutral-grey-100 transition-colors"
-            >
-              <SlidersHorizontal className="size-4" />
-              {activeFilterCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-brand-primary text-xs text-white">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              className="flex items-center justify-center size-9 rounded-lg border border-border-default bg-surface-input text-text-secondary hover:bg-neutral-grey-100 transition-colors"
-            >
-              <Calendar className="size-4" />
-            </button>
-          </div>
-        </div>
+        <TableToolbar
+          search={search}
+          onSearchChange={(v) => { setSearch(v); setCurrentPage(1) }}
+          searchPlaceholder="Buscar por Id e Suíte"
+          activeFilterCount={activeFilterCount}
+          onFilterOpen={() => { setPendingFilters(filters); setFilterOpen(true) }}
+          totalLabel="Suítes de teste"
+          totalCount={filtered.length}
+          extra={calendarButton}
+        />
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -206,13 +173,19 @@ export default function SuitesPage() {
             </thead>
             <tbody>
               {pageItems.map((s) => (
-                <tr key={s.id} className="border-b border-border-default last:border-0 hover:bg-neutral-grey-50 transition-colors">
+                <tr
+                  key={s.id}
+                  className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                >
                   <td className="px-4 py-3">
                     <Checkbox checked={selectedIds.has(s.id)} onChange={() => toggleRow(s.id)} />
                   </td>
                   <td className="px-4 py-3 font-medium text-text-secondary">{s.id}</td>
-                  <td className="px-4 py-3 max-w-[180px]">
-                    <Link href={`/suites/${s.id}`} className="block truncate font-medium text-brand-primary hover:underline">
+                  <td className="px-4 py-3 max-w-45">
+                    <Link
+                      href={`/suites/${s.id}`}
+                      className="block truncate font-medium text-brand-primary hover:underline"
+                    >
                       {s.suiteName}
                     </Link>
                   </td>
@@ -223,12 +196,15 @@ export default function SuitesPage() {
                   <td className="px-4 py-3"><AutomacaoBadge pct={s.automacao} /></td>
                   <td className="px-4 py-3 text-text-secondary">{s.erros}</td>
                   <td className="px-4 py-3 text-text-secondary">{s.cenarios}</td>
-                  <td className="px-4 py-3"><TipoBadge tipo={s.tipo} /></td>
+                  <td className="px-4 py-3"><SuiteTipoBadge tipo={s.tipo} /></td>
                   <td className="px-4 py-3">
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={
-                          <button type="button" className="flex size-7 items-center justify-center rounded-md hover:bg-neutral-grey-100 text-text-secondary" />
+                          <button
+                            type="button"
+                            className="flex size-7 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                          />
                         }
                       >
                         <MoreVertical className="size-4" />
@@ -249,38 +225,13 @@ export default function SuitesPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between border-t border-border-default px-5 py-3">
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <span>Itens por página:</span>
-            <span className="font-medium">10</span>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-text-secondary">
-            <span>
-              {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
-              {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} de{" "}
-              {filtered.length} items
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-                className="flex size-7 items-center justify-center rounded-md border border-border-default disabled:opacity-40 hover:bg-neutral-grey-100"
-              >
-                &lt;
-              </button>
-              <span className="px-2">{currentPage} de {totalPages}</span>
-              <button
-                type="button"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-                className="flex size-7 items-center justify-center rounded-md border border-border-default disabled:opacity-40 hover:bg-neutral-grey-100"
-              >
-                &gt;
-              </button>
-            </div>
-          </div>
-        </div>
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
@@ -293,7 +244,9 @@ export default function SuitesPage() {
               <label className="text-sm font-medium text-text-primary">Módulo</label>
               <Select
                 value={pendingFilters.modulo}
-                onValueChange={(v: string | null) => setPendingFilters((p) => ({ ...p, modulo: v ?? "" }))}
+                onValueChange={(v: string | null) =>
+                  setPendingFilters((p) => ({ ...p, modulo: v ?? "" }))
+                }
               >
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectPopup>
@@ -306,7 +259,9 @@ export default function SuitesPage() {
               <label className="text-sm font-medium text-text-primary">Tipo</label>
               <Select
                 value={pendingFilters.tipo}
-                onValueChange={(v: string | null) => setPendingFilters((p) => ({ ...p, tipo: v ?? "" }))}
+                onValueChange={(v: string | null) =>
+                  setPendingFilters((p) => ({ ...p, tipo: v ?? "" }))
+                }
               >
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectPopup>
@@ -321,7 +276,10 @@ export default function SuitesPage() {
               label="Exibir somente inativos"
               checked={pendingFilters.apenasInativos}
               onChange={(e) =>
-                setPendingFilters((p) => ({ ...p, apenasInativos: (e.target as HTMLInputElement).checked }))
+                setPendingFilters((p) => ({
+                  ...p,
+                  apenasInativos: (e.target as HTMLInputElement).checked,
+                }))
               }
             />
           </div>
@@ -338,26 +296,14 @@ export default function SuitesPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={inativarOpen} onOpenChange={setInativarOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Deseja inativar?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-text-secondary">
-            A suíte {inativarId} será inativada de forma definitiva e não poderá ser recuperada.
-          </p>
-          <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setInativarOpen(false)}>Cancelar</Button>
-            <Button
-              variant="destructive"
-              className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={confirmInativar}
-            >
-              Inativar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={inativarOpen}
+        onOpenChange={setInativarOpen}
+        title="Deseja inativar?"
+        description={`A suíte ${inativarId} será inativada de forma definitiva e não poderá ser recuperada.`}
+        confirmLabel="Inativar"
+        onConfirm={confirmInativar}
+      />
     </div>
   )
 }

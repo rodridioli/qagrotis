@@ -102,8 +102,8 @@ export default function NovoCenarioPage() {
         <Button>Salvar</Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 rounded-xl bg-surface-card p-5 shadow-card space-y-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="rounded-xl bg-surface-card p-5 shadow-card space-y-4 lg:col-span-2">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">
               Cenário <span className="text-destructive">*</span>
@@ -111,7 +111,7 @@ export default function NovoCenarioPage() {
             <Input placeholder="Nome do cenário" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
                 Sistema <span className="text-destructive">*</span>
@@ -136,7 +136,7 @@ export default function NovoCenarioPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Cliente</label>
               <Select>

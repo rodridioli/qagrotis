@@ -48,14 +48,14 @@ export default function CenarioDetailPage({
           <span className="text-text-secondary">/</span>
           <span className="font-medium text-text-primary">{cenario.id}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline">Salvar</Button>
-          <Button className="bg-green-600 text-white hover:bg-green-700">Sucesso</Button>
-          <Button variant="destructive" className="bg-red-600 text-white hover:bg-red-700">Erro</Button>
+          <Button className="bg-primary-700 hover:bg-primary-800" style={{ color: "#ffffff" }}>Sucesso</Button>
+          <Button variant="destructive">Erro</Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-xl bg-surface-card p-5 shadow-card space-y-3">
           <h2 className="font-semibold text-text-primary">Informações do Cenário</h2>
           <div className="space-y-2 text-sm">

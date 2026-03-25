@@ -75,3 +75,13 @@ model VerificationToken {
 
   @@id([identifier, token])
 }
+
+model QaUser {
+  id        String   @id
+  name      String
+  email     String   @unique
+  type      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

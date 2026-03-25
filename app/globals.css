@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-roboto);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -107,10 +107,10 @@
 :root {
   /* ── QAgrotis Design Tokens ── */
   /* Primitive */
-  --primitive-blue: #5c7cfa;
+  --primitive-green: #00735D;
 
   /* Semantic */
-  --brand-primary: var(--primitive-blue);
+  --brand-primary: var(--primitive-green);
   --surface-default: #f4f5f9;
   --surface-card: #ffffff;
   --surface-input: #f8f9fc;
@@ -118,17 +118,17 @@
   --text-secondary: #6b7280;
   --border-default: #e5e7eb;
 
-  /* Primary Scale (10 shades, hue 228°) */
-  --qagrotis-primary-50:  #eef2ff;
-  --qagrotis-primary-100: #e0e9ff;
-  --qagrotis-primary-200: #c7d5ff;
-  --qagrotis-primary-300: #a4bcfd;
-  --qagrotis-primary-400: #819bfb;
-  --qagrotis-primary-500: #5c7cfa;
-  --qagrotis-primary-600: #4360e8;
-  --qagrotis-primary-700: #3549c5;
-  --qagrotis-primary-800: #2c3a99;
-  --qagrotis-primary-900: #1e2a6e;
+  /* Primary Scale (10 shades, hue 168° — Agrotis Green) */
+  --qagrotis-primary-50:  #edfaf6;
+  --qagrotis-primary-100: #d0f2e8;
+  --qagrotis-primary-200: #9ee5d2;
+  --qagrotis-primary-300: #5cd0b8;
+  --qagrotis-primary-400: #2ab89e;
+  --qagrotis-primary-500: #009e83;
+  --qagrotis-primary-600: #008068;
+  --qagrotis-primary-700: #00735D;
+  --qagrotis-primary-800: #005c4b;
+  --qagrotis-primary-900: #003d32;
 
   /* Secondary Scale (cool slate) */
   --qagrotis-secondary-50:  #f8fafc;
@@ -161,7 +161,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: #00735D;
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -295,6 +295,17 @@
   --color-yellow-800: 32 81% 29%;
   --color-yellow-900: 28 73% 26%;
   --color-yellow-950: 26 83% 14%;
+  --color-orange-50: 34 100% 97%;
+  --color-orange-100: 34 100% 91%;
+  --color-orange-200: 33 100% 84%;
+  --color-orange-300: 32 98% 73%;
+  --color-orange-400: 27 96% 61%;
+  --color-orange-500: 25 95% 53%;
+  --color-orange-600: 21 90% 48%;
+  --color-orange-700: 17 88% 40%;
+  --color-orange-800: 15 79% 34%;
+  --color-orange-900: 15 75% 28%;
+  --color-orange-950: 13 81% 15%;
   --color-purple-50: 270 100% 98%;
   --color-purple-100: 269 100% 95%;
   --color-purple-200: 269 100% 92%;
@@ -312,7 +323,7 @@
   --color-card-foreground: 0 0% 9%;
   --color-popover: 0 0% 100%;
   --color-popover-foreground: 0 0% 9%;
-  --color-primary: 221 83% 53%;
+  --color-primary: 168 100% 22%;
   --color-primary-foreground: 0 0% 100%;
   --color-secondary: 0 0% 96%;
   --color-secondary-foreground: 0 0% 9%;
@@ -324,17 +335,17 @@
   --color-destructive-foreground: 0 0% 100%;
   --color-border: 0 0% 90%;
   --color-input: 0 0% 90%;
-  --color-ring: 221 83% 53%;
+  --color-ring: 168 100% 22%;
 
   /* ── Sidebar ── */
   --sidebar-background: 0 0% 98%;
   --sidebar-foreground: 0 0% 25%;
-  --sidebar-primary: 221 83% 53%;
+  --sidebar-primary: 168 100% 22%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 0 0% 96%;
   --sidebar-accent-foreground: 0 0% 9%;
   --sidebar-border: 0 0% 90%;
-  --sidebar-ring: 221 83% 53%;
+  --sidebar-ring: 168 100% 22%;
 
   /* ── Radius ── */
   --radius-none: 0px;

@@ -94,7 +94,16 @@ function rng(seed: number, min: number, max: number): number {
   return Math.floor((x - Math.floor(x)) * (max - min + 1)) + min
 }
 
-export const MOCK_USERS: MockUser[] = Array.from({ length: 100 }, (_, i) => {
+export const MOCK_USERS: MockUser[] = [
+  {
+    id: "U-00",
+    name: "Rodrigo",
+    email: "rodridioli@gmail.com",
+    type: "Administrador",
+    avatar: "",
+    active: true,
+  },
+  ...Array.from({ length: 100 }, (_, i) => {
   const firstName = pick(firstNames, i * 3 + 7)
   const lastName = pick(lastNames, i * 2 + 5)
   const name = `${firstName} ${lastName}`
@@ -107,7 +116,7 @@ export const MOCK_USERS: MockUser[] = Array.from({ length: 100 }, (_, i) => {
     avatar: "",
     active: i % 7 !== 0,
   }
-})
+})]
 
 const cenarioNames = [
   "Cadastro de Produtores",
