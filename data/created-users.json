@@ -1,0 +1,18 @@
+[
+  {
+    "id": "U-101",
+    "name": "teste",
+    "email": "teste@teste.com.br",
+    "type": "Padrão",
+    "photoPath": null,
+    "password": "teste"
+  },
+  {
+    "id": "U-102",
+    "name": "teste2",
+    "email": "teste2@teste.com.br",
+    "type": "Padrão",
+    "photoPath": null,
+    "password": "teste"
+  }
+]

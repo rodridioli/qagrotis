@@ -85,7 +85,7 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
 
   const filtered = useMemo(() => {
-    return initialUsers.filter((u) => {
+    const result = initialUsers.filter((u) => {
       const matchSearch =
         !search ||
         u.id.toLowerCase().includes(search.toLowerCase()) ||
@@ -95,6 +95,7 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
       const matchAtivo = filters.apenasInativos ? !u.active : u.active
       return matchSearch && matchTipo && matchAtivo
     })
+    return [...result].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
   }, [search, filters, initialUsers])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
@@ -227,7 +228,15 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
         />
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              {showBulkActions && <col className="w-10" />}
+              <col className="w-24" />
+              <col />
+              <col />
+              <col className="w-36" />
+              <col className="w-16" />
+            </colgroup>
             <thead>
               <tr className="border-b border-border-default bg-neutral-grey-50">
                 {showBulkActions && (
@@ -242,11 +251,17 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">E-mail</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                <th className="px-4 py-3" />
+                <th className="pl-4 pr-6 py-3" />
               </tr>
             </thead>
             <tbody>
-              {pageItems.map((u) => {
+              {pageItems.length === 0 ? (
+                <tr>
+                  <td colSpan={showBulkActions ? 6 : 5} className="px-4 py-10 text-center text-sm text-text-secondary">
+                    Nenhum registro encontrado.
+                  </td>
+                </tr>
+              ) : pageItems.map((u) => {
                 const isSelf = u.id === currentUserId
                 return (
                   <tr
@@ -302,7 +317,7 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
                             render={
                               <button
                                 type="button"
-                                className="flex size-7 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                               />
                             }
                           >
@@ -375,14 +390,22 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
             />
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setFilterOpen(false)}>
-              <X className="size-4" />
-              Cancelar
+            <Button
+              variant="ghost"
+              onClick={() => setPendingFilters({ tipo: "", apenasInativos: false })}
+            >
+              Limpar filtros
             </Button>
-            <Button onClick={applyFilters}>
-              <Filter className="size-4" />
-              Filtrar
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setFilterOpen(false)}>
+                <X className="size-4" />
+                Cancelar
+              </Button>
+              <Button onClick={applyFilters}>
+                <Filter className="size-4" />
+                Filtrar
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

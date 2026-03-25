@@ -172,7 +172,13 @@ export default function SuitesPage() {
               </tr>
             </thead>
             <tbody>
-              {pageItems.map((s) => (
+              {pageItems.length === 0 ? (
+                <tr>
+                  <td colSpan={12} className="px-4 py-10 text-center text-sm text-text-secondary">
+                    Nenhum registro encontrado.
+                  </td>
+                </tr>
+              ) : pageItems.map((s) => (
                 <tr
                   key={s.id}
                   className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"

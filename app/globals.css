@@ -105,18 +105,15 @@
 }
 
 :root {
-  /* ── QAgrotis Design Tokens ── */
-  /* Primitive */
-  --primitive-green: #00735D;
-
+  /* ── QAgrotis Design Tokens — Light Theme ── */
   /* Semantic */
-  --brand-primary: var(--primitive-green);
+  --brand-primary:   #00735D;
   --surface-default: #f4f5f9;
-  --surface-card: #ffffff;
-  --surface-input: #f8f9fc;
-  --text-primary: #333333;
-  --text-secondary: #6b7280;
-  --border-default: #e5e7eb;
+  --surface-card:    #ffffff;
+  --surface-input:   #f8f9fc;
+  --text-primary:    #1a202c;
+  --text-secondary:  #6b7280;
+  --border-default:  #e5e7eb;
 
   /* Primary Scale (10 shades, hue 168° — Agrotis Green) */
   --qagrotis-primary-50:  #edfaf6;
@@ -190,37 +187,98 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* ════════════════════════════════════════════════════════════
+     QAgrotis Dark Theme — Deep Navy
+     Surfaces: desaturated navy (not pure black) → depth + reduced eye strain
+     Brand: primary-400 (#2ab89e) → better contrast on dark backgrounds
+     ════════════════════════════════════════════════════════════ */
+
+  /* ── Semantic tokens ── */
+  --brand-primary:   #2ab89e;
+  --surface-default: #0f1117;
+  --surface-card:    #161923;
+  --surface-input:   #1e2235;
+  --text-primary:    #e8edf5;
+  --text-secondary:  #8b95a5;
+  --border-default:  #252c3d;
+
+  /* ── Neutral-grey scale remap (all hover/bg/text uses adapt automatically)
+     Light shades → very dark surface tints (for hover states)
+     Dark shades  → near-white tints (for text on dark bg) ── */
+  --neutral-grey-50:  #1a1f2e;   /* subtle row hover, thead bg */
+  --neutral-grey-100: #1e2438;   /* active hover */
+  --neutral-grey-200: #252c3d;   /* dividers = border-default */
+  --neutral-grey-300: #2d3547;   /* stronger dividers */
+  --neutral-grey-400: #475569;   /* switch OFF bg */
+  --neutral-grey-500: #64748b;   /* switch OFF (kept) */
+  --neutral-grey-600: #8b95a5;   /* text-secondary level */
+  --neutral-grey-700: #b0bac8;   /* lighter muted text */
+  --neutral-grey-800: #d0d8e4;   /* near-primary text */
+  --neutral-grey-900: #e8edf5;   /* text-primary level */
+
+  /* ── Primary scale remap (light shades for badge/avatar backgrounds) ── */
+  --qagrotis-primary-50:  #062019;   /* faint teal bg for badges */
+  --qagrotis-primary-100: #0a2f24;   /* avatar initials bg */
+  --qagrotis-primary-200: #124535;
+  --qagrotis-primary-300: #1e6550;
+  --qagrotis-primary-400: #2ab89e;   /* brand-primary dark */
+  --qagrotis-primary-500: #3fd1b6;
+  --qagrotis-primary-600: #5de0c8;
+  --qagrotis-primary-700: #80e8d5;
+  --qagrotis-primary-800: #a8f2e6;
+  --qagrotis-primary-900: #cdf8f0;
+
+  /* ── Secondary (slate) scale remap ── */
+  --qagrotis-secondary-50:  #1a1f2e;
+  --qagrotis-secondary-100: #1e2235;
+  --qagrotis-secondary-200: #252c3d;
+  --qagrotis-secondary-300: #2d3547;
+  --qagrotis-secondary-400: #475569;
+  --qagrotis-secondary-500: #64748b;
+  --qagrotis-secondary-600: #a8b4c4;   /* Manual badge text — lightened for dark */
+  --qagrotis-secondary-700: #b8c4d4;
+  --qagrotis-secondary-800: #c8d4e4;
+  --qagrotis-secondary-900: #d8e4f0;
+
+  /* ── Base UI vars ── */
+  --background:           #0f1117;
+  --foreground:           #e8edf5;
+  --card:                 #161923;
+  --card-foreground:      #e8edf5;
+  --popover:              #1e2235;
+  --popover-foreground:   #e8edf5;
+  --primary:              #2ab89e;
+  --primary-foreground:   #001a12;
+  --secondary:            #1e2235;
+  --secondary-foreground: #e8edf5;
+  --muted:                #1e2235;
+  --muted-foreground:     #8b95a5;
+  --accent:               #252c3d;
+  --accent-foreground:    #e8edf5;
+  --destructive:          #f87171;
+  --border:               #252c3d;
+  --input:                #1e2235;
+  --ring:                 #2ab89e;
+
+  /* ── Charts (teal-adapted palette) ── */
+  --chart-1: #2ab89e;
+  --chart-2: #5cd0b8;
+  --chart-3: #9ee5d2;
+  --chart-4: #64748b;
+  --chart-5: #334155;
+
+  /* ── Sidebar ── */
+  --sidebar:                    #161923;
+  --sidebar-foreground:         #e8edf5;
+  --sidebar-primary:            #2ab89e;
+  --sidebar-primary-foreground: #001a12;
+  --sidebar-accent:             #1a1f2e;
+  --sidebar-accent-foreground:  #e8edf5;
+  --sidebar-border:             #252c3d;
+  --sidebar-ring:               #2ab89e;
+
+  /* ── Stronger shadow for depth on dark surfaces ── */
+  --shadow-card: 0 2px 8px 0 rgb(0 0 0 / 0.50), 0 1px 3px -1px rgb(0 0 0 / 0.40);
 }
 
 @layer base {
@@ -233,6 +291,19 @@
   html {
     @apply font-sans;
   }
+}
+
+/* ── Recharts tooltip dark mode ── */
+.dark .recharts-default-tooltip {
+  background-color: #161923 !important;
+  border-color: #252c3d !important;
+  color: #e8edf5 !important;
+}
+.dark .recharts-tooltip-item {
+  color: #e8edf5 !important;
+}
+.dark .recharts-tooltip-label {
+  color: #e8edf5 !important;
 }
 
 /* [design-system:start] */

@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Check, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -61,9 +61,9 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
     }
 
     startTransition(async () => {
-      let uploadedPhotoPath: string | undefined = undefined
+      // undefined = no change, null = explicitly removed, string = new upload
+      let resolvedPhotoPath: string | null | undefined = undefined
 
-      // Upload photo via API route (no body size limit)
       if (photoFile) {
         const fd = new FormData()
         fd.set("photo", photoFile)
@@ -73,18 +73,21 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
         })
         if (res.ok) {
           const json = await res.json() as { photoPath: string }
-          uploadedPhotoPath = json.photoPath
+          resolvedPhotoPath = json.photoPath
         } else {
           toast.error("Erro ao enviar a foto. Tente novamente.")
           return
         }
+      } else if (photoPreview === null && initialProfile.photoPath) {
+        // Photo was explicitly removed
+        resolvedPhotoPath = null
       }
 
       await atualizarQaUser(id, {
         name: nome,
         email,
         type: tipo,
-        photoPath: uploadedPhotoPath,
+        photoPath: resolvedPhotoPath,
       })
 
       toast.success("Cadastro atualizado com sucesso.")
@@ -114,6 +117,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
           <span className="font-medium text-text-primary">Editar — {id}</span>
         </div>
         <Button onClick={handleSave} disabled={isPending}>
+          <Check className="size-4" />
           {isPending ? "Salvando…" : "Salvar"}
         </Button>
       </div>

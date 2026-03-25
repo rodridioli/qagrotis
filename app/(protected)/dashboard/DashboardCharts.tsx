@@ -22,7 +22,9 @@ function PriorityBadge({ priority }: { priority: string }) {
   const isCritical = priority === "Crítica"
   return (
     <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-      isCritical ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+      isCritical
+        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+        : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
     }`}>
       {priority}
     </span>

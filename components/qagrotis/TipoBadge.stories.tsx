@@ -128,7 +128,7 @@ export const TabelaUsuariosAdmin: Story = {
                     ) : (
                       <button
                         type="button"
-                        className="flex size-7 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                        className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                       >
                         <MoreVertical className="size-4" />
                       </button>

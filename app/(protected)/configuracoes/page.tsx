@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Users, Monitor, Box } from "lucide-react"
+import { Users, Monitor, Box, Building2 } from "lucide-react"
 
 export default function ConfiguracoesPage() {
   return (
@@ -8,7 +8,7 @@ export default function ConfiguracoesPage() {
       <div className="grid grid-cols-1 gap-4 max-w-2xl sm:grid-cols-2 md:grid-cols-3">
         <Link
           href="/configuracoes/usuarios"
-          className="flex flex-col items-center gap-3 rounded-xl bg-primary-50 p-8 shadow-card transition-colors hover:bg-primary-100"
+          className="flex flex-col items-center gap-3 rounded-xl bg-surface-card p-8 shadow-card transition-colors hover:bg-neutral-grey-50"
         >
           <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
             <Users className="size-6" />
@@ -16,19 +16,34 @@ export default function ConfiguracoesPage() {
           <span className="font-semibold text-text-primary">Usuários</span>
         </Link>
 
-        <div className="flex flex-col items-center gap-3 rounded-xl bg-neutral-grey-50 p-8 shadow-card opacity-60 cursor-not-allowed">
-          <div className="flex size-12 items-center justify-center rounded-full bg-neutral-grey-100 text-text-secondary">
+        <Link
+          href="/configuracoes/sistemas"
+          className="flex flex-col items-center gap-3 rounded-xl bg-surface-card p-8 shadow-card transition-colors hover:bg-neutral-grey-50"
+        >
+          <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
             <Monitor className="size-6" />
           </div>
-          <span className="font-semibold text-text-secondary">Sistemas</span>
-        </div>
+          <span className="font-semibold text-text-primary">Sistemas</span>
+        </Link>
 
-        <div className="flex flex-col items-center gap-3 rounded-xl bg-neutral-grey-50 p-8 shadow-card opacity-60 cursor-not-allowed">
-          <div className="flex size-12 items-center justify-center rounded-full bg-neutral-grey-100 text-text-secondary">
+        <Link
+          href="/configuracoes/modulos"
+          className="flex flex-col items-center gap-3 rounded-xl bg-surface-card p-8 shadow-card transition-colors hover:bg-neutral-grey-50"
+        >
+          <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
             <Box className="size-6" />
           </div>
-          <span className="font-semibold text-text-secondary">Módulos</span>
-        </div>
+          <span className="font-semibold text-text-primary">Módulos</span>
+        </Link>
+        <Link
+          href="/configuracoes/clientes"
+          className="flex flex-col items-center gap-3 rounded-xl bg-surface-card p-8 shadow-card transition-colors hover:bg-neutral-grey-50"
+        >
+          <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
+            <Building2 className="size-6" />
+          </div>
+          <span className="font-semibold text-text-primary">Clientes</span>
+        </Link>
       </div>
     </div>
   )

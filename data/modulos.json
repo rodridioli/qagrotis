@@ -1,0 +1,106 @@
+[
+  {
+    "id": "MOD-01",
+    "name": "ARM - Armazenagem",
+    "description": null,
+    "sistemaId": "SIS-08",
+    "sistemaName": "Agrotis Plataforma - Agro",
+    "active": false
+  },
+  {
+    "id": "MOD-02",
+    "name": "SEM - Campos de Sementes",
+    "description": null,
+    "sistemaId": "SIS-08",
+    "sistemaName": "Agrotis Plataforma - Agro",
+    "active": true
+  },
+  {
+    "id": "MOD-03",
+    "name": "BEN - Beneficiamento de Sementes",
+    "description": null,
+    "sistemaId": "SIS-08",
+    "sistemaName": "Agrotis Plataforma - Agro",
+    "active": true
+  },
+  {
+    "id": "MOD-04",
+    "name": "LAS - Laboratório de Sementes",
+    "description": null,
+    "sistemaId": "SIS-08",
+    "sistemaName": "Agrotis Plataforma - Agro",
+    "active": true
+  },
+  {
+    "id": "MOD-05",
+    "name": "REC - Receituário",
+    "description": null,
+    "sistemaId": "SIS-08",
+    "sistemaName": "Agrotis Plataforma - Agro",
+    "active": true
+  },
+  {
+    "id": "MOD-06",
+    "name": "UBA - Algodoeiras",
+    "description": null,
+    "sistemaId": "SIS-08",
+    "sistemaName": "Agrotis Plataforma - Agro",
+    "active": true
+  },
+  {
+    "id": "MOD-07",
+    "name": "MIP - Monitoramento de Pragas",
+    "description": null,
+    "sistemaId": "SIS-08",
+    "sistemaName": "Agrotis Plataforma - Agro",
+    "active": true
+  },
+  {
+    "id": "MOD-08",
+    "name": "PRO - Produtor Rural",
+    "description": null,
+    "sistemaId": "SIS-08",
+    "sistemaName": "Agrotis Plataforma - Agro",
+    "active": true
+  },
+  {
+    "id": "MOD-09",
+    "name": "ARM - Armazenagem",
+    "description": null,
+    "sistemaId": "SIS-08",
+    "sistemaName": "Agrotis Plataforma - Agro",
+    "active": true
+  },
+  {
+    "id": "MOD-10",
+    "name": "CSEM - Comercial Sementes",
+    "description": null,
+    "sistemaId": "SIS-08",
+    "sistemaName": "Agrotis Plataforma - Agro",
+    "active": true
+  },
+  {
+    "id": "MOD-11",
+    "name": "PDV - Ponto de Vendas",
+    "description": null,
+    "sistemaId": "SIS-06",
+    "sistemaName": "Gerencial",
+    "active": true
+  },
+  {
+    "id": "MOD-12",
+    "name": "CORE",
+    "description": null,
+    "sistemaId": "SIS-07",
+    "sistemaName": "SAP-B1",
+    "active": false
+  },
+  {
+    "id": "MOD-13",
+    "name": "teste",
+    "description": null,
+    "sistemaId": "SIS-10",
+    "sistemaName": "ERP - Next",
+    "active": true
+  }
+]

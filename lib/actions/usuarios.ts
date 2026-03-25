@@ -3,7 +3,9 @@
 import { promises as fs } from "fs"
 import path from "path"
 import { revalidatePath } from "next/cache"
+import { z } from "zod"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
+import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 
 export interface QaUserRecord {
   id: string
@@ -12,6 +14,7 @@ export interface QaUserRecord {
   type: string
   active: boolean
   photoPath: string | null
+  createdAt?: number
 }
 
 export interface QaUserProfile {
@@ -21,7 +24,18 @@ export interface QaUserProfile {
   photoPath: string | null
 }
 
-// ── Storage helpers ────────────────────────────────────────────────────────
+// ── Validation schemas ──────────────────────────────────────────────────────
+
+const userInputSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório").max(200),
+  email: z.string().email("E-mail inválido").max(254),
+  type: z.enum(["Padrão", "Administrador"]),
+})
+
+const idSchema = z.string().regex(/^U-\d+$/, "ID inválido")
+const idsArraySchema = z.array(idSchema).max(1000)
+
+// ── Storage helpers ─────────────────────────────────────────────────────────
 
 const DATA_DIR = path.join(process.cwd(), "data")
 const INACTIVE_FILE = path.join(DATA_DIR, "inactive-users.json")
@@ -34,6 +48,8 @@ interface CreatedUser {
   email: string
   type: string
   photoPath: string | null
+  password: string
+  createdAt?: number
 }
 
 async function readCreatedUsers(): Promise<CreatedUser[]> {
@@ -108,6 +124,7 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
       type: p?.type ?? u.type,
       active: !inactiveIds.has(u.id),
       photoPath: p?.photoPath ?? u.photoPath,
+      createdAt: u.createdAt,
     }
   })
 
@@ -115,6 +132,9 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
 }
 
 export async function getQaUserProfile(id: string): Promise<QaUserProfile | null> {
+  const result = idSchema.safeParse(id)
+  if (!result.success) return null
+
   const [profiles, createdUsers] = await Promise.all([readProfiles(), readCreatedUsers()])
   const mockUser = MOCK_USERS.find((u) => u.id === id)
   const createdUser = createdUsers.find((u) => u.id === id)
@@ -131,6 +151,8 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
 
 export async function inativarQaUsers(ids: string[]): Promise<void> {
   if (ids.length === 0) return
+  idsArraySchema.parse(ids)
+
   const inactiveIds = await readInactiveIds()
   for (const id of ids) inactiveIds.add(id)
   await writeInactiveIds(inactiveIds)
@@ -143,34 +165,85 @@ export async function criarQaUser(data: {
   type: string
   password: string
 }): Promise<void> {
+  const parsed = userInputSchema.parse({
+    name: data.name.trim(),
+    email: data.email.trim().toLowerCase(),
+    type: data.type,
+  })
+
+  // Password: min 6, max 128 chars
+  const password = z.string().min(6, "Senha mínima de 6 caracteres").max(128).parse(data.password)
+
   const users = await readCreatedUsers()
+
+  // Prevent duplicate email
+  const allMockEmails = MOCK_USERS.map((u) => u.email.toLowerCase())
+  const allCreatedEmails = users.map((u) => u.email.toLowerCase())
+  if (allMockEmails.includes(parsed.email) || allCreatedEmails.includes(parsed.email)) {
+    throw new Error("E-mail já cadastrado.")
+  }
+
   const allMockIds = MOCK_USERS.map((u) => u.id)
   const allCreatedIds = users.map((u) => u.id)
-  const allIds = [...allMockIds, ...allCreatedIds]
-
-  // Generate next sequential ID
-  const nums = allIds
+  const nums = [...allMockIds, ...allCreatedIds]
     .map((id) => parseInt(id.replace("U-", ""), 10))
     .filter((n) => !isNaN(n))
   const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1
   const id = `U-${String(nextNum).padStart(2, "0")}`
 
-  users.push({ id, name: data.name.trim(), email: data.email.trim(), type: data.type, photoPath: null })
+  users.push({ id, ...parsed, photoPath: null, password, createdAt: Date.now() })
   await writeCreatedUsers(users)
   revalidatePath("/configuracoes/usuarios")
+}
+
+export async function validateLogin(
+  email: string,
+  password: string
+): Promise<{ ok: true } | { ok: false; reason: "invalid_credentials" | "inactive" }> {
+  const normalizedEmail = email.trim().toLowerCase()
+  const [inactiveIds, createdUsers, profiles] = await Promise.all([
+    readInactiveIds(),
+    readCreatedUsers(),
+    readProfiles(),
+  ])
+
+  const createdUser = createdUsers.find((u) => u.email.toLowerCase() === normalizedEmail)
+  if (createdUser) {
+    if (createdUser.password !== password) return { ok: false, reason: "invalid_credentials" }
+    if (inactiveIds.has(createdUser.id)) return { ok: false, reason: "inactive" }
+    return { ok: true }
+  }
+
+  const mockUser = MOCK_USERS.find((u) => u.email.toLowerCase() === normalizedEmail)
+  if (mockUser) {
+    const expectedPassword = PROTOTYPE_USERS[normalizedEmail] ?? "admin"
+    if (password !== expectedPassword) return { ok: false, reason: "invalid_credentials" }
+    const profile = profiles[mockUser.id]
+    const emailMatch = (profile?.email ?? mockUser.email).toLowerCase() === normalizedEmail
+    if (!emailMatch) return { ok: false, reason: "invalid_credentials" }
+    if (inactiveIds.has(mockUser.id)) return { ok: false, reason: "inactive" }
+    return { ok: true }
+  }
+
+  return { ok: false, reason: "invalid_credentials" }
 }
 
 export async function atualizarQaUser(
   id: string,
   data: { name: string; email: string; type: string; photoPath?: string | null }
 ): Promise<void> {
+  idSchema.parse(id)
+  const parsed = userInputSchema.parse({
+    name: data.name.trim(),
+    email: data.email.trim().toLowerCase(),
+    type: data.type,
+  })
+
   const profiles = await readProfiles()
   const current = profiles[id]
 
   profiles[id] = {
-    name: data.name.trim(),
-    email: data.email.trim(),
-    type: data.type,
+    ...parsed,
     photoPath: data.photoPath !== undefined ? data.photoPath : (current?.photoPath ?? null),
   }
 

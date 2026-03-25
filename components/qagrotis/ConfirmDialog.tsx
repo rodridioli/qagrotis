@@ -38,8 +38,6 @@ export function ConfirmDialog({
           </Button>
           <Button
             variant="destructive"
-            className="bg-destructive hover:bg-destructive/90"
-            style={{ color: "#ffffff" }}
             onClick={onConfirm}
           >
             {confirmLabel}

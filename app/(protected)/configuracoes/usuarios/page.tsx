@@ -1,6 +1,5 @@
 import { auth } from "@/lib/auth"
 import { getQaUsers } from "@/lib/actions/usuarios"
-import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import UsuariosClient from "./UsuariosClient"
 
 export default async function UsuariosPage() {
@@ -9,9 +8,8 @@ export default async function UsuariosPage() {
   let currentUserId: string | null = null
 
   if (session?.user?.email) {
-    const match = MOCK_USERS.find(
-      (u) => u.email.toLowerCase() === session.user!.email!.toLowerCase()
-    )
+    const sessionEmail = session.user.email.toLowerCase()
+    const match = users.find((u) => u.email.toLowerCase() === sessionEmail)
     currentUserId = match?.id ?? null
   }
 

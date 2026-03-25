@@ -1,11 +1,8 @@
-"use client"
-
 import React from "react"
 import Link from "next/link"
-import { use } from "react"
 import { ArrowLeft } from "lucide-react"
-import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { notFound } from "next/navigation"
+import { getQaUsers } from "@/lib/actions/usuarios"
 
 function getInitials(name: string): string {
   return name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()
@@ -35,9 +32,10 @@ function Field({ label, value }: { label: string; value: string }) {
   )
 }
 
-export default function UsuarioDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const user = MOCK_USERS.find((u) => u.id === id)
+export default async function UsuarioDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const users = await getQaUsers()
+  const user = users.find((u) => u.id === id)
 
   if (!user) notFound()
 
@@ -91,9 +89,17 @@ export default function UsuarioDetailPage({ params }: { params: Promise<{ id: st
 
         {/* Avatar */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card flex flex-col items-center gap-4">
-          <div className="flex size-20 items-center justify-center rounded-full bg-primary-100 text-2xl font-semibold text-brand-primary">
-            {getInitials(user.name)}
-          </div>
+          {user.photoPath ? (
+            <img
+              src={user.photoPath}
+              alt={user.name}
+              className="size-20 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex size-20 items-center justify-center rounded-full bg-primary-100 text-2xl font-semibold text-brand-primary">
+              {getInitials(user.name)}
+            </div>
+          )}
           <div className="text-center">
             <p className="font-semibold text-text-primary">{user.name}</p>
             <p className="text-sm text-text-secondary">{user.email}</p>

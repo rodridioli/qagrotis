@@ -1,0 +1,44 @@
+[
+  {
+    "id": "CLI-01",
+    "nomeFantasia": "Cliente 1",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": false
+  },
+  {
+    "id": "CLI-02",
+    "nomeFantasia": "Cliente 1",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": false
+  },
+  {
+    "id": "CLI-03",
+    "nomeFantasia": "Cliente 2",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": false
+  },
+  {
+    "id": "CLI-04",
+    "nomeFantasia": "Cliente 0",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true
+  },
+  {
+    "id": "CLI-05",
+    "nomeFantasia": "Cliente 2",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true
+  },
+  {
+    "id": "CLI-06",
+    "nomeFantasia": "teste",
+    "razaoSocial": null,
+    "cpfCnpj": "1111111111111111",
+    "active": false
+  }
+]

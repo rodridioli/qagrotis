@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -49,7 +49,10 @@ export default function CenarioDetailPage({
           <span className="font-medium text-text-primary">{cenario.id}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline">Salvar</Button>
+          <Button variant="outline">
+            <Check className="size-4" />
+            Salvar
+          </Button>
           <Button className="bg-primary-700 hover:bg-primary-800" style={{ color: "#ffffff" }}>Sucesso</Button>
           <Button variant="destructive">Erro</Button>
         </div>

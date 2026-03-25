@@ -1,0 +1,312 @@
+"use client"
+
+import React, { useState, useMemo, useTransition } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { ArrowLeft, Plus, MoreVertical, X, Filter, Power } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
+import { TableToolbar } from "@/components/qagrotis/TableToolbar"
+import { TablePagination } from "@/components/qagrotis/TablePagination"
+import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
+import { inativarModulos, type ModuloRecord } from "@/lib/actions/modulos"
+import { toast } from "sonner"
+
+const ITEMS_PER_PAGE = 10
+
+interface Props {
+  initialModulos: ModuloRecord[]
+  isAdmin: boolean
+}
+
+export default function ModulosClient({ initialModulos, isAdmin }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+
+  const [search, setSearch] = useState("")
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [currentPage, setCurrentPage] = useState(1)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [inativarOpen, setInativarOpen] = useState(false)
+  const [inativarIds, setInativarIds] = useState<string[]>([])
+  const [apenasInativos, setApenasInativos] = useState(false)
+  const [pendingInativos, setPendingInativos] = useState(false)
+
+  const filtered = useMemo(() => {
+    const result = initialModulos.filter((m) => {
+      const matchSearch =
+        !search ||
+        m.id.toLowerCase().includes(search.toLowerCase()) ||
+        m.name.toLowerCase().includes(search.toLowerCase()) ||
+        m.sistemaName.toLowerCase().includes(search.toLowerCase()) ||
+        (m.description ?? "").toLowerCase().includes(search.toLowerCase())
+      const matchAtivo = apenasInativos ? !m.active : m.active
+      return matchSearch && matchAtivo
+    })
+    return [...result].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+  }, [search, apenasInativos, initialModulos])
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const pageItems = filtered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+
+  const activeFilterCount = apenasInativos ? 1 : 0
+  const hasActiveModulos = initialModulos.some((m) => m.active)
+  const showBulkActions = isAdmin && !apenasInativos && hasActiveModulos
+  const selectableIds = pageItems.map((m) => m.id)
+
+  function toggleRow(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    if (selectedIds.size === selectableIds.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(selectableIds))
+  }
+
+  function handleInativarSelection() {
+    if (selectedIds.size === 0) return
+    setInativarIds([...selectedIds])
+    setInativarOpen(true)
+  }
+
+  function handleInativarSingle(id: string) {
+    setInativarIds([id])
+    setInativarOpen(true)
+  }
+
+  function confirmInativar() {
+    const count = inativarIds.length
+    setInativarOpen(false)
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      inativarIds.forEach((id) => next.delete(id))
+      return next
+    })
+    setInativarIds([])
+    startTransition(async () => {
+      await inativarModulos(inativarIds)
+      router.refresh()
+      toast.success(
+        count === 1 ? "Módulo inativado com sucesso." : `${count} módulos inativados com sucesso.`
+      )
+    })
+  }
+
+  function applyFilters() {
+    setApenasInativos(pendingInativos)
+    setFilterOpen(false)
+    setCurrentPage(1)
+  }
+
+  const confirmDescription =
+    inativarIds.length === 1
+      ? `O módulo ${inativarIds[0]} será inativado. Esta ação não pode ser desfeita.`
+      : `${inativarIds.length} módulos serão inativados. Esta ação não pode ser desfeita.`
+
+  return (
+    <div className="space-y-4">
+      {/* ── Header ── */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-sm">
+          <Link
+            href="/configuracoes"
+            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+          >
+            <ArrowLeft className="size-4" />
+          </Link>
+          <Link href="/configuracoes" className="text-text-secondary hover:text-brand-primary">
+            Configurações
+          </Link>
+          <span className="text-text-secondary">/</span>
+          <span className="font-medium text-text-primary">Módulos</span>
+        </div>
+
+        {isAdmin && (
+          <div className="flex items-center gap-3">
+            {showBulkActions && (
+              <Button
+                variant="outline"
+                disabled={selectedIds.size === 0 || isPending}
+                onClick={handleInativarSelection}
+              >
+                <Power className="size-4" />
+                Inativar
+              </Button>
+            )}
+            <Link href="/configuracoes/modulos/novo">
+              <Button>
+                <Plus className="size-4" />
+                Adicionar Módulo
+              </Button>
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* ── Table card ── */}
+      <div className="rounded-xl bg-surface-card shadow-card">
+        <TableToolbar
+          search={search}
+          onSearchChange={(v) => { setSearch(v); setCurrentPage(1) }}
+          searchPlaceholder="Buscar módulo..."
+          activeFilterCount={activeFilterCount}
+          onFilterOpen={() => { setPendingInativos(apenasInativos); setFilterOpen(true) }}
+          totalLabel="Total de módulos"
+          totalCount={filtered.length}
+        />
+
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              {showBulkActions && <col className="w-10" />}
+              <col className="w-28" />
+              <col className="w-1/4" />
+              <col className="w-1/4" />
+              <col />
+              <col className="w-16" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-border-default bg-neutral-grey-50">
+                {showBulkActions && (
+                  <th className="px-4 py-3 text-left">
+                    <Checkbox
+                      checked={selectableIds.length > 0 && selectedIds.size === selectableIds.length}
+                      onChange={toggleAll}
+                    />
+                  </th>
+                )}
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Id</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Nome</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
+                <th className="pl-4 pr-6 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.length === 0 ? (
+                <tr>
+                  <td colSpan={showBulkActions ? 6 : 5} className="px-4 py-10 text-center text-sm text-text-secondary">
+                    Nenhum módulo encontrado.
+                  </td>
+                </tr>
+              ) : pageItems.map((m) => (
+                <tr
+                  key={m.id}
+                  className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                >
+                  {showBulkActions && (
+                    <td className="px-4 py-3">
+                      <Checkbox
+                        checked={selectedIds.has(m.id)}
+                        onChange={() => toggleRow(m.id)}
+                      />
+                    </td>
+                  )}
+                  <td className="px-4 py-3 font-medium text-text-secondary">{m.id}</td>
+                  <td className="px-4 py-3 font-medium text-text-primary">{m.name}</td>
+                  <td className="px-4 py-3 text-text-secondary">{m.sistemaName}</td>
+                  <td className="px-4 py-3 text-text-secondary truncate">
+                    {m.description ?? <span className="italic text-text-secondary/60">—</span>}
+                  </td>
+                  <td className="pl-4 pr-6 py-3">
+                    {showBulkActions && m.active ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <button
+                              type="button"
+                              className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                            />
+                          }
+                        >
+                          <MoreVertical className="size-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" side="bottom">
+                          <DropdownMenuItem>
+                            <Link href={`/configuracoes/modulos/${m.id}/editar`} className="w-full">
+                              Editar
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => handleInativarSingle(m.id)}
+                          >
+                            Inativar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
+      </div>
+
+      {/* ── Filter dialog ── */}
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Filtros</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <Checkbox
+              label="Exibir somente inativos"
+              checked={pendingInativos}
+              onChange={(e) => setPendingInativos((e.target as HTMLInputElement).checked)}
+            />
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <Button variant="outline" onClick={() => setFilterOpen(false)}>
+              <X className="size-4" />
+              Cancelar
+            </Button>
+            <Button onClick={applyFilters}>
+              <Filter className="size-4" />
+              Filtrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={inativarOpen}
+        onOpenChange={setInativarOpen}
+        title="Deseja inativar?"
+        description={confirmDescription}
+        confirmLabel="Inativar"
+        onConfirm={confirmInativar}
+      />
+    </div>
+  )
+}

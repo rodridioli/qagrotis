@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Check, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -89,6 +89,7 @@ export default function NovoUsuarioPage() {
           <span className="font-medium text-text-primary">Novo Usuário</span>
         </div>
         <Button onClick={handleSave} disabled={isPending}>
+          <Check className="size-4" />
           {isPending ? "Salvando…" : "Salvar"}
         </Button>
       </div>

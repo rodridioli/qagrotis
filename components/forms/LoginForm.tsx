@@ -7,7 +7,14 @@ import { signIn } from "next-auth/react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Captcha, type CaptchaHandle } from "@/components/ui/captcha"
-import { PROTOTYPE_USERS } from "@/lib/prototype-users"
+import { validateLogin } from "@/lib/actions/usuarios"
+
+// Separate inactive check before attempting signIn
+async function checkInactive(email: string, password: string) {
+  const result = await validateLogin(email, password)
+  if (!result.ok && result.reason === "inactive") return true
+  return false
+}
 
 // ── Google brand icon ─────────────────────────────────────────
 function GoogleIcon() {
@@ -141,9 +148,23 @@ function LoginView({ onForgotPassword, callbackUrl }: { onForgotPassword: () => 
 
     setLoading(true)
     try {
-      await new Promise((r) => setTimeout(r, 800))
+      // Check inactive before attempting signIn (NextAuth returns generic error for both cases)
+      const inactive = await checkInactive(email, password)
+      if (inactive) {
+        toast.error("Usuário inativo.", {
+          description: "Entre em contato com o administrador do sistema.",
+        })
+        captchaRef.current?.reset()
+        return
+      }
 
-      if (PROTOTYPE_USERS[email.toLowerCase()] !== password) {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      })
+
+      if (!res || res.error) {
         toast.error("E-mail ou senha incorretos.", {
           description: "Verifique suas credenciais e tente novamente.",
         })

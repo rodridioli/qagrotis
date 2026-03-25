@@ -32,6 +32,12 @@ import {
   MOCK_CENARIOS,
   type MockSuite,
 } from "@/lib/qagrotis-constants"
+
+export interface SuiteFormProps {
+  mode: "create" | "edit"
+  suite?: MockSuite
+  systemList?: string[]
+}
 import { toast } from "sonner"
 
 interface SuiteCenario {
@@ -56,9 +62,9 @@ interface HistoricoItem {
 
 function ResultadoBadge({ resultado }: { resultado: HistoricoItem["resultado"] }) {
   const map: Record<string, string> = {
-    Sucesso: "bg-green-100 text-green-700",
-    Erro: "bg-red-100 text-red-700",
-    Pendente: "bg-yellow-100 text-yellow-700",
+    Sucesso:  "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    Erro:     "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+    Pendente: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
   }
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${map[resultado]}`}>
@@ -69,9 +75,9 @@ function ResultadoBadge({ resultado }: { resultado: HistoricoItem["resultado"] }
 
 function TipoBadge({ tipo }: { tipo: string }) {
   const map: Record<string, string> = {
-    Automatizado: "bg-green-100 text-green-700",
-    Manual: "bg-primary-100 text-primary-700",
-    "Man./Auto.": "bg-yellow-100 text-yellow-700",
+    Automatizado: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    Manual:       "bg-primary-100 text-primary-700",
+    "Man./Auto.": "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
   }
   const cls = map[tipo] ?? "bg-neutral-grey-100 text-neutral-grey-700"
   return (
@@ -92,12 +98,7 @@ const INITIAL_CENARIOS: SuiteCenario[] = [
   { id: "CT-005", name: "Login e Autenticação", module: "Users", execucoes: 8, erros: 0, deps: 0, tipo: "Manual" },
 ]
 
-export interface SuiteFormProps {
-  mode: "create" | "edit"
-  suite?: MockSuite
-}
-
-export function SuiteForm({ mode, suite }: SuiteFormProps) {
+export function SuiteForm({ mode, suite, systemList = SYSTEM_LIST }: SuiteFormProps) {
   const [cenarios, setCenarios] = useState<SuiteCenario[]>(mode === "edit" ? INITIAL_CENARIOS : [])
   const [cenarioSearch, setCenarioSearch] = useState("")
   const [addCenarioOpen, setAddCenarioOpen] = useState(false)
@@ -185,7 +186,7 @@ export function SuiteForm({ mode, suite }: SuiteFormProps) {
             <Select defaultValue={suite?.modulo}>
               <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
               <SelectPopup>
-                {SYSTEM_LIST.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {systemList.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectPopup>
             </Select>
           </div>

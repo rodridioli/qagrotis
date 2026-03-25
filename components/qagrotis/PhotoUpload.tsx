@@ -40,9 +40,9 @@ export function PhotoUpload({ preview, onFileSelect, onRemove }: PhotoUploadProp
             type="button"
             onClick={onRemove}
             aria-label="Remover foto"
-            className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-destructive text-white hover:bg-destructive/90"
+            className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
           >
-            <Trash2 className="size-4" />
+            <Trash2 className="size-4 text-white" style={{ color: "#ffffff" }} />
           </button>
         </div>
       ) : (

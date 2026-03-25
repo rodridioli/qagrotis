@@ -1,0 +1,118 @@
+"use client"
+
+import React, { useState, useTransition } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { ArrowLeft, Check } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "@/components/ui/select"
+import { criarModulo } from "@/lib/actions/modulos"
+import { type SistemaRecord } from "@/lib/actions/sistemas"
+import { toast } from "sonner"
+
+interface Props {
+  sistemas: SistemaRecord[]
+}
+
+export default function NovoModuloClient({ sistemas }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [nome, setNome] = useState("")
+  const [descricao, setDescricao] = useState("")
+  const [sistemaNome, setSistemaNome] = useState("")
+
+  function handleSave() {
+    if (!nome.trim()) {
+      toast.error("O nome do módulo é obrigatório.")
+      return
+    }
+    if (!sistemaNome) {
+      toast.error("Selecione um sistema.")
+      return
+    }
+    const sistema = sistemas.find((s) => s.name === sistemaNome)!
+    startTransition(async () => {
+      await criarModulo({
+        name: nome,
+        description: descricao || null,
+        sistemaId: sistema.id,
+        sistemaName: sistema.name,
+      })
+      toast.success("Módulo criado com sucesso.")
+      router.push("/configuracoes/modulos")
+    })
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-sm">
+          <Link
+            href="/configuracoes/modulos"
+            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+          >
+            <ArrowLeft className="size-4" />
+          </Link>
+          <Link href="/configuracoes" className="text-text-secondary hover:text-brand-primary">
+            Configurações
+          </Link>
+          <span className="text-text-secondary">/</span>
+          <Link href="/configuracoes/modulos" className="text-text-secondary hover:text-brand-primary">
+            Módulos
+          </Link>
+          <span className="text-text-secondary">/</span>
+          <span className="font-medium text-text-primary">Novo Módulo</span>
+        </div>
+        <Button onClick={handleSave} disabled={isPending}>
+          <Check className="size-4" />
+          {isPending ? "Salvando…" : "Salvar"}
+        </Button>
+      </div>
+
+      <div className="max-w-2xl rounded-xl bg-surface-card p-5 shadow-card space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-text-primary">
+            Nome <span className="text-destructive">*</span>
+          </label>
+          <Input
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Nome do módulo"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-text-primary">
+            Sistema <span className="text-destructive">*</span>
+          </label>
+          <Select value={sistemaNome} onValueChange={(v) => setSistemaNome(v ?? "")}>
+            <SelectTrigger><SelectValue placeholder="Selecionar sistema" /></SelectTrigger>
+            <SelectPopup>
+              {sistemas.map((s) => (
+                <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-text-primary">Descrição</label>
+          <textarea
+            rows={4}
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            placeholder="Descreva o módulo..."
+            className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
