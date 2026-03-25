@@ -111,16 +111,27 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
   const [stepAcao, setStepAcao] = useState("")
   const [stepResultado, setStepResultado] = useState("")
   const [depSearch, setDepSearch] = useState("")
+  const [depSistema, setDepSistema] = useState("")
+  const [depModulo, setDepModulo] = useState("")
   const [selectedDepIds, setSelectedDepIds] = useState<Set<string>>(new Set())
   const [newClienteName, setNewClienteName] = useState("")
   const [newClienteCpf, setNewClienteCpf] = useState("")
 
+  const depModulos = useMemo(
+    () => localModulos.filter((m) => m.active && m.sistemaName === depSistema),
+    [localModulos, depSistema]
+  )
+
   const filteredDepCenarios = useMemo(() => {
+    if (!depSistema || !depModulo) return []
     const q = depSearch.toLowerCase()
     return MOCK_CENARIOS.filter(
-      (c) => !q || c.id.toLowerCase().includes(q) || c.scenarioName.toLowerCase().includes(q)
-    ).slice(0, 10)
-  }, [depSearch])
+      (c) =>
+        c.system === depSistema &&
+        c.module === depModulo &&
+        (!q || c.id.toLowerCase().includes(q) || c.scenarioName.toLowerCase().includes(q))
+    ).slice(0, 50)
+  }, [depSistema, depModulo, depSearch])
 
   const addStep = useCallback(() => {
     if (!stepAcao || !stepResultado) return
@@ -179,6 +190,9 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
       return [...prev, ...newDeps.filter((d) => !existing.has(d.id))]
     })
     setSelectedDepIds(new Set())
+    setDepSistema("")
+    setDepModulo("")
+    setDepSearch("")
     setAddDepOpen(false)
   }, [selectedDepIds])
 
@@ -252,11 +266,14 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
                 value={clienteSelecionado}
                 onValueChange={(v: string | null) => {
                   if (v === "__add__") { setAddClienteOpen(true); return }
+                  if (v === "__none__") { setClienteSelecionado(""); return }
                   setClienteSelecionado(v ?? "")
                 }}
               >
                 <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                 <SelectPopup>
+                  <SelectItem value="__none__" className="text-text-secondary">Nenhum</SelectItem>
+                  <div className="my-1 border-t border-border-default" />
                   {clientes.map((c) => (
                     <SelectItem key={c.id} value={c.nomeFantasia}>{c.nomeFantasia}</SelectItem>
                   ))}
@@ -494,40 +511,79 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
         </DialogContent>
       </Dialog>
 
-      <Dialog open={addDepOpen} onOpenChange={setAddDepOpen}>
+      <Dialog open={addDepOpen} onOpenChange={(open) => {
+        if (!open) { setDepSistema(""); setDepModulo(""); setDepSearch(""); setSelectedDepIds(new Set()) }
+        setAddDepOpen(open)
+      }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Adicionar Dependência</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <Input
-              placeholder="Buscar cenário..."
-              value={depSearch}
-              onChange={(e) => setDepSearch(e.target.value)}
-            />
-            <div className="max-h-60 overflow-y-auto space-y-1 border border-border-default rounded-lg p-2">
-              {filteredDepCenarios.map((c) => (
-                <label key={c.id} className="flex items-start gap-2 p-2 rounded-lg hover:bg-neutral-grey-50 cursor-pointer">
-                  <Checkbox
-                    checked={selectedDepIds.has(c.id)}
-                    onChange={() => {
-                      setSelectedDepIds((prev) => {
-                        const next = new Set(prev)
-                        if (next.has(c.id)) next.delete(c.id)
-                        else next.add(c.id)
-                        return next
-                      })
-                    }}
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-text-primary">
-                      {c.id} - {c.system} → {c.module}
-                    </p>
-                    <p className="text-xs text-text-secondary">{c.scenarioName}</p>
-                  </div>
-                </label>
-              ))}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">Sistema</label>
+                <Select value={depSistema} onValueChange={(v) => { setDepSistema(v); setDepModulo(""); setDepSearch("") }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar sistema" />
+                  </SelectTrigger>
+                  <SelectPopup>
+                    {allSistemas.filter((s) => s.active).map((s) => (
+                      <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                    ))}
+                  </SelectPopup>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">Módulo</label>
+                <Select value={depModulo} onValueChange={(v) => { setDepModulo(v); setDepSearch("") }} disabled={!depSistema}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar módulo" />
+                  </SelectTrigger>
+                  <SelectPopup>
+                    {depModulos.map((m) => (
+                      <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
+                    ))}
+                  </SelectPopup>
+                </Select>
+              </div>
             </div>
+            {depSistema && depModulo && (
+              <>
+                <Input
+                  placeholder="Buscar cenário..."
+                  value={depSearch}
+                  onChange={(e) => setDepSearch(e.target.value)}
+                />
+                <div className="max-h-60 overflow-y-auto space-y-1 border border-border-default rounded-lg p-2">
+                  {filteredDepCenarios.length === 0 ? (
+                    <p className="text-sm text-text-secondary text-center py-4">Nenhum cenário encontrado.</p>
+                  ) : (
+                    filteredDepCenarios.map((c) => (
+                      <label key={c.id} className="flex items-start gap-2 p-2 rounded-lg hover:bg-neutral-grey-50 cursor-pointer">
+                        <Checkbox
+                          checked={selectedDepIds.has(c.id)}
+                          onChange={() => {
+                            setSelectedDepIds((prev) => {
+                              const next = new Set(prev)
+                              if (next.has(c.id)) next.delete(c.id)
+                              else next.add(c.id)
+                              return next
+                            })
+                          }}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">
+                            {c.id} - {c.system} → {c.module}
+                          </p>
+                          <p className="text-xs text-text-secondary">{c.scenarioName}</p>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter showCloseButton={false}>
             <Button variant="outline" onClick={() => setAddDepOpen(false)}>Cancelar</Button>

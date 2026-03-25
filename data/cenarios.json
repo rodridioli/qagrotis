@@ -12029,5 +12029,55 @@
     "deps": [
       "CT-001"
     ]
+  },
+  {
+    "id": "CT-1002",
+    "scenarioName": "teste",
+    "system": "Gerencial",
+    "module": "PDV - Ponto de Vendas",
+    "client": "Cliente 2",
+    "execucoes": 0,
+    "erros": 0,
+    "suites": 0,
+    "tipo": "Man./Auto.",
+    "active": false,
+    "createdAt": 1774480636995,
+    "risco": "Alto",
+    "regraDeNegocio": "fdfadf",
+    "objetivo": "fasdf",
+    "preCondicoes": "dsfasdf",
+    "urlScript": "fadfadsf",
+    "steps": [
+      {
+        "acao": "fasdfa",
+        "resultado": "fasdf"
+      }
+    ],
+    "deps": []
+  },
+  {
+    "id": "CT-1003",
+    "scenarioName": "Teste 1",
+    "system": "Gerencial",
+    "module": "PDV - Ponto de Vendas",
+    "client": "Cliente 0",
+    "execucoes": 0,
+    "erros": 0,
+    "suites": 0,
+    "tipo": "Man./Auto.",
+    "active": true,
+    "createdAt": 1774480712061,
+    "risco": "Alto",
+    "regraDeNegocio": "Teste 1",
+    "objetivo": "Teste 1",
+    "preCondicoes": "Teste 1",
+    "urlScript": "Teste 1",
+    "steps": [
+      {
+        "acao": "Teste 1",
+        "resultado": "Teste 1"
+      }
+    ],
+    "deps": []
   }
 ]

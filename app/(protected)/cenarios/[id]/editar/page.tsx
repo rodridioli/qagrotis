@@ -6,12 +6,13 @@ import { getClientes } from "@/lib/actions/clientes"
 import EditarCenarioClient from "./EditarCenarioClient"
 
 interface Props {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default async function EditarCenarioPage({ params }: Props) {
+  const { id } = await params
   const [cenario, modulos, sistemas, clientes] = await Promise.all([
-    getCenario(params.id),
+    getCenario(id),
     getModulos(),
     getSistemas(),
     getClientes(),
