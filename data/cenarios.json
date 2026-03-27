@@ -12079,5 +12079,65 @@
       }
     ],
     "deps": []
+  },
+  {
+    "id": "CT-1004",
+    "scenarioName": "teste",
+    "system": "Agrotis Plataforma - Agro",
+    "module": "SEM - Campos de Sementes",
+    "client": "Cliente 0",
+    "execucoes": 0,
+    "erros": 0,
+    "suites": 0,
+    "tipo": "Manual",
+    "active": true,
+    "createdAt": 1774483505210,
+    "risco": "Alto",
+    "regraDeNegocio": "fsafasd",
+    "objetivo": "fasfda",
+    "preCondicoes": "",
+    "urlScript": "",
+    "steps": [
+      {
+        "acao": "fasdfas",
+        "resultado": "dfasdf"
+      },
+      {
+        "acao": "fasdfa",
+        "resultado": "sdfasdf"
+      }
+    ],
+    "deps": [
+      "CT-1005"
+    ]
+  },
+  {
+    "id": "CT-1005",
+    "scenarioName": "teste",
+    "system": "Agrotis Plataforma - Agro",
+    "module": "BEN - Beneficiamento de Sementes",
+    "client": "teste",
+    "execucoes": 0,
+    "erros": 0,
+    "suites": 0,
+    "tipo": "Manual",
+    "active": true,
+    "createdAt": 1774491097912,
+    "risco": "Alto",
+    "regraDeNegocio": "fdsfa",
+    "objetivo": "sfasd",
+    "preCondicoes": "fadfasdf",
+    "urlScript": "",
+    "steps": [
+      {
+        "acao": "teste",
+        "resultado": "fasdfasfdasdf"
+      },
+      {
+        "acao": "fsdfasdfa",
+        "resultado": "fadsfasdfasdf"
+      }
+    ],
+    "deps": []
   }
 ]

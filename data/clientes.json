@@ -40,5 +40,13 @@
     "razaoSocial": null,
     "cpfCnpj": "1111111111111111",
     "active": false
+  },
+  {
+    "id": "CLI-07",
+    "nomeFantasia": "teste",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774491078580
   }
 ]

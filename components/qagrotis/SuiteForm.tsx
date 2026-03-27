@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Plus, MoreVertical, Search, Trash2, X } from "lucide-react"
+import { ArrowLeft, Check, Plus, MoreVertical, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -32,6 +32,8 @@ import {
   MOCK_CENARIOS,
   type MockSuite,
 } from "@/lib/qagrotis-constants"
+import { CenarioTipoBadge, StatusBadge } from "@/components/qagrotis/StatusBadge"
+import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 
 export interface SuiteFormProps {
   mode: "create" | "edit"
@@ -62,29 +64,11 @@ interface HistoricoItem {
 
 function ResultadoBadge({ resultado }: { resultado: HistoricoItem["resultado"] }) {
   const map: Record<string, string> = {
-    Sucesso:  "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-    Erro:     "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-    Pendente: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+    Sucesso:  "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400",
+    Erro:     "border-red-500/30 bg-red-500/10 text-red-700 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-400",
+    Pendente: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
   }
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${map[resultado]}`}>
-      {resultado}
-    </span>
-  )
-}
-
-function TipoBadge({ tipo }: { tipo: string }) {
-  const map: Record<string, string> = {
-    Automatizado: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-    Manual:       "bg-primary-100 text-primary-700",
-    "Man./Auto.": "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  }
-  const cls = map[tipo] ?? "bg-neutral-grey-100 text-neutral-grey-700"
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
-      {tipo}
-    </span>
-  )
+  return <StatusBadge label={resultado} colorClass={map[resultado]} />
 }
 
 const MOCK_HISTORICO: HistoricoItem[] = [
@@ -100,6 +84,11 @@ const INITIAL_CENARIOS: SuiteCenario[] = [
 
 export function SuiteForm({ mode, suite, systemList = SYSTEM_LIST }: SuiteFormProps) {
   const [cenarios, setCenarios] = useState<SuiteCenario[]>(mode === "edit" ? INITIAL_CENARIOS : [])
+
+  useEffect(() => {
+    if (systemList.length === 0)
+      toast.warning("É preciso cadastrar um sistema antes de criar suítes.")
+  }, [])
   const [cenarioSearch, setCenarioSearch] = useState("")
   const [addCenarioOpen, setAddCenarioOpen] = useState(false)
   const [removeOpen, setRemoveOpen] = useState(false)
@@ -168,7 +157,10 @@ export function SuiteForm({ mode, suite, systemList = SYSTEM_LIST }: SuiteFormPr
             {mode === "create" ? "Nova Suíte" : `${suite?.id ?? "S-0008"}`}
           </span>
         </div>
-        <Button>Salvar</Button>
+        <Button>
+          <Check className="size-4" />
+          Salvar
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -183,8 +175,8 @@ export function SuiteForm({ mode, suite, systemList = SYSTEM_LIST }: SuiteFormPr
             <label className="text-sm font-medium text-text-primary">
               Sistema <span className="text-destructive">*</span>
             </label>
-            <Select defaultValue={suite?.modulo}>
-              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+            <Select defaultValue={suite?.modulo} disabled={systemList.length === 0}>
+              <SelectTrigger><SelectValue placeholder={systemList.length === 0 ? "Nenhum sistema cadastrado" : "Selecionar"} /></SelectTrigger>
               <SelectPopup>
                 {systemList.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectPopup>
@@ -232,7 +224,7 @@ export function SuiteForm({ mode, suite, systemList = SYSTEM_LIST }: SuiteFormPr
             <label className="text-sm font-medium text-text-primary">Tag</label>
             <div className="flex flex-wrap gap-1.5 mb-1.5">
               {tags.map((t) => (
-                <span key={t} className="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700">
+                <span key={t} className="inline-flex items-center gap-1 rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
                   {t}
                   <button type="button" onClick={() => setTags((prev) => prev.filter((x) => x !== t))}>
                     <X className="size-3" />
@@ -259,16 +251,12 @@ export function SuiteForm({ mode, suite, systemList = SYSTEM_LIST }: SuiteFormPr
                 Cenários: {cenarios.length}
               </h2>
               <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-text-secondary" />
-                  <input
-                    type="text"
-                    placeholder="Buscar..."
-                    value={cenarioSearch}
-                    onChange={(e) => setCenarioSearch(e.target.value)}
-                    className="h-8 rounded-custom border border-border-default bg-surface-input pl-8 pr-3 text-sm text-text-primary outline-none focus:border-brand-primary placeholder:text-text-secondary w-48"
-                  />
-                </div>
+                <Input
+                  placeholder="Buscar..."
+                  value={cenarioSearch}
+                  onChange={(e) => setCenarioSearch(e.target.value)}
+                  className="w-48"
+                />
                 <Button size="sm" onClick={() => setAddCenarioOpen(true)}>
                   <Plus className="size-4" />
                   Adicionar Cenário
@@ -277,76 +265,80 @@ export function SuiteForm({ mode, suite, systemList = SYSTEM_LIST }: SuiteFormPr
             </div>
 
             {cenarios.length === 0 ? (
-              <p className="py-8 text-center text-sm text-text-secondary">
+              <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
                 Nenhum cenário adicionado à suíte.
-              </p>
+              </div>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border-default bg-neutral-grey-50">
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Id</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Cenário</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Módulo</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Exe.</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Erros</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Dep.</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cenarios
-                    .filter((c) =>
-                      !cenarioSearch ||
-                      c.id.toLowerCase().includes(cenarioSearch.toLowerCase()) ||
-                      c.name.toLowerCase().includes(cenarioSearch.toLowerCase())
-                    )
-                    .map((c) => (
-                      <tr key={c.id} className="border-b border-border-default last:border-0 hover:bg-neutral-grey-50">
-                        <td className="px-3 py-2">
-                          <Link href={`/cenarios/${c.id}`} className="font-medium text-brand-primary hover:underline">{c.id}</Link>
-                        </td>
-                        <td className="px-3 py-2 max-w-40">
-                          <span className="block truncate text-text-primary">{c.name}</span>
-                        </td>
-                        <td className="px-3 py-2 text-text-secondary">{c.module}</td>
-                        <td className="px-3 py-2 text-text-secondary">{c.execucoes}</td>
-                        <td className="px-3 py-2 text-text-secondary">{c.erros}</td>
-                        <td className="px-3 py-2 text-text-secondary">{c.deps}</td>
-                        <td className="px-3 py-2"><TipoBadge tipo={c.tipo} /></td>
-                        <td className="px-3 py-2">
-                          {mode === "create" ? (
-                            <button
-                              type="button"
-                              onClick={() => handleRemove(c.id)}
-                              className="flex size-6 items-center justify-center rounded-md hover:bg-neutral-grey-100 text-destructive"
-                            >
-                              <Trash2 className="size-4" />
-                            </button>
-                          ) : (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                render={
-                                  <button type="button" className="flex size-7 items-center justify-center rounded-md hover:bg-neutral-grey-100 text-text-secondary" />
-                                }
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border-default bg-neutral-grey-50">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Exe.</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Erros</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Dep.</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                      <th className="py-3 pl-4 pr-6" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cenarios
+                      .filter((c) =>
+                        !cenarioSearch ||
+                        c.id.toLowerCase().includes(cenarioSearch.toLowerCase()) ||
+                        c.name.toLowerCase().includes(cenarioSearch.toLowerCase())
+                      )
+                      .map((c) => (
+                        <tr key={c.id} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
+                          <td className="px-4 py-3">
+                            <Link href={`/cenarios/${c.id}`} className="font-medium text-brand-primary hover:underline">{c.id}</Link>
+                          </td>
+                          <td className="px-4 py-3 max-w-40">
+                            <span className="block truncate text-text-primary">{c.name}</span>
+                          </td>
+                          <td className="px-4 py-3 text-text-secondary">{c.module}</td>
+                          <td className="px-4 py-3 text-text-secondary">{c.execucoes}</td>
+                          <td className="px-4 py-3 text-text-secondary">{c.erros}</td>
+                          <td className="px-4 py-3 text-text-secondary">{c.deps}</td>
+                          <td className="px-4 py-3">
+                            <CenarioTipoBadge tipo={c.tipo as CenarioTipo} />
+                          </td>
+                          <td className="py-3 pl-4 pr-6">
+                            {mode === "create" ? (
+                              <button
+                                type="button"
+                                onClick={() => handleRemove(c.id)}
+                                className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                               >
-                                <MoreVertical className="size-4" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" side="bottom">
-                                <DropdownMenuItem>
-                                  <Link href={`/cenarios/${c.id}`} className="w-full">Executar</Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
-                                  Remover
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+                                <Trash2 className="size-4" />
+                              </button>
+                            ) : (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  render={
+                                    <button type="button" className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100" />
+                                  }
+                                >
+                                  <MoreVertical className="size-4" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" side="bottom">
+                                  <DropdownMenuItem>
+                                    <Link href={`/cenarios/${c.id}`} className="w-full">Executar</Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
+                                    Remover
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
@@ -362,59 +354,61 @@ export function SuiteForm({ mode, suite, systemList = SYSTEM_LIST }: SuiteFormPr
                   Exportar para o Jira
                 </Button>
               </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border-default bg-neutral-grey-50">
-                    <th className="px-3 py-2 text-left">
-                      <Checkbox
-                        checked={selectedHistorico.size === MOCK_HISTORICO.length}
-                        onChange={() => {
-                          if (selectedHistorico.size === MOCK_HISTORICO.length) {
-                            setSelectedHistorico(new Set())
-                          } else {
-                            setSelectedHistorico(new Set(MOCK_HISTORICO.map((h) => h.id)))
-                          }
-                        }}
-                      />
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Id</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Cenário</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Módulo</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Dep.</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Execução</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary">Resultado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_HISTORICO.map((h) => (
-                    <tr key={`${h.id}-${h.data}`} className="border-b border-border-default last:border-0 hover:bg-neutral-grey-50">
-                      <td className="px-3 py-2">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border-default bg-neutral-grey-50">
+                      <th className="px-4 py-3 text-left">
                         <Checkbox
-                          checked={selectedHistorico.has(h.id)}
+                          checked={selectedHistorico.size === MOCK_HISTORICO.length}
                           onChange={() => {
-                            setSelectedHistorico((prev) => {
-                              const next = new Set(prev)
-                              if (next.has(h.id)) next.delete(h.id)
-                              else next.add(h.id)
-                              return next
-                            })
+                            if (selectedHistorico.size === MOCK_HISTORICO.length) {
+                              setSelectedHistorico(new Set())
+                            } else {
+                              setSelectedHistorico(new Set(MOCK_HISTORICO.map((h) => h.id)))
+                            }
                           }}
                         />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Link href={`/cenarios/${h.id}`} className="font-medium text-brand-primary hover:underline">{h.id}</Link>
-                      </td>
-                      <td className="px-3 py-2 text-text-primary">{h.cenario}</td>
-                      <td className="px-3 py-2 text-text-secondary">{h.module}</td>
-                      <td className="px-3 py-2"><TipoBadge tipo={h.tipo} /></td>
-                      <td className="px-3 py-2 text-text-secondary">{h.deps}</td>
-                      <td className="px-3 py-2 text-text-secondary">{h.data}</td>
-                      <td className="px-3 py-2"><ResultadoBadge resultado={h.resultado} /></td>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Dep.</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Execução</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Resultado</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {MOCK_HISTORICO.map((h) => (
+                      <tr key={`${h.id}-${h.data}`} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
+                        <td className="px-4 py-3">
+                          <Checkbox
+                            checked={selectedHistorico.has(h.id)}
+                            onChange={() => {
+                              setSelectedHistorico((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(h.id)) next.delete(h.id)
+                                else next.add(h.id)
+                                return next
+                              })
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <Link href={`/cenarios/${h.id}`} className="font-medium text-brand-primary hover:underline">{h.id}</Link>
+                        </td>
+                        <td className="px-4 py-3 text-text-primary">{h.cenario}</td>
+                        <td className="px-4 py-3 text-text-secondary">{h.module}</td>
+                        <td className="px-4 py-3"><CenarioTipoBadge tipo={h.tipo as CenarioTipo} /></td>
+                        <td className="px-4 py-3 text-text-secondary">{h.deps}</td>
+                        <td className="px-4 py-3 text-text-secondary">{h.data}</td>
+                        <td className="px-4 py-3"><ResultadoBadge resultado={h.resultado} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
@@ -427,13 +421,15 @@ export function SuiteForm({ mode, suite, systemList = SYSTEM_LIST }: SuiteFormPr
           </DialogHeader>
           <div className="space-y-3 py-2">
             <Input
-              placeholder="Buscar cenário..."
+              placeholder="Buscar por código ou nome..."
               value={addSearch}
               onChange={(e) => setAddSearch(e.target.value)}
             />
-            <div className="max-h-60 overflow-y-auto space-y-1 border border-border-default rounded-lg p-2">
-              {filteredAdd.map((c) => (
-                <label key={c.id} className="flex items-start gap-2 p-2 rounded-lg hover:bg-neutral-grey-50 cursor-pointer">
+            <div className="max-h-72 overflow-y-auto border border-border-default rounded-lg">
+              {filteredAdd.length === 0 ? (
+                <p className="text-sm text-text-secondary text-center py-6">Nenhum cenário encontrado.</p>
+              ) : filteredAdd.map((c) => (
+                <label key={c.id} className="flex items-center gap-3 px-3 py-2.5 border-b border-border-default last:border-0 hover:bg-neutral-grey-50 cursor-pointer">
                   <Checkbox
                     checked={selectedAddIds.has(c.id)}
                     onChange={() => {
@@ -445,11 +441,9 @@ export function SuiteForm({ mode, suite, systemList = SYSTEM_LIST }: SuiteFormPr
                       })
                     }}
                   />
-                  <div>
-                    <p className="text-sm font-medium text-text-primary">
-                      {c.id} - {c.system} → {c.module}
-                    </p>
-                    <p className="text-xs text-text-secondary">{c.scenarioName}</p>
+                  <div className="min-w-0">
+                    <span className="text-xs font-mono text-text-secondary">{c.id}</span>
+                    <p className="text-sm font-medium text-text-primary truncate">{c.scenarioName}</p>
                   </div>
                 </label>
               ))}

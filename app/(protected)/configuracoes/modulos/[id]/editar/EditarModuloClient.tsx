@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useTransition } from "react"
+import React, { useEffect, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Check } from "lucide-react"
@@ -28,6 +28,11 @@ export default function EditarModuloClient({ modulo, sistemas }: Props) {
   const [nome, setNome] = useState(modulo.name)
   const [descricao, setDescricao] = useState(modulo.description ?? "")
   const [sistemaNome, setSistemaNome] = useState(modulo.sistemaName)
+
+  useEffect(() => {
+    if (sistemas.length === 0)
+      toast.warning("É preciso cadastrar um sistema antes de editar módulos.")
+  }, [])
 
   function handleSave() {
     if (!nome.trim()) {
@@ -57,6 +62,7 @@ export default function EditarModuloClient({ modulo, sistemas }: Props) {
         <div className="flex items-center gap-1.5 text-sm">
           <Link
             href="/configuracoes/modulos"
+            title="Voltar"
             className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />
@@ -93,8 +99,8 @@ export default function EditarModuloClient({ modulo, sistemas }: Props) {
           <label className="text-sm font-medium text-text-primary">
             Sistema <span className="text-destructive">*</span>
           </label>
-          <Select value={sistemaNome} onValueChange={(v) => setSistemaNome(v ?? "")}>
-            <SelectTrigger><SelectValue placeholder="Selecionar sistema" /></SelectTrigger>
+          <Select value={sistemaNome} onValueChange={(v) => setSistemaNome(v ?? "")} disabled={sistemas.length === 0}>
+            <SelectTrigger><SelectValue placeholder={sistemas.length === 0 ? "Nenhum sistema cadastrado" : "Selecionar sistema"} /></SelectTrigger>
             <SelectPopup>
               {sistemas.map((s) => (
                 <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>

@@ -14,5 +14,23 @@
     "type": "Padrão",
     "photoPath": null,
     "password": "teste"
+  },
+  {
+    "id": "U-103",
+    "name": "Teste",
+    "email": "ux@agrotis.com",
+    "type": "Padrão",
+    "photoPath": null,
+    "password": "",
+    "createdAt": 1774560807052
+  },
+  {
+    "id": "U-104",
+    "name": "teste",
+    "email": "ux@agrotis.com",
+    "type": "Padrão",
+    "photoPath": null,
+    "password": "",
+    "createdAt": 1774561602887
   }
 ]

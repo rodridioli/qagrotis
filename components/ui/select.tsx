@@ -16,11 +16,19 @@ function SelectTrigger({
   children,
   ...props
 }: SelectPrimitive.Trigger.Props) {
+  const spanRef = React.useRef<HTMLSpanElement>(null)
+
+  React.useEffect(() => {
+    if (spanRef.current) {
+      spanRef.current.title = spanRef.current.textContent ?? ""
+    }
+  })
+
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       className={cn(
-        "flex h-9 w-full items-center justify-between gap-2 rounded-custom border px-3 py-1 text-sm outline-none transition-colors",
+        "flex h-9 w-full min-w-0 overflow-hidden items-center justify-between gap-2 rounded-custom border px-3 py-1 text-sm outline-none transition-colors",
         "border-border-default bg-surface-input text-text-primary",
         "placeholder:text-text-secondary",
         "focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/20",
@@ -30,7 +38,7 @@ function SelectTrigger({
       )}
       {...props}
     >
-      {children}
+      <span ref={spanRef} className="truncate min-w-0 flex-1 text-left">{children}</span>
       <SelectPrimitive.Icon>
         <ChevronDownIcon className="size-4 shrink-0 text-text-secondary" />
       </SelectPrimitive.Icon>
@@ -39,8 +47,8 @@ function SelectTrigger({
 }
 
 // ── Value ─────────────────────────────────────────────────────
-function SelectValue({ ...props }: SelectPrimitive.Value.Props) {
-  return <SelectPrimitive.Value data-slot="select-value" {...props} />
+function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
+  return <SelectPrimitive.Value data-slot="select-value" className={cn("truncate", className)} {...props} />
 }
 
 // ── Popup ─────────────────────────────────────────────────────

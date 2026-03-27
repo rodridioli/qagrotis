@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
@@ -26,6 +26,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
+import { UserTipoBadge } from "@/components/qagrotis/StatusBadge"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
@@ -34,20 +35,6 @@ import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 10
 
-function TipoBadge({ tipo }: { tipo: string }) {
-  if (tipo === "Administrador") {
-    return (
-      <span className="inline-flex items-center rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
-        {tipo}
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center rounded-full border border-secondary-500/30 bg-secondary-500/10 px-3 py-1 text-xs font-medium text-secondary-600">
-      {tipo}
-    </span>
-  )
-}
 
 function getInitials(name: string): string {
   return name
@@ -182,7 +169,7 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
         <div className="flex items-center gap-1.5 text-sm">
           <Link
             href="/configuracoes"
-            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+            title="Voltar" className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />
           </Link>
@@ -216,7 +203,7 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
       </div>
 
       {/* ── Table card ── */}
-      <div className="rounded-xl bg-surface-card shadow-card">
+      <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
         <TableToolbar
           search={search}
           onSearchChange={(v) => { setSearch(v); setCurrentPage(1) }}
@@ -225,134 +212,130 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
           onFilterOpen={() => { setPendingFilters(filters); setFilterOpen(true) }}
           totalLabel="Total de usuários"
           totalCount={filtered.length}
+          baseCount={initialUsers.length}
         />
 
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-sm">
-            <colgroup>
-              {showBulkActions && <col className="w-10" />}
-              <col className="w-24" />
-              <col />
-              <col />
-              <col className="w-36" />
-              <col className="w-16" />
-            </colgroup>
-            <thead>
-              <tr className="border-b border-border-default bg-neutral-grey-50">
-                {showBulkActions && (
-                  <th className="px-4 py-3 text-left">
-                    <Checkbox
-                      checked={selectableIds.length > 0 && selectedIds.size === selectableIds.length}
-                      onChange={toggleAll}
-                    />
-                  </th>
-                )}
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Id</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">E-mail</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                <th className="pl-4 pr-6 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {pageItems.length === 0 ? (
-                <tr>
-                  <td colSpan={showBulkActions ? 6 : 5} className="px-4 py-10 text-center text-sm text-text-secondary">
-                    Nenhum registro encontrado.
-                  </td>
-                </tr>
-              ) : pageItems.map((u) => {
-                const isSelf = u.id === currentUserId
-                return (
-                  <tr
-                    key={u.id}
-                    className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
-                  >
-                    {/* Checkbox — disabled for own account */}
+        {pageItems.length === 0 ? (
+          <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
+            Nenhum registro encontrado.
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full table-fixed text-sm">
+                <colgroup>
+                  {showBulkActions && <col className="w-10" />}
+                  <col className="w-24" />
+                  <col />
+                  <col />
+                  <col className="w-36" />
+                  <col className="w-16" />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border-default bg-neutral-grey-50">
                     {showBulkActions && (
-                      <td className="px-4 py-3">
+                      <th className="px-4 py-3 text-left">
                         <Checkbox
-                          checked={selectedIds.has(u.id)}
-                          onChange={() => toggleRow(u.id)}
-                          disabled={isSelf}
+                          checked={selectableIds.length > 0 && selectedIds.size === selectableIds.length}
+                          onChange={toggleAll}
                         />
-                      </td>
+                      </th>
                     )}
-
-                    <td className="px-4 py-3 font-medium text-text-secondary">{u.id}</td>
-
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {u.photoPath ? (
-                          <img
-                            src={u.photoPath}
-                            alt={u.name}
-                            className="size-7 shrink-0 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-brand-primary">
-                            {getInitials(u.name)}
-                          </div>
-                        )}
-                        <span className="font-medium text-text-primary">{u.name}</span>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3 text-text-secondary">{u.email}</td>
-                    <td className="px-4 py-3"><TipoBadge tipo={u.type} /></td>
-
-                    {/* Actions — pencil for own row, dropdown for others */}
-                    <td className="px-4 py-3">
-                      {isSelf ? (
-                        <Link
-                          href={`/configuracoes/usuarios/${u.id}/editar`}
-                          title="Editar meu cadastro"
-                          className="flex size-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-                        >
-                          <Pencil className="size-4" />
-                        </Link>
-                      ) : showBulkActions ? (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <button
-                                type="button"
-                                className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
-                              />
-                            }
-                          >
-                            <MoreVertical className="size-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" side="bottom">
-                            <DropdownMenuItem>
-                              <Link href={`/configuracoes/usuarios/${u.id}`} className="w-full">
-                                Visualizar
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => handleInativarSingle(u.id)}
-                            >
-                              Inativar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      ) : null}
-                    </td>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">E-mail</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                    <th className="pl-4 pr-6 py-3" />
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <TablePagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filtered.length}
-          itemsPerPage={ITEMS_PER_PAGE}
-          onPageChange={setCurrentPage}
-        />
+                </thead>
+                <tbody>
+                  {pageItems.map((u) => {
+                    const isSelf = u.id === currentUserId
+                    return (
+                      <tr
+                        key={u.id}
+                        className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                      >
+                        {showBulkActions && (
+                          <td className="px-4 py-3">
+                            <Checkbox
+                              checked={selectedIds.has(u.id)}
+                              onChange={() => toggleRow(u.id)}
+                              disabled={isSelf}
+                            />
+                          </td>
+                        )}
+                        <td className="px-4 py-3 font-medium text-text-secondary">{u.id}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {u.photoPath ? (
+                              <img
+                                src={u.photoPath}
+                                alt={u.name}
+                                className="size-7 shrink-0 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-brand-primary">
+                                {getInitials(u.name)}
+                              </div>
+                            )}
+                            <span className="font-medium text-text-primary">{u.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-text-secondary">{u.email}</td>
+                        <td className="px-4 py-3"><UserTipoBadge tipo={u.type} /></td>
+                        <td className="px-4 py-3">
+                          {isSelf ? (
+                            <Link
+                              href={`/configuracoes/usuarios/${u.id}/editar`}
+                              title="Editar meu cadastro"
+                              className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                            >
+                              <Pencil className="size-4" />
+                            </Link>
+                          ) : showBulkActions ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={
+                                  <button
+                                    type="button"
+                                    className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                  />
+                                }
+                              >
+                                <MoreVertical className="size-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" side="bottom">
+                                <DropdownMenuItem>
+                                  <Link href={`/configuracoes/usuarios/${u.id}`} className="w-full">
+                                    Visualizar
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onClick={() => handleInativarSingle(u.id)}
+                                >
+                                  Inativar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : null}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              onPageChange={setCurrentPage}
+            />
+          </>
+        )}
       </div>
 
       {/* ── Filter dialog ── */}

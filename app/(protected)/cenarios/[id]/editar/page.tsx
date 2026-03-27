@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { getCenario } from "@/lib/actions/cenarios"
+import { getCenario, getCenarios } from "@/lib/actions/cenarios"
 import { getModulos } from "@/lib/actions/modulos"
 import { getSistemas } from "@/lib/actions/sistemas"
 import { getClientes } from "@/lib/actions/clientes"
@@ -11,11 +11,12 @@ interface Props {
 
 export default async function EditarCenarioPage({ params }: Props) {
   const { id } = await params
-  const [cenario, modulos, sistemas, clientes] = await Promise.all([
+  const [cenario, modulos, sistemas, clientes, cenarios] = await Promise.all([
     getCenario(id),
     getModulos(),
     getSistemas(),
     getClientes(),
+    getCenarios(),
   ])
 
   if (!cenario) notFound()
@@ -26,6 +27,7 @@ export default async function EditarCenarioPage({ params }: Props) {
       initialModulos={modulos.filter((m) => m.active)}
       allSistemas={sistemas.filter((s) => s.active)}
       initialClientes={clientes.filter((c) => c.active)}
+      allCenarios={cenarios.filter((c) => c.active && c.id !== id)}
     />
   )
 }

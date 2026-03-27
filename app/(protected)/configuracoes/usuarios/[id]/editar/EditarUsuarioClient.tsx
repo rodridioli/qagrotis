@@ -102,6 +102,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
         <div className="flex items-center gap-1.5 text-sm">
           <Link
             href="/configuracoes/usuarios"
+            title="Voltar"
             className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />

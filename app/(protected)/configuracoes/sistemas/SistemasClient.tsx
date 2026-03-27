@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
@@ -23,6 +23,7 @@ import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { inativarSistemas, type SistemaRecord } from "@/lib/actions/sistemas"
+import { type ModuloRecord } from "@/lib/actions/modulos"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 10
@@ -33,10 +34,11 @@ interface FilterState {
 
 interface Props {
   initialSistemas: SistemaRecord[]
+  initialModulos: ModuloRecord[]
   isAdmin: boolean
 }
 
-export default function SistemasClient({ initialSistemas, isAdmin }: Props) {
+export default function SistemasClient({ initialSistemas, initialModulos, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -48,6 +50,7 @@ export default function SistemasClient({ initialSistemas, isAdmin }: Props) {
   const [inativarIds, setInativarIds] = useState<string[]>([])
   const [filters, setFilters] = useState<FilterState>({ apenasInativos: false })
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
+  const [modulosModalSistema, setModulosModalSistema] = useState<SistemaRecord | null>(null)
 
   const filtered = useMemo(() => {
     const result = initialSistemas.filter((s) => {
@@ -140,7 +143,7 @@ export default function SistemasClient({ initialSistemas, isAdmin }: Props) {
         <div className="flex items-center gap-1.5 text-sm">
           <Link
             href="/configuracoes"
-            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+            title="Voltar" className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />
           </Link>
@@ -174,7 +177,7 @@ export default function SistemasClient({ initialSistemas, isAdmin }: Props) {
       </div>
 
       {/* ── Table card ── */}
-      <div className="rounded-xl bg-surface-card shadow-card">
+      <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
         <TableToolbar
           search={search}
           onSearchChange={(v) => { setSearch(v); setCurrentPage(1) }}
@@ -183,103 +186,120 @@ export default function SistemasClient({ initialSistemas, isAdmin }: Props) {
           onFilterOpen={() => { setPendingFilters(filters); setFilterOpen(true) }}
           totalLabel="Total de sistemas"
           totalCount={filtered.length}
+          baseCount={initialSistemas.length}
         />
 
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-sm">
-            <colgroup>
-              {showBulkActions && <col className="w-10" />}
-              <col className="w-28" />
-              <col className="w-2/5" />
-              <col />
-              <col className="w-16" />
-            </colgroup>
-            <thead>
-              <tr className="border-b border-border-default bg-neutral-grey-50">
-                {showBulkActions && (
-                  <th className="px-4 py-3 text-left">
-                    <Checkbox
-                      checked={selectableIds.length > 0 && selectedIds.size === selectableIds.length}
-                      onChange={toggleAll}
-                    />
-                  </th>
-                )}
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Id</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Nome</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
-                <th className="pl-4 pr-6 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {pageItems.length === 0 ? (
-                <tr>
-                  <td colSpan={showBulkActions ? 5 : 4} className="px-4 py-10 text-center text-sm text-text-secondary">
-                    Nenhum registro encontrado.
-                  </td>
-                </tr>
-              ) : pageItems.map((s) => (
-                <tr
-                  key={s.id}
-                  className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
-                >
-                  {showBulkActions && (
-                    <td className="px-4 py-3">
-                      <Checkbox
-                        checked={selectedIds.has(s.id)}
-                        onChange={() => toggleRow(s.id)}
-                      />
-                    </td>
-                  )}
-
-                  <td className="px-4 py-3 font-medium text-text-secondary">{s.id}</td>
-                  <td className="px-4 py-3 font-medium text-text-primary">{s.name}</td>
-                  <td className="px-4 py-3 text-text-secondary truncate">
-                    {s.description ?? <span className="italic text-text-secondary/60">—</span>}
-                  </td>
-
-                  <td className="pl-4 pr-6 py-3">
-                    {showBulkActions && s.active ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
+        {pageItems.length === 0 ? (
+          <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
+            Nenhum registro encontrado.
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full table-fixed text-sm">
+                <colgroup>
+                  {showBulkActions && <col className="w-10" />}
+                  <col className="w-28" />
+                  <col className="w-2/5" />
+                  <col />
+                  <col className="w-24" />
+                  <col className="w-16" />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border-default bg-neutral-grey-50">
+                    {showBulkActions && (
+                      <th className="px-4 py-3 text-left">
+                        <Checkbox
+                          checked={selectableIds.length > 0 && selectedIds.size === selectableIds.length}
+                          onChange={toggleAll}
+                        />
+                      </th>
+                    )}
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Nome</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulos</th>
+                    <th className="pl-4 pr-6 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageItems.map((s) => {
+                    const modulosDoSistema = initialModulos.filter((m) => m.sistemaId === s.id && m.active)
+                    return (
+                      <tr
+                        key={s.id}
+                        className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                      >
+                        {showBulkActions && (
+                          <td className="px-4 py-3">
+                            <Checkbox
+                              checked={selectedIds.has(s.id)}
+                              onChange={() => toggleRow(s.id)}
+                            />
+                          </td>
+                        )}
+                        <td className="px-4 py-3 font-medium text-text-secondary">{s.id}</td>
+                        <td className="px-4 py-3 font-medium text-text-primary">{s.name}</td>
+                        <td className="px-4 py-3 text-text-secondary truncate">
+                          {s.description ?? <span className="italic text-text-secondary/60">—</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          {modulosDoSistema.length > 0 ? (
                             <button
                               type="button"
-                              className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
-                            />
-                          }
-                        >
-                          <MoreVertical className="size-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" side="bottom">
-                          <DropdownMenuItem>
-                            <Link href={`/configuracoes/sistemas/${s.id}/editar`} className="w-full">
-                              Editar
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => handleInativarSingle(s.id)}
-                          >
-                            Inativar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-
-          </table>
-        </div>
-
-        <TablePagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filtered.length}
-          itemsPerPage={ITEMS_PER_PAGE}
-          onPageChange={setCurrentPage}
-        />
+                              onClick={() => setModulosModalSistema(s)}
+                              className="text-brand-primary hover:underline text-sm font-medium"
+                            >
+                              {modulosDoSistema.length}
+                            </button>
+                          ) : (
+                            <span className="text-text-secondary/60 italic text-sm">0</span>
+                          )}
+                        </td>
+                        <td className="pl-4 pr-6 py-3">
+                          {showBulkActions && s.active ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={
+                                  <button
+                                    type="button"
+                                    className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                  />
+                                }
+                              >
+                                <MoreVertical className="size-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" side="bottom">
+                                <DropdownMenuItem>
+                                  <Link href={`/configuracoes/sistemas/${s.id}/editar`} className="w-full">
+                                    Editar
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onClick={() => handleInativarSingle(s.id)}
+                                >
+                                  Inativar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : null}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              onPageChange={setCurrentPage}
+            />
+          </>
+        )}
       </div>
 
       {/* ── Filter dialog ── */}
@@ -322,6 +342,28 @@ export default function SistemasClient({ initialSistemas, isAdmin }: Props) {
         confirmLabel="Inativar"
         onConfirm={confirmInativar}
       />
+
+      {/* ── Módulos do sistema ── */}
+      <Dialog open={!!modulosModalSistema} onOpenChange={(open) => { if (!open) setModulosModalSistema(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Módulos — {modulosModalSistema?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-1 max-h-80 overflow-y-auto">
+            {modulosModalSistema && initialModulos.filter((m) => m.sistemaId === modulosModalSistema.id && m.active).length === 0 ? (
+              <p className="text-sm text-text-secondary text-center py-4">Nenhum módulo cadastrado.</p>
+            ) : modulosModalSistema && initialModulos.filter((m) => m.sistemaId === modulosModalSistema.id && m.active).map((m) => (
+              <div key={m.id} className="flex items-center justify-between rounded-lg border border-border-default px-3 py-2">
+                <div>
+                  <p className="text-sm font-medium text-text-primary">{m.name}</p>
+                  {m.description && <p className="text-xs text-text-secondary">{m.description}</p>}
+                </div>
+                <span className="text-xs text-text-secondary">{m.id}</span>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

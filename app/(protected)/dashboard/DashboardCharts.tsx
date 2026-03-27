@@ -77,8 +77,8 @@ export function DashboardCharts({
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
               <XAxis dataKey="module" tick={{ fontSize: 12, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 12, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} domain={[0, 100]} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}%`, "Cobertura"]} />
-              <Bar dataKey="coverage" fill="var(--qagrotis-primary-500)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "transparent" }} formatter={(v) => [`${v}%`, "Cobertura"]} />
+              <Bar dataKey="coverage" fill="var(--brand-primary)" radius={[4, 4, 0, 0]} maxBarSize={40} />
             </BarChart>
           </ResponsiveContainer>
         </div>

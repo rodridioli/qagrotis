@@ -1,9 +1,8 @@
 "use client"
 
-import { useState, useMemo, useTransition } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Filter, MoreVertical, Plus, Power, X } from "lucide-react"
+import { Filter, Plus, Power, X, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -26,35 +25,55 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
+import { SuiteTipoBadge } from "@/components/qagrotis/StatusBadge"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { inativarCenarios, type CenarioRecord } from "@/lib/actions/cenarios"
+import { MOCK_SUITES } from "@/lib/qagrotis-constants"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
-import type { ClienteRecord } from "@/lib/actions/clientes"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 10
 
 interface FilterState {
   modulo: string
-  cliente: string
   tipo: string
   apenasInativos: boolean
 }
 
-interface Props {
-  initialCenarios: CenarioRecord[]
-  allModulos: ModuloRecord[]
-  initialClientes: ClienteRecord[]
+const EMPTY_FILTERS: FilterState = { modulo: "", tipo: "", apenasInativos: false }
+
+function AutomacaoBar({ pct }: { pct: number }) {
+  const fillColor =
+    pct === 100 ? "#16a34a" :   // green
+    pct === 0   ? "transparent" :
+                  "#f97316"     // orange
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="relative h-1.5 w-20 overflow-hidden rounded-full bg-neutral-grey-100">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{ width: `${pct}%`, backgroundColor: fillColor }}
+        />
+      </div>
+      <span className="text-xs tabular-nums text-text-secondary">{pct}%</span>
+    </div>
+  )
 }
 
-export default function CenariosClient({ initialCenarios, allModulos, initialClientes }: Props) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+interface Props {
+  allModulos: ModuloRecord[]
+}
+
+export default function SuitesClient({ allModulos }: Props) {
   const { sistemaSelecionado } = useSistemaSelecionado()
+
+  const modulosDosistema = useMemo(
+    () => allModulos.filter((m) => m.sistemaName === sistemaSelecionado).map((m) => m.name),
+    [allModulos, sistemaSelecionado]
+  )
 
   const [search, setSearch] = useState("")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -62,35 +81,29 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
   const [filterOpen, setFilterOpen] = useState(false)
   const [inativarOpen, setInativarOpen] = useState(false)
   const [inativarIds, setInativarIds] = useState<string[]>([])
-  const [filters, setFilters] = useState<FilterState>({
-    modulo: "",
-    cliente: "",
-    tipo: "",
-    apenasInativos: false,
-  })
-  const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
+  const [inativadosIds, setInativadosIds] = useState<Set<string>>(new Set())
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
+  const [pendingFilters, setPendingFilters] = useState<FilterState>(EMPTY_FILTERS)
 
-  const modulosDosistema = allModulos
-    .filter((m) => m.sistemaName === sistemaSelecionado)
-    .map((m) => m.name)
-
-  const clienteNames = initialClientes.map((c) => c.nomeFantasia)
+  const modulosDosistemaSet = useMemo(
+    () => new Set(modulosDosistema),
+    [modulosDosistema]
+  )
 
   const filtered = useMemo(() => {
-    const result = initialCenarios.filter((c) => {
+    return MOCK_SUITES.filter((s) => {
+      if (inativadosIds.has(s.id)) return false
+      const matchSistema = modulosDosistema.length === 0 || modulosDosistemaSet.has(s.modulo)
       const matchSearch =
         !search ||
-        c.id.toLowerCase().includes(search.toLowerCase()) ||
-        c.scenarioName.toLowerCase().includes(search.toLowerCase())
-      const matchSistema = !sistemaSelecionado || c.system === sistemaSelecionado
-      const matchModulo = !filters.modulo || c.module === filters.modulo
-      const matchCliente = !filters.cliente || c.client === filters.cliente
-      const matchTipo = !filters.tipo || c.tipo === filters.tipo
-      const matchAtivo = filters.apenasInativos ? !c.active : c.active
-      return matchSearch && matchSistema && matchModulo && matchCliente && matchTipo && matchAtivo
+        s.id.toLowerCase().includes(search.toLowerCase()) ||
+        s.suiteName.toLowerCase().includes(search.toLowerCase())
+      const matchModulo = !filters.modulo || s.modulo === filters.modulo
+      const matchTipo = !filters.tipo || s.tipo === filters.tipo
+      const matchAtivo = filters.apenasInativos ? !s.active : true
+      return matchSistema && matchSearch && matchModulo && matchTipo && matchAtivo
     })
-    return [...result].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-  }, [search, filters, sistemaSelecionado, initialCenarios])
+  }, [search, filters, modulosDosistema, modulosDosistemaSet, inativadosIds])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -100,14 +113,11 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
 
   const activeFilterCount = [
     filters.modulo,
-    filters.cliente,
     filters.tipo,
     filters.apenasInativos ? "1" : "",
   ].filter(Boolean).length
 
-  const hasActiveCenarios = initialCenarios.some((c) => c.active)
-  const showBulkActions = !filters.apenasInativos && hasActiveCenarios
-  const selectableIds = pageItems.map((c) => c.id)
+  const showBulkActions = !filters.apenasInativos
 
   function toggleRow(id: string) {
     setSelectedIds((prev) => {
@@ -119,8 +129,11 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
   }
 
   function toggleAll() {
-    if (selectedIds.size === selectableIds.length) setSelectedIds(new Set())
-    else setSelectedIds(new Set(selectableIds))
+    if (selectedIds.size === pageItems.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(pageItems.map((i) => i.id)))
+    }
   }
 
   function handleInativarSelection() {
@@ -136,23 +149,15 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
 
   function confirmInativar() {
     const count = inativarIds.length
-    setInativarOpen(false)
+    setInativadosIds((prev) => new Set([...prev, ...inativarIds]))
     setSelectedIds((prev) => {
       const next = new Set(prev)
       inativarIds.forEach((id) => next.delete(id))
       return next
     })
     setInativarIds([])
-
-    startTransition(async () => {
-      await inativarCenarios(inativarIds)
-      router.refresh()
-      toast.success(
-        count === 1
-          ? "Cenário inativado com sucesso."
-          : `${count} cenários inativados com sucesso.`
-      )
-    })
+    setInativarOpen(false)
+    toast.success(count === 1 ? "Suíte inativada com sucesso." : `${count} suítes inativadas com sucesso.`)
   }
 
   function applyFilters() {
@@ -161,44 +166,44 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
     setCurrentPage(1)
   }
 
-  const confirmDescription =
-    inativarIds.length === 1
-      ? `O cenário ${inativarIds[0]} será inativado. Esta ação não pode ser desfeita.`
-      : `${inativarIds.length} cenários serão inativados. Esta ação não pode ser desfeita.`
+  function clearFilters() {
+    setPendingFilters(EMPTY_FILTERS)
+    setFilters(EMPTY_FILTERS)
+    setFilterOpen(false)
+    setCurrentPage(1)
+  }
 
   return (
     <div className="space-y-4">
-      {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-end gap-3">
         {showBulkActions && (
           <Button
             variant="outline"
-            disabled={selectedIds.size === 0 || isPending}
+            disabled={selectedIds.size === 0}
             onClick={handleInativarSelection}
           >
             <Power className="size-4" />
             Inativar
           </Button>
         )}
-        <Link href="/cenarios/novo">
+        <Link href="/suites/nova">
           <Button>
             <Plus className="size-4" />
-            Adicionar Cenário
+            Adicionar Suite
           </Button>
         </Link>
       </div>
 
-      {/* ── Table card ── */}
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
         <TableToolbar
           search={search}
           onSearchChange={(v) => { setSearch(v); setCurrentPage(1) }}
-          searchPlaceholder="Buscar por Código e Cenário"
+          searchPlaceholder="Buscar por Código e Suíte"
           activeFilterCount={activeFilterCount}
           onFilterOpen={() => { setPendingFilters(filters); setFilterOpen(true) }}
-          totalLabel="Total de cenários"
+          totalLabel="Suítes de teste"
           totalCount={filtered.length}
-          baseCount={sistemaSelecionado ? initialCenarios.filter((c) => c.system === sistemaSelecionado).length : initialCenarios.length}
+          baseCount={modulosDosistema.length === 0 ? MOCK_SUITES.length : MOCK_SUITES.filter((s) => modulosDosistemaSet.has(s.modulo)).length}
         />
 
         {pageItems.length === 0 ? (
@@ -213,67 +218,77 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-24" />
                   <col />
-                  <col className="w-1/5" />
-                  <col className="w-1/6" />
+                  <col className="w-16" />
+                  <col className="w-32" />
+                  <col className="w-32" />
                   <col className="w-20" />
-                  <col className="w-16" />
-                  <col className="w-16" />
-                  <col className="w-28" />
-                  <col className="w-16" />
+                  <col className="w-36" />
+                  <col className="w-14" />
+                  <col className="w-20" />
+                  <col className="w-24" />
+                  {showBulkActions && <col className="w-16" />}
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
                     {showBulkActions && (
                       <th className="px-4 py-3 text-left">
                         <Checkbox
-                          checked={selectableIds.length > 0 && selectedIds.size === selectableIds.length}
+                          checked={pageItems.length > 0 && selectedIds.size === pageItems.length}
                           onChange={toggleAll}
                         />
                       </th>
                     )}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Suíte</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Versão</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cliente</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Execuções</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Automação</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Erros</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Suítes</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                    <th className="pl-4 pr-6 py-3" />
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenários</th>
+                    <th className={showBulkActions ? "px-4 py-3 text-left text-xs font-semibold text-text-secondary" : "pl-4 pr-6 py-3 text-left text-xs font-semibold text-text-secondary"}>Tipo</th>
+                    {showBulkActions && <th className="pl-4 pr-6 py-3" />}
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((c) => (
+                  {pageItems.map((s) => (
                     <tr
-                      key={c.id}
+                      key={s.id}
                       className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
                     >
                       {showBulkActions && (
                         <td className="px-4 py-3">
-                          <Checkbox
-                            checked={selectedIds.has(c.id)}
-                            onChange={() => toggleRow(c.id)}
-                          />
+                          <Checkbox checked={selectedIds.has(s.id)} onChange={() => toggleRow(s.id)} />
                         </td>
                       )}
                       <td className="px-4 py-3">
-                        <Link href={`/cenarios/${c.id}/editar`} className="font-medium text-brand-primary hover:underline">
-                          {c.id}
-                        </Link>
+                        {showBulkActions ? (
+                          <Link
+                            href={`/suites/${s.id}`}
+                            className="font-medium text-brand-primary hover:underline"
+                          >
+                            {s.id}
+                          </Link>
+                        ) : (
+                          <span className="font-medium text-text-secondary">{s.id}</span>
+                        )}
                       </td>
+                      <td className="px-4 py-3 truncate font-medium text-text-primary">{s.suiteName}</td>
+                      <td className="px-4 py-3 text-text-secondary">{s.versao}</td>
+                      <td className="px-4 py-3 text-text-secondary truncate">{s.modulo}</td>
+                      <td className="px-4 py-3 text-text-secondary truncate">{s.cliente}</td>
+                      <td className="px-4 py-3 text-text-secondary">{s.execucoes}</td>
                       <td className="px-4 py-3">
-                        <span className="block truncate text-text-primary">{c.scenarioName}</span>
+                        <AutomacaoBar pct={s.automacao} />
                       </td>
-                      <td className="px-4 py-3 text-text-secondary truncate">{c.module}</td>
-                      <td className="px-4 py-3 text-text-secondary truncate">{c.client}</td>
-                      <td className="px-4 py-3 text-text-secondary">{c.execucoes}</td>
-                      <td className="px-4 py-3 text-text-secondary">{c.erros}</td>
-                      <td className="px-4 py-3 text-text-secondary">{c.suites}</td>
-                      <td className="px-4 py-3">
-                        <CenarioTipoBadge tipo={c.tipo as "Automatizado" | "Manual" | "Man./Auto."} />
+                      <td className="px-4 py-3 text-text-secondary">{s.erros}</td>
+                      <td className="px-4 py-3 text-text-secondary">{s.cenarios}</td>
+                      <td className={showBulkActions ? "px-4 py-3" : "pl-4 pr-6 py-3"}>
+                        <SuiteTipoBadge tipo={s.tipo} />
                       </td>
-                      <td className="pl-4 pr-6 py-3">
-                        {showBulkActions && c.active ? (
+                      {showBulkActions && (
+                        <td className="pl-4 pr-6 py-3">
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               render={
@@ -287,25 +302,21 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" side="bottom">
                               <DropdownMenuItem>
-                                <Link href={`/cenarios/${c.id}/editar`} className="w-full">
-                                  Editar
-                                </Link>
+                                <Link href={`/suites/${s.id}`} className="w-full">Visualizar</Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => handleInativarSingle(c.id)}
-                              >
+                              <DropdownMenuItem variant="destructive" onClick={() => handleInativarSingle(s.id)}>
                                 Inativar
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        ) : null}
-                      </td>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
             <TablePagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -317,7 +328,6 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
         )}
       </div>
 
-      {/* ── Filter dialog ── */}
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -333,29 +343,13 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                 }
                 disabled={modulosDosistema.length === 0}
               >
-                <SelectTrigger><SelectValue placeholder={modulosDosistema.length === 0 ? "Nenhum módulo cadastrado" : "Todos"} /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder={modulosDosistema.length === 0 ? "Nenhum módulo cadastrado" : "Todos"} />
+                </SelectTrigger>
                 <SelectPopup>
                   <SelectItem value="">Todos</SelectItem>
                   {modulosDosistema.map((m) => (
                     <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Cliente</label>
-              <Select
-                value={pendingFilters.cliente}
-                onValueChange={(v: string | null) =>
-                  setPendingFilters((p) => ({ ...p, cliente: v ?? "" }))
-                }
-                disabled={clienteNames.length === 0}
-              >
-                <SelectTrigger><SelectValue placeholder={clienteNames.length === 0 ? "Nenhum cliente cadastrado" : "Todos"} /></SelectTrigger>
-                <SelectPopup>
-                  <SelectItem value="">Todos</SelectItem>
-                  {clienteNames.map((cl) => (
-                    <SelectItem key={cl} value={cl}>{cl}</SelectItem>
                   ))}
                 </SelectPopup>
               </Select>
@@ -371,9 +365,9 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectPopup>
                   <SelectItem value="">Todos</SelectItem>
-                  <SelectItem value="Automatizado">Automatizado</SelectItem>
-                  <SelectItem value="Manual">Manual</SelectItem>
-                  <SelectItem value="Man./Auto.">Man./Auto.</SelectItem>
+                  <SelectItem value="Sprint">Sprint</SelectItem>
+                  <SelectItem value="Kanban">Kanban</SelectItem>
+                  <SelectItem value="Outro">Outro</SelectItem>
                 </SelectPopup>
               </Select>
             </div>
@@ -389,10 +383,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
             />
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button
-              variant="ghost"
-              onClick={() => setPendingFilters({ modulo: "", cliente: "", tipo: "", apenasInativos: false })}
-            >
+            <Button variant="ghost" onClick={clearFilters}>
               Limpar filtros
             </Button>
             <div className="flex gap-2">
@@ -409,12 +400,15 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
         </DialogContent>
       </Dialog>
 
-      {/* ── Confirm inativação ── */}
       <ConfirmDialog
         open={inativarOpen}
         onOpenChange={setInativarOpen}
         title="Deseja inativar?"
-        description={confirmDescription}
+        description={
+          inativarIds.length === 1
+            ? `A suíte ${inativarIds[0]} será inativada de forma definitiva e não poderá ser recuperada.`
+            : `${inativarIds.length} suítes serão inativadas de forma definitiva e não poderão ser recuperadas.`
+        }
         confirmLabel="Inativar"
         onConfirm={confirmInativar}
       />

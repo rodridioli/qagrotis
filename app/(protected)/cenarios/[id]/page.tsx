@@ -40,6 +40,7 @@ export default function CenarioDetailPage({
         <div className="flex items-center gap-2 text-sm">
           <Link
             href="/cenarios"
+            title="Voltar"
             className="flex items-center gap-1 text-text-secondary hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />

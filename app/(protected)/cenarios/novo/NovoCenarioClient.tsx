@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useCallback, useMemo, useState, useTransition } from "react"
+import React, { useCallback, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowDown, ArrowLeft, ArrowUp, Check, Circle, Plus, Trash2, X } from "lucide-react"
+import { ArrowDown, ArrowLeft, ArrowUp, Check, Circle, GripVertical, Plus, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -22,11 +22,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MOCK_CENARIOS } from "@/lib/qagrotis-constants"
 import { criarModulo, type ModuloRecord } from "@/lib/actions/modulos"
 import { criarCliente, type ClienteRecord } from "@/lib/actions/clientes"
 import type { SistemaRecord } from "@/lib/actions/sistemas"
-import { criarCenario } from "@/lib/actions/cenarios"
+import { criarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import { formatCpfCnpj } from "@/lib/utils"
 
@@ -55,6 +54,7 @@ interface Props {
   initialModulos?: ModuloRecord[]
   allSistemas?: SistemaRecord[]
   initialClientes?: ClienteRecord[]
+  allCenarios?: CenarioRecord[]
 }
 
 interface Step {
@@ -70,7 +70,7 @@ interface Dep {
   system: string
 }
 
-export default function NovoCenarioClient({ initialModulos = [], allSistemas = [], initialClientes = [] }: Props) {
+export default function NovoCenarioClient({ initialModulos = [], allSistemas = [], initialClientes = [], allCenarios = [] }: Props) {
   const router = useRouter()
   const { sistemaSelecionado } = useSistemaSelecionado()
   const [localModulos, setLocalModulos] = useState<ModuloRecord[]>(initialModulos)
@@ -87,6 +87,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
   const [isSaving, startSaveTransition] = useTransition()
   const [isClientePending, startClienteTransition] = useTransition()
   const [isModuloPending, startModuloTransition] = useTransition()
+  const [isDepSearchPending, startDepSearchTransition] = useTransition()
 
   // Controlled form fields
   const [scenarioName, setScenarioName] = useState("")
@@ -105,11 +106,11 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
   const [automatizado, setAutomatizado] = useState(false)
   const [steps, setSteps] = useState<Step[]>([])
   const [deps, setDeps] = useState<Dep[]>([])
-  const [addStepOpen, setAddStepOpen] = useState(false)
   const [addDepOpen, setAddDepOpen] = useState(false)
   const [addClienteOpen, setAddClienteOpen] = useState(false)
-  const [stepAcao, setStepAcao] = useState("")
-  const [stepResultado, setStepResultado] = useState("")
+  const draggedStepId = useRef<number | null>(null)
+  const [activeTab, setActiveTab] = useState<"cadastro" | "passos" | "dependencias">("cadastro")
+  const [depSearchInput, setDepSearchInput] = useState("")
   const [depSearch, setDepSearch] = useState("")
   const [depSistema, setDepSistema] = useState("")
   const [depModulo, setDepModulo] = useState("")
@@ -122,32 +123,48 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
     [localModulos, depSistema]
   )
 
+  const DEP_LIMIT = 50
   const filteredDepCenarios = useMemo(() => {
-    if (!depSistema || !depModulo) return []
+    if (!depSistema || !depModulo) return { items: [], total: 0 }
     const q = depSearch.toLowerCase()
-    return MOCK_CENARIOS.filter(
+    const all = allCenarios.filter(
       (c) =>
         c.system === depSistema &&
         c.module === depModulo &&
         (!q || c.id.toLowerCase().includes(q) || c.scenarioName.toLowerCase().includes(q))
-    ).slice(0, 50)
-  }, [depSistema, depModulo, depSearch])
+    )
+    return { items: all.slice(0, DEP_LIMIT), total: all.length }
+  }, [allCenarios, depSistema, depModulo, depSearch])
 
-  const addStep = useCallback(() => {
-    if (!stepAcao || !stepResultado) return
-    setSteps((prev) => [
-      ...prev,
-      { id: Date.now(), acao: stepAcao, resultado: stepResultado },
-    ])
-    setStepAcao("")
-    setStepResultado("")
-    setAddStepOpen(false)
-  }, [stepAcao, stepResultado])
+  function addStepRow() {
+    setSteps((prev) => [...prev, { id: Date.now(), acao: "", resultado: "" }])
+  }
+
+  function updateStep(id: number, field: "acao" | "resultado", value: string) {
+    setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)))
+  }
+
+  function handleStepDragOver(e: React.DragEvent, targetId: number) {
+    e.preventDefault()
+    const fromId = draggedStepId.current
+    if (fromId === null || fromId === targetId) return
+    setSteps((prev) => {
+      const fromIdx = prev.findIndex((s) => s.id === fromId)
+      const toIdx = prev.findIndex((s) => s.id === targetId)
+      if (fromIdx === -1 || toIdx === -1) return prev
+      const next = [...prev]
+      const [item] = next.splice(fromIdx, 1)
+      next.splice(toIdx, 0, item)
+      return next
+    })
+  }
 
   function handleSave() {
     if (!scenarioName.trim()) { toast.error("Nome do cenário é obrigatório."); return }
     if (!moduloValue) { toast.error("Módulo é obrigatório."); return }
     if (!risco) { toast.error("Risco é obrigatório."); return }
+    if (!manual && !automatizado) { toast.error("É obrigatório habilitar pelo menos um tipo: Manual ou Automatizado."); return }
+    if (automatizado && !urlScript.trim()) { toast.error("URL do Script é obrigatória quando Automatizado está habilitado."); return }
     if (!regraDeNegocio.trim()) { toast.error("Regra de Negócio é obrigatória."); return }
     if (!objetivo.trim()) { toast.error("Objetivo é obrigatório."); return }
 
@@ -179,7 +196,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
   }
 
   const addDeps = useCallback(() => {
-    const newDeps = MOCK_CENARIOS.filter((c) => selectedDepIds.has(c.id)).map((c) => ({
+    const newDeps = allCenarios.filter((c) => selectedDepIds.has(c.id)).map((c) => ({
       id: c.id,
       name: c.scenarioName,
       module: c.module,
@@ -192,15 +209,16 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
     setSelectedDepIds(new Set())
     setDepSistema("")
     setDepModulo("")
+    setDepSearchInput("")
     setDepSearch("")
     setAddDepOpen(false)
-  }, [selectedDepIds])
+  }, [allCenarios, selectedDepIds])
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
-          <Link href="/cenarios" className="flex items-center gap-1 text-text-secondary hover:text-brand-primary">
+          <Link href="/cenarios" title="Voltar" className="flex items-center gap-1 text-text-secondary hover:text-brand-primary">
             <ArrowLeft className="size-4" />
             Cenários
           </Link>
@@ -213,18 +231,92 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-xl bg-surface-card p-5 shadow-card space-y-4 lg:col-span-2">
+      <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
+        {/* Tab nav */}
+        <div className="flex border-b border-border-default">
+          {(["cadastro", "passos", "dependencias"] as const).map((tab) => {
+            const label = tab === "cadastro" ? "Cadastro" : tab === "passos" ? "Passo a Passo" : "Dependências"
+            const badge = tab === "passos" ? steps.length : tab === "dependencias" ? deps.length : null
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`flex flex-1 items-center justify-center gap-1.5 py-3 px-4 text-sm font-medium border-b-2 -mb-px transition-all ${
+                  activeTab === tab
+                    ? "border-brand-primary text-brand-primary bg-brand-primary/5"
+                    : "border-transparent text-text-secondary hover:text-text-primary hover:bg-neutral-grey-50"
+                }`}
+              >
+                {label}
+                {badge !== null && badge > 0 && (
+                  <span className={`inline-flex items-center justify-center rounded-full text-xs font-semibold min-w-4.5 h-4.5 px-1 ${
+                    activeTab === tab
+                      ? "bg-brand-primary/15 text-brand-primary border border-brand-primary/30"
+                      : "bg-neutral-grey-200 text-text-secondary"
+                  }`}>
+                    {badge}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ── Cadastro ── */}
+        <div className={`p-5 space-y-4${activeTab !== "cadastro" ? " hidden" : ""}`}>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">
               Cenário <span className="text-destructive">*</span>
             </label>
-            <Input
-              value={scenarioName}
-              onChange={(e) => setScenarioName(e.target.value)}
-              placeholder="Nome do cenário"
-            />
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <Input
+                  value={scenarioName}
+                  onChange={(e) => setScenarioName(e.target.value)}
+                  placeholder="Nome do cenário"
+                />
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                {[
+                  { label: "Manual", checked: manual, toggle: () => setManual((v) => !v) },
+                  { label: "Automatizado", checked: automatizado, toggle: () => setAutomatizado((v) => !v) },
+                ].map(({ label, checked, toggle }) => (
+                  <label key={label} className="flex cursor-pointer select-none items-center gap-1.5">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={checked}
+                      onClick={toggle}
+                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-1 ${
+                        checked ? "bg-brand-primary" : "bg-neutral-grey-400"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block size-4 shrink-0 rounded-full bg-[#ffffff] transition-transform duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.3)] ${
+                          checked ? "translate-x-4" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                    <span className="text-sm text-text-primary">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
+
+          {automatizado && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                URL do Script <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={urlScript}
+                onChange={(e) => setUrlScript(e.target.value)}
+                placeholder="https://github.com/..."
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -243,6 +335,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
                 open={moduloSelectOpen}
                 onOpenChange={(open) => {
                   if (open && modulosDosistema.length === 0) {
+                    toast.warning(`O sistema "${sistemaSelecionado}" não possui módulos cadastrados. Cadastre um módulo para continuar.`)
                     setNoModuloOpen(true)
                     return
                   }
@@ -358,164 +451,148 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
               className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
             />
           </div>
+        </div>
 
-          <div className="flex items-center gap-6">
-            {[
-              { label: "Manual", checked: manual, toggle: () => setManual((v) => !v) },
-              { label: "Automatizado", checked: automatizado, toggle: () => setAutomatizado((v) => !v) },
-            ].map(({ label, checked, toggle }) => (
-              <label key={label} className="flex cursor-pointer select-none items-center gap-2.5">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={checked}
-                  onClick={toggle}
-                  className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-1 ${
-                    checked ? "bg-brand-primary" : "bg-neutral-grey-500"
-                  }`}
-                >
-                  <span
-                    className={`inline-block size-6 shrink-0 rounded-full bg-[#ffffff] transition-transform duration-200 shadow-[0_1px_4px_rgba(0,0,0,0.35)] ${
-                      checked ? "translate-x-6" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-                <span className="text-sm text-text-primary">{label}</span>
-              </label>
-            ))}
+        {/* ── Passo a Passo ── */}
+        <div className={`p-5 space-y-3${activeTab !== "passos" ? " hidden" : ""}`}>
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={addStepRow}>
+              <Plus className="size-4" />
+              Adicionar passo
+            </Button>
           </div>
-
-          {automatizado && (
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">URL do Script</label>
-              <Input
-                value={urlScript}
-                onChange={(e) => setUrlScript(e.target.value)}
-                placeholder="https://github.com/..."
-              />
+          {steps.length === 0 ? (
+            <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
+              Nenhum passo adicionado.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-border-default">
+                    <th className="w-8 py-2" />
+                    <th className="w-8 py-2 text-left text-xs font-semibold text-text-secondary">#</th>
+                    <th className="py-2 text-left text-xs font-semibold text-text-secondary px-2">Ação</th>
+                    <th className="py-2 text-left text-xs font-semibold text-text-secondary px-2">Resultado esperado</th>
+                    <th className="w-8 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {steps.map((s, idx) => (
+                    <tr
+                      key={s.id}
+                      draggable
+                      onDragStart={() => { draggedStepId.current = s.id }}
+                      onDragOver={(e) => handleStepDragOver(e, s.id)}
+                      onDragEnd={() => { draggedStepId.current = null }}
+                      className="border-b border-border-default last:border-0 group"
+                    >
+                      <td className="py-1.5 pr-1 cursor-grab active:cursor-grabbing">
+                        <GripVertical className="size-4 text-text-secondary opacity-40 group-hover:opacity-100 transition-opacity" />
+                      </td>
+                      <td className="py-1.5 text-xs font-medium text-text-secondary w-8">{idx + 1}</td>
+                      <td className="py-1.5 px-2">
+                        <input
+                          value={s.acao}
+                          onChange={(e) => updateStep(s.id, "acao", e.target.value)}
+                          placeholder="Descreva a ação..."
+                          className="w-full rounded-custom border border-border-default bg-surface-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                        />
+                      </td>
+                      <td className="py-1.5 px-2">
+                        <input
+                          value={s.resultado}
+                          onChange={(e) => updateStep(s.id, "resultado", e.target.value)}
+                          placeholder="Resultado esperado..."
+                          className="w-full rounded-custom border border-border-default bg-surface-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                        />
+                      </td>
+                      <td className="py-1.5 pl-1">
+                        <button
+                          type="button"
+                          onClick={() => setSteps((prev) => prev.filter((x) => x.id !== s.id))}
+                          className="flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
+                        >
+                          <Trash2 className="size-4" style={{ color: "#ffffff" }} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded-xl bg-surface-card p-5 shadow-card space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-text-primary">Passo a Passo</h2>
-              <button
-                type="button"
-                onClick={() => setAddStepOpen(true)}
-                className="text-sm text-brand-primary hover:underline"
-              >
-                Adicionar
-              </button>
-            </div>
-            {steps.length === 0 ? (
-              <p className="text-sm text-text-secondary">Nenhum passo adicionado.</p>
-            ) : (
-              <div className="space-y-2">
-                {steps.map((s, idx) => (
-                  <div key={s.id} className="rounded-lg border border-border-default p-3 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-text-secondary">Passo {idx + 1}</span>
-                      <button
-                        type="button"
-                        onClick={() => setSteps((prev) => prev.filter((x) => x.id !== s.id))}
-                        className="flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
-                      >
-                        <Trash2 className="size-4 text-white" style={{ color: "#ffffff" }} />
-                      </button>
-                    </div>
-                    <div>
-                      <p className="text-xs text-text-secondary">Ação</p>
-                      <p className="text-sm text-text-primary">{s.acao}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-text-secondary">Resultado esperado</p>
-                      <p className="text-sm text-text-primary">{s.resultado}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* ── Dependências ── */}
+        <div className={`${activeTab !== "dependencias" ? "hidden" : ""}`}>
+          <div className="flex justify-end px-5 pt-5 pb-3">
+            <Button variant="outline" size="sm" onClick={() => setAddDepOpen(true)}>
+              <Plus className="size-4" />
+              Adicionar dependência
+            </Button>
           </div>
-
-          <div className="rounded-xl bg-surface-card p-5 shadow-card space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-text-primary">Dependências</h2>
-              <button
-                type="button"
-                onClick={() => setAddDepOpen(true)}
-                className="text-sm text-brand-primary hover:underline"
-              >
-                Adicionar
-              </button>
+          {deps.length === 0 ? (
+            <div className="mx-5 mb-5 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
+              Nenhuma dependência adicionada.
             </div>
-            {deps.length === 0 ? (
-              <p className="text-sm text-text-secondary">Nenhuma dependência adicionada.</p>
-            ) : (
-              <div className="space-y-2">
-                {deps.map((d) => (
-                  <div key={d.id} className="rounded-lg border border-border-default p-3 space-y-0.5">
-                    <div className="flex items-center justify-between">
-                      <Link href={`/cenarios/${d.id}`} className="text-sm font-medium text-brand-primary hover:underline">
-                        {d.id} → {d.system} → {d.module}
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => setDeps((prev) => prev.filter((x) => x.id !== d.id))}
-                        className="flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
-                      >
-                        <Trash2 className="size-4 text-white" style={{ color: "#ffffff" }} />
-                      </button>
-                    </div>
-                    <p className="text-xs text-text-secondary">{d.name}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full table-fixed text-sm">
+                <colgroup>
+                  <col className="w-28" />
+                  <col />
+                  <col className="w-1/4" />
+                  <col className="w-1/4" />
+                  <col className="w-16" />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border-default bg-neutral-grey-50">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {deps.map((d) => (
+                    <tr key={d.id} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
+                      <td className="px-4 py-3">
+                        <Link href={`/cenarios/${d.id}`} className="font-medium text-brand-primary hover:underline">
+                          {d.id}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-text-primary truncate">{d.name}</td>
+                      <td className="px-4 py-3 text-text-secondary truncate">{d.system}</td>
+                      <td className="px-4 py-3 text-text-secondary truncate">{d.module}</td>
+                      <td className="py-3 pl-2 pr-4">
+                        <button
+                          type="button"
+                          title="Remover dependência"
+                          onClick={() => setDeps((prev) => prev.filter((x) => x.id !== d.id))}
+                          className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
-      <Dialog open={addStepOpen} onOpenChange={setAddStepOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Adicionar Passo</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                Ação <span className="text-destructive">*</span>
-              </label>
-              <Input
-                placeholder="Acessar menu Cadastros > Produtores"
-                value={stepAcao}
-                onChange={(e) => setStepAcao(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                Resultado esperado <span className="text-destructive">*</span>
-              </label>
-              <Input
-                placeholder="Tela de listagem com botão novo"
-                value={stepResultado}
-                onChange={(e) => setStepResultado(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setAddStepOpen(false)}>Cancelar</Button>
-            <Button onClick={addStep}>Adicionar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={addDepOpen} onOpenChange={(open) => {
-        if (!open) { setDepSistema(""); setDepModulo(""); setDepSearch(""); setSelectedDepIds(new Set()) }
+        if (!open) { setDepSistema(""); setDepModulo(""); setDepSearchInput(""); setDepSearch(""); setSelectedDepIds(new Set()) }
+        else if (allSistemas.filter((s) => s.active).length === 0) {
+          toast.warning("É preciso cadastrar um sistema com seus respectivos módulos e cenários.")
+        }
         setAddDepOpen(open)
       }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Adicionar Dependência</DialogTitle>
           </DialogHeader>
@@ -523,7 +600,15 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-primary">Sistema</label>
-                <Select value={depSistema} onValueChange={(v) => { setDepSistema(v); setDepModulo(""); setDepSearch("") }}>
+                <Select
+                  value={depSistema}
+                  disabled={allSistemas.filter((s) => s.active).length === 0}
+                  onValueChange={(v) => {
+                    setDepSistema(v); setDepModulo(""); setDepSearchInput(""); setDepSearch("")
+                    const hasModulos = localModulos.some((m) => m.active && m.sistemaName === v)
+                    if (!hasModulos) toast.warning(`É preciso cadastrar um módulo dentro do sistema "${v}" e seus respectivos cenários.`)
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecionar sistema" />
                   </SelectTrigger>
@@ -536,7 +621,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-primary">Módulo</label>
-                <Select value={depModulo} onValueChange={(v) => { setDepModulo(v); setDepSearch("") }} disabled={!depSistema}>
+                <Select value={depModulo} onValueChange={(v) => { setDepModulo(v); setDepSearchInput(""); setDepSearch("") }} disabled={!depSistema || depModulos.length === 0}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecionar módulo" />
                   </SelectTrigger>
@@ -550,36 +635,56 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
             </div>
             {depSistema && depModulo && (
               <>
-                <Input
-                  placeholder="Buscar cenário..."
-                  value={depSearch}
-                  onChange={(e) => setDepSearch(e.target.value)}
-                />
-                <div className="max-h-60 overflow-y-auto space-y-1 border border-border-default rounded-lg p-2">
-                  {filteredDepCenarios.length === 0 ? (
-                    <p className="text-sm text-text-secondary text-center py-4">Nenhum cenário encontrado.</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Buscar por código ou nome..."
+                      value={depSearchInput}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setDepSearchInput(v)
+                        startDepSearchTransition(() => setDepSearch(v))
+                      }}
+                    />
+                  </div>
+                  {selectedDepIds.size > 0 && (
+                    <span className="shrink-0 text-xs font-medium text-brand-primary">
+                      {selectedDepIds.size} selecionado{selectedDepIds.size !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+                <div className="max-h-72 overflow-y-auto border border-border-default rounded-lg">
+                  {isDepSearchPending ? (
+                    <p className="text-sm text-text-secondary text-center py-6">Buscando...</p>
+                  ) : filteredDepCenarios.items.length === 0 ? (
+                    <p className="text-sm text-text-secondary text-center py-6">Nenhum cenário encontrado.</p>
                   ) : (
-                    filteredDepCenarios.map((c) => (
-                      <label key={c.id} className="flex items-start gap-2 p-2 rounded-lg hover:bg-neutral-grey-50 cursor-pointer">
-                        <Checkbox
-                          checked={selectedDepIds.has(c.id)}
-                          onChange={() => {
-                            setSelectedDepIds((prev) => {
-                              const next = new Set(prev)
-                              if (next.has(c.id)) next.delete(c.id)
-                              else next.add(c.id)
-                              return next
-                            })
-                          }}
-                        />
-                        <div>
-                          <p className="text-sm font-medium text-text-primary">
-                            {c.id} - {c.system} → {c.module}
-                          </p>
-                          <p className="text-xs text-text-secondary">{c.scenarioName}</p>
-                        </div>
-                      </label>
-                    ))
+                    <>
+                      {filteredDepCenarios.total > DEP_LIMIT && (
+                        <p className="px-3 pt-2 pb-1 text-xs text-text-secondary border-b border-border-default">
+                          Mostrando {DEP_LIMIT} de {filteredDepCenarios.total} — refine a busca para ver mais.
+                        </p>
+                      )}
+                      {filteredDepCenarios.items.map((c) => (
+                        <label key={c.id} className="flex items-center gap-3 px-3 py-2.5 border-b border-border-default last:border-0 hover:bg-neutral-grey-50 cursor-pointer">
+                          <Checkbox
+                            checked={selectedDepIds.has(c.id)}
+                            onChange={() => {
+                              setSelectedDepIds((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(c.id)) next.delete(c.id)
+                                else next.add(c.id)
+                                return next
+                              })
+                            }}
+                          />
+                          <div className="min-w-0">
+                            <span className="text-xs font-mono text-text-secondary">{c.id}</span>
+                            <p className="text-sm font-medium text-text-primary truncate">{c.scenarioName}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </>
                   )}
                 </div>
               </>

@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { PROTOTYPE_USERS } from "@/lib/prototype-users"
+import { gerarConvite } from "@/lib/actions/invite-tokens"
+import { sendInviteEmail } from "@/lib/email"
 
 export interface QaUserRecord {
   id: string
@@ -163,7 +165,6 @@ export async function criarQaUser(data: {
   name: string
   email: string
   type: string
-  password: string
 }): Promise<void> {
   const parsed = userInputSchema.parse({
     name: data.name.trim(),
@@ -171,15 +172,16 @@ export async function criarQaUser(data: {
     type: data.type,
   })
 
-  // Password: min 6, max 128 chars
-  const password = z.string().min(6, "Senha mínima de 6 caracteres").max(128).parse(data.password)
+  const [users, inactiveIds] = await Promise.all([readCreatedUsers(), readInactiveIds()])
 
-  const users = await readCreatedUsers()
-
-  // Prevent duplicate email
-  const allMockEmails = MOCK_USERS.map((u) => u.email.toLowerCase())
-  const allCreatedEmails = users.map((u) => u.email.toLowerCase())
-  if (allMockEmails.includes(parsed.email) || allCreatedEmails.includes(parsed.email)) {
+  // Block if email is already active (mock or created)
+  const activeMockEmails = MOCK_USERS
+    .filter((u) => !inactiveIds.has(u.id))
+    .map((u) => u.email.toLowerCase())
+  const activeCreatedUser = users.find(
+    (u) => u.email.toLowerCase() === parsed.email && !inactiveIds.has(u.id)
+  )
+  if (activeMockEmails.includes(parsed.email) || activeCreatedUser) {
     throw new Error("E-mail já cadastrado.")
   }
 
@@ -191,8 +193,23 @@ export async function criarQaUser(data: {
   const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1
   const id = `U-${String(nextNum).padStart(2, "0")}`
 
-  users.push({ id, ...parsed, photoPath: null, password, createdAt: Date.now() })
+  // Store user without password — password is set via invite link
+  users.push({ id, ...parsed, photoPath: null, password: "", createdAt: Date.now() })
   await writeCreatedUsers(users)
+
+  // Generate invite token and send email (non-blocking — user is saved regardless)
+  const token = await gerarConvite(id, parsed.email)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+  try {
+    await sendInviteEmail({ to: parsed.email, name: parsed.name, token })
+  } catch {
+    // Email failed (e.g. API key not configured) — log the invite link for dev use
+    console.warn(
+      `[invite] E-mail não enviado. Link de convite para ${parsed.email}:\n` +
+      `${appUrl}/definir-senha/${token}`
+    )
+  }
+
   revalidatePath("/configuracoes/usuarios")
 }
 

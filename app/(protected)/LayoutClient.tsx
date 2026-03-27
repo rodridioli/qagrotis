@@ -15,6 +15,12 @@ import {
   SelectPopup,
   SelectItem,
 } from "@/components/ui/select"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { QAgrotisLogo } from "@/components/qagrotis/QAgrotisLogo"
 import { QAgrotisIcon } from "@/components/qagrotis/QAgrotisIcon"
@@ -97,60 +103,88 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark }: SidebarProps)
         </div>
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3">
-          {NAV_ITEMS.map(({ href, icon: Icon, label, disabled }) => {
-            const isActive = !disabled && pathname.startsWith(href)
-            const showLabel = !collapsed
+          <TooltipProvider>
+            {NAV_ITEMS.map(({ href, icon: Icon, label, disabled }) => {
+              const isActive = !disabled && pathname.startsWith(href)
+              const showLabel = !collapsed
 
-            if (disabled) {
-              return (
-                <span
-                  key={href}
-                  title={!showLabel ? label : undefined}
-                  className={cn(
-                    "flex cursor-not-allowed items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium opacity-40",
-                    collapsed ? "lg:justify-center" : ""
-                  )}
-                >
-                  <Icon className="size-4.5 shrink-0 text-text-secondary" />
-                  {showLabel && <span className="truncate text-text-secondary">{label}</span>}
-                </span>
+              if (disabled) {
+                return (
+                  <span
+                    key={href}
+                    className={cn(
+                      "flex cursor-not-allowed items-center gap-3 rounded px-2.5 py-2 text-sm font-medium opacity-40",
+                      collapsed ? "lg:justify-center" : ""
+                    )}
+                  >
+                    <Icon className="size-4.5 shrink-0 text-text-secondary" />
+                    {showLabel && <span className="truncate text-text-secondary">{label}</span>}
+                  </span>
+                )
+              }
+
+              const linkClassName = cn(
+                "group flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium transition-all duration-150",
+                collapsed ? "lg:justify-center" : "",
+                isActive
+                  ? "bg-brand-primary"
+                  : "text-text-secondary hover:bg-neutral-grey-100 hover:text-text-primary hover:translate-x-0.5"
               )
-            }
+              const linkStyle = isActive ? { color: "var(--primary-foreground)" } : undefined
+              const linkChildren = (
+                <>
+                  <Icon className="size-4.5 shrink-0 transition-transform duration-150 group-hover:scale-110" />
+                  {showLabel && <span className="truncate">{label}</span>}
+                </>
+              )
 
-            return (
-              <Link
-                key={href}
-                href={href}
-                title={!showLabel ? label : undefined}
-                style={isActive ? { color: "var(--primary-foreground)" } : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
-                  collapsed ? "lg:justify-center" : "",
-                  isActive
-                    ? "bg-brand-primary"
-                    : "text-text-secondary hover:bg-neutral-grey-100 hover:text-text-primary"
-                )}
-              >
-                <Icon className="size-4.5 shrink-0" />
-                {showLabel && <span className="truncate">{label}</span>}
-              </Link>
-            )
-          })}
+              if (!showLabel) {
+                return (
+                  <Tooltip key={href}>
+                    <TooltipTrigger render={<Link href={href} style={linkStyle} className={linkClassName} />}>
+                      {linkChildren}
+                    </TooltipTrigger>
+                    <TooltipContent>{label}</TooltipContent>
+                  </Tooltip>
+                )
+              }
+              return (
+                <Link key={href} href={href} style={linkStyle} className={linkClassName}>
+                  {linkChildren}
+                </Link>
+              )
+            })}
+          </TooltipProvider>
         </nav>
 
         <div className="flex flex-col gap-0.5 border-t border-border-default px-2 py-3">
-          <button
-            type="button"
-            title={collapsed ? "Sair do Sistema" : undefined}
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className={cn(
-              "flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-destructive transition-colors hover:bg-neutral-grey-100",
-              collapsed ? "lg:justify-center" : ""
+          <TooltipProvider>
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      onClick={() => signOut({ callbackUrl: "/login" })}
+                      className="flex w-full items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-destructive transition-all duration-150 hover:bg-neutral-grey-100 lg:justify-center"
+                    />
+                  }
+                >
+                  <LogOut className="size-4.5 shrink-0" />
+                </TooltipTrigger>
+                <TooltipContent>Sair do Sistema</TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                className="flex w-full items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-destructive transition-all duration-150 hover:bg-neutral-grey-100 hover:translate-x-0.5"
+              >
+                <LogOut className="size-4.5 shrink-0" />
+                <span className="truncate">Sair do Sistema</span>
+              </button>
             )}
-          >
-            <LogOut className="size-4.5 shrink-0" />
-            {!collapsed && <span className="truncate">Sair do Sistema</span>}
-          </button>
+          </TooltipProvider>
         </div>
       </aside>
     </>
@@ -228,7 +262,7 @@ function Topbar({
         </button>
         <Select value={sistemaSelecionado} onValueChange={onSistemaChange}>
           <SelectTrigger className="h-auto w-auto gap-1.5 px-3 py-1.5 text-sm">
-            <span className="hidden text-text-secondary sm:inline">Sistema:</span>
+            <span className="hidden text-text-secondary sm:inline">Sistema:{" "}</span>
             <SelectValue className="font-medium" />
           </SelectTrigger>
           <SelectPopup>

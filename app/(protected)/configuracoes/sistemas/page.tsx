@@ -1,10 +1,11 @@
 import { auth } from "@/lib/auth"
 import { getSistemas } from "@/lib/actions/sistemas"
+import { getModulos } from "@/lib/actions/modulos"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import SistemasClient from "./SistemasClient"
 
 export default async function SistemasPage() {
-  const [sistemas, session] = await Promise.all([getSistemas(), auth()])
+  const [sistemas, modulos, session] = await Promise.all([getSistemas(), getModulos(), auth()])
 
   let isAdmin = true
   if (session?.user?.email) {
@@ -14,5 +15,5 @@ export default async function SistemasPage() {
     if (u) isAdmin = u.type === "Administrador"
   }
 
-  return <SistemasClient initialSistemas={sistemas} isAdmin={isAdmin} />
+  return <SistemasClient initialSistemas={sistemas} initialModulos={modulos} isAdmin={isAdmin} />
 }

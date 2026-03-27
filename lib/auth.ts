@@ -25,6 +25,7 @@ async function checkCredentials(email: string, password: string) {
   // Check dynamically created users
   const createdUser = createdUsers.find((u) => u.email.toLowerCase() === normalizedEmail)
   if (createdUser) {
+    if (!createdUser.password) return null // invite not yet accepted
     if (createdUser.password !== password) return null
     if (inactiveIds.has(createdUser.id)) return null
     return { id: createdUser.id, email: createdUser.email, name: createdUser.email }

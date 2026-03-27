@@ -1,9 +1,9 @@
-"use client"
+﻿"use client"
 
 import React, { useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Check, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -24,10 +24,6 @@ export default function NovoUsuarioPage() {
   const [nome, setNome] = useState("")
   const [email, setEmail] = useState("")
   const [tipo, setTipo] = useState<string>("Padrão")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
@@ -52,18 +48,10 @@ export default function NovoUsuarioPage() {
       toast.error("O e-mail é obrigatório.")
       return
     }
-    if (!password) {
-      toast.error("A senha é obrigatória.")
-      return
-    }
-    if (password !== confirmPassword) {
-      toast.error("As senhas não coincidem.")
-      return
-    }
 
     startTransition(async () => {
-      await criarQaUser({ name: nome, email, type: tipo, password })
-      toast.success("Usuário criado com sucesso.")
+      await criarQaUser({ name: nome, email, type: tipo })
+      toast.success("Usuário criado. Um e-mail de convite foi enviado.")
       router.push("/configuracoes/usuarios")
     })
   }
@@ -74,7 +62,7 @@ export default function NovoUsuarioPage() {
         <div className="flex items-center gap-1.5 text-sm">
           <Link
             href="/configuracoes/usuarios"
-            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+            title="Voltar" className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />
           </Link>
@@ -132,50 +120,9 @@ export default function NovoUsuarioPage() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                Senha <span className="text-destructive">*</span>
-              </label>
-              <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
-                >
-                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </button>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                Confirmar senha <span className="text-destructive">*</span>
-              </label>
-              <div className="relative">
-                <Input
-                  type={showConfirm ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
-                >
-                  {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </button>
-              </div>
-            </div>
-          </div>
+          <p className="text-sm text-text-secondary">
+            O usuário receberá um e-mail para definir sua própria senha.
+          </p>
         </div>
 
         <div className="rounded-xl bg-surface-card p-5 shadow-card">

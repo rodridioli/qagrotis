@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useState, useTransition } from "react"
 import Link from "next/link"
@@ -33,7 +33,7 @@ export default function NovoSistemaPage() {
         <div className="flex items-center gap-1.5 text-sm">
           <Link
             href="/configuracoes/sistemas"
-            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+            title="Voltar" className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />
           </Link>

@@ -1,10 +1,11 @@
 import { auth } from "@/lib/auth"
 import { getModulos } from "@/lib/actions/modulos"
+import { getCenarios } from "@/lib/actions/cenarios"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import ModulosClient from "./ModulosClient"
 
 export default async function ModulosPage() {
-  const [modulos, session] = await Promise.all([getModulos(), auth()])
+  const [modulos, cenarios, session] = await Promise.all([getModulos(), getCenarios(), auth()])
 
   let isAdmin = true
   if (session?.user?.email) {
@@ -14,5 +15,5 @@ export default async function ModulosPage() {
     if (u) isAdmin = u.type === "Administrador"
   }
 
-  return <ModulosClient initialModulos={modulos} isAdmin={isAdmin} />
+  return <ModulosClient initialModulos={modulos} initialCenarios={cenarios} isAdmin={isAdmin} />
 }
