@@ -16475,5 +16475,121 @@
     "steps": [],
     "deps": [],
     "createdBy": "rodridioli@gmail.com"
+  },
+  {
+    "id": "CT-1144",
+    "scenarioName": "fasdfadfa",
+    "system": "Gerencial",
+    "module": "Contábil",
+    "client": "",
+    "execucoes": 0,
+    "erros": 0,
+    "suites": 0,
+    "tipo": "Automatizado",
+    "active": true,
+    "createdAt": 1774724074318,
+    "risco": "Médio",
+    "regraDeNegocio": "fadsfasd",
+    "descricao": "dsfadsfa",
+    "caminhoTela": "fasdfasdfa",
+    "preCondicoes": "fadsfa",
+    "bdd": "fadsfadsf",
+    "resultadoEsperado": "adsfadsfadsf",
+    "urlScript": "dfadsfa",
+    "steps": [
+      {
+        "acao": "gsfgsfdgs",
+        "resultado": "fgsfdgsfdg"
+      }
+    ],
+    "deps": [],
+    "createdBy": "rodridioli@gmail.com"
+  },
+  {
+    "id": "CT-1145",
+    "scenarioName": "fasdfadfa",
+    "system": "Gerencial",
+    "module": "Contábil",
+    "client": "",
+    "execucoes": 0,
+    "erros": 0,
+    "suites": 0,
+    "tipo": "Automatizado",
+    "active": true,
+    "createdAt": 1774724080708,
+    "risco": "Médio",
+    "regraDeNegocio": "fadsfasd",
+    "descricao": "dsfadsfa",
+    "caminhoTela": "fasdfasdfa",
+    "preCondicoes": "fadsfa",
+    "bdd": "fadsfadsf",
+    "resultadoEsperado": "adsfadsfadsf",
+    "urlScript": "dfadsfa",
+    "steps": [
+      {
+        "acao": "gsfgsfdgs",
+        "resultado": "fgsfdgsfdg"
+      }
+    ],
+    "deps": [],
+    "createdBy": "rodridioli@gmail.com"
+  },
+  {
+    "id": "CT-1146",
+    "scenarioName": "fasdfadfa",
+    "system": "Gerencial",
+    "module": "Contábil",
+    "client": "",
+    "execucoes": 0,
+    "erros": 0,
+    "suites": 0,
+    "tipo": "Automatizado",
+    "active": true,
+    "createdAt": 1774724088719,
+    "risco": "Médio",
+    "regraDeNegocio": "fadsfasd",
+    "descricao": "dsfadsfa",
+    "caminhoTela": "fasdfasdfa",
+    "preCondicoes": "fadsfa",
+    "bdd": "fadsfadsf",
+    "resultadoEsperado": "adsfadsfadsf",
+    "urlScript": "dfadsfa",
+    "steps": [
+      {
+        "acao": "gsfgsfdgs",
+        "resultado": "fgsfdgsfdg"
+      }
+    ],
+    "deps": [],
+    "createdBy": "rodridioli@gmail.com"
+  },
+  {
+    "id": "CT-1147",
+    "scenarioName": "fasdfadfa",
+    "system": "Gerencial",
+    "module": "Contábil",
+    "client": "",
+    "execucoes": 0,
+    "erros": 0,
+    "suites": 0,
+    "tipo": "Man./Auto.",
+    "active": true,
+    "createdAt": 1774724096616,
+    "risco": "Médio",
+    "regraDeNegocio": "fadsfasd",
+    "descricao": "dsfadsfa",
+    "caminhoTela": "fasdfasdfa",
+    "preCondicoes": "fadsfa",
+    "bdd": "fadsfadsf",
+    "resultadoEsperado": "adsfadsfadsf",
+    "urlScript": "dfadsfa",
+    "steps": [
+      {
+        "acao": "gsfgsfdgs",
+        "resultado": "fgsfdgsfdg"
+      }
+    ],
+    "deps": [],
+    "createdBy": "rodridioli@gmail.com"
   }
 ]
