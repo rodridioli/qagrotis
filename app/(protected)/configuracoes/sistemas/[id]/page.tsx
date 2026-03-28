@@ -57,11 +57,11 @@ export default async function SistemaDetailPage({ params }: { params: Promise<{ 
           <div className="space-y-1">
             <p className="text-xs font-medium text-text-secondary">Status</p>
             {sistema.active ? (
-              <span className="inline-flex items-center rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
+              <span className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
                 Ativo
               </span>
             ) : (
-              <span className="inline-flex items-center rounded-full border border-neutral-grey-300 bg-neutral-grey-100 px-3 py-1 text-xs font-medium text-text-secondary">
+              <span className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-neutral-grey-300 bg-neutral-grey-100 px-3 py-1 text-xs font-medium text-text-secondary">
                 Inativo
               </span>
             )}

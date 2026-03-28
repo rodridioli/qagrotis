@@ -56,5 +56,85 @@
     "cpfCnpj": null,
     "active": true,
     "createdAt": 1774666801258
+  },
+  {
+    "id": "CLI-09",
+    "nomeFantasia": "dfadfa",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774701527625
+  },
+  {
+    "id": "CLI-10",
+    "nomeFantasia": "fasdfasdf",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774701530912
+  },
+  {
+    "id": "CLI-11",
+    "nomeFantasia": "fasdfasdf",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774701534250
+  },
+  {
+    "id": "CLI-12",
+    "nomeFantasia": "fasdfasdfasdf",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774701538102
+  },
+  {
+    "id": "CLI-13",
+    "nomeFantasia": "fasdfasdfasdf",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774701541801
+  },
+  {
+    "id": "CLI-14",
+    "nomeFantasia": "fasdfasdf",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774701552604
+  },
+  {
+    "id": "CLI-15",
+    "nomeFantasia": "hgfhdfghdfgh",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774701556344
+  },
+  {
+    "id": "CLI-16",
+    "nomeFantasia": "hdfgjrtyryrty",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774701560252
+  },
+  {
+    "id": "CLI-17",
+    "nomeFantasia": "teste",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774715625542
+  },
+  {
+    "id": "CLI-18",
+    "nomeFantasia": "trtsrdt",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774716804160
   }
 ]

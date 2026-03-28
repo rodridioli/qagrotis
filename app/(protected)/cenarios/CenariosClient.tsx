@@ -856,23 +856,23 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                         {item.parsed.scenarioName}
                       </span>
                       {!hasErr && !isDup && (
-                        <span className="shrink-0 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-600">
+                        <span className="shrink-0 inline-flex items-center justify-center whitespace-nowrap rounded-full border border-green-600/30 bg-green-600/10 px-3 py-1 text-xs font-medium text-green-700">
                           Novo
                         </span>
                       )}
                       {!hasErr && isDup && !item.replace && (
-                        <span className="shrink-0 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                        <span className="shrink-0 inline-flex items-center justify-center whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600">
                           Já existe
                         </span>
                       )}
                       {!hasErr && isDup && item.replace && (
-                        <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-brand-primary/10 px-2 py-0.5 text-xs font-semibold text-brand-primary">
+                        <span className="shrink-0 inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
                           <ArrowRightLeft className="size-3" />
                           Substituir
                         </span>
                       )}
                       {hasErr && (
-                        <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
+                        <span className="shrink-0 inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-600">
                           <AlertCircle className="size-3" />
                           Erro
                         </span>

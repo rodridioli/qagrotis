@@ -30,4 +30,5 @@ export const env = {
   get STRIPE_WEBHOOK_SECRET() { return get("STRIPE_WEBHOOK_SECRET") },
   get STRIPE_PRICE_ID_PRO() { return get("STRIPE_PRICE_ID_PRO") },
   get NEXT_PUBLIC_APP_URL() { return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000" },
+  get ANTHROPIC_API_KEY() { return get("ANTHROPIC_API_KEY") },
 } as const

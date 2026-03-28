@@ -17,14 +17,7 @@ import type { ChangelogEntry } from "@/lib/actions/changelog"
 
 const ITEMS_PER_PAGE = 10
 
-const ALL_TAGS = [
-  "Lançamento",
-  "Segurança",
-  "Segurança e Performance",
-  "Design System",
-  "Produto",
-  "Melhorias",
-]
+const ALL_TAGS = ["Novidade", "Melhoria", "Correção"]
 
 function formatDate(iso: string) {
   const [y, m, d] = iso.split("-")
@@ -130,7 +123,7 @@ export function AtualizacoesClient({ entries }: Props) {
                 <colgroup>
                   <col className="w-28" />
                   <col className="w-28" />
-                  <col className="w-44" />
+                  <col className="w-32" />
                   <col />
                   <col className="w-12" />
                 </colgroup>

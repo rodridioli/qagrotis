@@ -14,6 +14,7 @@ import {
   SelectPopup,
   SelectItem,
 } from "@/components/ui/select"
+import { ClienteCombobox } from "@/components/qagrotis/ClienteCombobox"
 import {
   Dialog,
   DialogContent,
@@ -400,27 +401,12 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Cliente</label>
-              <Select
+              <ClienteCombobox
+                clientes={clientes}
                 value={clienteSelecionado}
-                onValueChange={(v: string | null) => {
-                  if (v === "__add__") { setAddClienteOpen(true); return }
-                  if (v === "__none__") { setClienteSelecionado(""); return }
-                  setClienteSelecionado(v ?? "")
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                <SelectPopup>
-                  <SelectItem value="__none__" className="text-text-secondary">Nenhum</SelectItem>
-                  <div className="my-1 border-t border-border-default" />
-                  {clientes.map((c) => (
-                    <SelectItem key={c.id} value={c.nomeFantasia}>{c.nomeFantasia}</SelectItem>
-                  ))}
-                  <div className="my-1 border-t border-border-default" />
-                  <SelectItem value="__add__" className="text-brand-primary hover:text-brand-primary font-medium">
-                    + Adicionar Cliente
-                  </SelectItem>
-                </SelectPopup>
-              </Select>
+                onChange={setClienteSelecionado}
+                onAddCliente={() => setAddClienteOpen(true)}
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
@@ -430,7 +416,7 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
                 <SelectTrigger>
                   {riscoSelecionado ? (
                     <span
-                      className="flex items-center gap-1.5 font-bold"
+                      className="flex items-center gap-1.5"
                       style={{ color: riscoSelecionado.color }}
                     >
                       <span style={{ color: riscoSelecionado.color }}>{riscoSelecionado.icon}</span>
@@ -444,7 +430,7 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
                   {RISCO_OPTIONS.map((r) => (
                     <SelectItem key={r.value} value={r.value}>
                       <span
-                        className="flex items-center gap-1.5 font-bold"
+                        className="flex items-center gap-1.5"
                         style={{ color: r.color }}
                       >
                         <span style={{ color: r.color }}>{r.icon}</span>

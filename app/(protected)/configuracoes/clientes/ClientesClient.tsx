@@ -262,7 +262,7 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
                           ) : (
                             <div className="flex flex-wrap gap-1">
                               {sistemas.map((s) => (
-                                <span key={s} className="inline-flex items-center rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
+                                <span key={s} className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
                                   {s}
                                 </span>
                               ))}

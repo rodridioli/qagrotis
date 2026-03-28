@@ -4,6 +4,7 @@ import {
   BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
+import { PriorityBadge } from "@/components/qagrotis/StatusBadge"
 
 interface AutomationDataPoint { module: string; coverage: number }
 interface MonthlyDataPoint    { month: string;  value: number    }
@@ -19,18 +20,6 @@ interface Props {
   rankingAutomacao: RankingItem[]
 }
 
-function PriorityBadge({ priority }: { priority: string }) {
-  const isCritical = priority === "Crítica"
-  return (
-    <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-      isCritical
-        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-        : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-    }`}>
-      {priority}
-    </span>
-  )
-}
 
 function getInitials(name: string): string {
   return name.split(/[\s@]/).slice(0, 2).map((n) => n[0]).join("").toUpperCase()

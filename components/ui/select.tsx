@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
-import { CheckIcon, ChevronDownIcon } from "lucide-react"
+import { CheckIcon, ChevronDownIcon, SearchIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // ── Root ──────────────────────────────────────────────────────
@@ -104,6 +104,67 @@ function SelectItem({
   )
 }
 
+// ── Popup with search + scroll ────────────────────────────────
+interface SelectPopupSearchableProps extends Omit<SelectPrimitive.Popup.Props, "children"> {
+  searchValue: string
+  onSearchChange: (value: string) => void
+  searchPlaceholder?: string
+  footer?: React.ReactNode
+  children: React.ReactNode
+}
+
+function SelectPopupSearchable({
+  className,
+  searchValue,
+  onSearchChange,
+  searchPlaceholder = "Buscar...",
+  footer,
+  children,
+  ...props
+}: SelectPopupSearchableProps) {
+  return (
+    <SelectPrimitive.Portal>
+      <SelectPrimitive.Positioner sideOffset={4} className="z-200">
+        <SelectPrimitive.Popup
+          data-slot="select-popup"
+          className={cn(
+            "min-w-32 overflow-hidden rounded-custom border border-border-default bg-surface-card shadow-card outline-none",
+            "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95",
+            "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+            className
+          )}
+          {...props}
+        >
+          {/* Search input — outside the List so it doesn't become a select item */}
+          <div className="flex items-center gap-2 border-b border-border-default px-3 py-2">
+            <SearchIcon className="size-3.5 shrink-0 text-text-secondary" />
+            <input
+              type="text"
+              value={searchValue}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder={searchPlaceholder}
+              className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-secondary outline-none"
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+          </div>
+          <SelectPrimitive.List>
+            {/* Scrollable items */}
+            <div className="max-h-50 overflow-y-auto p-1">
+              {children}
+            </div>
+            {/* Fixed footer — always visible, outside the scroll area */}
+            {footer && (
+              <div className="border-t border-border-default p-1">
+                {footer}
+              </div>
+            )}
+          </SelectPrimitive.List>
+        </SelectPrimitive.Popup>
+      </SelectPrimitive.Positioner>
+    </SelectPrimitive.Portal>
+  )
+}
+
 // ── Label ─────────────────────────────────────────────────────
 function SelectLabel({
   className,
@@ -132,6 +193,7 @@ export {
   SelectItem,
   SelectLabel,
   SelectPopup,
+  SelectPopupSearchable,
   SelectTrigger,
   SelectValue,
 }

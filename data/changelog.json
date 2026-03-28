@@ -3,7 +3,7 @@
     "version": "2.7.0",
     "commit": "pendente",
     "date": "2026-03-28",
-    "tag": "Segurança e Performance",
+    "tag": "Novidade",
     "author": "Rodrigo Diego de Oliveira",
     "changes": [
       "Segurança: adicionada verificação de sessão em todas as server actions mutantes",
@@ -21,7 +21,7 @@
     "version": "2.6.0",
     "commit": "7a5e3a2",
     "date": "2026-03-28",
-    "tag": "Melhorias",
+    "tag": "Melhoria",
     "author": "Rodrigo Diego de Oliveira",
     "changes": [
       "Menu: adicionado item 'Gerador' abaixo de Cenários (geração de cenários BDD com IA)",
@@ -36,7 +36,7 @@
     "version": "2.5.0",
     "commit": "44ca05b",
     "date": "2026-03-27",
-    "tag": "Melhorias",
+    "tag": "Melhoria",
     "author": "Rodrigo Diego de Oliveira",
     "changes": [
       "Painel: bloco 'Fila de Automação' agora exibe os últimos cenários automatizados reais",
@@ -50,7 +50,7 @@
     "version": "2.4.0",
     "commit": "469f106",
     "date": "2026-03-27",
-    "tag": "Segurança e Performance",
+    "tag": "Correção",
     "author": "Rodrigo Diego de Oliveira",
     "changes": [
       "Segurança: senhas agora armazenadas com hash PBKDF2-SHA512 + salt aleatório",
@@ -66,7 +66,7 @@
     "version": "2.3.0",
     "commit": "2396043",
     "date": "2026-03-26",
-    "tag": "Melhorias",
+    "tag": "Melhoria",
     "author": "Rodrigo Diego de Oliveira",
     "changes": [
       "Sistemas: renomear sistema propaga automaticamente para módulos e cenários vinculados",
@@ -79,7 +79,7 @@
     "version": "2.2.0",
     "commit": "0dbf09d",
     "date": "2026-03-25",
-    "tag": "Melhorias",
+    "tag": "Correção",
     "author": "Rodrigo Diego de Oliveira",
     "changes": [
       "Cenários: formulário de edição com guard de hasSaved antes de exportar prompt",
@@ -92,7 +92,7 @@
     "version": "2.1.0",
     "commit": "1fda9fb",
     "date": "2026-03-25",
-    "tag": "Melhorias",
+    "tag": "Correção",
     "author": "Rodrigo Diego de Oliveira",
     "changes": [
       "Suítes: modal de filtros com botão limpar e fechamento correto",
@@ -105,7 +105,7 @@
     "version": "2.0.0",
     "commit": "f852698",
     "date": "2026-03-24",
-    "tag": "Melhorias",
+    "tag": "Novidade",
     "author": "Rodrigo Diego de Oliveira",
     "changes": [
       "Dashboard: métricas de módulos, cenários, manuais e automatizados filtradas por sistema selecionado",
@@ -118,7 +118,7 @@
     "version": "1.3.0",
     "commit": "9d8e9eb",
     "date": "2026-03-23",
-    "tag": "Produto",
+    "tag": "Novidade",
     "author": "Rodrigo Diego de Oliveira",
     "changes": [
       "Primeira iteração completa do produto QAgrotis",
@@ -131,7 +131,7 @@
     "version": "1.2.0",
     "commit": "291f649",
     "date": "2026-03-23",
-    "tag": "Design System",
+    "tag": "Novidade",
     "author": "Rodrigo Diego de Oliveira",
     "changes": [
       "Design System completo com tokens de cor, tipografia e espaçamento",
@@ -144,7 +144,7 @@
     "version": "1.1.0",
     "commit": "04bce13",
     "date": "2026-03-23",
-    "tag": "Segurança",
+    "tag": "Correção",
     "author": "Rodrigo Diego de Oliveira",
     "changes": [
       "Auditoria de segurança completa — 26 vulnerabilidades corrigidas",
@@ -157,7 +157,7 @@
     "version": "1.0.0",
     "commit": "e8fce46",
     "date": "2026-03-23",
-    "tag": "Lançamento",
+    "tag": "Novidade",
     "author": "Rodrigo Diego de Oliveira",
     "changes": [
       "Estrutura base do projeto Next.js App Router",

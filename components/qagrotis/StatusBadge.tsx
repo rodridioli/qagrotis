@@ -1,128 +1,84 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-type CenarioTipo = "Automatizado" | "Manual" | "Man./Auto."
-type SuiteTipo = "Sprint" | "Kanban" | "Outro"
+// ─── Base ────────────────────────────────────────────────────────────────────
+// Single source of truth for badge layout — never change sizing here,
+// only pass color classes via the second argument.
+const BASE = "inline-flex items-center justify-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium"
 
+function badge(colorClass: string, label: React.ReactNode) {
+  return <span className={`${BASE} ${colorClass}`}>{label}</span>
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+type CenarioTipo = "Automatizado" | "Manual" | "Man./Auto."
+type SuiteTipo   = "Sprint" | "Kanban" | "Outro"
+type ChangelogTag = "Novidade" | "Melhoria" | "Correção"
+
+// ─── Components ──────────────────────────────────────────────────────────────
 function CenarioTipoBadge({ tipo }: { tipo: CenarioTipo }) {
-  if (tipo === "Automatizado") {
-    return (
-      <span className="inline-flex items-center rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
-        {tipo}
-      </span>
-    )
+  const styles: Record<CenarioTipo, string> = {
+    "Automatizado": "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
+    "Manual":       "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
+    "Man./Auto.":   "border-amber-500/30 bg-amber-500/10 text-amber-600",
   }
-  if (tipo === "Manual") {
-    return (
-      <span className="inline-flex items-center rounded-full border border-secondary-500/30 bg-secondary-500/10 px-3 py-1 text-xs font-medium text-secondary-600">
-        {tipo}
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600">
-      {tipo}
-    </span>
-  )
+  return badge(styles[tipo], tipo)
 }
 
 function SuiteTipoBadge({ tipo }: { tipo: SuiteTipo }) {
-  if (tipo === "Sprint") {
-    return (
-      <span className="inline-flex items-center rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
-        {tipo}
-      </span>
-    )
+  const styles: Record<SuiteTipo, string> = {
+    "Sprint": "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
+    "Kanban": "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
+    "Outro":  "border-amber-500/30 bg-amber-500/10 text-amber-600",
   }
-  if (tipo === "Kanban") {
-    return (
-      <span className="inline-flex items-center rounded-full border border-secondary-500/30 bg-secondary-500/10 px-3 py-1 text-xs font-medium text-secondary-600">
-        {tipo}
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600">
-      {tipo}
-    </span>
-  )
+  return badge(styles[tipo], tipo)
 }
 
 function AutomacaoBadge({ pct }: { pct: number }) {
-  if (pct === 100) {
-    return (
-      <span className="inline-flex items-center rounded-full border border-green-600/30 bg-green-600/10 px-3 py-1 text-xs font-medium text-green-700">
-        {pct}%
-      </span>
-    )
-  }
-  if (pct > 0) {
-    return (
-      <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600">
-        {pct}%
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center rounded-full border border-border-default bg-neutral-grey-50 px-3 py-1 text-xs font-medium text-text-secondary">
-      {pct}%
-    </span>
-  )
+  const colorClass =
+    pct === 100 ? "border-green-600/30 bg-green-600/10 text-green-700" :
+    pct > 0     ? "border-amber-500/30 bg-amber-500/10 text-amber-600" :
+                  "border-border-default bg-neutral-grey-50 text-text-secondary"
+  return badge(colorClass, `${pct}%`)
 }
 
 function UserTipoBadge({ tipo }: { tipo: string }) {
-  if (tipo === "Administrador") {
-    return (
-      <span className="inline-flex items-center rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
-        {tipo}
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center rounded-full border border-secondary-500/30 bg-secondary-500/10 px-3 py-1 text-xs font-medium text-secondary-600">
-      {tipo}
-    </span>
-  )
+  const colorClass =
+    tipo === "Administrador"
+      ? "border-brand-primary/30 bg-brand-primary/10 text-brand-primary"
+      : "border-secondary-500/30 bg-secondary-500/10 text-secondary-600"
+  return badge(colorClass, tipo)
 }
 
-function StatusBadge({
-  label,
-  colorClass,
-}: {
-  label: string
-  colorClass: string
-}) {
-  return (
-    <span className={cn("inline-flex items-center rounded-full px-3 py-1 text-xs font-medium", colorClass)}>
-      {label}
-    </span>
-  )
+function PriorityBadge({ priority }: { priority: string }) {
+  const colorClass =
+    priority === "Crítica"
+      ? "border-red-500/30 bg-red-500/10 text-red-600"
+      : "border-green-600/30 bg-green-600/10 text-green-700"
+  return badge(colorClass, priority)
 }
-
-type ChangelogTag =
-  | "Lançamento"
-  | "Segurança"
-  | "Segurança e Performance"
-  | "Design System"
-  | "Produto"
-  | "Melhorias"
 
 function ChangelogTagBadge({ tag }: { tag: string }) {
   const styles: Record<string, string> = {
-    "Lançamento":              "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
-    "Segurança":               "border-red-500/30 bg-red-500/10 text-red-600",
-    "Segurança e Performance": "border-red-500/30 bg-red-500/10 text-red-600",
-    "Design System":           "border-purple-500/30 bg-purple-500/10 text-purple-600",
-    "Produto":                 "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
-    "Melhorias":               "border-green-600/30 bg-green-600/10 text-green-700",
+    "Novidade": "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
+    "Melhoria": "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
+    "Correção": "border-amber-500/30 bg-amber-500/10 text-amber-600",
   }
-  const cls = styles[tag] ?? "border-border-default bg-neutral-grey-50 text-text-secondary"
-  return (
-    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${cls}`}>
-      {tag}
-    </span>
-  )
+  const colorClass = styles[tag] ?? "border-border-default bg-neutral-grey-50 text-text-secondary"
+  return badge(colorClass, tag)
 }
 
-export { StatusBadge, CenarioTipoBadge, SuiteTipoBadge, AutomacaoBadge, UserTipoBadge, ChangelogTagBadge }
+function StatusBadge({ label, colorClass }: { label: string; colorClass: string }) {
+  return <span className={cn(BASE, colorClass)}>{label}</span>
+}
+
+export {
+  StatusBadge,
+  CenarioTipoBadge,
+  SuiteTipoBadge,
+  AutomacaoBadge,
+  UserTipoBadge,
+  PriorityBadge,
+  ChangelogTagBadge,
+}
 export type { CenarioTipo, SuiteTipo, ChangelogTag }
