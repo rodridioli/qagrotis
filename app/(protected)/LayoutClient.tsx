@@ -260,7 +260,7 @@ function Topbar({
             : <Moon className="size-4" />
           }
         </button>
-        <Select value={sistemaSelecionado} onValueChange={onSistemaChange}>
+        <Select value={sistemaSelecionado} onValueChange={(v) => onSistemaChange(v ?? "")}>
           <SelectTrigger className="h-auto w-auto gap-1.5 px-3 py-1.5 text-sm">
             <span className="hidden text-text-secondary sm:inline">Sistema:{" "}</span>
             <SelectValue className="font-medium" />

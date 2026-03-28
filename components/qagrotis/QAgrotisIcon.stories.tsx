@@ -75,7 +75,7 @@ export const ColorVariants: Story = {
         <span className="text-xs text-text-secondary">text-secondary</span>
       </div>
       <div className="flex flex-col items-center gap-1 rounded-lg bg-brand-primary p-2">
-        <QAgrotisIcon size={24} style={{ color: "#ffffff" }} />
+        <QAgrotisIcon size={24} className="text-white" />
         <span className="text-xs" style={{ color: "#ffffff" }}>branco</span>
       </div>
     </div>

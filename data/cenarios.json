@@ -12139,5 +12139,27 @@
       }
     ],
     "deps": []
+  },
+  {
+    "id": "CT-1006",
+    "scenarioName": "teste",
+    "system": "SAP-B1",
+    "module": "Teste",
+    "client": "Cliente 0",
+    "execucoes": 0,
+    "erros": 0,
+    "suites": 0,
+    "tipo": "Manual",
+    "active": true,
+    "createdAt": 1774577875359,
+    "risco": "Alto",
+    "regraDeNegocio": "fadsf",
+    "objetivo": "asdfadsf",
+    "preCondicoes": "adsfasdfadsfasf",
+    "urlScript": "",
+    "steps": [],
+    "deps": [
+      "CT-1005"
+    ]
   }
 ]

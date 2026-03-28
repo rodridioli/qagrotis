@@ -26,8 +26,11 @@ export interface CenarioRecord {
   createdAt?: number
   risco?: string
   regraDeNegocio?: string
-  objetivo?: string
+  descricao?: string
+  caminhoTela?: string
   preCondicoes?: string
+  bdd?: string
+  resultadoEsperado?: string
   urlScript?: string
   steps?: CenarioStep[]
   deps?: string[]
@@ -43,18 +46,21 @@ const idSchema = z.string().min(1).max(50).regex(/^[A-Z]+-\d+$/, "ID inválido")
 const idsArraySchema = z.array(idSchema).max(2000)
 
 const cenarioCreateSchema = z.object({
-  scenarioName:   z.string().min(1, "Nome do cenário é obrigatório").max(500),
-  system:         z.string().min(1).max(200),
-  module:         z.string().min(1, "Módulo é obrigatório").max(200),
-  client:         z.string().max(200),
-  risco:          z.string().min(1, "Risco é obrigatório").max(50),
-  regraDeNegocio: z.string().min(1, "Regra de Negócio é obrigatória").max(5000),
-  objetivo:       z.string().min(1, "Objetivo é obrigatório").max(5000),
-  preCondicoes:   z.string().max(5000),
-  tipo:           z.enum(["Manual", "Automatizado", "Man./Auto."]),
-  urlScript:      z.string().max(1000),
-  steps:          z.array(z.object({ acao: z.string().min(1).max(1000), resultado: z.string().min(1).max(1000) })).max(100),
-  deps:           z.array(z.string().max(50)).max(100),
+  scenarioName:      z.string().min(1, "Nome do cenário é obrigatório").max(500),
+  system:            z.string().min(1).max(200),
+  module:            z.string().min(1, "Módulo é obrigatório").max(200),
+  client:            z.string().max(200),
+  risco:             z.string().min(1, "Risco é obrigatório").max(50),
+  regraDeNegocio:    z.string().min(1, "Regra de Negócio é obrigatória").max(5000),
+  descricao:         z.string().min(1, "Descrição é obrigatória").max(5000),
+  caminhoTela:       z.string().max(1000),
+  preCondicoes:      z.string().max(5000),
+  bdd:               z.string().max(5000),
+  resultadoEsperado: z.string().min(1, "Resultado Esperado é obrigatório").max(5000),
+  tipo:              z.enum(["Manual", "Automatizado", "Man./Auto."]),
+  urlScript:         z.string().max(1000),
+  steps:             z.array(z.object({ acao: z.string().min(1).max(1000), resultado: z.string().min(1).max(1000) })).max(100),
+  deps:              z.array(z.string().max(50)).max(100),
 })
 
 // ── Storage helpers ─────────────────────────────────────────────────────────
@@ -95,8 +101,11 @@ export async function criarCenario(data: {
   client: string
   risco: string
   regraDeNegocio: string
-  objetivo: string
+  descricao: string
+  caminhoTela: string
   preCondicoes: string
+  bdd: string
+  resultadoEsperado: string
   tipo: string
   urlScript: string
   steps: CenarioStep[]
@@ -104,13 +113,16 @@ export async function criarCenario(data: {
 }): Promise<CenarioRecord> {
   const parsed = cenarioCreateSchema.parse({
     ...data,
-    scenarioName:   data.scenarioName.trim(),
-    client:         data.client.trim(),
-    risco:          data.risco.trim(),
-    regraDeNegocio: data.regraDeNegocio.trim(),
-    objetivo:       data.objetivo.trim(),
-    preCondicoes:   data.preCondicoes.trim(),
-    urlScript:      data.urlScript.trim(),
+    scenarioName:      data.scenarioName.trim(),
+    client:            data.client.trim(),
+    risco:             data.risco.trim(),
+    regraDeNegocio:    data.regraDeNegocio.trim(),
+    descricao:         data.descricao.trim(),
+    caminhoTela:       data.caminhoTela.trim(),
+    preCondicoes:      data.preCondicoes.trim(),
+    bdd:               data.bdd.trim(),
+    resultadoEsperado: data.resultadoEsperado.trim(),
+    urlScript:         data.urlScript.trim(),
   })
 
   const cenarios = await readCenarios()
@@ -122,23 +134,26 @@ export async function criarCenario(data: {
 
   const novo: CenarioRecord = {
     id,
-    scenarioName:   parsed.scenarioName,
-    system:         parsed.system,
-    module:         parsed.module,
-    client:         parsed.client,
-    execucoes:      0,
-    erros:          0,
-    suites:         0,
-    tipo:           parsed.tipo,
-    active:         true,
-    createdAt:      Date.now(),
-    risco:          parsed.risco,
-    regraDeNegocio: parsed.regraDeNegocio,
-    objetivo:       parsed.objetivo,
-    preCondicoes:   parsed.preCondicoes,
-    urlScript:      parsed.urlScript,
-    steps:          parsed.steps,
-    deps:           parsed.deps,
+    scenarioName:      parsed.scenarioName,
+    system:            parsed.system,
+    module:            parsed.module,
+    client:            parsed.client,
+    execucoes:         0,
+    erros:             0,
+    suites:            0,
+    tipo:              parsed.tipo,
+    active:            true,
+    createdAt:         Date.now(),
+    risco:             parsed.risco,
+    regraDeNegocio:    parsed.regraDeNegocio,
+    descricao:         parsed.descricao,
+    caminhoTela:       parsed.caminhoTela,
+    preCondicoes:      parsed.preCondicoes,
+    bdd:               parsed.bdd,
+    resultadoEsperado: parsed.resultadoEsperado,
+    urlScript:         parsed.urlScript,
+    steps:             parsed.steps,
+    deps:              parsed.deps,
   }
 
   cenarios.push(novo)
@@ -154,8 +169,11 @@ export async function atualizarCenario(id: string, data: {
   client: string
   risco: string
   regraDeNegocio: string
-  objetivo: string
+  descricao: string
+  caminhoTela: string
   preCondicoes: string
+  bdd: string
+  resultadoEsperado: string
   tipo: string
   urlScript: string
   steps: CenarioStep[]
@@ -166,13 +184,16 @@ export async function atualizarCenario(id: string, data: {
 
   const parsed = cenarioCreateSchema.parse({
     ...data,
-    scenarioName:   data.scenarioName.trim(),
-    client:         data.client.trim(),
-    risco:          data.risco.trim(),
-    regraDeNegocio: data.regraDeNegocio.trim(),
-    objetivo:       data.objetivo.trim(),
-    preCondicoes:   data.preCondicoes.trim(),
-    urlScript:      data.urlScript.trim(),
+    scenarioName:      data.scenarioName.trim(),
+    client:            data.client.trim(),
+    risco:             data.risco.trim(),
+    regraDeNegocio:    data.regraDeNegocio.trim(),
+    descricao:         data.descricao.trim(),
+    caminhoTela:       data.caminhoTela.trim(),
+    preCondicoes:      data.preCondicoes.trim(),
+    bdd:               data.bdd.trim(),
+    resultadoEsperado: data.resultadoEsperado.trim(),
+    urlScript:         data.urlScript.trim(),
   })
 
   const cenarios = await readCenarios()
@@ -182,18 +203,21 @@ export async function atualizarCenario(id: string, data: {
   const existing = cenarios[idx]
   cenarios[idx] = {
     ...existing,
-    scenarioName:   parsed.scenarioName,
-    system:         parsed.system,
-    module:         parsed.module,
-    client:         parsed.client,
-    tipo:           parsed.tipo,
-    risco:          parsed.risco,
-    regraDeNegocio: parsed.regraDeNegocio,
-    objetivo:       parsed.objetivo,
-    preCondicoes:   parsed.preCondicoes,
-    urlScript:      parsed.urlScript,
-    steps:          parsed.steps,
-    deps:           parsed.deps,
+    scenarioName:      parsed.scenarioName,
+    system:            parsed.system,
+    module:            parsed.module,
+    client:            parsed.client,
+    tipo:              parsed.tipo,
+    risco:             parsed.risco,
+    regraDeNegocio:    parsed.regraDeNegocio,
+    descricao:         parsed.descricao,
+    caminhoTela:       parsed.caminhoTela,
+    preCondicoes:      parsed.preCondicoes,
+    bdd:               parsed.bdd,
+    resultadoEsperado: parsed.resultadoEsperado,
+    urlScript:         parsed.urlScript,
+    steps:             parsed.steps,
+    deps:              parsed.deps,
   }
 
   await writeCenarios(cenarios)

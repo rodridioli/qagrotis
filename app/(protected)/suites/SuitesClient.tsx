@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { Filter, Plus, Power, X, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -85,6 +85,11 @@ export default function SuitesClient({ allModulos }: Props) {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [pendingFilters, setPendingFilters] = useState<FilterState>(EMPTY_FILTERS)
 
+  useEffect(() => {
+    setCurrentPage(1)
+    setSelectedIds(new Set())
+  }, [sistemaSelecionado])
+
   const modulosDosistemaSet = useMemo(
     () => new Set(modulosDosistema),
     [modulosDosistema]
@@ -118,6 +123,7 @@ export default function SuitesClient({ allModulos }: Props) {
   ].filter(Boolean).length
 
   const showBulkActions = !filters.apenasInativos
+  const selectableIds = pageItems.map((s) => s.id)
 
   function toggleRow(id: string) {
     setSelectedIds((prev) => {
@@ -129,11 +135,8 @@ export default function SuitesClient({ allModulos }: Props) {
   }
 
   function toggleAll() {
-    if (selectedIds.size === pageItems.length) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(pageItems.map((i) => i.id)))
-    }
+    if (selectedIds.size === selectableIds.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(selectableIds))
   }
 
   function handleInativarSelection() {
@@ -233,7 +236,7 @@ export default function SuitesClient({ allModulos }: Props) {
                     {showBulkActions && (
                       <th className="px-4 py-3 text-left">
                         <Checkbox
-                          checked={pageItems.length > 0 && selectedIds.size === pageItems.length}
+                          checked={selectableIds.length > 0 && selectedIds.size === selectableIds.length}
                           onChange={toggleAll}
                         />
                       </th>

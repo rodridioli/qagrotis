@@ -34,6 +34,7 @@ export const Default: Story = {
             onFilterOpen={() => alert("Abrir filtros")}
             totalLabel="Total de cenários"
             totalCount={1284}
+            baseCount={1284}
           />
         </div>
       )
@@ -57,6 +58,7 @@ export const WithActiveFilters: Story = {
             onFilterOpen={() => {}}
             totalLabel="Suítes de teste"
             totalCount={87}
+            baseCount={87}
           />
         </div>
       )
@@ -80,6 +82,7 @@ export const WithExtraButton: Story = {
             onFilterOpen={() => {}}
             totalLabel="Suítes de teste"
             totalCount={512}
+            baseCount={512}
             extra={
               <button
                 type="button"

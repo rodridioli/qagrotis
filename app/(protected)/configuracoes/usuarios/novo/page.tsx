@@ -48,6 +48,10 @@ export default function NovoUsuarioPage() {
       toast.error("O e-mail é obrigatório.")
       return
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      toast.error("Formato de e-mail inválido.")
+      return
+    }
 
     startTransition(async () => {
       await criarQaUser({ name: nome, email, type: tipo })

@@ -121,6 +121,13 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
     setCurrentPage(1)
   }
 
+  function clearFilters() {
+    setPendingInativos(false)
+    setApenasInativos(false)
+    setFilterOpen(false)
+    setCurrentPage(1)
+  }
+
   const confirmDescription =
     inativarIds.length === 1
       ? `O módulo ${inativarIds[0]} será inativado. Esta ação não pode ser desfeita.`
@@ -296,14 +303,19 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
             />
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setFilterOpen(false)}>
-              <X className="size-4" />
-              Cancelar
+            <Button variant="ghost" onClick={clearFilters}>
+              Limpar filtros
             </Button>
-            <Button onClick={applyFilters}>
-              <Filter className="size-4" />
-              Filtrar
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setFilterOpen(false)}>
+                <X className="size-4" />
+                Cancelar
+              </Button>
+              <Button onClick={applyFilters}>
+                <Filter className="size-4" />
+                Filtrar
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

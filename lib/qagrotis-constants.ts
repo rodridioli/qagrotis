@@ -112,7 +112,7 @@ export const MOCK_USERS: MockUser[] = [
     id: `U-${String(i + 1).padStart(2, "0")}`,
     name,
     email,
-    type: i % 4 === 0 ? "Administrador" : "Padrão",
+    type: (i % 4 === 0 ? "Administrador" : "Padrão") as UserType,
     avatar: "",
     active: i % 7 !== 0,
   }

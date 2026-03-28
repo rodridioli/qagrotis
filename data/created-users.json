@@ -32,5 +32,14 @@
     "photoPath": null,
     "password": "",
     "createdAt": 1774561602887
+  },
+  {
+    "id": "U-105",
+    "name": "teste",
+    "email": "ux@agrotis.com",
+    "type": "Padrão",
+    "photoPath": null,
+    "password": "",
+    "createdAt": 1774577518788
   }
 ]

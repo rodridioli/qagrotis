@@ -91,9 +91,12 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
   const [isDepSearchPending, startDepSearchTransition] = useTransition()
 
   const [scenarioName, setScenarioName] = useState(cenario.scenarioName)
+  const [descricao, setDescricao] = useState(cenario.descricao ?? "")
+  const [caminhoTela, setCaminhoTela] = useState(cenario.caminhoTela ?? "")
   const [regraDeNegocio, setRegraDeNegocio] = useState(cenario.regraDeNegocio ?? "")
-  const [objetivo, setObjetivo] = useState(cenario.objetivo ?? "")
   const [preCondicoes, setPreCondicoes] = useState(cenario.preCondicoes ?? "")
+  const [bdd, setBdd] = useState(cenario.bdd ?? "")
+  const [resultadoEsperado, setResultadoEsperado] = useState(cenario.resultadoEsperado ?? "")
   const [urlScript, setUrlScript] = useState(cenario.urlScript ?? "")
 
   const [noModuloOpen, setNoModuloOpen] = useState(false)
@@ -175,8 +178,9 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
     if (!risco) { toast.error("Risco é obrigatório."); return }
     if (!manual && !automatizado) { toast.error("É obrigatório habilitar pelo menos um tipo: Manual ou Automatizado."); return }
     if (automatizado && !urlScript.trim()) { toast.error("URL do Script é obrigatória quando Automatizado está habilitado."); return }
+    if (!descricao.trim()) { toast.error("Descrição é obrigatória."); return }
     if (!regraDeNegocio.trim()) { toast.error("Regra de Negócio é obrigatória."); return }
-    if (!objetivo.trim()) { toast.error("Objetivo é obrigatório."); return }
+    if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); return }
 
     const tipo: "Manual" | "Automatizado" | "Man./Auto." =
       manual && automatizado ? "Man./Auto." : automatizado ? "Automatizado" : "Manual"
@@ -190,11 +194,16 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
           client: clienteSelecionado,
           risco,
           regraDeNegocio: regraDeNegocio.trim(),
-          objetivo: objetivo.trim(),
+          descricao: descricao.trim(),
+          caminhoTela: caminhoTela.trim(),
           preCondicoes: preCondicoes.trim(),
+          bdd: bdd.trim(),
+          resultadoEsperado: resultadoEsperado.trim(),
           tipo,
           urlScript: urlScript.trim(),
-          steps: steps.map((s) => ({ acao: s.acao, resultado: s.resultado })),
+          steps: steps
+            .map((s) => ({ acao: s.acao.trim(), resultado: s.resultado.trim() }))
+            .filter((s) => s.acao.length > 0 && s.resultado.length > 0),
           deps: deps.map((d) => d.id),
         })
         toast.success("Cenário atualizado com sucesso.")
@@ -275,59 +284,6 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
 
         {/* ── Cadastro ── */}
         <div className={`p-5 space-y-4${activeTab !== "cadastro" ? " hidden" : ""}`}>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">
-              Cenário <span className="text-destructive">*</span>
-            </label>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <Input
-                  value={scenarioName}
-                  onChange={(e) => setScenarioName(e.target.value)}
-                  placeholder="Nome do cenário"
-                />
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                {[
-                  { label: "Manual", checked: manual, toggle: () => setManual((v) => !v) },
-                  { label: "Automatizado", checked: automatizado, toggle: () => setAutomatizado((v) => !v) },
-                ].map(({ label, checked, toggle }) => (
-                  <label key={label} className="flex cursor-pointer select-none items-center gap-1.5">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={checked}
-                      onClick={toggle}
-                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-1 ${
-                        checked ? "bg-brand-primary" : "bg-neutral-grey-400"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block size-4 shrink-0 rounded-full bg-[#ffffff] transition-transform duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.3)] ${
-                          checked ? "translate-x-4" : "translate-x-0"
-                        }`}
-                      />
-                    </button>
-                    <span className="text-sm text-text-primary">{label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {automatizado && (
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                URL do Script <span className="text-destructive">*</span>
-              </label>
-              <Input
-                value={urlScript}
-                onChange={(e) => setUrlScript(e.target.value)}
-                placeholder="https://github.com/..."
-              />
-            </div>
-          )}
-
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
@@ -424,6 +380,82 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">
+              Cenário <span className="text-destructive">*</span>
+            </label>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <Input
+                  value={scenarioName}
+                  onChange={(e) => setScenarioName(e.target.value)}
+                  placeholder="Nome do cenário"
+                />
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                {[
+                  { label: "Manual", checked: manual, toggle: () => setManual((v) => !v) },
+                  { label: "Automatizado", checked: automatizado, toggle: () => setAutomatizado((v) => !v) },
+                ].map(({ label, checked, toggle }) => (
+                  <label key={label} className="flex cursor-pointer select-none items-center gap-1.5">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={checked}
+                      onClick={toggle}
+                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-1 ${
+                        checked ? "bg-brand-primary" : "bg-neutral-grey-400"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block size-4 shrink-0 rounded-full bg-[#ffffff] transition-transform duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.3)] ${
+                          checked ? "translate-x-4" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                    <span className="text-sm text-text-primary">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {automatizado && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                URL do Script <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={urlScript}
+                onChange={(e) => setUrlScript(e.target.value)}
+                placeholder="https://github.com/..."
+              />
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">
+              Descrição <span className="text-destructive">*</span>
+            </label>
+            <textarea
+              rows={2}
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder="Descrição do cenário de teste..."
+              onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
+              className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">Caminho da Tela</label>
+            <Input
+              value={caminhoTela}
+              onChange={(e) => setCaminhoTela(e.target.value)}
+              placeholder="Ex: Menu > Cadastros > Produtores"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">
               Regra de Negócio <span className="text-destructive">*</span>
             </label>
             <textarea
@@ -437,26 +469,38 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">
-              Objetivo <span className="text-destructive">*</span>
-            </label>
-            <textarea
-              rows={2}
-              value={objetivo}
-              onChange={(e) => setObjetivo(e.target.value)}
-              placeholder="Objetivo do teste..."
-              onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-              className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
-            />
-          </div>
-
-          <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">Pré-condições</label>
             <textarea
               rows={2}
               value={preCondicoes}
               onChange={(e) => setPreCondicoes(e.target.value)}
               placeholder="Pré-condições necessárias..."
+              onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
+              className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">BDD (Gherkin)</label>
+            <textarea
+              rows={4}
+              value={bdd}
+              onChange={(e) => setBdd(e.target.value)}
+              placeholder={`DADO O contexto inicial (ex: "Dado que o cliente está logado").\nQUANDO A ação realizada (ex: "Quando ele adiciona um item ao carrinho").\nENTÃO O resultado esperado (ex: "Então o item deve aparecer na tela de checkout")`}
+              onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
+              className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">
+              Resultado Esperado <span className="text-destructive">*</span>
+            </label>
+            <textarea
+              rows={2}
+              value={resultadoEsperado}
+              onChange={(e) => setResultadoEsperado(e.target.value)}
+              placeholder="Descreva o resultado esperado..."
               onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
               className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
             />
@@ -614,9 +658,10 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
                   value={depSistema}
                   disabled={allSistemas.filter((s) => s.active).length === 0}
                   onValueChange={(v) => {
-                    setDepSistema(v); setDepModulo(""); setDepSearchInput(""); setDepSearch("")
-                    const hasModulos = localModulos.some((m) => m.active && m.sistemaName === v)
-                    if (!hasModulos) toast.warning(`É preciso cadastrar um módulo dentro do sistema "${v}" e seus respectivos cenários.`)
+                    const val = v ?? ""
+                    setDepSistema(val); setDepModulo(""); setDepSearchInput(""); setDepSearch("")
+                    const hasModulos = localModulos.some((m) => m.active && m.sistemaName === val)
+                    if (!hasModulos) toast.warning(`É preciso cadastrar um módulo dentro do sistema "${val}" e seus respectivos cenários.`)
                   }}
                 >
                   <SelectTrigger>
@@ -631,7 +676,7 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-primary">Módulo</label>
-                <Select value={depModulo} onValueChange={(v) => { setDepModulo(v); setDepSearchInput(""); setDepSearch("") }} disabled={!depSistema || depModulos.length === 0}>
+                <Select value={depModulo} onValueChange={(v) => { setDepModulo(v ?? ""); setDepSearchInput(""); setDepSearch("") }} disabled={!depSistema || depModulos.length === 0}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecionar módulo" />
                   </SelectTrigger>

@@ -81,7 +81,7 @@ export default function CenarioDetailPage({
               <p className="text-text-primary">Validar dados antes de salvar o produtor.</p>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-text-secondary">Objetivo do Teste</span>
+              <span className="text-xs text-text-secondary">Descrição</span>
               <p className="text-text-primary">Verificar que o cadastro funciona corretamente.</p>
             </div>
             <div className="flex flex-col gap-0.5">
@@ -89,7 +89,7 @@ export default function CenarioDetailPage({
               <p className="text-text-primary">Usuário logado com permissão de cadastro.</p>
             </div>
           </div>
-          <Link href={`/cenarios/novo?edit=${cenario.id}`} className="text-sm text-brand-primary hover:underline">
+          <Link href={`/cenarios/${cenario.id}/editar`} className="text-sm text-brand-primary hover:underline">
             Editar
           </Link>
         </div>
