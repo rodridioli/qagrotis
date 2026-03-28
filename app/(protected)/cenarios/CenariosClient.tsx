@@ -31,7 +31,7 @@ import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { criarCenario, inativarCenarios, type CenarioRecord } from "@/lib/actions/cenarios"
+import { criarCenario, atualizarCenario, inativarCenarios, type CenarioRecord } from "@/lib/actions/cenarios"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { ClienteRecord } from "@/lib/actions/clientes"
@@ -60,6 +60,7 @@ interface ImportItem {
   parsed: ParsedCenario
   existing: CenarioRecord | null
   include: boolean
+  replace: boolean
   error?: string
 }
 
@@ -79,11 +80,15 @@ const COMPARE_FIELDS: Array<{ label: string; pKey: keyof ParsedCenario; eKey: ke
 // ─── Markdown parser ──────────────────────────────────────────────────────────
 
 function parseMarkdownCenarios(text: string): ParsedCenario[] {
-  // Split into blocks via --- separator; each block may also have multiple H1s
-  const rawBlocks = text.split(/\n---+\n?/)
+  // Normalize escaped markdown characters (\*\* → **, \## → ##, \--- → ---, \- → -)
+  // Some markdown exporters escape special chars with backslashes
+  const normalized = text.replace(/\\([*#\-`![\](){}|>])/g, "$1")
+
+  // Split on --- separators, then split each block on sub-headings
+  const rawBlocks = normalized.split(/\n---+\n?/)
   const blocks: string[] = []
   for (const raw of rawBlocks) {
-    const parts = raw.trim().split(/\n(?=# )/)
+    const parts = raw.trim().split(/\n(?=#{1,2}\s)/)
     blocks.push(...parts)
   }
 
@@ -94,7 +99,7 @@ function parseMarkdownCenarios(text: string): ParsedCenario[] {
     if (!trimmed) continue
     const lines = trimmed.split(/\r?\n/)
 
-    // Name from first H1/H2
+    // Name from first H1/H2 heading
     let name = ""
     for (const line of lines) {
       const m = line.match(/^#{1,2}\s+(.+)/)
@@ -108,33 +113,37 @@ function parseMarkdownCenarios(text: string): ParsedCenario[] {
     }
     if (!name) continue
 
+    // A "field header" line is a standalone **Label:** — ends right after the closing **.
+    // Lines like "**DADO** que o vendedor..." have trailing text so they are NOT headers.
+    function isHeader(line: string): boolean {
+      return /^\s*\*\*[^*\n]+\*\*\s*:?\s*$/.test(line) || /^#{1,4}\s/.test(line)
+    }
+
     function getField(keys: string[]): string {
-      const escaped = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-      const keyPat = escaped.join("|")
-      const inRe  = new RegExp(`^[-*\\s]*\\*\\*(${keyPat})[:\\s]+\\*\\*[:\\s]*(.*)$`, "i")
-      const inRe2 = new RegExp(`^[-*\\s]*\\*\\*(${keyPat})\\*\\*[:\\s]*(.*)$`, "i")
-      const blRe  = new RegExp(`^#{2,4}\\s+(${keyPat})\\s*$`, "i")
+      const esc = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      const kp = esc.join("|")
+      // **Field:** Value   (colon inside bold, value on same line)
+      const reSameLine  = new RegExp(`^\\s*\\*\\*(${kp})[:\\s]+\\*\\*\\s*(\\S.*)$`, "i")
+      // **Field** Value:   (colon outside bold, value on same line)
+      const reSameLine2 = new RegExp(`^\\s*\\*\\*(${kp})\\*\\*[:\\s]+(\\S.*)$`, "i")
+      // **Field:**         (nothing after — value on next lines)
+      const reHeader    = new RegExp(`^\\s*\\*\\*(${kp})[:\\s]*\\*\\*\\s*$`, "i")
+      // ## Field heading
+      const reHeading   = new RegExp(`^#{2,4}\\s+(${kp})\\s*$`, "i")
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i]
-        const m1 = line.match(inRe) ?? line.match(inRe2)
-        if (m1) {
-          const val = (m1[2] ?? "").trim()
-          if (val) return val
-          const multi: string[] = []
+
+        const m = line.match(reSameLine) ?? line.match(reSameLine2)
+        if (m) return (m[2] ?? "").trim()
+
+        if (reHeader.test(line) || reHeading.test(line)) {
+          const buf: string[] = []
           for (let j = i + 1; j < lines.length; j++) {
-            if (/^[-*\s]*\*\*\w/.test(lines[j]) || /^#{1,4}\s/.test(lines[j])) break
-            multi.push(lines[j])
+            if (isHeader(lines[j])) break
+            buf.push(lines[j])
           }
-          return multi.join("\n").trim()
-        }
-        if (blRe.test(line)) {
-          const multi: string[] = []
-          for (let j = i + 1; j < lines.length; j++) {
-            if (/^#{1,4}\s/.test(lines[j])) break
-            multi.push(lines[j])
-          }
-          return multi.join("\n").trim()
+          return buf.filter((l) => l.trim()).join(" ").trim()
         }
       }
       return ""
@@ -147,21 +156,21 @@ function parseMarkdownCenarios(text: string): ParsedCenario[] {
 
     const riscoRaw = getField(["risco", "risk", "prioridade", "priority"])
     const risco =
-      /alto|high/i.test(riscoRaw)  ? "Alto"  :
-      /baixo|low/i.test(riscoRaw)  ? "Baixo" : "Médio"
+      /alto|high/i.test(riscoRaw) ? "Alto" :
+      /baixo|low/i.test(riscoRaw) ? "Baixo" : "Médio"
 
     results.push({
-      scenarioName:    name,
-      module:          getField(["módulo", "modulo", "module"]),
-      client:          getField(["cliente", "client"]),
+      scenarioName:      name,
+      module:            getField(["módulo", "modulo", "module"]),
+      client:            getField(["cliente", "client"]),
       risco,
       tipo,
-      descricao:       getField(["descrição", "descricao", "description", "objetivo"]),
-      caminhoTela:     getField(["caminho da tela", "caminho", "screen path", "path"]),
-      regraDeNegocio:  getField(["regra de negócio", "regra de negocio", "regra", "business rule"]),
-      preCondicoes:    getField(["pré-condições", "pre-condicoes", "pré condições", "preconditions"]),
-      bdd:             getField(["bdd (gherkin)", "bdd", "gherkin"]),
-      resultadoEsperado: getField(["resultado esperado", "resultado", "expected result"]),
+      descricao:         getField(["descrição", "descricao", "description", "objetivo"]),
+      caminhoTela:       getField(["caminho da tela", "caminho", "screen path", "path"]),
+      regraDeNegocio:    getField(["regra de negócio", "regra de negocio", "regra", "business rule"]),
+      preCondicoes:      getField(["pré-condições", "pré condições", "pre-condições", "pre-condicoes", "preconditions"]),
+      bdd:               getField(["cenário", "cenario", "bdd (gherkin)", "bdd", "gherkin", "scenario"]),
+      resultadoEsperado: getField(["resultados esperados", "resultado esperado", "resultado", "resultados", "expected result"]),
     })
   }
 
@@ -336,15 +345,15 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
         const pFinal: ParsedCenario = { ...p, module: importSetupModule }
 
         const existing = initialCenarios.find(
-          (c) => norm(c.scenarioName) === norm(p.scenarioName)
+          (c) => c.active && norm(c.scenarioName) === norm(p.scenarioName)
         ) ?? null
 
         let error: string | undefined
-        if (!pFinal.regraDeNegocio) error = "Regra de Negócio não informada no arquivo"
-        else if (!pFinal.descricao) error = "Descrição não informada no arquivo"
-        else if (!pFinal.resultadoEsperado) error = "Resultado Esperado não informado no arquivo"
+        if (!pFinal.descricao && !pFinal.bdd && !pFinal.regraDeNegocio) {
+          error = "Nenhum conteúdo descritivo encontrado no arquivo"
+        }
 
-        return { key: `${idx}-${p.scenarioName}`, parsed: pFinal, existing, include: !error, error }
+        return { key: `${idx}-${p.scenarioName}`, parsed: pFinal, existing, include: !error, replace: false, error }
       })
       setImportItems(items)
       setImportSetupOpen(false)
@@ -365,24 +374,29 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
     let success = 0
     for (let i = 0; i < toImport.length; i++) {
       const item = toImport[i]
-      try {
-        await criarCenario({
+      const payload = {
           scenarioName:      item.parsed.scenarioName,
           system:            sistemaSelecionado,
           module:            item.parsed.module,
           client:            item.parsed.client,
           risco:             item.parsed.risco,
           tipo:              item.parsed.tipo,
-          descricao:         item.parsed.descricao,
+          descricao:         item.parsed.descricao         || item.parsed.bdd || "-",
           caminhoTela:       item.parsed.caminhoTela,
-          regraDeNegocio:    item.parsed.regraDeNegocio,
+          regraDeNegocio:    item.parsed.regraDeNegocio    || "Não informado.",
           preCondicoes:      item.parsed.preCondicoes,
           bdd:               item.parsed.bdd,
-          resultadoEsperado: item.parsed.resultadoEsperado,
+          resultadoEsperado: item.parsed.resultadoEsperado || "-",
           urlScript: "",
           steps: [],
           deps: [],
-        })
+        }
+      try {
+        if (item.replace && item.existing) {
+          await atualizarCenario(item.existing.id, payload)
+        } else {
+          await criarCenario(payload)
+        }
         success++
       } catch (err) {
         toast.error(`Erro ao importar "${item.parsed.scenarioName}": ${err instanceof Error ? err.message : "Erro desconhecido"}`)
@@ -840,9 +854,15 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                           Novo
                         </span>
                       )}
-                      {!hasErr && isDup && (
+                      {!hasErr && isDup && !item.replace && (
                         <span className="shrink-0 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
                           Já existe
+                        </span>
+                      )}
+                      {!hasErr && isDup && item.replace && (
+                        <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-brand-primary/10 px-2 py-0.5 text-xs font-semibold text-brand-primary">
+                          <ArrowRightLeft className="size-3" />
+                          Substituir
                         </span>
                       )}
                       {hasErr && (
@@ -956,6 +976,19 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
               <DialogFooter showCloseButton={false}>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setCompareItem(null)}>Fechar</Button>
+                  <Button
+                    onClick={() => {
+                      setImportItems((prev) =>
+                        prev.map((x) =>
+                          x.key === compareItem.key ? { ...x, replace: true, include: true } : x
+                        )
+                      )
+                      setCompareItem(null)
+                    }}
+                  >
+                    <ArrowRightLeft className="size-4" />
+                    Substituir existente
+                  </Button>
                 </div>
               </DialogFooter>
             </>

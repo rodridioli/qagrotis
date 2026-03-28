@@ -3,7 +3,7 @@
 import React, { useCallback, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowDown, ArrowLeft, ArrowUp, Check, Circle, GripVertical, Plus, Trash2, X } from "lucide-react"
+import { ArrowDown, ArrowLeft, ArrowUp, Check, Circle, FileDown, GripVertical, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -98,6 +98,10 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
   const [bdd, setBdd] = useState(cenario.bdd ?? "")
   const [resultadoEsperado, setResultadoEsperado] = useState(cenario.resultadoEsperado ?? "")
   const [urlScript, setUrlScript] = useState(cenario.urlScript ?? "")
+  const [usuarioTeste, setUsuarioTeste] = useState("")
+  const [senhaTeste, setSenhaTeste] = useState("")
+  const [senhaFalsa, setSenhaFalsa] = useState("")
+  const [hasSaved, setHasSaved] = useState(false)
 
   const [noModuloOpen, setNoModuloOpen] = useState(false)
   const [noModuloNome, setNoModuloNome] = useState("")
@@ -153,7 +157,72 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
     setSteps((prev) => [...prev, { id: Date.now(), acao: "", resultado: "" }])
   }
 
+  const canExportPrompt = hasSaved && usuarioTeste.trim() && senhaTeste.trim() && senhaFalsa.trim() && steps.some((s) => s.acao.trim() && s.resultado.trim())
+
+  function exportarPrompt() {
+    const id = cenario.id
+    const preconLinhas = preCondicoes
+      .split(/\n+/)
+      .map((l) => l.replace(/^[-*\s]+/, "").trim())
+      .filter(Boolean)
+    const preconFormatado = preconLinhas.length
+      ? preconLinhas.map((l, i) => `${i + 1}. ${l}`).join("\n")
+      : "1. Acessar o sistema."
+
+    const linhasSeparador = "|-------|------|------------------|"
+    const linhasPassos = steps
+      .filter((s) => s.acao.trim())
+      .map((s, i) => `| ${i + 1} | ${s.acao.trim()} | ${s.resultado.trim()} |`)
+
+    const md = [
+      `# Documentação de Testes - ${sistemaSelecionado || cenario.system}`,
+      "",
+      "## Ambiente e Dados de Teste",
+      "",
+      "### Massa de Dados: Credenciais",
+      "",
+      "| Tipo | Usuário | Senha |",
+      "|------|---------|-------|",
+      `| Padrão | ${usuarioTeste} | ${senhaTeste} |`,
+      `| Inválida | - | ${senhaFalsa} |`,
+      "",
+      "---",
+      "",
+      `## Casos de Teste: ${moduloValue || cenario.module}`,
+      "",
+      `### ${id}: ${scenarioName}`,
+      "",
+      "### **Objetivo**",
+      descricao || resultadoEsperado || "Não informado.",
+      "",
+      "### **Pré-condições**",
+      preconFormatado,
+      "",
+      "---",
+      "",
+      "| Passo | Ação | Resultado Esperado |",
+      linhasSeparador,
+      ...linhasPassos,
+      "",
+      "---",
+      "",
+      "### **Resultado obtido**",
+      "Sucesso ou Falha",
+    ].join("\n")
+
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${(scenarioName || id).replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")}.md`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   function updateStep(id: number, field: "acao" | "resultado", value: string) {
+    setHasSaved(false)
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)))
   }
 
@@ -206,8 +275,14 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
             .filter((s) => s.acao.length > 0 && s.resultado.length > 0),
           deps: deps.map((d) => d.id),
         })
+        setHasSaved(true)
         toast.success("Cenário atualizado com sucesso.")
-        router.push("/cenarios")
+        const hasPassoData = steps.length > 0 || usuarioTeste || senhaTeste || senhaFalsa
+        if (hasPassoData) {
+          setActiveTab("passos")
+        } else {
+          router.push("/cenarios")
+        }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Erro ao salvar cenário.")
       }
@@ -244,10 +319,18 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
           <span className="text-text-secondary">/</span>
           <span className="font-medium text-text-primary">{cenario.id} - Editar</span>
         </div>
-        <Button onClick={handleSave} disabled={isSaving}>
-          <Check className="size-4" />
-          {isSaving ? "Salvando…" : "Salvar"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {canExportPrompt && (
+            <Button variant="outline" onClick={exportarPrompt}>
+              <FileDown className="size-4" />
+              Prompt.md
+            </Button>
+          )}
+          <Button onClick={handleSave} disabled={isSaving}>
+            <Check className="size-4" />
+            {isSaving ? "Salvando…" : "Salvar"}
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
@@ -509,6 +592,28 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
 
         {/* ── Passo a Passo ── */}
         <div className={`p-5 space-y-3${activeTab !== "passos" ? " hidden" : ""}`}>
+          {steps.length > 0 && (
+            <div className="grid grid-cols-3 gap-3 rounded-lg border border-border-default bg-neutral-grey-50 p-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-text-primary">
+                  Usuário de Teste <span className="text-destructive">*</span>
+                </label>
+                <Input value={usuarioTeste} onChange={(e) => setUsuarioTeste(e.target.value)} placeholder="usuario@exemplo.com" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-text-primary">
+                  Senha de Teste <span className="text-destructive">*</span>
+                </label>
+                <Input value={senhaTeste} onChange={(e) => setSenhaTeste(e.target.value)} placeholder="Senha correta" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-text-primary">
+                  Senha Falsa <span className="text-destructive">*</span>
+                </label>
+                <Input value={senhaFalsa} onChange={(e) => setSenhaFalsa(e.target.value)} placeholder="Senha inválida" />
+              </div>
+            </div>
+          )}
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={addStepRow}>
               <Plus className="size-4" />

@@ -5,7 +5,6 @@ import { useSistemaSelecionado } from "@/lib/modulo-context"
 import {
   MONTHLY_TESTS_DATA,
   MONTHLY_ERRORS_DATA,
-  FILA_AUTOMACAO,
   ULTIMAS_TAREFAS,
 } from "@/lib/qagrotis-constants"
 import { DashboardCharts } from "./DashboardCharts"
@@ -70,11 +69,12 @@ export function DashboardClient({ allCenarios, allModulos }: Props) {
         })
       : []
 
-    // Fila de automação — filter by modules of the selected system
-    const modSet = new Set(modNames)
-    const filaFiltrada = FILA_AUTOMACAO.filter(
-      (f) => !sistemaSelecionado || modSet.size === 0 || modSet.has(f.module)
-    )
+    // Fila de automação — last automated cenários (Automatizado or Man./Auto.)
+    const filaFiltrada = cenariosFiltrados
+      .filter((c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto.")
+      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+      .slice(0, 8)
+      .map((c) => ({ id: c.id, module: c.module, title: c.scenarioName, priority: c.risco ?? "Média" }))
 
     return { totalModulos, totalCenarios, totalManuais, totalAutomatizados, pctManuais, pctAuto, automationData, filaFiltrada }
   }, [allCenarios, allModulos, sistemaSelecionado])

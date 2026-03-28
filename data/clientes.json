@@ -22,7 +22,7 @@
   },
   {
     "id": "CLI-04",
-    "nomeFantasia": "Cliente 0",
+    "nomeFantasia": "Cliente 1",
     "razaoSocial": null,
     "cpfCnpj": null,
     "active": true
@@ -43,7 +43,7 @@
   },
   {
     "id": "CLI-07",
-    "nomeFantasia": "teste",
+    "nomeFantasia": "Cliente 3",
     "razaoSocial": null,
     "cpfCnpj": null,
     "active": true,

@@ -58,9 +58,9 @@ const cenarioCreateSchema = z.object({
   bdd:               z.string().max(5000),
   resultadoEsperado: z.string().min(1, "Resultado Esperado é obrigatório").max(5000),
   tipo:              z.enum(["Manual", "Automatizado", "Man./Auto."]),
-  urlScript:         z.string().max(1000),
+  urlScript:         z.string().max(1000).refine((v) => !v || /^https?:\/\/.+/.test(v), { message: "URL inválida" }),
   steps:             z.array(z.object({ acao: z.string().min(1).max(1000), resultado: z.string().min(1).max(1000) })).max(100),
-  deps:              z.array(z.string().max(50)).max(100),
+  deps:              z.array(idSchema).max(100),
 })
 
 // ── Storage helpers ─────────────────────────────────────────────────────────

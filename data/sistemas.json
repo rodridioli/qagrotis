@@ -37,25 +37,25 @@
   },
   {
     "id": "SIS-07",
-    "name": "SAP-B1",
+    "name": "SAP",
     "description": "ERP (Enterprise Resource Planning) para clientes de médio e grande porte com integrações e add-ons específicas para o agronegócio.",
     "active": true
   },
   {
     "id": "SIS-08",
-    "name": "Agrotis Plataforma - Agro",
+    "name": "Plataforma AGRO",
     "description": "Plataforma web com módulos específicos do agronegócio.",
     "active": true
   },
   {
     "id": "SIS-09",
-    "name": "Agrotis Plataforma - ERP",
+    "name": "Plataforma ERP",
     "description": "ERP (Enterprise Resource Planning) com módulos específicos integrados ao Gerencial e SAP-B1.",
     "active": true
   },
   {
     "id": "SIS-10",
-    "name": "ERP - Next",
+    "name": "Next",
     "description": "ERP (Enterprise Resource Planning).",
     "active": true
   }

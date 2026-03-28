@@ -16,7 +16,8 @@ export interface ModuloRecord {
 }
 
 const DATA_DIR = path.join(process.cwd(), "data")
-const MODULOS_FILE = path.join(DATA_DIR, "modulos.json")
+const MODULOS_FILE  = path.join(DATA_DIR, "modulos.json")
+const CENARIOS_FILE = path.join(DATA_DIR, "cenarios.json")
 
 // ── Validation schemas ──────────────────────────────────────────────────────
 
@@ -102,10 +103,36 @@ export async function atualizarModulo(
   const idx = modulos.findIndex((m) => m.id === id)
   if (idx === -1) return
 
+  const oldName = modulos[idx].name
   modulos[idx] = { ...modulos[idx], ...parsed }
   await writeModulos(modulos)
+
+  if (oldName !== parsed.name) {
+    await propagateModuloRename(oldName, parsed.name)
+  }
+
   revalidatePath("/configuracoes/modulos")
   revalidatePath(`/configuracoes/modulos/${id}/editar`)
+}
+
+async function propagateModuloRename(oldName: string, newName: string): Promise<void> {
+  try {
+    const cenariosRaw = await fs.readFile(CENARIOS_FILE, "utf-8")
+    const cenarios = JSON.parse(cenariosRaw) as Array<{ module: string; [key: string]: unknown }>
+    let changed = false
+    for (const c of cenarios) {
+      if (c.module === oldName) {
+        c.module = newName
+        changed = true
+      }
+    }
+    if (changed) {
+      await fs.writeFile(CENARIOS_FILE, JSON.stringify(cenarios, null, 2), "utf-8")
+      revalidatePath("/cenarios")
+    }
+  } catch {
+    // cenarios.json may not exist yet — nothing to propagate
+  }
 }
 
 export async function inativarModulos(ids: string[]): Promise<void> {

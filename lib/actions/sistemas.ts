@@ -16,6 +16,8 @@ export interface SistemaRecord {
 
 const DATA_DIR = path.join(process.cwd(), "data")
 const SISTEMAS_FILE = path.join(DATA_DIR, "sistemas.json")
+const MODULOS_FILE  = path.join(DATA_DIR, "modulos.json")
+const CENARIOS_FILE = path.join(DATA_DIR, "cenarios.json")
 
 // ── Validation schemas ──────────────────────────────────────────────────────
 
@@ -103,11 +105,61 @@ export async function atualizarSistema(
   const idx = sistemas.findIndex((s) => s.id === id)
   if (idx === -1) return
 
+  const oldName = sistemas[idx].name
   sistemas[idx] = { ...sistemas[idx], ...parsed }
   await writeSistemas(sistemas)
+
+  if (oldName !== parsed.name) {
+    await propagateSistemaRename(id, oldName, parsed.name)
+  }
+
   revalidatePath("/configuracoes/sistemas")
   revalidatePath(`/configuracoes/sistemas/${id}`)
   revalidatePath(`/configuracoes/sistemas/${id}/editar`)
+}
+
+async function propagateSistemaRename(
+  sistemaId: string,
+  oldName: string,
+  newName: string,
+): Promise<void> {
+  // Update sistemaName in modulos
+  try {
+    const modulosRaw = await fs.readFile(MODULOS_FILE, "utf-8")
+    const modulos = JSON.parse(modulosRaw) as Array<{ sistemaId: string; sistemaName: string; [key: string]: unknown }>
+    let modChanged = false
+    for (const m of modulos) {
+      if (m.sistemaId === sistemaId) {
+        m.sistemaName = newName
+        modChanged = true
+      }
+    }
+    if (modChanged) {
+      await fs.writeFile(MODULOS_FILE, JSON.stringify(modulos, null, 2), "utf-8")
+      revalidatePath("/configuracoes/modulos")
+    }
+  } catch {
+    // modulos.json may not exist yet — nothing to propagate
+  }
+
+  // Update system field in cenarios
+  try {
+    const cenariosRaw = await fs.readFile(CENARIOS_FILE, "utf-8")
+    const cenarios = JSON.parse(cenariosRaw) as Array<{ system: string; [key: string]: unknown }>
+    let cenChanged = false
+    for (const c of cenarios) {
+      if (c.system === oldName) {
+        c.system = newName
+        cenChanged = true
+      }
+    }
+    if (cenChanged) {
+      await fs.writeFile(CENARIOS_FILE, JSON.stringify(cenarios, null, 2), "utf-8")
+      revalidatePath("/cenarios")
+    }
+  } catch {
+    // cenarios.json may not exist yet — nothing to propagate
+  }
 }
 
 export async function inativarSistemas(ids: string[]): Promise<void> {
