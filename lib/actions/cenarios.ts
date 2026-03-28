@@ -5,6 +5,8 @@ import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { MOCK_CENARIOS } from "@/lib/qagrotis-constants"
+import { auth } from "@/lib/auth"
+import { writeFileAtomic, nextId } from "@/lib/db-utils"
 
 export interface CenarioStep {
   acao: string
@@ -34,6 +36,7 @@ export interface CenarioRecord {
   urlScript?: string
   steps?: CenarioStep[]
   deps?: string[]
+  createdBy?: string
 }
 
 const DATA_DIR = path.join(process.cwd(), "data")
@@ -58,7 +61,7 @@ const cenarioCreateSchema = z.object({
   bdd:               z.string().max(5000),
   resultadoEsperado: z.string().min(1, "Resultado Esperado é obrigatório").max(5000),
   tipo:              z.enum(["Manual", "Automatizado", "Man./Auto."]),
-  urlScript:         z.string().max(1000).refine((v) => !v || /^https?:\/\/.+/.test(v), { message: "URL inválida" }),
+  urlScript:         z.string().max(1000),
   steps:             z.array(z.object({ acao: z.string().min(1).max(1000), resultado: z.string().min(1).max(1000) })).max(100),
   deps:              z.array(idSchema).max(100),
 })
@@ -77,8 +80,7 @@ async function readCenarios(): Promise<CenarioRecord[]> {
 }
 
 async function writeCenarios(cenarios: CenarioRecord[]): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  await fs.writeFile(CENARIOS_FILE, JSON.stringify(cenarios, null, 2), "utf-8")
+  await writeFileAtomic(CENARIOS_FILE, JSON.stringify(cenarios, null, 2))
 }
 
 // ── Public actions ──────────────────────────────────────────────────────────
@@ -125,12 +127,11 @@ export async function criarCenario(data: {
     urlScript:         data.urlScript.trim(),
   })
 
+  const session = await auth()
+  const createdBy = session?.user?.name ?? session?.user?.email ?? undefined
+
   const cenarios = await readCenarios()
-  const nums = cenarios
-    .map((c) => parseInt(c.id.replace(/^CT-/, ""), 10))
-    .filter((n) => !isNaN(n))
-  const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1
-  const id = `CT-${String(nextNum).padStart(3, "0")}`
+  const id = nextId(cenarios.map((c) => c.id), "CT", 3)
 
   const novo: CenarioRecord = {
     id,
@@ -154,6 +155,7 @@ export async function criarCenario(data: {
     urlScript:         parsed.urlScript,
     steps:             parsed.steps,
     deps:              parsed.deps,
+    createdBy,
   }
 
   cenarios.push(novo)
@@ -196,6 +198,9 @@ export async function atualizarCenario(id: string, data: {
     urlScript:         data.urlScript.trim(),
   })
 
+  const session = await auth()
+  const updatedBy = session?.user?.name ?? session?.user?.email ?? undefined
+
   const cenarios = await readCenarios()
   const idx = cenarios.findIndex((c) => c.id === id)
   if (idx === -1) throw new Error("Cenário não encontrado")
@@ -218,11 +223,13 @@ export async function atualizarCenario(id: string, data: {
     urlScript:         parsed.urlScript,
     steps:             parsed.steps,
     deps:              parsed.deps,
+    createdBy:         existing.createdBy ?? updatedBy,
   }
 
   await writeCenarios(cenarios)
   revalidatePath("/cenarios")
   revalidatePath(`/cenarios/${id}`)
+  revalidatePath(`/cenarios/${id}/editar`)
   return cenarios[idx]
 }
 

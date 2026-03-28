@@ -4,6 +4,8 @@ import { promises as fs } from "fs"
 import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { writeFileAtomic, nextId } from "@/lib/db-utils"
+import { requireAdmin } from "@/lib/session"
 
 export interface ClienteRecord {
   id: string
@@ -19,10 +21,20 @@ const CLIENTES_FILE = path.join(DATA_DIR, "clientes.json")
 
 // ── Validation schemas ──────────────────────────────────────────────────────
 
+// CPF: 000.000.000-00 or 00000000000 | CNPJ: 00.000.000/0000-00 or 00000000000000
+const cpfCnpjSchema = z
+  .string()
+  .max(18)
+  .nullable()
+  .refine(
+    (v) => !v || /^(\d{3}\.?\d{3}\.?\d{3}-?\d{2}|\d{2}\.?\d{3}\.?\d{3}\/??\d{4}-?\d{2})$/.test(v.trim()),
+    { message: "CPF ou CNPJ inválido" }
+  )
+
 const clienteInputSchema = z.object({
   nomeFantasia: z.string().min(1, "Nome Fantasia é obrigatório").max(200),
   razaoSocial: z.string().max(200).nullable(),
-  cpfCnpj: z.string().max(20).nullable(),
+  cpfCnpj: cpfCnpjSchema,
 })
 
 const idSchema = z.string().regex(/^CLI-\d+$/, "ID inválido")
@@ -40,8 +52,7 @@ async function readClientes(): Promise<ClienteRecord[]> {
 }
 
 async function writeClientes(clientes: ClienteRecord[]): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  await fs.writeFile(CLIENTES_FILE, JSON.stringify(clientes, null, 2), "utf-8")
+  await writeFileAtomic(CLIENTES_FILE, JSON.stringify(clientes, null, 2))
 }
 
 // ── Public actions ──────────────────────────────────────────────────────────
@@ -62,6 +73,7 @@ export async function criarCliente(data: {
   razaoSocial: string | null
   cpfCnpj: string | null
 }): Promise<ClienteRecord> {
+  await requireAdmin()
   const parsed = clienteInputSchema.parse({
     nomeFantasia: data.nomeFantasia.trim(),
     razaoSocial: data.razaoSocial?.trim() || null,
@@ -69,11 +81,7 @@ export async function criarCliente(data: {
   })
 
   const clientes = await readClientes()
-  const nums = clientes
-    .map((c) => parseInt(c.id.replace("CLI-", ""), 10))
-    .filter((n) => !isNaN(n))
-  const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1
-  const id = `CLI-${String(nextNum).padStart(2, "0")}`
+  const id = nextId(clientes.map((c) => c.id), "CLI")
 
   const novo: ClienteRecord = { id, ...parsed, active: true, createdAt: Date.now() }
   clientes.push(novo)
@@ -86,6 +94,7 @@ export async function atualizarCliente(
   id: string,
   data: { nomeFantasia: string; razaoSocial: string | null; cpfCnpj: string | null }
 ): Promise<void> {
+  await requireAdmin()
   idSchema.parse(id)
   const parsed = clienteInputSchema.parse({
     nomeFantasia: data.nomeFantasia.trim(),
@@ -104,6 +113,7 @@ export async function atualizarCliente(
 }
 
 export async function inativarClientes(ids: string[]): Promise<void> {
+  await requireAdmin()
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 

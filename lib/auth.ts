@@ -6,6 +6,7 @@ import { promises as fs } from "fs"
 import path from "path"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { PROTOTYPE_USERS } from "@/lib/prototype-users"
+import { verifyPassword } from "@/lib/db-utils"
 
 // Inline credential validation (can't import "use server" actions here)
 async function checkCredentials(email: string, password: string) {
@@ -26,7 +27,7 @@ async function checkCredentials(email: string, password: string) {
   const createdUser = createdUsers.find((u) => u.email.toLowerCase() === normalizedEmail)
   if (createdUser) {
     if (!createdUser.password) return null // invite not yet accepted
-    if (createdUser.password !== password) return null
+    if (!verifyPassword(password, createdUser.password)) return null
     if (inactiveIds.has(createdUser.id)) return null
     return { id: createdUser.id, email: createdUser.email, name: createdUser.email }
   }

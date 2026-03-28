@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -227,9 +228,9 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-24" />
                   <col />
-                  <col />
+                  <col className="w-56" />
                   <col className="w-36" />
-                  <col className="w-16" />
+                  <col className="w-12" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -245,7 +246,7 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">E-mail</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                    <th className="pl-4 pr-6 py-3" />
+                    <th className="py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
                 <tbody>
@@ -284,12 +285,12 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
                         </td>
                         <td className="px-4 py-3 text-text-secondary">{u.email}</td>
                         <td className="px-4 py-3"><UserTipoBadge tipo={u.type} /></td>
-                        <td className="px-4 py-3">
+                        <td className="py-3 pl-2 pr-4">
                           {isSelf ? (
                             <Link
                               href={`/configuracoes/usuarios/${u.id}/editar`}
                               title="Editar meu cadastro"
-                              className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                              className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
                             >
                               <Pencil className="size-4" />
                             </Link>
@@ -299,7 +300,7 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
                                 render={
                                   <button
                                     type="button"
-                                    className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                    className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                   />
                                 }
                               >
@@ -373,17 +374,14 @@ export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
             />
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button
-              variant="ghost"
-              onClick={() => setPendingFilters({ tipo: "", apenasInativos: false })}
-            >
+            <DialogClose render={<Button variant="ghost" onClick={() => { setPendingFilters({ tipo: "", apenasInativos: false }); setFilters({ tipo: "", apenasInativos: false }); setCurrentPage(1) }} />}>
               Limpar filtros
-            </Button>
+            </DialogClose>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setFilterOpen(false)}>
+              <DialogClose render={<Button variant="outline" />}>
                 <X className="size-4" />
                 Cancelar
-              </Button>
+              </DialogClose>
               <Button onClick={applyFilters}>
                 <Filter className="size-4" />
                 Filtrar

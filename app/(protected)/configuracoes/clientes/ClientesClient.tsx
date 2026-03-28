@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -207,11 +208,11 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-24" />
-                  <col className="w-1/5" />
-                  <col className="w-1/5" />
-                  <col className="w-36" />
                   <col />
-                  <col className="w-16" />
+                  <col className="w-48" />
+                  <col className="w-36" />
+                  <col className="w-52" />
+                  <col className="w-12" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -228,7 +229,7 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Razão Social</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">CPF / CNPJ</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistemas</th>
-                    <th className="pl-4 pr-6 py-3" />
+                    <th className="py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
                 <tbody>
@@ -268,14 +269,14 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
                             </div>
                           )}
                         </td>
-                        <td className="pl-4 pr-6 py-3">
+                        <td className="py-3 pl-2 pr-4">
                           {showBulkActions && c.active ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger
                                 render={
                                   <button
                                     type="button"
-                                    className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                    className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                   />
                                 }
                               >
@@ -328,14 +329,14 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
             />
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="ghost" onClick={clearFilters}>
+            <DialogClose render={<Button variant="ghost" onClick={clearFilters} />}>
               Limpar filtros
-            </Button>
+            </DialogClose>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setFilterOpen(false)}>
+              <DialogClose render={<Button variant="outline" />}>
                 <X className="size-4" />
                 Cancelar
-              </Button>
+              </DialogClose>
               <Button onClick={applyFilters}>
                 <Filter className="size-4" />
                 Filtrar

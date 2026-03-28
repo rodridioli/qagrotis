@@ -4,6 +4,8 @@ import { promises as fs } from "fs"
 import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { writeFileAtomic, nextId } from "@/lib/db-utils"
+import { requireAdmin } from "@/lib/session"
 
 export interface ModuloRecord {
   id: string
@@ -43,8 +45,7 @@ async function readModulos(): Promise<ModuloRecord[]> {
 }
 
 async function writeModulos(modulos: ModuloRecord[]): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  await fs.writeFile(MODULOS_FILE, JSON.stringify(modulos, null, 2), "utf-8")
+  await writeFileAtomic(MODULOS_FILE, JSON.stringify(modulos, null, 2))
 }
 
 // ── Public actions ──────────────────────────────────────────────────────────
@@ -66,6 +67,7 @@ export async function criarModulo(data: {
   sistemaId: string
   sistemaName: string
 }): Promise<ModuloRecord> {
+  await requireAdmin()
   const parsed = moduloInputSchema.parse({
     name: data.name.trim(),
     description: data.description?.trim() || null,
@@ -74,11 +76,7 @@ export async function criarModulo(data: {
   })
 
   const modulos = await readModulos()
-  const nums = modulos
-    .map((m) => parseInt(m.id.replace("MOD-", ""), 10))
-    .filter((n) => !isNaN(n))
-  const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1
-  const id = `MOD-${String(nextNum).padStart(2, "0")}`
+  const id = nextId(modulos.map((m) => m.id), "MOD")
 
   const novo: ModuloRecord = { id, ...parsed, active: true, createdAt: Date.now() }
   modulos.push(novo)
@@ -91,6 +89,7 @@ export async function atualizarModulo(
   id: string,
   data: { name: string; description: string | null; sistemaId: string; sistemaName: string }
 ): Promise<void> {
+  await requireAdmin()
   idSchema.parse(id)
   const parsed = moduloInputSchema.parse({
     name: data.name.trim(),
@@ -121,13 +120,10 @@ async function propagateModuloRename(oldName: string, newName: string): Promise<
     const cenarios = JSON.parse(cenariosRaw) as Array<{ module: string; [key: string]: unknown }>
     let changed = false
     for (const c of cenarios) {
-      if (c.module === oldName) {
-        c.module = newName
-        changed = true
-      }
+      if (c.module === oldName) { c.module = newName; changed = true }
     }
     if (changed) {
-      await fs.writeFile(CENARIOS_FILE, JSON.stringify(cenarios, null, 2), "utf-8")
+      await writeFileAtomic(CENARIOS_FILE, JSON.stringify(cenarios, null, 2))
       revalidatePath("/cenarios")
     }
   } catch {
@@ -136,6 +132,7 @@ async function propagateModuloRename(oldName: string, newName: string): Promise<
 }
 
 export async function inativarModulos(ids: string[]): Promise<void> {
+  await requireAdmin()
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -219,16 +220,16 @@ export default function SuitesClient({ allModulos }: Props) {
               <table className="w-full table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
-                  <col className="w-24" />
+                  <col className={showBulkActions ? "w-24" : "w-28"} />
                   <col />
                   <col className="w-16" />
-                  <col className="w-32" />
-                  <col className="w-32" />
+                  <col className={showBulkActions ? "w-32" : "w-36"} />
+                  <col className={showBulkActions ? "w-32" : "w-36"} />
                   <col className="w-20" />
-                  <col className="w-36" />
+                  <col className={showBulkActions ? "w-36" : "w-40"} />
                   <col className="w-14" />
                   <col className="w-20" />
-                  <col className="w-24" />
+                  <col className={showBulkActions ? "w-24" : "w-28"} />
                   {showBulkActions && <col className="w-16" />}
                 </colgroup>
                 <thead>
@@ -250,8 +251,8 @@ export default function SuitesClient({ allModulos }: Props) {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Automação</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Erros</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenários</th>
-                    <th className={showBulkActions ? "px-4 py-3 text-left text-xs font-semibold text-text-secondary" : "pl-4 pr-6 py-3 text-left text-xs font-semibold text-text-secondary"}>Tipo</th>
-                    {showBulkActions && <th className="pl-4 pr-6 py-3" />}
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                    {showBulkActions && <th className="py-3 pl-2 pr-4" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -287,17 +288,17 @@ export default function SuitesClient({ allModulos }: Props) {
                       </td>
                       <td className="px-4 py-3 text-text-secondary">{s.erros}</td>
                       <td className="px-4 py-3 text-text-secondary">{s.cenarios}</td>
-                      <td className={showBulkActions ? "px-4 py-3" : "pl-4 pr-6 py-3"}>
+                      <td className="px-4 py-3">
                         <SuiteTipoBadge tipo={s.tipo} />
                       </td>
                       {showBulkActions && (
-                        <td className="pl-4 pr-6 py-3">
+                        <td className="py-3 pl-2 pr-4">
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               render={
                                 <button
                                   type="button"
-                                  className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                  className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                 />
                               }
                             >
@@ -386,14 +387,14 @@ export default function SuitesClient({ allModulos }: Props) {
             />
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="ghost" onClick={clearFilters}>
+            <DialogClose render={<Button variant="ghost" onClick={clearFilters} />}>
               Limpar filtros
-            </Button>
+            </DialogClose>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setFilterOpen(false)}>
+              <DialogClose render={<Button variant="outline" />}>
                 <X className="size-4" />
                 Cancelar
-              </Button>
+              </DialogClose>
               <Button onClick={applyFilters}>
                 <Filter className="size-4" />
                 Filtrar

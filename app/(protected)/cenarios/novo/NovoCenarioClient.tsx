@@ -145,10 +145,11 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
   }, [allCenarios, depSistema, depModulo, depSearch])
 
   function addStepRow() {
+    setHasSaved(false)
     setSteps((prev) => [...prev, { id: Date.now(), acao: "", resultado: "" }])
   }
 
-  const canExportPrompt = usuarioTeste.trim() && senhaTeste.trim() && senhaFalsa.trim() && steps.some((s) => s.acao.trim() && s.resultado.trim())
+  const canExportPrompt = hasSaved && usuarioTeste.trim() && senhaTeste.trim() && senhaFalsa.trim() && steps.some((s) => s.acao.trim() && s.resultado.trim())
 
   function exportarPrompt() {
     const id = savedId || "CT-???"
@@ -310,12 +311,6 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
           <span className="font-medium text-text-primary">Novo Cenário</span>
         </div>
         <div className="flex items-center gap-2">
-          {canExportPrompt && (
-            <Button variant="outline" onClick={exportarPrompt}>
-              <FileDown className="size-4" />
-              Prompt.md
-            </Button>
-          )}
           <Button onClick={handleSave} disabled={isSaving}>
             <Check className="size-4" />
             {isSaving ? "Salvando…" : "Salvar"}
@@ -588,23 +583,29 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
                 <label className="text-xs font-medium text-text-primary">
                   Usuário de Teste <span className="text-destructive">*</span>
                 </label>
-                <Input value={usuarioTeste} onChange={(e) => setUsuarioTeste(e.target.value)} placeholder="usuario@exemplo.com" />
+                <Input value={usuarioTeste} onChange={(e) => { setUsuarioTeste(e.target.value); setHasSaved(false) }} placeholder="usuario@exemplo.com" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-text-primary">
                   Senha de Teste <span className="text-destructive">*</span>
                 </label>
-                <Input value={senhaTeste} onChange={(e) => setSenhaTeste(e.target.value)} placeholder="Senha correta" />
+                <Input type="password" value={senhaTeste} onChange={(e) => { setSenhaTeste(e.target.value); setHasSaved(false) }} placeholder="Senha correta" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-text-primary">
                   Senha Falsa <span className="text-destructive">*</span>
                 </label>
-                <Input value={senhaFalsa} onChange={(e) => setSenhaFalsa(e.target.value)} placeholder="Senha inválida" />
+                <Input type="password" value={senhaFalsa} onChange={(e) => { setSenhaFalsa(e.target.value); setHasSaved(false) }} placeholder="Senha inválida" />
               </div>
             </div>
           )}
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            {canExportPrompt && (
+              <Button variant="outline" size="sm" onClick={exportarPrompt}>
+                <FileDown className="size-4" />
+                Prompt.md
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={addStepRow}>
               <Plus className="size-4" />
               Adicionar passo
@@ -659,7 +660,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
                       <td className="py-1.5 pl-1">
                         <button
                           type="button"
-                          onClick={() => setSteps((prev) => prev.filter((x) => x.id !== s.id))}
+                          onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
                           className="flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
                         >
                           <Trash2 className="size-4" style={{ color: "#ffffff" }} />

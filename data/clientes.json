@@ -48,5 +48,13 @@
     "cpfCnpj": null,
     "active": true,
     "createdAt": 1774491078580
+  },
+  {
+    "id": "CLI-08",
+    "nomeFantasia": "fsdfasdfa",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774666801258
   }
 ]

@@ -4,10 +4,12 @@ import { promises as fs } from "fs"
 import path from "path"
 import { randomBytes } from "crypto"
 import { z } from "zod"
+import { writeFileAtomic, hashPassword, verifyPassword } from "@/lib/db-utils"
 
 const DATA_DIR = path.join(process.cwd(), "data")
-const TOKENS_FILE = path.join(DATA_DIR, "invite-tokens.json")
-const TOKEN_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+const TOKENS_FILE   = path.join(DATA_DIR, "invite-tokens.json")
+const CREATED_FILE  = path.join(DATA_DIR, "created-users.json")
+const TOKEN_TTL_MS  = 24 * 60 * 60 * 1000 // 24 hours
 
 interface InviteToken {
   token: string
@@ -27,21 +29,25 @@ async function readTokens(): Promise<InviteToken[]> {
 }
 
 async function writeTokens(tokens: InviteToken[]): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  await fs.writeFile(TOKENS_FILE, JSON.stringify(tokens, null, 2), "utf-8")
+  await writeFileAtomic(TOKENS_FILE, JSON.stringify(tokens, null, 2))
 }
 
 export async function gerarConvite(userId: string, email: string): Promise<string> {
   const token = randomBytes(32).toString("hex")
-  const tokens = await readTokens()
-  tokens.push({
+  const now = Date.now()
+
+  // Load existing tokens and prune expired/used ones to prevent unbounded growth
+  const existing = await readTokens()
+  const pruned = existing.filter((t) => !t.used && t.expiresAt > now)
+
+  pruned.push({
     token,
     userId,
     email: email.toLowerCase(),
-    expiresAt: Date.now() + TOKEN_TTL_MS,
+    expiresAt: now + TOKEN_TTL_MS,
     used: false,
   })
-  await writeTokens(tokens)
+  await writeTokens(pruned)
   return token
 }
 
@@ -70,7 +76,6 @@ export async function definirSenha(
   const parsed = z.string().min(6, "Senha mínima de 6 caracteres").max(128).safeParse(password)
   if (!parsed.success) return { ok: false, reason: parsed.error.issues[0].message }
 
-  const CREATED_FILE = path.join(DATA_DIR, "created-users.json")
   let users: Array<{ id: string; email: string; password: string; [key: string]: unknown }> = []
   try {
     const content = await fs.readFile(CREATED_FILE, "utf-8")
@@ -82,8 +87,9 @@ export async function definirSenha(
   const userIndex = users.findIndex((u) => u.id === check.userId)
   if (userIndex === -1) return { ok: false, reason: "Usuário não encontrado." }
 
-  users[userIndex].password = parsed.data
-  await fs.writeFile(CREATED_FILE, JSON.stringify(users, null, 2), "utf-8")
+  // Store as hashed value — never plaintext
+  users[userIndex].password = hashPassword(parsed.data)
+  await writeFileAtomic(CREATED_FILE, JSON.stringify(users, null, 2))
 
   // Mark token as used
   const tokens = await readTokens()
@@ -95,3 +101,6 @@ export async function definirSenha(
 
   return { ok: true }
 }
+
+// Re-export for use in auth layer
+export { verifyPassword }

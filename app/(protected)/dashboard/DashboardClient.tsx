@@ -5,11 +5,11 @@ import { useSistemaSelecionado } from "@/lib/modulo-context"
 import {
   MONTHLY_TESTS_DATA,
   MONTHLY_ERRORS_DATA,
-  ULTIMAS_TAREFAS,
 } from "@/lib/qagrotis-constants"
 import { DashboardCharts } from "./DashboardCharts"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { ModuloRecord } from "@/lib/actions/modulos"
+import type { QaUserRecord } from "@/lib/actions/usuarios"
 
 function MetricCard({
   label,
@@ -34,12 +34,45 @@ function MetricCard({
 interface Props {
   allCenarios: CenarioRecord[]
   allModulos: ModuloRecord[]
+  allUsers: QaUserRecord[]
+  currentUser: string | null
+  currentUserPhotoPath: string | null
 }
 
-export function DashboardClient({ allCenarios, allModulos }: Props) {
+function buildUserRanking(
+  cenarios: CenarioRecord[],
+  currentUser: string | null,
+  photoMap: Map<string, string | null>,
+  filterFn?: (c: CenarioRecord) => boolean
+) {
+  const counts = new Map<string, number>()
+  for (const c of cenarios) {
+    if (filterFn && !filterFn(c)) continue
+    const user = c.createdBy ?? currentUser ?? "Não identificado"
+    counts.set(user, (counts.get(user) ?? 0) + 1)
+  }
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, total]) => ({ name, total, photoPath: photoMap.get(name) ?? null }))
+}
+
+export function DashboardClient({ allCenarios, allModulos, allUsers, currentUser, currentUserPhotoPath }: Props) {
   const { sistemaSelecionado } = useSistemaSelecionado()
 
-  const { totalModulos, totalCenarios, totalManuais, totalAutomatizados, pctManuais, pctAuto, automationData, filaFiltrada } = useMemo(() => {
+  const photoMap = useMemo(() => {
+    const map = new Map<string, string | null>()
+    for (const u of allUsers) {
+      if (u.photoPath) map.set(u.name, u.photoPath)
+    }
+    // Also map the current session user's name (may differ from profile name) to their photo
+    if (currentUser && currentUserPhotoPath) {
+      map.set(currentUser, currentUserPhotoPath)
+    }
+    return map
+  }, [allUsers, currentUser, currentUserPhotoPath])
+
+  const { totalModulos, totalCenarios, totalManuais, totalAutomatizados, pctManuais, pctAuto, automationData, filaFiltrada, rankingGeral, rankingAutomacao } = useMemo(() => {
     const modsFiltrados = allModulos.filter(
       (m) => m.active && (!sistemaSelecionado || m.sistemaName === sistemaSelecionado)
     )
@@ -69,15 +102,26 @@ export function DashboardClient({ allCenarios, allModulos }: Props) {
         })
       : []
 
-    // Fila de automação — last automated cenários (Automatizado or Man./Auto.)
+    // Últimas automações — last automated cenários
     const filaFiltrada = cenariosFiltrados
       .filter((c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto.")
       .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
       .slice(0, 8)
       .map((c) => ({ id: c.id, module: c.module, title: c.scenarioName, priority: c.risco ?? "Média" }))
 
-    return { totalModulos, totalCenarios, totalManuais, totalAutomatizados, pctManuais, pctAuto, automationData, filaFiltrada }
-  }, [allCenarios, allModulos, sistemaSelecionado])
+    // Ranking: all cenários by user (cadastrados ou alterados)
+    const rankingGeral = buildUserRanking(cenariosFiltrados, currentUser, photoMap)
+
+    // Ranking: automated cenários by user
+    const rankingAutomacao = buildUserRanking(
+      cenariosFiltrados,
+      currentUser,
+      photoMap,
+      (c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto."
+    )
+
+    return { totalModulos, totalCenarios, totalManuais, totalAutomatizados, pctManuais, pctAuto, automationData, filaFiltrada, rankingGeral, rankingAutomacao }
+  }, [allCenarios, allModulos, sistemaSelecionado, currentUser, photoMap])
 
   return (
     <div className="space-y-6">
@@ -93,7 +137,8 @@ export function DashboardClient({ allCenarios, allModulos }: Props) {
         monthlyTests={MONTHLY_TESTS_DATA}
         monthlyErrors={MONTHLY_ERRORS_DATA}
         filaAutomacao={filaFiltrada}
-        ultimasTarefas={ULTIMAS_TAREFAS}
+        rankingGeral={rankingGeral}
+        rankingAutomacao={rankingAutomacao}
       />
     </div>
   )

@@ -12,9 +12,16 @@ export const authConfig: NextAuthConfig = {
   },
   providers: [],
   callbacks: {
-    authorized() {
-      // Prototype mode: allow all routes without authentication
-      return true
+    authorized({ auth, request }) {
+      const isLoggedIn = !!auth?.user
+      const { pathname } = request.nextUrl
+      const isPublic =
+        pathname.startsWith("/login") ||
+        pathname.startsWith("/definir-senha") ||
+        pathname.startsWith("/api/auth") ||
+        pathname.startsWith("/api/stripe")
+      if (isPublic) return true
+      return isLoggedIn
     },
   },
 }

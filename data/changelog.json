@@ -1,0 +1,169 @@
+[
+  {
+    "version": "2.7.0",
+    "commit": "pendente",
+    "date": "2026-03-28",
+    "tag": "Segurança e Performance",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Segurança: adicionada verificação de sessão em todas as server actions mutantes",
+      "Segurança: ações administrativas (criar/inativar usuários, sistemas, módulos, clientes) exigem papel Administrador",
+      "Segurança: criado middleware de autenticação — rotas protegidas redirecionam para login sem sessão válida",
+      "Segurança: auth.config atualizado para realmente verificar sessão nas rotas protegidas",
+      "Atualizações: tela exibe autor da atualização e é restrita a administradores",
+      "Cenários: corrigida validação de URL do script (aceita qualquer formato de URL)",
+      "Painel: corrigida exibição de foto do usuário em 'Cenários gerados' e 'Últimas automações'",
+      "Painel: imagens de perfil com fallback automático para iniciais se a foto falhar ao carregar",
+      "Atualizações: filtros por categoria e data via modal, busca por versão e descrição"
+    ]
+  },
+  {
+    "version": "2.6.0",
+    "commit": "7a5e3a2",
+    "date": "2026-03-28",
+    "tag": "Melhorias",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Menu: adicionado item 'Gerador' abaixo de Cenários (geração de cenários BDD com IA)",
+      "Menu: adicionado item 'Atualizações' abaixo de Assistente de IA com histórico de versões",
+      "Tabelas: corrigida distribuição de colunas em todas as telas (Cenários, Módulos, Clientes, Sistemas, Usuários, Suítes)",
+      "Tabelas: padronizado espaçamento da coluna de ações (pl-2 pr-4) em todas as telas",
+      "Modal de filtros: botão 'Limpar filtros' agora fecha o modal corretamente em todas as telas",
+      "Painel: ranking 'Cenários gerados' atribuí corretamente cenários sem autor ao usuário logado"
+    ]
+  },
+  {
+    "version": "2.5.0",
+    "commit": "44ca05b",
+    "date": "2026-03-27",
+    "tag": "Melhorias",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Painel: bloco 'Fila de Automação' agora exibe os últimos cenários automatizados reais",
+      "Painel: renomeado 'Últimas tarefas' para 'Cenários gerados' com ranking por usuário",
+      "Painel: renomeado 'Fila de Automação' para 'Últimas automações' com ranking de automação por usuário",
+      "Cenários: botão 'Prompt.md' movido para ao lado de 'Adicionar passo' com estilo secundário",
+      "DB: todos os cenários sem autor atribuídos a 'Rodrigo Diego de Oliveira'"
+    ]
+  },
+  {
+    "version": "2.4.0",
+    "commit": "469f106",
+    "date": "2026-03-27",
+    "tag": "Segurança e Performance",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Segurança: senhas agora armazenadas com hash PBKDF2-SHA512 + salt aleatório",
+      "Segurança: comparação de senhas via timingSafeEqual (proteção contra timing attacks)",
+      "Segurança: validação de photoPath contra path traversal em uploads de foto",
+      "Segurança: validação CPF/CNPJ via regex no cadastro de clientes",
+      "Performance: substituído Math.max(...spread) por loop iterativo em geração de IDs (evita stack overflow)",
+      "Integridade: escritas de arquivo agora são atômicas (write-to-tmp + rename)",
+      "Integridade: tokens de convite expirados/usados são removidos automaticamente"
+    ]
+  },
+  {
+    "version": "2.3.0",
+    "commit": "2396043",
+    "date": "2026-03-26",
+    "tag": "Melhorias",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Sistemas: renomear sistema propaga automaticamente para módulos e cenários vinculados",
+      "Módulos: renomear módulo propaga automaticamente para cenários vinculados",
+      "Cenários: campo 'createdBy' registrado na criação e preservado na edição",
+      "Modal de filtros: adicionado botão 'Limpar filtros' em todas as telas"
+    ]
+  },
+  {
+    "version": "2.2.0",
+    "commit": "0dbf09d",
+    "date": "2026-03-25",
+    "tag": "Melhorias",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Cenários: formulário de edição com guard de hasSaved antes de exportar prompt",
+      "Cenários: campos de senha marcados como type=password",
+      "Cenários: revalidação de cache adicionada na rota de edição",
+      "Importação: limite de tamanho de arquivo (2 MB) com feedback ao usuário"
+    ]
+  },
+  {
+    "version": "2.1.0",
+    "commit": "1fda9fb",
+    "date": "2026-03-25",
+    "tag": "Melhorias",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Suítes: modal de filtros com botão limpar e fechamento correto",
+      "Usuários: modal de filtros com botão limpar e fechamento correto",
+      "Sistemas: modal de filtros com botão limpar e fechamento correto",
+      "Importação: modal de progresso sempre fechado via try/finally"
+    ]
+  },
+  {
+    "version": "2.0.0",
+    "commit": "f852698",
+    "date": "2026-03-24",
+    "tag": "Melhorias",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Dashboard: métricas de módulos, cenários, manuais e automatizados filtradas por sistema selecionado",
+      "Dashboard: gráfico de cobertura de automação por módulo com dados reais",
+      "Dashboard: ranking de usuários com mais cenários cadastrados",
+      "Cenários: suporte a dependências entre cenários (campo deps)"
+    ]
+  },
+  {
+    "version": "1.3.0",
+    "commit": "9d8e9eb",
+    "date": "2026-03-23",
+    "tag": "Produto",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Primeira iteração completa do produto QAgrotis",
+      "Telas de Cenários, Suítes, Módulos, Clientes, Sistemas, Usuários",
+      "Configurações gerais e perfil de usuário",
+      "Assistente de IA (placeholder)"
+    ]
+  },
+  {
+    "version": "1.2.0",
+    "commit": "291f649",
+    "date": "2026-03-23",
+    "tag": "Design System",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Design System completo com tokens de cor, tipografia e espaçamento",
+      "Componentes: Button, Input, Select, Checkbox, Dialog, Tooltip, Badge",
+      "Componentes: TableToolbar, TablePagination, ConfirmDialog",
+      "Suporte a tema escuro (dark mode)"
+    ]
+  },
+  {
+    "version": "1.1.0",
+    "commit": "04bce13",
+    "date": "2026-03-23",
+    "tag": "Segurança",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Auditoria de segurança completa — 26 vulnerabilidades corrigidas",
+      "Autenticação via NextAuth com suporte a Google OAuth e credenciais",
+      "Sistema de convite por e-mail com token de definição de senha",
+      "Controle de acesso por papel (Padrão / Administrador)"
+    ]
+  },
+  {
+    "version": "1.0.0",
+    "commit": "e8fce46",
+    "date": "2026-03-23",
+    "tag": "Lançamento",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Estrutura base do projeto Next.js App Router",
+      "Banco de dados em arquivo JSON com persistência local",
+      "Dados mock de cenários, módulos, sistemas e usuários",
+      "Layout protegido com sidebar e topbar responsivos"
+    ]
+  }
+]

@@ -7,8 +7,8 @@ interface TableToolbarProps {
   search: string
   onSearchChange: (value: string) => void
   searchPlaceholder?: string
-  activeFilterCount: number
-  onFilterOpen: () => void
+  activeFilterCount?: number
+  onFilterOpen?: () => void
   totalLabel: string
   totalCount: number
   /** Total records before any user-applied search/filter. When 0, hides search and filter controls. */
@@ -47,18 +47,20 @@ export function TableToolbar({
               className="h-9 w-full rounded-custom border border-border-default bg-surface-input pl-9 pr-3 text-sm text-text-primary outline-none placeholder:text-text-secondary focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 sm:w-56 lg:w-64"
             />
           </div>
-          <button
-            type="button"
-            onClick={onFilterOpen}
-            className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100"
-          >
-            <SlidersHorizontal className="size-4" />
-            {activeFilterCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-brand-primary text-xs" style={{ color: "#ffffff" }}>
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+          {onFilterOpen && (
+            <button
+              type="button"
+              onClick={onFilterOpen}
+              className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100"
+            >
+              <SlidersHorizontal className="size-4" />
+              {(activeFilterCount ?? 0) > 0 && (
+                <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-brand-primary text-xs" style={{ color: "#ffffff" }}>
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          )}
           {extra}
         </div>
       )}

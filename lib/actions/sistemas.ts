@@ -5,6 +5,8 @@ import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { SYSTEM_LIST } from "@/lib/qagrotis-constants"
+import { writeFileAtomic, nextId } from "@/lib/db-utils"
+import { requireAdmin } from "@/lib/session"
 
 export interface SistemaRecord {
   id: string
@@ -48,8 +50,7 @@ async function readSistemas(): Promise<SistemaRecord[]> {
 }
 
 async function writeSistemas(sistemas: SistemaRecord[]): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  await fs.writeFile(SISTEMAS_FILE, JSON.stringify(sistemas, null, 2), "utf-8")
+  await writeFileAtomic(SISTEMAS_FILE, JSON.stringify(sistemas, null, 2))
 }
 
 // ── Public actions ──────────────────────────────────────────────────────────
@@ -74,17 +75,14 @@ export async function criarSistema(data: {
   name: string
   description: string | null
 }): Promise<void> {
+  await requireAdmin()
   const parsed = sistemaInputSchema.parse({
     name: data.name.trim(),
     description: data.description?.trim() || null,
   })
 
   const sistemas = await readSistemas()
-  const nums = sistemas
-    .map((s) => parseInt(s.id.replace("SIS-", ""), 10))
-    .filter((n) => !isNaN(n))
-  const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1
-  const id = `SIS-${String(nextNum).padStart(2, "0")}`
+  const id = nextId(sistemas.map((s) => s.id), "SIS")
 
   sistemas.push({ id, ...parsed, active: true, createdAt: Date.now() })
   await writeSistemas(sistemas)
@@ -95,6 +93,7 @@ export async function atualizarSistema(
   id: string,
   data: { name: string; description: string | null }
 ): Promise<void> {
+  await requireAdmin()
   idSchema.parse(id)
   const parsed = sistemaInputSchema.parse({
     name: data.name.trim(),
@@ -123,46 +122,47 @@ async function propagateSistemaRename(
   oldName: string,
   newName: string,
 ): Promise<void> {
-  // Update sistemaName in modulos
-  try {
-    const modulosRaw = await fs.readFile(MODULOS_FILE, "utf-8")
-    const modulos = JSON.parse(modulosRaw) as Array<{ sistemaId: string; sistemaName: string; [key: string]: unknown }>
-    let modChanged = false
+  // Read both files in parallel
+  const [modulosRaw, cenariosRaw] = await Promise.allSettled([
+    fs.readFile(MODULOS_FILE, "utf-8"),
+    fs.readFile(CENARIOS_FILE, "utf-8"),
+  ])
+
+  const writes: Promise<void>[] = []
+
+  if (modulosRaw.status === "fulfilled") {
+    const modulos = JSON.parse(modulosRaw.value) as Array<{ sistemaId: string; sistemaName: string; [key: string]: unknown }>
+    let changed = false
     for (const m of modulos) {
-      if (m.sistemaId === sistemaId) {
-        m.sistemaName = newName
-        modChanged = true
-      }
+      if (m.sistemaId === sistemaId) { m.sistemaName = newName; changed = true }
     }
-    if (modChanged) {
-      await fs.writeFile(MODULOS_FILE, JSON.stringify(modulos, null, 2), "utf-8")
-      revalidatePath("/configuracoes/modulos")
+    if (changed) {
+      writes.push(
+        writeFileAtomic(MODULOS_FILE, JSON.stringify(modulos, null, 2))
+          .then(() => { revalidatePath("/configuracoes/modulos") })
+      )
     }
-  } catch {
-    // modulos.json may not exist yet — nothing to propagate
   }
 
-  // Update system field in cenarios
-  try {
-    const cenariosRaw = await fs.readFile(CENARIOS_FILE, "utf-8")
-    const cenarios = JSON.parse(cenariosRaw) as Array<{ system: string; [key: string]: unknown }>
-    let cenChanged = false
+  if (cenariosRaw.status === "fulfilled") {
+    const cenarios = JSON.parse(cenariosRaw.value) as Array<{ system: string; [key: string]: unknown }>
+    let changed = false
     for (const c of cenarios) {
-      if (c.system === oldName) {
-        c.system = newName
-        cenChanged = true
-      }
+      if (c.system === oldName) { c.system = newName; changed = true }
     }
-    if (cenChanged) {
-      await fs.writeFile(CENARIOS_FILE, JSON.stringify(cenarios, null, 2), "utf-8")
-      revalidatePath("/cenarios")
+    if (changed) {
+      writes.push(
+        writeFileAtomic(CENARIOS_FILE, JSON.stringify(cenarios, null, 2))
+          .then(() => { revalidatePath("/cenarios") })
+      )
     }
-  } catch {
-    // cenarios.json may not exist yet — nothing to propagate
   }
+
+  await Promise.all(writes)
 }
 
 export async function inativarSistemas(ids: string[]): Promise<void> {
+  await requireAdmin()
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 

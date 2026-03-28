@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -125,6 +126,12 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
     })
   }
 
+  function clearFilters() {
+    setPendingFilters({ apenasInativos: false })
+    setFilters({ apenasInativos: false })
+    setCurrentPage(1)
+  }
+
   function applyFilters() {
     setFilters(pendingFilters)
     setFilterOpen(false)
@@ -199,11 +206,11 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
               <table className="w-full table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
-                  <col className="w-28" />
-                  <col className="w-2/5" />
-                  <col />
                   <col className="w-24" />
-                  <col className="w-16" />
+                  <col />
+                  <col className="w-72" />
+                  <col className="w-24" />
+                  <col className="w-12" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -219,7 +226,7 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Nome</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulos</th>
-                    <th className="pl-4 pr-6 py-3" />
+                    <th className="py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
                 <tbody>
@@ -256,14 +263,14 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                             <span className="text-text-secondary/60 italic text-sm">0</span>
                           )}
                         </td>
-                        <td className="pl-4 pr-6 py-3">
+                        <td className="py-3 pl-2 pr-4">
                           {showBulkActions && s.active ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger
                                 render={
                                   <button
                                     type="button"
-                                    className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                    className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                   />
                                 }
                               >
@@ -321,14 +328,19 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
             />
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setFilterOpen(false)}>
-              <X className="size-4" />
-              Cancelar
-            </Button>
-            <Button onClick={applyFilters}>
-              <Filter className="size-4" />
-              Filtrar
-            </Button>
+            <DialogClose render={<Button variant="ghost" onClick={clearFilters} />}>
+              Limpar filtros
+            </DialogClose>
+            <div className="flex gap-2">
+              <DialogClose render={<Button variant="outline" />}>
+                <X className="size-4" />
+                Cancelar
+              </DialogClose>
+              <Button onClick={applyFilters}>
+                <Filter className="size-4" />
+                Filtrar
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

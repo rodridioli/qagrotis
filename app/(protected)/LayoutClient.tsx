@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, FileText, Rocket, BookOpen,
   Settings, Bot, LogOut, ChevronLeft,
-  ChevronRight, Menu, Moon, Sun,
+  ChevronRight, Menu, Moon, Sun, Sparkles, History,
 } from "lucide-react"
 import {
   Select,
@@ -35,19 +35,23 @@ const DEFAULT_SISTEMA = "Gerencial"
 const NAV_ITEMS = [
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",             disabled: false },
   { href: "/cenarios",      icon: FileText,        label: "Cenários",           disabled: false },
+  { href: "/gerador",       icon: Sparkles,        label: "Gerador",            disabled: false },
   { href: "/suites",        icon: Rocket,          label: "Suítes",             disabled: false },
   { href: "/documentos",    icon: BookOpen,        label: "Documentos",         disabled: true  },
   { href: "/configuracoes", icon: Settings,        label: "Configurações",      disabled: false },
   { href: "/assistente",    icon: Bot,             label: "Assistente de IA",   disabled: true  },
+  { href: "/atualizacoes",  icon: History,         label: "Atualizações",       disabled: false },
 ]
 
 const TITLE_MAP: Record<string, string> = {
   "/dashboard":     "Painel",
   "/cenarios":      "Cenários",
+  "/gerador":       "Gerador",
   "/suites":        "Suítes",
   "/documentos":    "Documentos",
   "/configuracoes": "Configurações",
   "/assistente":    "Assistente de IA",
+  "/atualizacoes":  "Atualizações",
 }
 
 function getTitle(pathname: string): string {

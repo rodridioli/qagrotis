@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -222,9 +223,10 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
   })
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
 
-  const modulosDosistema = allModulos
-    .filter((m) => m.sistemaName === sistemaSelecionado)
-    .map((m) => m.name)
+  const modulosDosistema = useMemo(
+    () => allModulos.filter((m) => m.sistemaName === sistemaSelecionado).map((m) => m.name),
+    [allModulos, sistemaSelecionado]
+  )
 
   useEffect(() => {
     setCurrentPage(1)
@@ -326,12 +328,14 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
     setCurrentPage(1)
   }
 
-  const systemModuleNames = allModulos
-    .filter((m) => m.active && m.sistemaName === sistemaSelecionado)
-    .map((m) => m.name)
+  const systemModuleNames = useMemo(
+    () => allModulos.filter((m) => m.active && m.sistemaName === sistemaSelecionado).map((m) => m.name),
+    [allModulos, sistemaSelecionado]
+  )
 
   function handleSetupConfirm() {
     if (!importSetupFile || !importSetupModule) return
+    if (importSetupFile.size > 2 * 1024 * 1024) { toast.error("Arquivo muito grande. Máximo 2 MB."); return }
     const reader = new FileReader()
     reader.onload = (evt) => {
       const text = evt.target?.result as string
@@ -372,40 +376,42 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
     setIsImporting(true)
 
     let success = 0
-    for (let i = 0; i < toImport.length; i++) {
-      const item = toImport[i]
-      const payload = {
-          scenarioName:      item.parsed.scenarioName,
-          system:            sistemaSelecionado,
-          module:            item.parsed.module,
-          client:            item.parsed.client,
-          risco:             item.parsed.risco,
-          tipo:              item.parsed.tipo,
-          descricao:         item.parsed.descricao         || item.parsed.bdd || "-",
-          caminhoTela:       item.parsed.caminhoTela,
-          regraDeNegocio:    item.parsed.regraDeNegocio    || "Não informado.",
-          preCondicoes:      item.parsed.preCondicoes,
-          bdd:               item.parsed.bdd,
-          resultadoEsperado: item.parsed.resultadoEsperado || "-",
-          urlScript: "",
-          steps: [],
-          deps: [],
+    try {
+      for (let i = 0; i < toImport.length; i++) {
+        const item = toImport[i]
+        const payload = {
+            scenarioName:      item.parsed.scenarioName,
+            system:            sistemaSelecionado,
+            module:            item.parsed.module,
+            client:            item.parsed.client,
+            risco:             item.parsed.risco,
+            tipo:              item.parsed.tipo,
+            descricao:         item.parsed.descricao         || item.parsed.bdd || "-",
+            caminhoTela:       item.parsed.caminhoTela,
+            regraDeNegocio:    item.parsed.regraDeNegocio    || "Não informado.",
+            preCondicoes:      item.parsed.preCondicoes,
+            bdd:               item.parsed.bdd,
+            resultadoEsperado: item.parsed.resultadoEsperado || "-",
+            urlScript: "",
+            steps: [],
+            deps: [],
+          }
+        try {
+          if (item.replace && item.existing) {
+            await atualizarCenario(item.existing.id, payload)
+          } else {
+            await criarCenario(payload)
+          }
+          success++
+        } catch (err) {
+          toast.error(`Erro ao importar "${item.parsed.scenarioName}": ${err instanceof Error ? err.message : "Erro desconhecido"}`)
         }
-      try {
-        if (item.replace && item.existing) {
-          await atualizarCenario(item.existing.id, payload)
-        } else {
-          await criarCenario(payload)
-        }
-        success++
-      } catch (err) {
-        toast.error(`Erro ao importar "${item.parsed.scenarioName}": ${err instanceof Error ? err.message : "Erro desconhecido"}`)
+        setImportProgress({ current: i + 1, total: toImport.length })
       }
-      setImportProgress({ current: i + 1, total: toImport.length })
+    } finally {
+      setIsImporting(false)
+      setImportProgressOpen(false)
     }
-
-    setIsImporting(false)
-    setImportProgressOpen(false)
 
     if (success > 0) {
       router.refresh()
@@ -478,13 +484,13 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-24" />
                   <col />
-                  <col className="w-1/5" />
-                  <col className="w-1/6" />
+                  <col className="w-40" />
+                  <col className="w-36" />
                   <col className="w-20" />
                   <col className="w-16" />
                   <col className="w-16" />
                   <col className="w-28" />
-                  <col className="w-16" />
+                  <col className="w-12" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -504,7 +510,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Erros</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Suítes</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                    <th className="pl-4 pr-6 py-3" />
+                    <th className="py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
                 <tbody>
@@ -537,14 +543,14 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                       <td className="px-4 py-3">
                         <CenarioTipoBadge tipo={c.tipo as "Automatizado" | "Manual" | "Man./Auto."} />
                       </td>
-                      <td className="pl-4 pr-6 py-3">
+                      <td className="py-3 pl-2 pr-4">
                         {showBulkActions && c.active ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               render={
                                 <button
                                   type="button"
-                                  className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                  className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                 />
                               }
                             >
@@ -654,14 +660,14 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
             />
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="ghost" onClick={clearFilters}>
+            <DialogClose render={<Button variant="ghost" onClick={clearFilters} />}>
               Limpar filtros
-            </Button>
+            </DialogClose>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setFilterOpen(false)}>
+              <DialogClose render={<Button variant="outline" />}>
                 <X className="size-4" />
                 Cancelar
-              </Button>
+              </DialogClose>
               <Button onClick={applyFilters}>
                 <Filter className="size-4" />
                 Filtrar
@@ -805,8 +811,8 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
             return (
               <p className="text-sm text-text-secondary -mt-1">
                 <span className="font-medium text-text-primary">{total}</span> cenário{total !== 1 ? "s" : ""} encontrado{total !== 1 ? "s" : ""} —{" "}
-                <span className="text-feedback-success font-medium">{newCount} novo{newCount !== 1 ? "s" : ""}</span>
-                {dupCount > 0 && <>, <span className="text-feedback-warning font-medium">{dupCount} duplicado{dupCount !== 1 ? "s" : ""}</span></>}
+                <span className="text-green-600 font-medium">{newCount} novo{newCount !== 1 ? "s" : ""}</span>
+                {dupCount > 0 && <>, <span className="text-amber-600 font-medium">{dupCount} duplicado{dupCount !== 1 ? "s" : ""}</span></>}
                 {errCount > 0 && <>, <span className="text-destructive font-medium">{errCount} com erro</span></>}
               </p>
             )
@@ -850,7 +856,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                         {item.parsed.scenarioName}
                       </span>
                       {!hasErr && !isDup && (
-                        <span className="shrink-0 inline-flex items-center rounded-full bg-feedback-success/15 px-2 py-0.5 text-xs font-semibold text-feedback-success">
+                        <span className="shrink-0 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-600">
                           Novo
                         </span>
                       )}

@@ -8,6 +8,8 @@ import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 import { gerarConvite } from "@/lib/actions/invite-tokens"
 import { sendInviteEmail } from "@/lib/email"
+import { writeFileAtomic, nextId, verifyPassword } from "@/lib/db-utils"
+import { requireAdmin, requireSession } from "@/lib/session"
 
 export interface QaUserRecord {
   id: string
@@ -37,12 +39,15 @@ const userInputSchema = z.object({
 const idSchema = z.string().regex(/^U-\d+$/, "ID inválido")
 const idsArraySchema = z.array(idSchema).max(1000)
 
+// Allowed uploads directory — photoPath must resolve inside it
+const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads")
+
 // ── Storage helpers ─────────────────────────────────────────────────────────
 
 const DATA_DIR = path.join(process.cwd(), "data")
 const INACTIVE_FILE = path.join(DATA_DIR, "inactive-users.json")
 const PROFILES_FILE = path.join(DATA_DIR, "user-profiles.json")
-const CREATED_FILE = path.join(DATA_DIR, "created-users.json")
+const CREATED_FILE  = path.join(DATA_DIR, "created-users.json")
 
 interface CreatedUser {
   id: string
@@ -64,8 +69,7 @@ async function readCreatedUsers(): Promise<CreatedUser[]> {
 }
 
 async function writeCreatedUsers(users: CreatedUser[]): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  await fs.writeFile(CREATED_FILE, JSON.stringify(users, null, 2), "utf-8")
+  await writeFileAtomic(CREATED_FILE, JSON.stringify(users, null, 2))
 }
 
 async function readInactiveIds(): Promise<Set<string>> {
@@ -78,8 +82,7 @@ async function readInactiveIds(): Promise<Set<string>> {
 }
 
 async function writeInactiveIds(ids: Set<string>): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  await fs.writeFile(INACTIVE_FILE, JSON.stringify([...ids]), "utf-8")
+  await writeFileAtomic(INACTIVE_FILE, JSON.stringify([...ids]))
 }
 
 async function readProfiles(): Promise<Record<string, QaUserProfile>> {
@@ -92,8 +95,20 @@ async function readProfiles(): Promise<Record<string, QaUserProfile>> {
 }
 
 async function writeProfiles(profiles: Record<string, QaUserProfile>): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  await fs.writeFile(PROFILES_FILE, JSON.stringify(profiles, null, 2), "utf-8")
+  await writeFileAtomic(PROFILES_FILE, JSON.stringify(profiles, null, 2))
+}
+
+/**
+ * Validate that a photo path is inside the allowed uploads directory.
+ * Prevents path traversal attacks where a caller could store "../../../etc/passwd".
+ */
+function validatePhotoPath(photoPath: string | null | undefined): string | null {
+  if (!photoPath) return null
+  const resolved = path.resolve(photoPath)
+  if (!resolved.startsWith(UPLOADS_DIR + path.sep) && resolved !== UPLOADS_DIR) {
+    throw new Error("Caminho de foto inválido.")
+  }
+  return resolved
 }
 
 // ── Public actions ─────────────────────────────────────────────────────────
@@ -152,6 +167,7 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
 }
 
 export async function inativarQaUsers(ids: string[]): Promise<void> {
+  await requireAdmin()
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 
@@ -166,6 +182,7 @@ export async function criarQaUser(data: {
   email: string
   type: string
 }): Promise<void> {
+  await requireAdmin()
   const parsed = userInputSchema.parse({
     name: data.name.trim(),
     email: data.email.trim().toLowerCase(),
@@ -185,13 +202,8 @@ export async function criarQaUser(data: {
     throw new Error("E-mail já cadastrado.")
   }
 
-  const allMockIds = MOCK_USERS.map((u) => u.id)
-  const allCreatedIds = users.map((u) => u.id)
-  const nums = [...allMockIds, ...allCreatedIds]
-    .map((id) => parseInt(id.replace("U-", ""), 10))
-    .filter((n) => !isNaN(n))
-  const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1
-  const id = `U-${String(nextNum).padStart(2, "0")}`
+  const allIds = [...MOCK_USERS.map((u) => u.id), ...users.map((u) => u.id)]
+  const id = nextId(allIds, "U")
 
   // Store user without password — password is set via invite link
   users.push({ id, ...parsed, photoPath: null, password: "", createdAt: Date.now() })
@@ -203,7 +215,6 @@ export async function criarQaUser(data: {
   try {
     await sendInviteEmail({ to: parsed.email, name: parsed.name, token })
   } catch {
-    // Email failed (e.g. API key not configured) — log the invite link for dev use
     console.warn(
       `[invite] E-mail não enviado. Link de convite para ${parsed.email}:\n` +
       `${appUrl}/definir-senha/${token}`
@@ -226,7 +237,7 @@ export async function validateLogin(
 
   const createdUser = createdUsers.find((u) => u.email.toLowerCase() === normalizedEmail)
   if (createdUser) {
-    if (createdUser.password !== password) return { ok: false, reason: "invalid_credentials" }
+    if (!verifyPassword(password, createdUser.password)) return { ok: false, reason: "invalid_credentials" }
     if (inactiveIds.has(createdUser.id)) return { ok: false, reason: "inactive" }
     return { ok: true }
   }
@@ -249,6 +260,7 @@ export async function atualizarQaUser(
   id: string,
   data: { name: string; email: string; type: string; photoPath?: string | null }
 ): Promise<void> {
+  await requireSession()
   idSchema.parse(id)
   const parsed = userInputSchema.parse({
     name: data.name.trim(),
@@ -256,12 +268,15 @@ export async function atualizarQaUser(
     type: data.type,
   })
 
+  // Validate photo path to prevent directory traversal
+  const safePhotoPath = data.photoPath !== undefined ? validatePhotoPath(data.photoPath) : undefined
+
   const profiles = await readProfiles()
   const current = profiles[id]
 
   profiles[id] = {
     ...parsed,
-    photoPath: data.photoPath !== undefined ? data.photoPath : (current?.photoPath ?? null),
+    photoPath: safePhotoPath !== undefined ? safePhotoPath : (current?.photoPath ?? null),
   }
 
   await writeProfiles(profiles)

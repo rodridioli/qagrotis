@@ -99,5 +99,30 @@ function StatusBadge({
   )
 }
 
-export { StatusBadge, CenarioTipoBadge, SuiteTipoBadge, AutomacaoBadge, UserTipoBadge }
-export type { CenarioTipo, SuiteTipo }
+type ChangelogTag =
+  | "Lançamento"
+  | "Segurança"
+  | "Segurança e Performance"
+  | "Design System"
+  | "Produto"
+  | "Melhorias"
+
+function ChangelogTagBadge({ tag }: { tag: string }) {
+  const styles: Record<string, string> = {
+    "Lançamento":              "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
+    "Segurança":               "border-red-500/30 bg-red-500/10 text-red-600",
+    "Segurança e Performance": "border-red-500/30 bg-red-500/10 text-red-600",
+    "Design System":           "border-purple-500/30 bg-purple-500/10 text-purple-600",
+    "Produto":                 "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
+    "Melhorias":               "border-green-600/30 bg-green-600/10 text-green-700",
+  }
+  const cls = styles[tag] ?? "border-border-default bg-neutral-grey-50 text-text-secondary"
+  return (
+    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${cls}`}>
+      {tag}
+    </span>
+  )
+}
+
+export { StatusBadge, CenarioTipoBadge, SuiteTipoBadge, AutomacaoBadge, UserTipoBadge, ChangelogTagBadge }
+export type { CenarioTipo, SuiteTipo, ChangelogTag }
