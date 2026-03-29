@@ -20,7 +20,7 @@ function CenarioTipoBadge({ tipo }: { tipo: CenarioTipo }) {
   const styles: Record<CenarioTipo, string> = {
     "Automatizado": "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
     "Manual":       "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
-    "Man./Auto.":   "border-amber-500/30 bg-amber-500/10 text-amber-600",
+    "Man./Auto.":   "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
   }
   return badge(styles[tipo], tipo)
 }
@@ -29,15 +29,15 @@ function SuiteTipoBadge({ tipo }: { tipo: SuiteTipo }) {
   const styles: Record<SuiteTipo, string> = {
     "Sprint": "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
     "Kanban": "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
-    "Outro":  "border-amber-500/30 bg-amber-500/10 text-amber-600",
+    "Outro":  "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
   }
   return badge(styles[tipo], tipo)
 }
 
 function AutomacaoBadge({ pct }: { pct: number }) {
   const colorClass =
-    pct === 100 ? "border-green-600/30 bg-green-600/10 text-green-700" :
-    pct > 0     ? "border-amber-500/30 bg-amber-500/10 text-amber-600" :
+    pct === 100 ? "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400" :
+    pct > 0     ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400" :
                   "border-border-default bg-neutral-grey-50 text-text-secondary"
   return badge(colorClass, `${pct}%`)
 }
@@ -53,8 +53,8 @@ function UserTipoBadge({ tipo }: { tipo: string }) {
 function PriorityBadge({ priority }: { priority: string }) {
   const colorClass =
     priority === "Crítica"
-      ? "border-red-500/30 bg-red-500/10 text-red-600"
-      : "border-green-600/30 bg-green-600/10 text-green-700"
+      ? "border-red-500/30 bg-red-500/10 text-red-600 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-400"
+      : "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400"
   return badge(colorClass, priority)
 }
 
@@ -62,7 +62,7 @@ function ChangelogTagBadge({ tag }: { tag: string }) {
   const styles: Record<string, string> = {
     "Novidade": "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
     "Melhoria": "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
-    "Correção": "border-amber-500/30 bg-amber-500/10 text-amber-600",
+    "Correção": "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
   }
   const colorClass = styles[tag] ?? "border-border-default bg-neutral-grey-50 text-text-secondary"
   return badge(colorClass, tag)

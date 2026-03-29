@@ -39,40 +39,40 @@ interface Props {
   currentUserPhotoPath: string | null
 }
 
-function buildUserRanking(
-  cenarios: CenarioRecord[],
-  currentUser: string | null,
-  photoMap: Map<string, string | null>,
-  filterFn?: (c: CenarioRecord) => boolean
-) {
-  const counts = new Map<string, number>()
-  for (const c of cenarios) {
-    if (filterFn && !filterFn(c)) continue
-    const user = c.createdBy ?? currentUser ?? "Não identificado"
-    counts.set(user, (counts.get(user) ?? 0) + 1)
-  }
-  return Array.from(counts.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([name, total]) => ({ name, total, photoPath: photoMap.get(name) ?? null }))
-}
-
 export function DashboardClient({ allCenarios, allModulos, allUsers, currentUser, currentUserPhotoPath }: Props) {
   const { sistemaSelecionado } = useSistemaSelecionado()
 
-  const photoMap = useMemo(() => {
-    const map = new Map<string, string | null>()
+  // Maps both name and email to a user's display name and photo
+  const userMap = useMemo(() => {
+    const map = new Map<string, { displayName: string; photoPath: string | null }>()
     for (const u of allUsers) {
-      if (u.photoPath) map.set(u.name, u.photoPath)
+      if (u.name) map.set(u.name, { displayName: u.name, photoPath: u.photoPath ?? null })
+      if (u.email) map.set(u.email, { displayName: u.name, photoPath: u.photoPath ?? null })
     }
-    // Also map the current session user's name (may differ from profile name) to their photo
     if (currentUser && currentUserPhotoPath) {
-      map.set(currentUser, currentUserPhotoPath)
+      map.set(currentUser, { displayName: currentUser, photoPath: currentUserPhotoPath })
     }
     return map
   }, [allUsers, currentUser, currentUserPhotoPath])
 
-  const { totalModulos, totalCenarios, totalManuais, totalAutomatizados, pctManuais, pctAuto, automationData, filaFiltrada, rankingGeral, rankingAutomacao } = useMemo(() => {
+  function resolveUser(createdBy: string | undefined): { displayName: string; photoPath: string | null } {
+    if (!createdBy) return { displayName: "Desconhecido", photoPath: null }
+    const found = userMap.get(createdBy)
+    if (found) return found
+    // If createdBy looks like an email, try to strip domain to get initials
+    if (createdBy.includes("@")) {
+      const localPart = createdBy.split("@")[0]
+      const name = localPart.replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+      return { displayName: name, photoPath: null }
+    }
+    return { displayName: createdBy, photoPath: null }
+  }
+
+  const {
+    totalModulos, totalCenarios, totalManuais, totalAutomatizados,
+    pctManuais, pctAuto, automationData,
+    rankingHoje, ultimasAutomacoes,
+  } = useMemo(() => {
     const modsFiltrados = allModulos.filter(
       (m) => m.active && (!sistemaSelecionado || m.sistemaName === sistemaSelecionado)
     )
@@ -89,7 +89,7 @@ export function DashboardClient({ allCenarios, allModulos, allUsers, currentUser
     const pctManuais = totalCenarios > 0 ? Math.round((totalManuais / totalCenarios) * 100) : 0
     const pctAuto = totalCenarios > 0 ? Math.round((totalAutomatizados / totalCenarios) * 100) : 0
 
-    // Automation coverage per module — derived from real cenários
+    // Automation coverage per module
     const modNames = modsFiltrados.map((m) => m.name)
     const automationData = modNames.length > 0
       ? modNames.map((mod) => {
@@ -102,26 +102,43 @@ export function DashboardClient({ allCenarios, allModulos, allUsers, currentUser
         })
       : []
 
-    // Últimas automações — last automated cenários
-    const filaFiltrada = cenariosFiltrados
+    // Ranking today: count scenarios created today per user
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const todayTs = todayStart.getTime()
+
+    const countByUser = new Map<string, number>()
+    for (const c of cenariosFiltrados) {
+      if ((c.createdAt ?? 0) >= todayTs) {
+        const key = c.createdBy ?? "Desconhecido"
+        countByUser.set(key, (countByUser.get(key) ?? 0) + 1)
+      }
+    }
+    const rankingHoje = [...countByUser.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([createdBy, count]) => ({ createdBy, count }))
+
+    // Last 4 automated scenarios
+    const ultimasAutomacoes = cenariosFiltrados
       .filter((c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto.")
       .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-      .slice(0, 8)
-      .map((c) => ({ id: c.id, module: c.module, title: c.scenarioName, priority: c.risco ?? "Média" }))
+      .slice(0, 4)
+      .map((c) => ({
+        id: c.id,
+        scenarioName: c.scenarioName,
+        descricao: c.descricao ?? "",
+        createdAt: c.createdAt ?? null,
+        createdBy: c.createdBy,
+        module: c.module,
+      }))
 
-    // Ranking: all cenários by user (cadastrados ou alterados)
-    const rankingGeral = buildUserRanking(cenariosFiltrados, currentUser, photoMap)
-
-    // Ranking: automated cenários by user
-    const rankingAutomacao = buildUserRanking(
-      cenariosFiltrados,
-      currentUser,
-      photoMap,
-      (c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto."
-    )
-
-    return { totalModulos, totalCenarios, totalManuais, totalAutomatizados, pctManuais, pctAuto, automationData, filaFiltrada, rankingGeral, rankingAutomacao }
-  }, [allCenarios, allModulos, sistemaSelecionado, currentUser, photoMap])
+    return {
+      totalModulos, totalCenarios, totalManuais, totalAutomatizados,
+      pctManuais, pctAuto, automationData,
+      rankingHoje, ultimasAutomacoes,
+    }
+  }, [allCenarios, allModulos, sistemaSelecionado])
 
   return (
     <div className="space-y-6">
@@ -136,9 +153,9 @@ export function DashboardClient({ allCenarios, allModulos, allUsers, currentUser
         automationData={automationData}
         monthlyTests={MONTHLY_TESTS_DATA}
         monthlyErrors={MONTHLY_ERRORS_DATA}
-        filaAutomacao={filaFiltrada}
-        rankingGeral={rankingGeral}
-        rankingAutomacao={rankingAutomacao}
+        rankingHoje={rankingHoje}
+        ultimasAutomacoes={ultimasAutomacoes}
+        resolveUser={resolveUser}
       />
     </div>
   )

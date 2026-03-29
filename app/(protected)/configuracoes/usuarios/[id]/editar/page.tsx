@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation"
 import { getQaUserProfile } from "@/lib/actions/usuarios"
-import { auth } from "@/lib/auth"
-import { MOCK_USERS } from "@/lib/qagrotis-constants"
+import { checkIsAdmin } from "@/lib/session"
 import EditarUsuarioClient from "./EditarUsuarioClient"
 
 export default async function EditarUsuarioPage({
@@ -10,14 +9,8 @@ export default async function EditarUsuarioPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [profile, session] = await Promise.all([getQaUserProfile(id), auth()])
+  const [profile, isAdmin] = await Promise.all([getQaUserProfile(id), checkIsAdmin()])
   if (!profile) notFound()
-
-  const sessionEmail = session?.user?.email?.toLowerCase() ?? null
-  const sessionUser = sessionEmail
-    ? MOCK_USERS.find((u) => u.email.toLowerCase() === sessionEmail)
-    : null
-  const isAdmin = !sessionUser || sessionUser.type === "Administrador"
 
   return (
     <EditarUsuarioClient

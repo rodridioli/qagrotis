@@ -54,14 +54,12 @@ interface FilterState {
 interface Props {
   initialUsers: QaUserRecord[]
   currentUserId: string | null
+  isAdmin: boolean
 }
 
-export default function UsuariosClient({ initialUsers, currentUserId }: Props) {
+export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-
-  const currentUser = initialUsers.find((u) => u.id === currentUserId)
-  const isAdmin = !currentUser || currentUser.type === "Administrador"
 
   const [search, setSearch] = useState("")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())

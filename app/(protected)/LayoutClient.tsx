@@ -34,12 +34,12 @@ const DEFAULT_SISTEMA = "Gerencial"
 
 const NAV_ITEMS = [
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",             disabled: false },
-  { href: "/cenarios",      icon: FileText,        label: "Cenários",           disabled: false },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",            disabled: false },
+  { href: "/cenarios",      icon: FileText,        label: "Cenários",           disabled: false },
   { href: "/suites",        icon: Rocket,          label: "Suítes",             disabled: false },
   { href: "/documentos",    icon: BookOpen,        label: "Documentos",         disabled: true  },
-  { href: "/configuracoes", icon: Settings,        label: "Configurações",      disabled: false },
   { href: "/assistente",    icon: Bot,             label: "Assistente de IA",   disabled: true  },
+  { href: "/configuracoes", icon: Settings,        label: "Configurações",      disabled: false },
   { href: "/atualizacoes",  icon: History,         label: "Atualizações",       disabled: false },
 ]
 
@@ -85,7 +85,7 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark }: SidebarProps)
 
       <aside
         className={cn(
-          "flex h-screen flex-col border-r border-border-default bg-surface-card transition-all duration-200",
+          "flex h-screen flex-col border-r border-border-default bg-surface-card transition-[transform,width] duration-200",
           "fixed inset-y-0 left-0 z-50 w-52",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           "lg:relative lg:translate-x-0",
@@ -324,9 +324,11 @@ export default function LayoutClient({ children, sistemaNames }: Props) {
 
   function handleToggleTheme() {
     const next = !isDark
-    setIsDark(next)
+    document.documentElement.classList.add("theme-transitioning")
     document.documentElement.classList.toggle("dark", next)
+    setIsDark(next)
     localStorage.setItem(THEME_KEY, next ? "dark" : "light")
+    setTimeout(() => document.documentElement.classList.remove("theme-transitioning"), 250)
   }
 
   return (

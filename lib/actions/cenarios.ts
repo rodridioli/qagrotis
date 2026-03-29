@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { MOCK_CENARIOS } from "@/lib/qagrotis-constants"
 import { auth } from "@/lib/auth"
+import { requireSession } from "@/lib/session"
 import { writeFileAtomic, nextId } from "@/lib/db-utils"
 
 export interface CenarioStep {
@@ -113,6 +114,9 @@ export async function criarCenario(data: {
   steps: CenarioStep[]
   deps: string[]
 }): Promise<CenarioRecord> {
+  const session = await requireSession()
+  const createdBy = session?.user?.name ?? session?.user?.email ?? undefined
+
   const parsed = cenarioCreateSchema.parse({
     ...data,
     scenarioName:      data.scenarioName.trim(),
@@ -126,9 +130,6 @@ export async function criarCenario(data: {
     resultadoEsperado: data.resultadoEsperado.trim(),
     urlScript:         data.urlScript.trim(),
   })
-
-  const session = await auth()
-  const createdBy = session?.user?.name ?? session?.user?.email ?? undefined
 
   const cenarios = await readCenarios()
   const id = nextId(cenarios.map((c) => c.id), "CT", 3)
@@ -181,6 +182,7 @@ export async function atualizarCenario(id: string, data: {
   steps: CenarioStep[]
   deps: string[]
 }): Promise<CenarioRecord> {
+  await requireSession()
   const parsedId = idSchema.safeParse(id)
   if (!parsedId.success) throw new Error("ID inválido")
 
@@ -234,6 +236,7 @@ export async function atualizarCenario(id: string, data: {
 }
 
 export async function inativarCenarios(ids: string[]): Promise<void> {
+  await requireSession()
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 

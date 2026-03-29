@@ -15078,7 +15078,7 @@
     "execucoes": 0,
     "erros": 0,
     "suites": 0,
-    "tipo": "Manual",
+    "tipo": "Man./Auto.",
     "active": true,
     "createdAt": 1774666526924,
     "risco": "Médio",
@@ -15089,8 +15089,19 @@
     "bdd": "**DADO** que o pedido não possua itens controlados   **QUANDO** o usuário adicionar um item que exige Receita Agronômica   **ENTÃO** o sistema deve atualizar o status para \"Agu. Receita\" após validação   **E** caso o item seja removido   **ENTÃO** o sistema deve retornar ao fluxo normal",
     "resultadoEsperado": "- Status atualizado dinamicamente   - Regras aplicadas corretamente   - Interface refletindo mudanças",
     "urlScript": "",
-    "steps": [],
-    "deps": [],
+    "steps": [
+      {
+        "acao": "fadsf",
+        "resultado": "sadfasdfas"
+      },
+      {
+        "acao": "fasdfasdf",
+        "resultado": "asdfasdfasdf"
+      }
+    ],
+    "deps": [
+      "CT-1088"
+    ],
     "createdBy": "Rodrigo Diego de Oliveira"
   },
   {

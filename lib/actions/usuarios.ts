@@ -9,7 +9,7 @@ import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 import { gerarConvite } from "@/lib/actions/invite-tokens"
 import { sendInviteEmail } from "@/lib/email"
 import { writeFileAtomic, nextId, verifyPassword } from "@/lib/db-utils"
-import { requireAdmin, requireSession } from "@/lib/session"
+import { requireAdmin, requireSession, checkIsAdmin } from "@/lib/session"
 
 export interface QaUserRecord {
   id: string
@@ -260,12 +260,28 @@ export async function atualizarQaUser(
   id: string,
   data: { name: string; email: string; type: string; photoPath?: string | null }
 ): Promise<void> {
-  await requireSession()
+  const session = await requireSession()
   idSchema.parse(id)
+
+  const isAdmin = await checkIsAdmin()
+  const sessionEmail = session.user?.email?.toLowerCase() ?? ""
+
+  // Load target profile to get their current email (needed for self-check)
+  const targetProfile = await getQaUserProfile(id)
+  if (!targetProfile) throw new Error("Usuário não encontrado.")
+
+  // Non-admins can only edit their own profile
+  if (!isAdmin && targetProfile.email.toLowerCase() !== sessionEmail) {
+    throw new Error("Não autorizado.")
+  }
+
+  // Non-admins cannot change user type (prevents privilege escalation)
+  const type = isAdmin ? data.type : targetProfile.type
+
   const parsed = userInputSchema.parse({
     name: data.name.trim(),
     email: data.email.trim().toLowerCase(),
-    type: data.type,
+    type,
   })
 
   // Validate photo path to prevent directory traversal

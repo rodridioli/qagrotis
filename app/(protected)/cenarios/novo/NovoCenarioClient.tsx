@@ -118,7 +118,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
   const [addDepOpen, setAddDepOpen] = useState(false)
   const [addClienteOpen, setAddClienteOpen] = useState(false)
   const draggedStepId = useRef<number | null>(null)
-  const [activeTab, setActiveTab] = useState<"cadastro" | "passos" | "dependencias">("cadastro")
+  const [activeTab, setActiveTab] = useState<"cadastro" | "dependencias" | "automacao">("cadastro")
   const [depSearchInput, setDepSearchInput] = useState("")
   const [depSearch, setDepSearch] = useState("")
   const [depSistema, setDepSistema] = useState("")
@@ -149,8 +149,6 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
     setHasSaved(false)
     setSteps((prev) => [...prev, { id: Date.now(), acao: "", resultado: "" }])
   }
-
-  const canExportPrompt = hasSaved && usuarioTeste.trim() && senhaTeste.trim() && senhaFalsa.trim() && steps.some((s) => s.acao.trim() && s.resultado.trim())
 
   function exportarPrompt() {
     const id = savedId || "CT-???"
@@ -238,7 +236,6 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
     if (!moduloValue) { toast.error("Módulo é obrigatório."); return }
     if (!risco) { toast.error("Risco é obrigatório."); return }
     if (!manual && !automatizado) { toast.error("É obrigatório habilitar pelo menos um tipo: Manual ou Automatizado."); return }
-    if (automatizado && !urlScript.trim()) { toast.error("URL do Script é obrigatória quando Automatizado está habilitado."); return }
     if (!descricao.trim()) { toast.error("Descrição é obrigatória."); return }
     if (!regraDeNegocio.trim()) { toast.error("Regra de Negócio é obrigatória."); return }
     if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); return }
@@ -261,17 +258,17 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
           bdd: bdd.trim(),
           resultadoEsperado: resultadoEsperado.trim(),
           tipo,
-          urlScript: urlScript.trim(),
+          urlScript: "",
           steps: steps
             .map((s) => ({ acao: s.acao.trim(), resultado: s.resultado.trim() }))
             .filter((s) => s.acao.length > 0 && s.resultado.length > 0),
           deps: deps.map((d) => d.id),
         })
         setSavedId(novo.id)
+        setHasSaved(true)
         toast.success("Cenário criado com sucesso.")
-        const hasPassoData = steps.length > 0 || usuarioTeste || senhaTeste || senhaFalsa
-        if (hasPassoData) {
-          setActiveTab("passos")
+        if (automatizado && (steps.length > 0 || usuarioTeste || senhaTeste || senhaFalsa)) {
+          setActiveTab("automacao")
         } else {
           router.push("/cenarios")
         }
@@ -322,16 +319,21 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
         {/* Tab nav */}
         <div className="flex border-b border-border-default">
-          {(["cadastro", "passos", "dependencias"] as const).map((tab) => {
-            const label = tab === "cadastro" ? "Cadastro" : tab === "passos" ? "Passo a Passo" : "Dependências"
-            const badge = tab === "passos" ? steps.length : tab === "dependencias" ? deps.length : null
+          {(["cadastro", "dependencias", "automacao"] as const).map((tab) => {
+            const label = tab === "cadastro" ? "Cadastro" : tab === "dependencias" ? "Dependências" : "Script de Automação"
+            const badge = tab === "automacao" ? steps.length : tab === "dependencias" ? deps.length : null
+            const isDisabled = tab === "automacao" && !automatizado
             return (
               <button
                 key={tab}
                 type="button"
-                onClick={() => setActiveTab(tab)}
+                onClick={() => !isDisabled && setActiveTab(tab)}
+                disabled={isDisabled}
+                title={isDisabled ? "Habilite o switch Automatizado para acessar esta aba" : undefined}
                 className={`flex flex-1 items-center justify-center gap-1.5 py-3 px-4 text-sm font-medium border-b-2 -mb-px transition-all ${
-                  activeTab === tab
+                  isDisabled
+                    ? "cursor-not-allowed border-transparent text-text-secondary/40 opacity-50"
+                    : activeTab === tab
                     ? "border-brand-primary text-brand-primary bg-brand-primary/5"
                     : "border-transparent text-text-secondary hover:text-text-primary hover:bg-neutral-grey-50"
                 }`}
@@ -472,19 +474,6 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
             </div>
           </div>
 
-          {automatizado && (
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                URL do Script <span className="text-destructive">*</span>
-              </label>
-              <Input
-                value={urlScript}
-                onChange={(e) => setUrlScript(e.target.value)}
-                placeholder="https://github.com/..."
-              />
-            </div>
-          )}
-
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">
               Descrição <span className="text-destructive">*</span>
@@ -561,107 +550,115 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
           </div>
         </div>
 
-        {/* ── Passo a Passo ── */}
-        <div className={`p-5 space-y-3${activeTab !== "passos" ? " hidden" : ""}`}>
-          {steps.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 rounded-lg border border-border-default bg-neutral-grey-50 p-3">
+        {/* ── Script de Automação ── */}
+        <div className={`p-5 space-y-5${activeTab !== "automacao" ? " hidden" : ""}`}>
+          {/* Credenciais */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Credenciais</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 rounded-lg border border-border-default bg-neutral-grey-50 p-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-text-primary">
-                  Usuário de Teste <span className="text-destructive">*</span>
+                  Usuário de Teste
                 </label>
                 <Input value={usuarioTeste} onChange={(e) => { setUsuarioTeste(e.target.value); setHasSaved(false) }} placeholder="usuario@exemplo.com" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-text-primary">
-                  Senha de Teste <span className="text-destructive">*</span>
+                  Senha de Teste
                 </label>
                 <Input type="password" value={senhaTeste} onChange={(e) => { setSenhaTeste(e.target.value); setHasSaved(false) }} placeholder="Senha correta" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-text-primary">
-                  Senha Falsa <span className="text-destructive">*</span>
+                  Senha Falsa
                 </label>
                 <Input type="password" value={senhaFalsa} onChange={(e) => { setSenhaFalsa(e.target.value); setHasSaved(false) }} placeholder="Senha inválida" />
               </div>
             </div>
-          )}
-          <div className="flex justify-end gap-2">
-            {canExportPrompt && (
+          </div>
+
+          {/* Passo a passo */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Passo a passo</h3>
               <Button variant="outline" size="sm" onClick={exportarPrompt}>
                 <FileDown className="size-4" />
-                Prompt.md
+                Gerar Prompt
               </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={addStepRow}>
-              <Plus className="size-4" />
-              Adicionar passo
-            </Button>
-          </div>
-          {steps.length === 0 ? (
-            <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-              Nenhum passo adicionado.
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-border-default">
-                    <th className="w-8 py-2" />
-                    <th className="w-8 py-2 text-left text-xs font-semibold text-text-secondary">#</th>
-                    <th className="py-2 text-left text-xs font-semibold text-text-secondary px-2">Ação</th>
-                    <th className="py-2 text-left text-xs font-semibold text-text-secondary px-2">Resultado esperado</th>
-                    <th className="w-8 py-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {steps.map((s, idx) => (
-                    <tr
-                      key={s.id}
-                      draggable
-                      onDragStart={() => { draggedStepId.current = s.id }}
-                      onDragOver={(e) => handleStepDragOver(e, s.id)}
-                      onDragEnd={() => { draggedStepId.current = null }}
-                      className="border-b border-border-default last:border-0 group"
-                    >
-                      <td className="py-1.5 pr-1 cursor-grab active:cursor-grabbing">
-                        <GripVertical className="size-4 text-text-secondary opacity-40 group-hover:opacity-100 transition-opacity" />
-                      </td>
-                      <td className="py-1.5 text-xs font-medium text-text-secondary w-8">{idx + 1}</td>
-                      <td className="py-1.5 px-2">
-                        <input
-                          value={s.acao}
-                          onChange={(e) => updateStep(s.id, "acao", e.target.value)}
-                          placeholder="Descreva a ação..."
-                          className="w-full rounded-custom border border-border-default bg-surface-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
-                        />
-                      </td>
-                      <td className="py-1.5 px-2">
-                        <input
-                          value={s.resultado}
-                          onChange={(e) => updateStep(s.id, "resultado", e.target.value)}
-                          placeholder="Resultado esperado..."
-                          className="w-full rounded-custom border border-border-default bg-surface-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
-                        />
-                      </td>
-                      <td className="py-1.5 pl-1">
-                        <button
-                          type="button"
-                          onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
-                          className="flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
-                        >
-                          <Trash2 className="size-4" style={{ color: "#ffffff" }} />
-                        </button>
-                      </td>
+            {steps.length === 0 ? (
+              <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
+                Nenhum passo adicionado. Clique em <strong>+ Adicionar passo</strong> abaixo.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border-default">
+                      <th className="w-8 py-2" />
+                      <th className="w-8 py-2 text-left text-xs font-semibold text-text-secondary">#</th>
+                      <th className="px-2 py-2 text-left text-xs font-semibold text-text-secondary">Ação</th>
+                      <th className="px-2 py-2 text-left text-xs font-semibold text-text-secondary">Resultado esperado</th>
+                      <th className="w-8 py-2" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {steps.map((s, idx) => (
+                      <tr
+                        key={s.id}
+                        draggable
+                        onDragStart={() => { draggedStepId.current = s.id }}
+                        onDragOver={(e) => handleStepDragOver(e, s.id)}
+                        onDragEnd={() => { draggedStepId.current = null }}
+                        className="group border-b border-border-default last:border-0"
+                      >
+                        <td className="cursor-grab py-1.5 pr-1 active:cursor-grabbing">
+                          <GripVertical className="size-4 text-text-secondary opacity-40 transition-opacity group-hover:opacity-100" />
+                        </td>
+                        <td className="w-8 py-1.5 text-xs font-medium text-text-secondary">{idx + 1}</td>
+                        <td className="px-2 py-1.5">
+                          <input
+                            value={s.acao}
+                            onChange={(e) => updateStep(s.id, "acao", e.target.value)}
+                            placeholder="Descreva a ação..."
+                            className="w-full rounded-custom border border-border-default bg-surface-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                          />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <input
+                            value={s.resultado}
+                            onChange={(e) => updateStep(s.id, "resultado", e.target.value)}
+                            placeholder="Resultado esperado..."
+                            className="w-full rounded-custom border border-border-default bg-surface-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                          />
+                        </td>
+                        <td className="py-1.5 pl-1">
+                          <button
+                            type="button"
+                            onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
+                            className="flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
+                          >
+                            <Trash2 className="size-4" style={{ color: "#ffffff" }} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {/* + Adicionar passo — bottom-left, last row style */}
+            <div className="border-t border-border-default pt-2">
+              <Button variant="ghost" size="sm" onClick={addStepRow} className="gap-1.5 text-brand-primary hover:text-brand-primary hover:bg-brand-primary/5">
+                <Plus className="size-4" />
+                Adicionar passo
+              </Button>
             </div>
-          )}
+          </div>
         </div>
 
         {/* ── Dependências ── */}
-        <div className={`${activeTab !== "dependencias" ? "hidden" : ""}`}>
+        <div className={activeTab !== "dependencias" ? "hidden" : ""}>
           <div className="flex justify-end px-5 pt-5 pb-3">
             <Button variant="outline" size="sm" onClick={() => setAddDepOpen(true)}>
               <Plus className="size-4" />

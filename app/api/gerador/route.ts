@@ -101,34 +101,13 @@ Antes de finalizar, valide:
 - Os testes são executáveis manualmente?
 - Está claro para um QA sem contexto adicional?`
 
-export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user) {
-    return new Response("Unauthorized", { status: 401 })
-  }
+// ── Provider routing ──────────────────────────────────────────────────────────
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    return new Response("ANTHROPIC_API_KEY não configurada.", { status: 500 })
-  }
+async function streamAnthropic(userMessage: string, keyOverride?: string): Promise<Response> {
+  const apiKey = keyOverride || process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return new Response("Informe sua ANTHROPIC_API_KEY no campo de API Key.", { status: 500 })
 
-  const { jira, contexto, imagens } = await req.json() as {
-    jira?: string
-    contexto?: string
-    imagens?: string
-  }
-
-  if (!jira && !contexto && !imagens) {
-    return new Response("Informe ao menos uma entrada.", { status: 400 })
-  }
-
-  const parts: string[] = []
-  if (jira)     parts.push(`## JIRA (copiado)\n${jira}`)
-  if (contexto) parts.push(`## Contexto adicional\n${contexto}`)
-  if (imagens)  parts.push(`## Descrição de telas/imagens\n${imagens}`)
-  const userMessage = parts.join("\n\n")
-
-  const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -144,27 +123,23 @@ export async function POST(req: NextRequest) {
     }),
   })
 
-  if (!anthropicRes.ok) {
-    const err = await anthropicRes.text()
+  if (!res.ok) {
+    const err = await res.text()
     return new Response(`Erro na API Anthropic: ${err}`, { status: 502 })
   }
 
-  // Stream SSE from Anthropic → client as plain text stream
   const encoder = new TextEncoder()
   const readable = new ReadableStream({
     async start(controller) {
-      const reader = anthropicRes.body!.getReader()
+      const reader = res.body!.getReader()
       const decoder = new TextDecoder()
       let buffer = ""
-
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split("\n")
         buffer = lines.pop() ?? ""
-
         for (const line of lines) {
           if (!line.startsWith("data:")) continue
           const data = line.slice(5).trim()
@@ -174,16 +149,217 @@ export async function POST(req: NextRequest) {
             if (parsed.type === "content_block_delta" && parsed.delta?.text) {
               controller.enqueue(encoder.encode(parsed.delta.text))
             }
-          } catch {
-            // ignore malformed chunks
-          }
+          } catch { /* ignore */ }
         }
       }
       controller.close()
     },
   })
+  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
+}
 
-  return new Response(readable, {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
+async function streamOpenAI(userMessage: string, model = "gpt-4o", keyOverride?: string): Promise<Response> {
+  const apiKey = keyOverride || process.env.OPENAI_API_KEY
+  if (!apiKey) return new Response("Informe sua OPENAI_API_KEY no campo de API Key.", { status: 500 })
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 8192,
+      stream: true,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userMessage },
+      ],
+    }),
   })
+
+  if (!res.ok) {
+    const err = await res.text()
+    return new Response(`Erro na API OpenAI: ${err}`, { status: 502 })
+  }
+
+  const encoder = new TextEncoder()
+  const readable = new ReadableStream({
+    async start(controller) {
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() ?? ""
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue
+          const data = line.slice(5).trim()
+          if (data === "[DONE]") continue
+          try {
+            const parsed = JSON.parse(data)
+            const delta = parsed.choices?.[0]?.delta?.content
+            if (delta) controller.enqueue(encoder.encode(delta))
+          } catch { /* ignore */ }
+        }
+      }
+      controller.close()
+    },
+  })
+  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
+}
+
+async function streamGemini(userMessage: string, keyOverride?: string): Promise<Response> {
+  const apiKey = keyOverride || process.env.GOOGLE_API_KEY
+  if (!apiKey) return new Response("Informe sua GOOGLE_API_KEY no campo de API Key.", { status: 500 })
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: userMessage }] }],
+        generationConfig: { maxOutputTokens: 8192 },
+      }),
+    }
+  )
+
+  if (!res.ok) {
+    const err = await res.text()
+    return new Response(`Erro na API Google Gemini: ${err}`, { status: 502 })
+  }
+
+  const encoder = new TextEncoder()
+  const readable = new ReadableStream({
+    async start(controller) {
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() ?? ""
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue
+          const data = line.slice(5).trim()
+          try {
+            const parsed = JSON.parse(data)
+            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text
+            if (text) controller.enqueue(encoder.encode(text))
+          } catch { /* ignore */ }
+        }
+      }
+      controller.close()
+    },
+  })
+  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
+}
+
+async function streamGroq(userMessage: string, model: string, keyOverride?: string): Promise<Response> {
+  const apiKey = keyOverride || process.env.GROQ_API_KEY
+  if (!apiKey) return new Response("Informe sua GROQ_API_KEY no campo de API Key.", { status: 500 })
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 8192,
+      stream: true,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userMessage },
+      ],
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    return new Response(`Erro na API Groq: ${err}`, { status: 502 })
+  }
+
+  const encoder = new TextEncoder()
+  const readable = new ReadableStream({
+    async start(controller) {
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() ?? ""
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue
+          const data = line.slice(5).trim()
+          if (data === "[DONE]") continue
+          try {
+            const parsed = JSON.parse(data)
+            const delta = parsed.choices?.[0]?.delta?.content
+            if (delta) controller.enqueue(encoder.encode(delta))
+          } catch { /* ignore */ }
+        }
+      }
+      controller.close()
+    },
+  })
+  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
+}
+
+// ── Handler ───────────────────────────────────────────────────────────────────
+
+export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user) {
+    return new Response("Unauthorized", { status: 401 })
+  }
+
+  const body = await req.json() as {
+    jira?: string
+    imagens?: string
+    provider?: string
+    apiKey?: string
+  }
+
+  const { jira, imagens, provider = "copilot", apiKey } = body
+  const key = typeof apiKey === "string" && apiKey.trim() ? apiKey.trim() : undefined
+
+  if (!jira && !imagens) {
+    return new Response("Informe ao menos uma entrada.", { status: 400 })
+  }
+
+  const parts: string[] = []
+  if (jira)    parts.push(`## Contexto\n${jira}`)
+  if (imagens) parts.push(`## Anexos\n${imagens}`)
+  const userMessage = parts.join("\n\n")
+
+  switch (provider) {
+    case "copilot":
+      return streamOpenAI(userMessage, "gpt-4o", key)
+    case "gemini":
+      return streamGemini(userMessage, key)
+    case "claude":
+      return streamAnthropic(userMessage, key)
+    case "llama":
+      return streamGroq(userMessage, "llama-3.1-70b-versatile", key)
+    case "mistral":
+      return streamGroq(userMessage, "mixtral-8x7b-32768", key)
+    default:
+      if (key || process.env.ANTHROPIC_API_KEY) return streamAnthropic(userMessage, key)
+      if (process.env.OPENAI_API_KEY)           return streamOpenAI(userMessage, "gpt-4o", key)
+      if (process.env.GOOGLE_API_KEY)           return streamGemini(userMessage, key)
+      return new Response("Informe sua API Key no campo correspondente.", { status: 500 })
+  }
 }

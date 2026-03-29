@@ -55,7 +55,7 @@ export function TableToolbar({
             >
               <SlidersHorizontal className="size-4" />
               {(activeFilterCount ?? 0) > 0 && (
-                <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-brand-primary text-xs" style={{ color: "#ffffff" }}>
+                <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-brand-primary text-primary-foreground text-xs">
                   {activeFilterCount}
                 </span>
               )}

@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:lan": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start",
+    "start:lan": "next start -H 0.0.0.0 -p 3000",
     "lint": "eslint",
     "tokens": "tsx design-system/generate-css.ts",
     "tokens:check": "tsx design-system/generate-css.ts --check",
@@ -16,7 +18,9 @@
     "db:seed": "tsx prisma/seed.ts",
     "setup": "node scripts/setup.js",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "storybook:lan": "storybook dev -p 6006 --host 0.0.0.0",
+    "build-storybook": "storybook build",
+    "storybook:serve": "npx http-server storybook-static -p 6007 --host 0.0.0.0"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

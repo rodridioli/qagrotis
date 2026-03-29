@@ -856,7 +856,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                         {item.parsed.scenarioName}
                       </span>
                       {!hasErr && !isDup && (
-                        <span className="shrink-0 inline-flex items-center justify-center whitespace-nowrap rounded-full border border-green-600/30 bg-green-600/10 px-3 py-1 text-xs font-medium text-green-700">
+                        <span className="shrink-0 inline-flex items-center justify-center whitespace-nowrap rounded-full border border-green-600/30 bg-green-600/10 px-3 py-1 text-xs font-medium text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">
                           Novo
                         </span>
                       )}

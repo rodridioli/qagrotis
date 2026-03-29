@@ -54,3 +54,19 @@ export async function requireAdmin() {
   if (type !== "Administrador") throw new Error("Acesso restrito a administradores.")
   return session
 }
+
+/**
+ * Returns true if the current session user is an admin, false otherwise.
+ * Does not throw — safe to use for UI-only feature flags.
+ */
+export async function checkIsAdmin(): Promise<boolean> {
+  try {
+    const session = await auth()
+    const email = session?.user?.email
+    if (!email) return false
+    const type = await getUserType(email)
+    return type === "Administrador"
+  } catch {
+    return false
+  }
+}
