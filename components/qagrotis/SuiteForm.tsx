@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Check, Plus, MoreVertical, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -81,8 +81,10 @@ export function SuiteForm({
   allCenarios = []
 }: SuiteFormProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { sistemaSelecionado } = useSistemaSelecionado()
-  const [activeTab, setActiveTab] = useState<"cadastro" | "cenarios" | "historico">("cadastro")
+  const initialTab = searchParams.get("tab") === "historico" ? "historico" : "cadastro"
+  const [activeTab, setActiveTab] = useState<"cadastro" | "cenarios" | "historico">(initialTab)
   const [cenarios, setCenarios] = useState<SuiteCenario[]>(suite?.cenarios ?? [])
   const historico = (suite?.historico ?? []) as HistoricoItem[]
 
@@ -526,9 +528,12 @@ export function SuiteForm({
                       })
                     }}
                   />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <span className="text-xs font-mono text-text-secondary">{c.id}</span>
                     <p className="text-sm font-medium text-text-primary truncate">{c.scenarioName}</p>
+                  </div>
+                  <div className="shrink-0">
+                    <CenarioTipoBadge tipo={c.tipo as CenarioTipo} />
                   </div>
                 </label>
               ))}

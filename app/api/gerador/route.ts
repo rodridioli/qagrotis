@@ -380,6 +380,18 @@ export async function POST(req: NextRequest) {
   if (jira) textParts.push(`## Contexto\n${jira}`)
   if (imagens?.length) textParts.push(`## Anexos\n${imagens.map((img) => img.name).join(", ")}`)
   const userMessage = textParts.join("\n\n")
+  const { provider, model, apiKey } = integracao
 
-  return streamGemini(userMessage, imagens, integracao.apiKey, "gemini-2.0-flash")
+  switch (provider) {
+    case "google":
+      return streamGemini(userMessage, imagens, apiKey, model)
+    case "groq":
+      return streamGroq(userMessage, model, apiKey)
+    case "openai":
+      return streamOpenAI(userMessage, model, apiKey)
+    case "anthropic":
+      return streamAnthropic(userMessage, apiKey)
+    default:
+      return new Response("Provedor não suportado.", { status: 400 })
+  }
 }

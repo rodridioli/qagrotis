@@ -1,9 +1,21 @@
 [
   {
     "id": "INT-01",
-    "descricao": "Gemini 2.5 Flash",
+    "descricao": "teste",
+    "provider": "google",
+    "model": "gemini-2.0-flash",
     "apiKey": "AIzaSyDxBBCActM4C90wYSzornfk11dWuQw6DYg",
     "active": true,
-    "createdAt": 1774902142941
+    "createdAt": 1774908204958
+  },
+  {
+    "id": "INT-02",
+    "descricao": "teste",
+    "provider": "groq",
+    "model": "llama-3.1-70b-versatile",
+
+    "apiKey": "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",
+    "active": true,
+    "createdAt": 1774908649582
   }
 ]

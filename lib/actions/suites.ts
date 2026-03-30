@@ -46,7 +46,7 @@ const suiteSchema = z.object({
   versao: z.string().min(1, "Versão é obrigatória").max(100),
   sistema: z.string().min(1, "Sistema é obrigatório").max(200),
   modulo: z.string().min(1, "Módulo é obrigatório").max(200),
-  tipo: z.enum(["Sprint", "Kanban", "Outro"], { required_error: "Tipo é obrigatório" }),
+  tipo: z.enum(["Sprint", "Kanban", "Outro"], { message: "Tipo é obrigatório" }),
   cliente: z.string().max(200),
   objetivo: z.string().max(2000).nullable(),
   cenarios: z.array(z.object({
@@ -123,4 +123,32 @@ export async function atualizarSuite(id: string, data: unknown): Promise<SuiteRe
   revalidatePath("/suites")
   revalidatePath(`/suites/${id}`)
   return suites[idx]
+}
+
+export async function registrarResultadoSuite(suiteId: string, cenarioId: string, resultado: "Sucesso" | "Erro"): Promise<void> {
+  await requireSession()
+  const suites = await readSuites()
+  const suiteIdx = suites.findIndex((s) => s.id === suiteId)
+  if (suiteIdx === -1) throw new Error("Suíte não encontrada")
+  
+  const suite = suites[suiteIdx]
+  const cenarioRef = suite.cenarios.find((c) => c.id === cenarioId)
+  if (!cenarioRef) throw new Error("Cenário não pertence à suíte")
+
+  const historicoItem = {
+    id: cenarioId,
+    cenario: cenarioRef.name,
+    module: cenarioRef.module,
+    tipo: cenarioRef.tipo,
+    deps: cenarioRef.deps,
+    data: new Date().toLocaleDateString("pt-BR"),
+    resultado
+  }
+
+  suite.historico = suite.historico || []
+  suite.historico.push(historicoItem)
+
+  await writeSuites(suites)
+  revalidatePath("/suites")
+  revalidatePath(`/suites/${suiteId}`)
 }

@@ -676,7 +676,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
                             onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
                             className="flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
                           >
-                            <Trash2 className="size-4 text-white" />
+                            <Trash2 className="size-4" style={{ color: '#ffffff' }} />
                           </button>
                         </td>
                       </tr>

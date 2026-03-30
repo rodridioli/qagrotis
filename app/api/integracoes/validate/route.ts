@@ -20,65 +20,59 @@ function isInvalidKeyError(errMessage: string, errStatus: string): boolean {
 
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session?.user) {
-    return new Response("Unauthorized", { status: 401 })
-  }
+  if (!session?.user) return new Response("Unauthorized", { status: 401 })
 
-  const body = await req.json() as { apiKey?: string }
+  const body = await req.json() as { apiKey?: string; provider?: string }
   const key = body.apiKey?.trim()
+  const provider = body.provider || "google"
 
-  if (!key) {
-    return new Response("apiKey é obrigatória.", { status: 400 })
-  }
+  if (!key) return new Response("apiKey é obrigatória.", { status: 400 })
 
-  for (const model of CANDIDATE_MODELS) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-        {
+  if (provider === "google") {
+    for (const model of CANDIDATE_MODELS) {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: "hi" }] }],
-            generationConfig: { maxOutputTokens: 1 },
-          }),
-        }
-      )
-
-      // Key accepted — connection confirmed
-      if (res.ok) {
-        return new Response("ok", { status: 200 })
-      }
-
-      // Rate limited — key is valid, just quota exceeded
-      if (res.status === 429) {
-        return new Response("ok", { status: 200 })
-      }
-
-      // Parse error body to distinguish invalid key from other errors
-      let errMessage = ""
-      let errStatus = ""
-      try {
+          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "hi" }] }], generationConfig: { maxOutputTokens: 1 } }),
+        })
+        if (res.ok || res.status === 429) return new Response("ok", { status: 200 })
         const errText = await res.text()
         const errJson = JSON.parse(errText)
-        errMessage = errJson?.error?.message ?? ""
-        errStatus = errJson?.error?.status ?? ""
-      } catch { /* ignore parse errors */ }
-
-      // Definitive: key is wrong
-      if (res.status === 401 || isInvalidKeyError(errMessage, errStatus)) {
-        return new Response("Chave inválida.", { status: 401 })
-      }
-
-      // 403 PERMISSION_DENIED without "key" in message = billing/access issue,
-      // key format is correct → treat as uncertain, try next model
-      // 400/404 for model unavailable → try next model
-    } catch {
-      // Network error trying this model — try next
+        if (res.status === 401 || isInvalidKeyError(errJson?.error?.message || "", errJson?.error?.status || "")) return new Response("Chave inválida.", { status: 401 })
+      } catch { continue }
     }
+  } else if (provider === "groq") {
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+        body: JSON.stringify({ model: "llama-3.1-8b-instant", messages: [{ role: "user", content: "hi" }], max_tokens: 1 }),
+      })
+      if (res.ok || res.status === 429) return new Response("ok", { status: 200 })
+      if (res.status === 401) return new Response("Chave inválida.", { status: 401 })
+    } catch { /* ignore */ }
+  } else if (provider === "openai") {
+    try {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: "hi" }], max_tokens: 1 }),
+      })
+      if (res.ok || res.status === 429) return new Response("ok", { status: 200 })
+      if (res.status === 401) return new Response("Chave inválida.", { status: 401 })
+    } catch { /* ignore */ }
+  } else if (provider === "anthropic") {
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({ model: "claude-3-haiku-20240307", max_tokens: 1, messages: [{ role: "user", content: "hi" }] }),
+      })
+      if (res.ok || res.status === 429) return new Response("ok", { status: 200 })
+      if (res.status === 401) return new Response("Chave inválida.", { status: 401 })
+    } catch { /* ignore */ }
   }
 
-  // All models responded without a definitive auth error — key may be valid
-  // (quota exhausted, region restriction, billing not enabled, etc.)
-  return new Response("Não foi possível confirmar — pode ser cota ou permissão de faturamento. Você pode salvar assim mesmo.", { status: 422 })
+  return new Response("Não foi possível confirmar.", { status: 422 })
 }

@@ -155,10 +155,8 @@ function parseMarkdownCenarios(text: string): ParsedCenario[] {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-interface SectionState {
-  contextoOpen: boolean
-  anexosOpen: boolean
-}
+// SectionState removed as blocks are no longer collapsible
+
 
 interface Props {
   initialCenarios: CenarioRecord[]
@@ -173,11 +171,8 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const [contexto, setContexto] = useState("")
   const [aiProvider, setAiProvider] = useState(() => integracoes[0]?.id ?? "")
 
-  const [sections, setSections] = useState<SectionState>({
-    contextoOpen: true,
-    anexosOpen: false,
-  })
   const [output, setOutput] = useState("")
+
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
@@ -198,12 +193,9 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     [allModulos, sistemaSelecionado]
   )
 
-  function toggle(key: keyof SectionState) {
-    setSections((s) => ({ ...s, [key]: !s[key] }))
-  }
 
   async function generate() {
-    if (!contexto && anexoPreviews.length === 0) {
+    if (!contexto.trim() && anexoPreviews.length === 0) {
       toast.error("Informe ao menos um contexto ou anexo antes de gerar.")
       return
     }
@@ -394,7 +386,11 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             <RotateCcw className="size-4" />
             Limpar
           </Button>
-          <Button onClick={generate} disabled={loading || !aiProvider} className="gap-2">
+          <Button
+            onClick={generate}
+            disabled={loading || !aiProvider || (!contexto.trim() && anexoPreviews.length === 0)}
+            className="gap-2"
+          >
             <Sparkles className="size-4" />
             {loading ? "Gerando..." : "Gerar CT"}
           </Button>
@@ -404,11 +400,12 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Left — inputs */}
         <div className="space-y-3">
-          {/* Motor de IA */}
-          <div className="rounded-xl bg-surface-card p-5 shadow-card">
+          {/* Inputs Block: Motor de IA, Contexto e Anexos */}
+          <div className="rounded-xl bg-surface-card p-5 shadow-card space-y-6">
+            {/* Modelo de IA */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
-                Motor de IA <span className="text-destructive">*</span>
+                Modelo de IA <span className="text-destructive">*</span>
               </label>
               {integracoes.length === 0 ? (
                 <p className="text-sm text-text-secondary">
@@ -421,71 +418,60 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                 <Select value={aiProvider} onValueChange={(v) => setAiProvider(v ?? "")}>
                   <SelectTrigger>
                     <SelectValue>
-                      {integracoes.find((i) => i.id === aiProvider)?.descricao ?? "Selecione uma integração"}
+                      {(() => {
+                        const i = integracoes.find((it) => it.id === aiProvider)
+                        if (!i) return "Selecione um modelo"
+                        return (
+                          <span className="flex items-center gap-2">
+                            <span className="capitalize opacity-60">{i.provider}</span>
+                            <span className="font-medium">{i.model}</span>
+                          </span>
+                        )
+                      })()}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectPopup>
                     {integracoes.map((i) => (
-                      <SelectItem key={i.id} value={i.id}>{i.descricao}</SelectItem>
+                      <SelectItem key={i.id} value={i.id}>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] uppercase tracking-wider text-text-secondary">{i.provider}</span>
+                          <span className="text-sm font-medium">{i.model}</span>
+                        </div>
+                      </SelectItem>
                     ))}
                   </SelectPopup>
                 </Select>
               )}
             </div>
-          </div>
 
-          {/* Contexto (was JIRA / História) */}
-          <div className="overflow-hidden rounded-xl bg-surface-card shadow-card">
-            <button
-              type="button"
-              onClick={() => toggle("contextoOpen")}
-              className="flex w-full items-center justify-between px-5 py-4 text-sm font-semibold text-text-primary transition-colors hover:bg-neutral-grey-50"
-            >
-              <span>Contexto</span>
-              {sections.contextoOpen
-                ? <ChevronUp className="size-4 text-text-secondary" />
-                : <ChevronDown className="size-4 text-text-secondary" />}
-            </button>
-            {sections.contextoOpen && (
-              <div className="px-5 pb-5">
-                <textarea
-                  value={contexto}
-                  onChange={(e) => setContexto(e.target.value)}
-                  placeholder="Cole aqui o texto da tarefa do Jira, história de usuário, requisito ou qualquer contexto relevante..."
-                  rows={8}
-                  className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 transition-colors"
-                />
-              </div>
-            )}
-          </div>
 
-          {/* Anexos (was Screenshots) */}
-          <div className="overflow-hidden rounded-xl bg-surface-card shadow-card">
-            <button
-              type="button"
-              onClick={() => toggle("anexosOpen")}
-              className="flex w-full items-center justify-between px-5 py-4 text-sm font-semibold text-text-primary transition-colors hover:bg-neutral-grey-50"
-            >
-              <span>
-                Anexos
+            {/* Contexto */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Contexto</label>
+              <textarea
+                value={contexto}
+                onChange={(e) => setContexto(e.target.value)}
+                placeholder="Cole aqui o texto da tarefa do Jira, história de usuário, requisito ou qualquer contexto relevante..."
+                rows={8}
+                className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 transition-colors"
+              />
+            </div>
+
+            {/* Anexos */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary flex items-center justify-between">
+                <span>Anexos</span>
                 {anexoPreviews.length > 0 && (
                   <span className="ml-2 inline-flex items-center justify-center rounded-full bg-brand-primary/15 px-2 py-0.5 text-xs font-semibold text-brand-primary">
                     {anexoPreviews.length}
                   </span>
                 )}
-              </span>
-              {sections.anexosOpen
-                ? <ChevronUp className="size-4 text-text-secondary" />
-                : <ChevronDown className="size-4 text-text-secondary" />}
-            </button>
-            {sections.anexosOpen && (
-              <div className="px-5 pb-5">
-                <ScreenshotUploader
-                  previews={anexoPreviews}
-                  onChangePreviews={setAnexoPreviews}
-                />
-              </div>
-            )}
+              </label>
+              <ScreenshotUploader
+                previews={anexoPreviews}
+                onChangePreviews={setAnexoPreviews}
+              />
+            </div>
           </div>
         </div>
 
@@ -859,16 +845,14 @@ function ScreenshotUploader({ previews, onChangePreviews }: ScreenshotUploaderPr
                 alt={p.name}
                 className="h-20 w-20 rounded-md border border-border-default object-cover"
               />
-              {previews.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removePreview(i)}
-                  aria-label={`Remover ${p.name}`}
-                  className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-destructive text-white shadow-sm ring-1 ring-white/30 transition-transform hover:scale-110"
-                >
-                  <Trash2 size={14} color="white" strokeWidth={2.5} />
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => removePreview(i)}
+                aria-label={`Remover ${p.name}`}
+                className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-destructive text-white shadow-sm ring-1 ring-white/30 transition-transform hover:scale-110"
+              >
+                <Trash2 size={14} color="white" strokeWidth={2.5} />
+              </button>
               <p className="mt-1 max-w-[80px] truncate text-[10px] text-text-secondary">{p.name}</p>
             </div>
           ))}

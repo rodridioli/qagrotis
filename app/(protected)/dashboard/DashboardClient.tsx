@@ -74,9 +74,10 @@ export function DashboardClient({ allCenarios, allModulos, allUsers, currentUser
     rankingHoje, ultimasAutomacoes,
   } = useMemo(() => {
     const modsFiltrados = allModulos.filter(
-      (m) => m.active && (!sistemaSelecionado || m.sistemaName === sistemaSelecionado)
+      (m) => (!sistemaSelecionado || m.sistemaName === sistemaSelecionado)
     )
     const totalModulos = modsFiltrados.length
+
 
     const cenariosFiltrados = allCenarios.filter(
       (c) => c.active && (!sistemaSelecionado || c.system === sistemaSelecionado)

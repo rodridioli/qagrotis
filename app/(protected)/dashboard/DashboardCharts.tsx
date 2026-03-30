@@ -7,6 +7,31 @@ import {
 } from "recharts"
 
 interface AutomationDataPoint { module: string; coverage: number }
+
+const MAX_TICK_CHARS = 14
+
+function TruncatedTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
+  if (!payload) return null
+  const label = payload.value.length > MAX_TICK_CHARS
+    ? payload.value.slice(0, MAX_TICK_CHARS) + "…"
+    : payload.value
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <title>{payload.value}</title>
+      <text
+        x={0}
+        y={0}
+        dy={10}
+        textAnchor="end"
+        fill="var(--text-secondary)"
+        fontSize={10}
+        transform="rotate(-35)"
+      >
+        {label}
+      </text>
+    </g>
+  )
+}
 interface MonthlyDataPoint    { month: string;  value: number    }
 
 interface RankingItem {
@@ -136,9 +161,16 @@ export function DashboardCharts({
           <h2 className="mb-4 shrink-0 text-sm font-semibold text-text-primary">Cobertura de automação por módulo</h2>
           <div className="min-h-0 flex-1">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={automationData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <BarChart data={automationData} margin={{ top: 0, right: 0, left: -20, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-                <XAxis dataKey="module" tick={{ fontSize: 12, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} />
+                <XAxis
+                  dataKey="module"
+                  tick={<TruncatedTick />}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={0}
+                />
+
                 <YAxis tick={{ fontSize: 12, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} domain={[0, 100]} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "transparent" }} formatter={(v) => [`${v}%`, "Cobertura"]} />
                 <Bar dataKey="coverage" fill="var(--brand-primary)" radius={[4, 4, 0, 0]} maxBarSize={40} />

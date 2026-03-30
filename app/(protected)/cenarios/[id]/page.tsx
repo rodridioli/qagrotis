@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { getCenario } from "@/lib/actions/cenarios"
+import { getCenario, getCenarios } from "@/lib/actions/cenarios"
 import { getSuiteById } from "@/lib/actions/suites"
 import CenarioDetailClient from "./CenarioDetailClient"
 
@@ -13,10 +13,19 @@ export default async function CenarioDetailPage({
   const { id } = await params
   const { suiteId } = await searchParams
 
-  const cenario = await getCenario(id)
+  const [cenario, allCenarios, suite] = await Promise.all([
+    getCenario(id),
+    getCenarios(),
+    suiteId ? getSuiteById(suiteId) : Promise.resolve(null),
+  ])
+
   if (!cenario) notFound()
 
-  const suite = suiteId ? await getSuiteById(suiteId) : null
-
-  return <CenarioDetailClient cenario={cenario} suite={suite ?? undefined} />
+  return (
+    <CenarioDetailClient
+      cenario={cenario}
+      suite={suite ?? undefined}
+      allCenarios={allCenarios}
+    />
+  )
 }

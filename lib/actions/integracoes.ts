@@ -10,6 +10,8 @@ import { requireAdmin } from "@/lib/session"
 export interface IntegracaoRecord {
   id: string
   descricao: string
+  provider: "google" | "openai" | "anthropic" | "groq"
+  model: string
   apiKey: string
   active: boolean
   createdAt: number
@@ -19,7 +21,10 @@ const DATA_DIR = path.join(process.cwd(), "data")
 const INTEGRACOES_FILE = path.join(DATA_DIR, "integracoes.json")
 
 const integracaoSchema = z.object({
-  descricao: z.string().min(1, "Descrição é obrigatória").max(200, "Máximo de 200 caracteres"),
+  descricao: z.string().max(200, "Máximo de 200 caracteres").optional().default(""),
+
+  provider: z.enum(["google", "openai", "anthropic", "groq"]),
+  model: z.string().min(1, "Modelo é obrigatório"),
   apiKey: z.string().min(1, "API Key é obrigatória"),
 })
 

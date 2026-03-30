@@ -6,8 +6,16 @@ import { useRouter } from "next/navigation"
 import { AlertCircle, ArrowLeft, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "@/components/ui/select"
 import { criarIntegracao } from "@/lib/actions/integracoes"
 import { toast } from "sonner"
+
 
 const MAX_DESCRICAO = 200
 
@@ -16,9 +24,12 @@ type KeyStatus = "idle" | "validating" | "valid" | "invalid" | "uncertain"
 export default function NovaIntegracaoForm() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [descricao, setDescricao] = useState("")
+  const [provider, setProvider] = useState<"google" | "openai" | "anthropic" | "groq">("google")
+
+  const [model, setModel] = useState("gemini-2.0-flash")
   const [apiKey, setApiKey] = useState("")
   const [showKey, setShowKey] = useState(false)
+
   const [keyStatus, setKeyStatus] = useState<KeyStatus>("idle")
 
   const validateKey = useCallback(async () => {
@@ -28,7 +39,7 @@ export default function NovaIntegracaoForm() {
       const res = await fetch("/api/integracoes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: apiKey.trim() }),
+        body: JSON.stringify({ apiKey: apiKey.trim(), provider }),
       })
       if (res.ok) setKeyStatus("valid")
       else if (res.status === 401) setKeyStatus("invalid")
@@ -44,17 +55,37 @@ export default function NovaIntegracaoForm() {
   }
 
   function handleSave() {
-    if (!descricao.trim()) { toast.error("A descrição é obrigatória."); return }
-    if (descricao.length > MAX_DESCRICAO) { toast.error(`A descrição deve ter no máximo ${MAX_DESCRICAO} caracteres.`); return }
     if (!apiKey.trim()) { toast.error("A API Key é obrigatória."); return }
     if (keyStatus === "validating") { toast.error("Aguarde a validação da API Key."); return }
 
     startTransition(async () => {
-      await criarIntegracao({ descricao: descricao.trim(), apiKey: apiKey.trim() })
-      toast.success("Integração criada com sucesso.")
-      router.push("/configuracoes/integracoes")
+      try {
+        await criarIntegracao({
+          provider,
+          model: model.trim(),
+          apiKey: apiKey.trim()
+        })
+
+        toast.success("Integração criada com sucesso.")
+        router.push("/configuracoes/integracoes")
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar")
+      }
     })
   }
+
+  const handleProviderChange = (p: string | null) => {
+    if (!p) return
+    const prov = p as any
+    setProvider(prov)
+    // Defaults for each provider
+    if (prov === "google") setModel("gemini-2.0-flash")
+    else if (prov === "groq") setModel("llama-3.1-70b-versatile")
+
+    else if (prov === "openai") setModel("gpt-4o-mini")
+    else if (prov === "anthropic") setModel("claude-3-5-sonnet-latest")
+  }
+
 
   const statusIcon: Record<KeyStatus, React.ReactNode> = {
     idle:       null,
@@ -94,22 +125,47 @@ export default function NovaIntegracaoForm() {
       </div>
 
       <div className="max-w-2xl space-y-4 rounded-xl bg-surface-card p-5 shadow-card">
-        {/* Descrição */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
+
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {/* Provedor */}
+          <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">
-              Descrição <span className="text-destructive">*</span>
+              Provedor <span className="text-destructive">*</span>
             </label>
-            <span className={`text-xs ${descricao.length > MAX_DESCRICAO ? "text-destructive" : "text-text-secondary"}`}>
-              {descricao.length}/{MAX_DESCRICAO}
-            </span>
+            <Select value={provider} onValueChange={handleProviderChange}>
+              <SelectTrigger>
+                <SelectValue>
+                  <span className="capitalize">{provider}</span>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup>
+                <SelectItem value="google">Google Gemini</SelectItem>
+                <SelectItem value="groq">Groq (Llama, Mixtral)</SelectItem>
+                <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+              </SelectPopup>
+            </Select>
           </div>
-          <Input
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            placeholder="Ex.: Gemini produção, OpenAI staging..."
-            maxLength={MAX_DESCRICAO + 1}
-          />
+
+          {/* Modelo */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">
+              Modelo <span className="text-destructive">*</span>
+            </label>
+            <Input
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
+            />
+            {provider === "groq" && (
+              <p className="text-[10px] text-text-secondary">Sugestão: llama-3.1-70b-versatile, llama-3.1-8b-instant</p>
+            )}
+
+            {provider === "google" && (
+              <p className="text-[10px] text-text-secondary">Sugestão: gemini-2.0-flash-exp, gemini-1.5-flash</p>
+            )}
+          </div>
         </div>
 
         {/* API Key */}

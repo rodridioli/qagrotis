@@ -2,57 +2,180 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Check } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { ArrowLeft, ChevronDown, ChevronUp, Eye, EyeOff, ExternalLink, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectPopup,
-  SelectItem,
-} from "@/components/ui/select"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { SuiteRecord } from "@/lib/actions/suites"
+import { registrarResultadoSuite } from "@/lib/actions/suites"
 import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 
 interface Props {
   cenario: CenarioRecord
   suite?: SuiteRecord
+  allCenarios?: CenarioRecord[]
 }
 
-type Tab = "cenario" | "manual" | "automatizado" | "dependencias"
+/* ── Helpers ── */
 
-function InfoRow({ label, value }: { label: string; value?: string | null }) {
-  if (!value) return null
+/** Quebra o BDD em linhas, destacando DADO/QUANDO/ENTÃO */
+function formatBdd(text: string): React.ReactNode {
+  if (!text) return <span className="text-text-secondary italic">—</span>
+  // Quebra antes de cada palavra-chave (case-insensitive)
+  const normalized = text
+    .replace(/\r\n/g, "\n")
+    .replace(/(\n)?(DADO|QUANDO|ENTÃO|ENTAO|AND|E\s)/gi, (m) => `\n${m.trim()}`)
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-xs text-text-secondary">{label}</span>
-      <p className="text-sm text-text-primary whitespace-pre-wrap">{value}</p>
+    <>
+      {normalized.map((line, i) => (
+        <span key={i} className="block">
+          {line}
+        </span>
+      ))}
+    </>
+  )
+}
+
+/* ── Sub-componentes ── */
+
+function DisabledInput({ value }: { value?: string | null }) {
+  return (
+    <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm text-text-primary cursor-not-allowed select-none min-h-[38px] flex items-center">
+      {value ? <span>{value}</span> : <span className="text-text-secondary italic">—</span>}
     </div>
   )
 }
 
-export default function CenarioDetailClient({ cenario, suite }: Props) {
+function DisabledTextarea({ value }: { value?: string | null }) {
+  return (
+    <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm text-text-primary cursor-not-allowed select-none whitespace-pre-wrap min-h-[60px]">
+      {value ? <span>{value}</span> : <span className="text-text-secondary italic">—</span>}
+    </div>
+  )
+}
+
+function PasswordField({ label, value }: { label: string; value?: string | null }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs font-medium text-text-secondary">{label}</span>
+      <div className="relative">
+        <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 pr-9 text-sm text-text-primary cursor-not-allowed select-none min-h-[38px] flex items-center">
+          {value ? (
+            show ? (
+              <span>{value}</span>
+            ) : (
+              <span className="tracking-widest text-text-secondary">••••••••</span>
+            )
+          ) : (
+            <span className="text-text-secondary italic">—</span>
+          )}
+        </div>
+        {value && (
+          <button
+            type="button"
+            onClick={() => setShow((v) => !v)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
+            title={show ? "Ocultar senha" : "Mostrar senha"}
+          >
+            {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, children, className }: {
+  label: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={`flex flex-col gap-1 ${className ?? ""}`}>
+      <span className="text-xs font-medium text-text-secondary">{label}</span>
+      {children}
+    </div>
+  )
+}
+
+/* ── BlockCard com expand/collapse ── */
+function BlockCard({
+  title,
+  children,
+  defaultOpen = true,
+}: {
+  title: string
+  children: React.ReactNode
+  defaultOpen?: boolean
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  return (
+    <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-neutral-grey-50 transition-colors"
+      >
+        <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
+        {open ? (
+          <ChevronUp className="size-4 text-text-secondary shrink-0" />
+        ) : (
+          <ChevronDown className="size-4 text-text-secondary shrink-0" />
+        )}
+      </button>
+
+      {open && (
+        <>
+          <div className="border-t border-border-default" />
+          <div className="p-5 space-y-4">{children}</div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/* ── Componente principal ── */
+
+export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }: Props) {
+  const router = useRouter()
+  const [isRegistering, setIsRegistering] = useState(false)
+
   const steps = cenario.steps ?? []
-  const deps = cenario.deps ?? []
+  const depIds = cenario.deps ?? []
   const isAutomatizado = cenario.tipo === "Automatizado" || cenario.tipo === "Man./Auto."
 
-  const [activeTab, setActiveTab] = useState<Tab>("cenario")
-  const [stepStatuses, setStepStatuses] = useState<Record<number, string>>(
-    Object.fromEntries(steps.map((_, i) => [i, "Pendente"]))
-  )
+  async function handleResult(resultado: "Sucesso" | "Erro") {
+    if (!suite) return
+    setIsRegistering(true)
+    try {
+      await registrarResultadoSuite(suite.id, cenario.id, resultado)
+      toast.success("Teste registrado com sucesso!")
+      router.push(`/suites/${suite.id}?tab=historico`)
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao registrar o resultado")
+    } finally {
+      setIsRegistering(false)
+    }
+  }
 
-  const TABS: { id: Tab; label: string; badge?: number | null; disabled?: boolean }[] = [
-    { id: "cenario",       label: "Cenário" },
-    { id: "manual",        label: "Teste Manual",  badge: steps.length > 0 ? steps.length : null },
-    { id: "automatizado",  label: "Automatizado",  disabled: !isAutomatizado },
-    { id: "dependencias",  label: "Dependências",  badge: deps.length > 0 ? deps.length : null },
-  ]
+  // Enriquece as dependências com dados completos
+  const depsData = depIds.map((depId) => {
+    const found = allCenarios.find((c) => c.id === depId)
+    return found ?? { id: depId, scenarioName: "—", module: "—", client: "—", tipo: "—" }
+  })
 
   return (
     <div className="space-y-4">
-      {/* Header */}
+
+      {/* ── Header / Breadcrumb ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm">
           <Link
@@ -70,264 +193,248 @@ export default function CenarioDetailClient({ cenario, suite }: Props) {
                 href={`/suites/${suite.id}`}
                 className="text-text-secondary hover:text-brand-primary"
               >
-                {suite.suiteName}
+                {suite.id}
               </Link>
             </>
           )}
           <span className="text-text-secondary">/</span>
           <span className="font-medium text-text-primary">{cenario.id}</span>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline">
-            <Check className="size-4" />
-            Salvar
-          </Button>
-          <Button className="bg-primary-700 hover:bg-primary-800 text-white!">Sucesso</Button>
-          <Button variant="destructive">Erro</Button>
+          {suite && (
+            <>
+              <Button 
+                onClick={() => handleResult("Sucesso")} 
+                disabled={isRegistering}
+                className="bg-brand-primary hover:bg-brand-primary/90 text-white"
+              >
+                <Check className="size-4" />
+                Sucesso
+              </Button>
+              <Button 
+                onClick={() => handleResult("Erro")} 
+                disabled={isRegistering}
+                variant="destructive"
+              >
+                <X className="size-4" />
+                Erro
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Tab container */}
-      <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
-        {/* Tab nav */}
-        <div className="flex border-b border-border-default">
-          {TABS.map(({ id, label, badge, disabled }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => !disabled && setActiveTab(id)}
-              disabled={disabled}
-              title={disabled ? "Habilite o tipo Automatizado no cadastro do cenário para acessar esta aba" : undefined}
-              className={`flex flex-1 items-center justify-center gap-1.5 py-3 px-4 text-sm font-medium border-b-2 -mb-px transition-all ${
-                disabled
-                  ? "cursor-not-allowed border-transparent text-text-secondary/40 opacity-50"
-                  : activeTab === id
-                  ? "border-brand-primary text-brand-primary bg-brand-primary/5"
-                  : "border-transparent text-text-secondary hover:text-text-primary hover:bg-neutral-grey-50"
-              }`}
-            >
-              {label}
-              {badge != null && (
-                <span className={`inline-flex items-center justify-center rounded-full text-xs font-semibold min-w-4.5 h-4.5 px-1 ${
-                  activeTab === id
-                    ? "bg-brand-primary/15 text-brand-primary border border-brand-primary/30"
-                    : "bg-neutral-grey-200 text-text-secondary"
-                }`}>
-                  {badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+      {/* ── Bloco 1: Dados do Cenário ── */}
+      <BlockCard title="Dados do Cenário">
+        {/* Linha 1: Nome do cenário */}
+        <Field label="Cenário">
+          <DisabledInput value={cenario.scenarioName} />
+        </Field>
 
-        {/* ── Cenário ── */}
-        <div className={`p-5${activeTab !== "cenario" ? " hidden" : ""}`}>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Coluna: identificação */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Identificação</h3>
-              <div className="space-y-3">
-                <InfoRow label="Cenário" value={cenario.scenarioName} />
-                <InfoRow label="Sistema" value={cenario.system} />
-                <InfoRow label="Módulo" value={cenario.module} />
-                <InfoRow label="Cliente" value={cenario.client} />
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-text-secondary">Tipo</span>
-                  <CenarioTipoBadge tipo={cenario.tipo as CenarioTipo} />
-                </div>
-                {cenario.risco && (
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-xs text-text-secondary">Risco</span>
-                    <span className={`text-sm font-medium ${
-                      cenario.risco === "Alto" ? "text-red-600" :
-                      cenario.risco === "Médio" ? "text-amber-600" : "text-blue-600"
-                    }`}>{cenario.risco}</span>
-                  </div>
-                )}
-                <InfoRow label="Caminho da Tela" value={cenario.caminhoTela} />
-              </div>
-            </div>
-
-            {/* Coluna: descrição */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Descrição</h3>
-              <div className="space-y-3">
-                <InfoRow label="Descrição" value={cenario.descricao} />
-                <InfoRow label="Regra de Negócio" value={cenario.regraDeNegocio} />
-                <InfoRow label="Pré-condições" value={cenario.preCondicoes} />
-                <InfoRow label="Resultado Esperado" value={cenario.resultadoEsperado} />
-              </div>
-            </div>
-
-            {/* Coluna: ações */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Ações</h3>
-              <div className="flex flex-col gap-2">
-                <Link
-                  href={`/cenarios/${cenario.id}/editar`}
-                  className="inline-flex h-9 items-center justify-center rounded-custom border border-border-default bg-background px-3 text-sm font-medium text-text-primary transition-colors hover:bg-neutral-grey-50"
+        {/* Linha 2: Sistema | Módulo | Risco */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field label="Sistema">
+            <DisabledInput value={cenario.system} />
+          </Field>
+          <Field label="Módulo">
+            <DisabledInput value={cenario.module} />
+          </Field>
+          <Field label="Risco">
+            <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 min-h-[38px] flex items-center cursor-not-allowed">
+              {cenario.risco ? (
+                <span
+                  className={`text-sm font-medium ${
+                    cenario.risco === "Alto"
+                      ? "text-red-600"
+                      : cenario.risco === "Médio"
+                      ? "text-amber-600"
+                      : "text-blue-600"
+                  }`}
                 >
-                  Editar Cenário
-                </Link>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between rounded-lg border border-border-default px-3 py-2">
-                  <span className="text-text-secondary">Execuções</span>
-                  <span className="font-semibold text-text-primary">{cenario.execucoes}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-border-default px-3 py-2">
-                  <span className="text-text-secondary">Erros</span>
-                  <span className="font-semibold text-red-600">{cenario.erros}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-border-default px-3 py-2">
-                  <span className="text-text-secondary">Suítes</span>
-                  <span className="font-semibold text-text-primary">{cenario.suites}</span>
-                </div>
-              </div>
+                  {cenario.risco}
+                </span>
+              ) : (
+                <span className="text-text-secondary italic text-sm">—</span>
+              )}
             </div>
-          </div>
+          </Field>
         </div>
+      </BlockCard>
 
-        {/* ── Teste Manual ── */}
-        <div className={`p-5 space-y-4${activeTab !== "manual" ? " hidden" : ""}`}>
-          {cenario.bdd && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">BDD (Gherkin)</h3>
-              <pre className="rounded-lg border border-border-default bg-neutral-grey-50 p-4 text-sm text-text-primary whitespace-pre-wrap font-mono">{cenario.bdd}</pre>
-            </div>
-          )}
+      {/* ── Bloco 2: Teste Manual ── */}
+      <BlockCard title="Teste Manual">
+        <Field label="Caminho da Tela">
+          <DisabledInput value={cenario.caminhoTela} />
+        </Field>
+        <Field label="Descrição">
+          <DisabledTextarea value={cenario.descricao} />
+        </Field>
+        <Field label="Regra de Negócio">
+          <DisabledTextarea value={cenario.regraDeNegocio} />
+        </Field>
+        <Field label="Pré-condições">
+          <DisabledTextarea value={cenario.preCondicoes} />
+        </Field>
+        <Field label="BDD (Gherkin)">
+          <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm text-text-primary cursor-not-allowed select-none min-h-[80px] font-mono leading-6">
+            {formatBdd(cenario.bdd ?? "")}
+          </div>
+        </Field>
+        <Field label="Resultado Esperado">
+          <DisabledTextarea value={cenario.resultadoEsperado} />
+        </Field>
+      </BlockCard>
 
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Passos ({steps.length})
-            </h3>
-            {steps.length === 0 ? (
-              <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-                Nenhum passo cadastrado.
+      {/* ── Bloco 3: Automação ── */}
+      <BlockCard title="Automação">
+        {!isAutomatizado ? (
+          <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
+            Este cenário não está configurado como Automatizado.{" "}
+            <Link href={`/cenarios/${cenario.id}/editar`} className="text-brand-primary hover:underline">
+              Editar cenário
+            </Link>{" "}
+            para habilitar.
+          </div>
+        ) : (
+          <div className="space-y-5">
+
+            {/* Credenciais — mesma linha */}
+            <div>
+              <p className="text-xs font-semibold text-text-secondary mb-2">Credenciais</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Field label="Usuário de Teste">
+                  <DisabledInput value={cenario.usuarioTeste} />
+                </Field>
+                <PasswordField label="Senha de Teste" value={cenario.senhaTeste} />
+                <PasswordField label="Senha Falsa" value={cenario.senhaFalsa} />
               </div>
-            ) : (
-              <div className="space-y-3">
-                {steps.map((step, idx) => (
-                  <div key={idx} className="rounded-lg border border-border-default p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-text-secondary">Passo {idx + 1}</span>
-                      <Select
-                        value={stepStatuses[idx]}
-                        onValueChange={(v: string | null) =>
-                          setStepStatuses((prev) => ({ ...prev, [idx]: v ?? "Pendente" }))
-                        }
+            </div>
+
+            {/* Passo a passo — tabela */}
+            <div>
+              <p className="text-xs font-semibold text-text-secondary mb-2">
+                Passo a passo ({steps.length})
+              </p>
+              {steps.length === 0 ? (
+                <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
+                  Nenhum passo cadastrado.
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-border-default">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border-default bg-neutral-grey-50">
+                        <th className="w-10 px-4 py-3 text-left text-xs font-semibold text-text-secondary">#</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Ação</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Resultado Esperado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {steps.map((step, idx) => (
+                        <tr
+                          key={idx}
+                          className="border-b border-border-default last:border-0 bg-neutral-grey-50/30"
+                        >
+                          <td className="px-4 py-3 text-xs font-medium text-text-secondary">{idx + 1}</td>
+                          <td className="px-4 py-3 text-text-primary">{step.acao}</td>
+                          <td className="px-4 py-3 text-text-primary">{step.resultado}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* URL do Script + botão Executar */}
+            <div>
+              <p className="text-xs font-semibold text-text-secondary mb-2">URL do Script</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm cursor-not-allowed select-none min-h-[38px] flex items-center">
+                  {cenario.urlScript ? (
+                    <span className="text-brand-primary break-all">{cenario.urlScript}</span>
+                  ) : (
+                    <span className="text-text-secondary italic">—</span>
+                  )}
+                </div>
+                <Button
+                  disabled
+                  title="Funcionalidade disponível em breve"
+                  className="shrink-0"
+                >
+                  <ExternalLink className="size-4" />
+                  Executar
+                </Button>
+              </div>
+            </div>
+
+          </div>
+        )}
+      </BlockCard>
+
+      {/* ── Bloco 4: Dependências ── */}
+      <BlockCard title={`Dependências (${depIds.length})`}>
+        {depIds.length === 0 ? (
+          <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
+            Nenhuma dependência vinculada a este cenário.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-border-default">
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col className="w-28" />
+                <col />
+                <col className="w-36" />
+                <col className="w-32" />
+                <col className="w-32" />
+                <col className="w-28" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-border-default bg-neutral-grey-50">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cliente</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {depsData.map((dep) => (
+                  <tr
+                    key={dep.id}
+                    className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                  >
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <Link
+                        href={`/cenarios/${dep.id}/editar`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-brand-primary hover:underline"
                       >
-                        <SelectTrigger className="h-7 w-32 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectPopup>
-                          <SelectItem value="Pendente">Pendente</SelectItem>
-                          <SelectItem value="Sucesso">Sucesso</SelectItem>
-                          <SelectItem value="Erro">Erro</SelectItem>
-                        </SelectPopup>
-                      </Select>
-                    </div>
-                    <div>
-                      <p className="text-xs text-text-secondary mb-0.5">Ação</p>
-                      <p className="text-sm text-text-primary">{step.acao}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-text-secondary mb-0.5">Resultado esperado</p>
-                      <p className="text-sm text-text-primary">{step.resultado}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Automatizado ── */}
-        <div className={`p-5 space-y-4${activeTab !== "automatizado" ? " hidden" : ""}`}>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {cenario.urlScript ? (
-              <div className="sm:col-span-2 space-y-1.5">
-                <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">URL do Script</span>
-                <p className="text-sm text-brand-primary break-all">{cenario.urlScript}</p>
-              </div>
-            ) : null}
-
-            <div className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Usuário de Teste</span>
-              <p className="text-sm text-text-primary">{cenario.usuarioTeste || <span className="text-text-secondary italic">Não informado</span>}</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Senha de Teste</span>
-              <p className="text-sm text-text-primary">
-                {cenario.senhaTeste ? "••••••••" : <span className="text-text-secondary italic">Não informada</span>}
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Senha Falsa</span>
-              <p className="text-sm text-text-primary">
-                {cenario.senhaFalsa ? "••••••••" : <span className="text-text-secondary italic">Não informada</span>}
-              </p>
-            </div>
-          </div>
-
-          {!cenario.urlScript && !cenario.usuarioTeste && (
-            <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-              Nenhum dado de automação cadastrado.{" "}
-              <Link href={`/cenarios/${cenario.id}/editar`} className="text-brand-primary hover:underline">
-                Editar cenário
-              </Link>{" "}
-              para adicionar.
-            </div>
-          )}
-        </div>
-
-        {/* ── Dependências ── */}
-        <div className={`p-5 space-y-3${activeTab !== "dependencias" ? " hidden" : ""}`}>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-            Dependências ({deps.length})
-          </h3>
-          {deps.length === 0 ? (
-            <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-              Nenhuma dependência vinculada a este cenário.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border-default bg-neutral-grey-50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Ações</th>
+                        {dep.id}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-text-primary truncate">{"scenarioName" in dep ? dep.scenarioName : "—"}</td>
+                    <td className="px-4 py-3 text-text-secondary truncate">{"system" in dep ? dep.system : "—"}</td>
+                    <td className="px-4 py-3 text-text-secondary truncate">{"module" in dep ? dep.module : "—"}</td>
+                    <td className="px-4 py-3 text-text-secondary truncate">{"client" in dep ? dep.client : "—"}</td>
+                    <td className="px-4 py-3">
+                      {"tipo" in dep && dep.tipo && dep.tipo !== "—" ? (
+                        <CenarioTipoBadge tipo={dep.tipo as CenarioTipo} />
+                      ) : (
+                        <span className="text-text-secondary">—</span>
+                      )}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {deps.map((depId) => (
-                    <tr key={depId} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <Link
-                          href={`/cenarios/${depId}`}
-                          className="font-medium text-brand-primary hover:underline"
-                        >
-                          {depId}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/cenarios/${depId}`}
-                          className="text-xs text-text-secondary hover:text-brand-primary"
-                        >
-                          Ver detalhes
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </BlockCard>
+
     </div>
   )
 }

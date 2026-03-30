@@ -30,5 +30,91 @@
     ],
     "active": true,
     "createdAt": 1774837104469
+  },
+  {
+    "id": "S-0002",
+    "suiteName": "teste",
+    "versao": "teste",
+    "sistema": "Plataforma AGRO",
+    "modulo": "SEM - Campos de Sementes",
+    "tipo": "Kanban",
+    "cliente": "",
+    "objetivo": null,
+    "cenarios": [
+      {
+        "id": "CT-1018",
+        "name": "Atualização automática ao alterar itens do pedido",
+        "module": "SEM - Campos de Sementes",
+        "execucoes": 0,
+        "erros": 0,
+        "deps": 0,
+        "tipo": "Manual"
+      },
+      {
+        "id": "CT-1037",
+        "name": "Pedido sem itens controlados segue fluxo normal",
+        "module": "SEM - Campos de Sementes",
+        "execucoes": 0,
+        "erros": 0,
+        "deps": 0,
+        "tipo": "Manual"
+      },
+      {
+        "id": "CT-1038",
+        "name": "Pedido com receita emitida permite confirmação",
+        "module": "SEM - Campos de Sementes",
+        "execucoes": 0,
+        "erros": 0,
+        "deps": 0,
+        "tipo": "Manual"
+      },
+      {
+        "id": "CT-1039",
+        "name": "Bloqueio de confirmação sem receita emitida",
+        "module": "SEM - Campos de Sementes",
+        "execucoes": 0,
+        "erros": 0,
+        "deps": 0,
+        "tipo": "Manual"
+      },
+      {
+        "id": "CT-1040",
+        "name": "Aba de receitas exibida apenas quando necessário",
+        "module": "SEM - Campos de Sementes",
+        "execucoes": 0,
+        "erros": 0,
+        "deps": 0,
+        "tipo": "Manual"
+      },
+      {
+        "id": "CT-1041",
+        "name": "Atualização automática ao alterar itens do pedido",
+        "module": "SEM - Campos de Sementes",
+        "execucoes": 0,
+        "erros": 0,
+        "deps": 0,
+        "tipo": "Manual"
+      },
+      {
+        "id": "CT-1174",
+        "name": "Pedido sem itens controlados segue fluxo normal",
+        "module": "SEM - Campos de Sementes",
+        "execucoes": 0,
+        "erros": 0,
+        "deps": 0,
+        "tipo": "Manual"
+      },
+      {
+        "id": "CT-1175",
+        "name": "Pedido com receita emitida permite confirmação",
+        "module": "SEM - Campos de Sementes",
+        "execucoes": 0,
+        "erros": 0,
+        "deps": 0,
+        "tipo": "Manual"
+      }
+    ],
+    "active": true,
+    "createdAt": 1774910182456
   }
 ]

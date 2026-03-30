@@ -3,7 +3,8 @@
 import React, { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Plus, MoreVertical, X, Filter, Power, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Plus, MoreVertical, X, Filter, Power } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -37,10 +38,7 @@ interface Props {
   isAdmin: boolean
 }
 
-function maskKey(key: string): string {
-  if (key.length <= 8) return "••••••••"
-  return key.slice(0, 4) + "••••••••" + key.slice(-4)
-}
+
 
 export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props) {
   const router = useRouter()
@@ -54,14 +52,16 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
   const [inativarIds, setInativarIds] = useState<string[]>([])
   const [filters, setFilters] = useState<FilterState>({ apenasInativos: false })
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
-  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set())
+
 
   const filtered = useMemo(() => {
     const result = initialIntegracoes.filter((i) => {
       const matchSearch =
         !search ||
         i.id.toLowerCase().includes(search.toLowerCase()) ||
-        i.descricao.toLowerCase().includes(search.toLowerCase())
+        i.provider.toLowerCase().includes(search.toLowerCase()) ||
+        i.model.toLowerCase().includes(search.toLowerCase())
+
       const matchAtivo = filters.apenasInativos ? !i.active : i.active
       return matchSearch && matchAtivo
     })
@@ -96,14 +96,7 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
     }
   }
 
-  function toggleKeyVisibility(id: string) {
-    setVisibleKeys((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
+
 
   function handleInativarSelection() {
     if (selectedIds.size === 0) return
@@ -218,8 +211,8 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-24" />
+                  <col className="w-40" />
                   <col />
-                  <col className="w-64" />
                   <col className="w-12" />
                 </colgroup>
                 <thead>
@@ -233,8 +226,8 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                       </th>
                     )}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">API Key</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Provedor</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Modelo</th>
                     <th className="py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
@@ -257,24 +250,11 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                           {item.id}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 font-medium text-text-primary truncate">{item.descricao}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-text-secondary truncate">
-                            {visibleKeys.has(item.id) ? item.apiKey : maskKey(item.apiKey)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => toggleKeyVisibility(item.id)}
-                            className="shrink-0 text-text-secondary hover:text-text-primary transition-colors"
-                            aria-label={visibleKeys.has(item.id) ? "Ocultar chave" : "Exibir chave"}
-                          >
-                            {visibleKeys.has(item.id)
-                              ? <EyeOff className="size-3.5" />
-                              : <Eye className="size-3.5" />
-                            }
-                          </button>
-                        </div>
+                      <td className="px-4 py-3 truncate capitalize text-text-primary">
+                        {item.provider}
+                      </td>
+                      <td className="px-4 py-3 truncate text-text-secondary font-mono text-xs">
+                        {item.model}
                       </td>
                       <td className="py-3 pl-2 pr-4">
                         {showBulkActions && item.active ? (
@@ -310,6 +290,7 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                 </tbody>
               </table>
             </div>
+
             <TablePagination
               currentPage={currentPage}
               totalPages={totalPages}
