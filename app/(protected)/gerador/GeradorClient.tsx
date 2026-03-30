@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useRef, useMemo, useEffect, useCallback } from "react"
+import { useState, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   Sparkles, Copy, RotateCcw, ChevronDown, ChevronUp,
-  Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2, Loader2
+  Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,18 +25,9 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { criarCenario, atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
+import type { IntegracaoRecord } from "@/lib/actions/integracoes"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
-import { cn } from "@/lib/utils"
-
-// ── AI Providers ─────────────────────────────────────────────────────────────
-
-const AI_PROVIDERS = [
-  { value: "gemini-2", label: "Google Gemini 2.0 Flash (Gratuito, Visual)", description: "Gratuito — requer GOOGLE_API_KEY — analisa imagens", isFree: true },
-  { value: "gemini",   label: "Google Gemini 1.5 Flash (Gratuito, Visual)", description: "Gratuito — requer GOOGLE_API_KEY — analisa imagens", isFree: true },
-  { value: "llama",    label: "Meta Llama 3.1 (Groq) (Gratuito)",           description: "Gratuito — requer GROQ_API_KEY — somente texto",    isFree: true },
-  { value: "mistral",  label: "Mistral Large (Groq) (Gratuito)",            description: "Gratuito — requer GROQ_API_KEY — somente texto",    isFree: true },
-]
 
 // ── Import types (same as CenariosClient) ────────────────────────────────────
 
@@ -172,57 +163,15 @@ interface SectionState {
 interface Props {
   initialCenarios: CenarioRecord[]
   allModulos: ModuloRecord[]
+  integracoes: IntegracaoRecord[]
 }
 
-export function GeradorClient({ initialCenarios, allModulos }: Props) {
+export function GeradorClient({ initialCenarios, allModulos, integracoes }: Props) {
   const router = useRouter()
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   const [contexto, setContexto] = useState("")
-  const [aiProvider, setAiProvider] = useState("gemini")
-  const [apiKey, setApiKey] = useState("")
-  const [apiKeyValid, setApiKeyValid] = useState(false)
-  const [apiKeyValidating, setApiKeyValidating] = useState(false)
-  const validateDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const validateKey = useCallback(async (key: string, provider: string) => {
-    if (!key.trim() || key.trim().length < 20) {
-      setApiKeyValid(false)
-      setApiKeyValidating(false)
-      return
-    }
-    setApiKeyValidating(true)
-    setApiKeyValid(false)
-    try {
-      const res = await fetch("/api/gerador/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, apiKey: key.trim() }),
-      })
-      if (res.ok) {
-        setApiKeyValid(true)
-        localStorage.setItem(`api_key_${provider}`, key.trim())
-      } else {
-        setApiKeyValid(false)
-      }
-    } catch {
-      setApiKeyValid(false)
-    } finally {
-      setApiKeyValidating(false)
-    }
-  }, [])
-
-  // Carregar chave salva ao trocar motor e re-validar
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(`api_key_${aiProvider}`)
-      setApiKey(saved || "")
-      setApiKeyValid(false)
-      if (saved) {
-        validateKey(saved, aiProvider)
-      }
-    }
-  }, [aiProvider, validateKey])
+  const [aiProvider, setAiProvider] = useState(() => integracoes[0]?.id ?? "")
 
   const [sections, setSections] = useState<SectionState>({
     contextoOpen: true,
@@ -274,8 +223,7 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
         body: JSON.stringify({
           jira: contexto || undefined,
           imagens: anexoPreviews.length > 0 ? anexoPreviews : undefined,
-          provider: aiProvider,
-          apiKey: apiKey.trim() || undefined,
+          integrationId: aiProvider,
         }),
         signal: controller.signal,
       })
@@ -289,9 +237,6 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
       let full = ""
-
-      // Salva a chave que funcionou
-      localStorage.setItem(`api_key_${aiProvider}`, apiKey.trim())
 
       while (true) {
         const { done, value } = await reader.read()
@@ -375,7 +320,7 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
         const item = toImport[i]
         const payload = {
           scenarioName:      item.parsed.scenarioName ?? "",
-          system:            sistemaSelecionado || item.parsed.system || "",
+          system:            sistemaSelecionado || "",
           module:            item.parsed.module ?? "",
           client:            item.parsed.client ?? "",
           risco:             item.parsed.risco ?? "",
@@ -449,7 +394,7 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
             <RotateCcw className="size-4" />
             Limpar
           </Button>
-          <Button onClick={generate} disabled={loading || !aiProvider || !apiKeyValid || apiKeyValidating} className="gap-2">
+          <Button onClick={generate} disabled={loading || !aiProvider} className="gap-2">
             <Sparkles className="size-4" />
             {loading ? "Gerando..." : "Gerar CT"}
           </Button>
@@ -459,67 +404,33 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Left — inputs */}
         <div className="space-y-3">
-          {/* Motor de IA + API Key */}
+          {/* Motor de IA */}
           <div className="rounded-xl bg-surface-card p-5 shadow-card">
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-primary">
-                  Motor de IA <span className="text-destructive">*</span>
-                </label>
-                <Select value={aiProvider} onValueChange={(v) => setAiProvider(v ?? "gemini")}>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Motor de IA <span className="text-destructive">*</span>
+              </label>
+              {integracoes.length === 0 ? (
+                <p className="text-sm text-text-secondary">
+                  Nenhuma integração cadastrada.{" "}
+                  <a href="/configuracoes/integracoes/novo" className="text-brand-primary hover:underline">
+                    Adicionar integração
+                  </a>
+                </p>
+              ) : (
+                <Select value={aiProvider} onValueChange={(v) => setAiProvider(v ?? "")}>
                   <SelectTrigger>
                     <SelectValue>
-                      {AI_PROVIDERS.find((p) => p.value === aiProvider)?.label}
+                      {integracoes.find((i) => i.id === aiProvider)?.descricao ?? "Selecione uma integração"}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectPopup>
-                    {AI_PROVIDERS.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    {integracoes.map((i) => (
+                      <SelectItem key={i.id} value={i.id}>{i.descricao}</SelectItem>
                     ))}
                   </SelectPopup>
                 </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-primary">
-                  API Key <span className="text-destructive">*</span>
-                </label>
-                <div className="relative">
-                  <Input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      setApiKey(val)
-                      setApiKeyValid(false)
-                      setApiKeyValidating(false)
-                      if (validateDebounceRef.current) clearTimeout(validateDebounceRef.current)
-                      if (val.trim().length >= 20) {
-                        setApiKeyValidating(true)
-                        validateDebounceRef.current = setTimeout(() => validateKey(val, aiProvider), 800)
-                      }
-                    }}
-                    placeholder="Cole sua chave de API aqui…"
-                    className={cn(
-                      "font-mono transition-colors pr-8",
-                      apiKey && !apiKeyValidating && !apiKeyValid ? "border-destructive focus:border-destructive focus:ring-destructive/20" :
-                      apiKey && apiKeyValid ? "border-green-500 focus:border-green-500 focus:ring-green-500/20" : ""
-                    )}
-                  />
-                  {apiKey && (
-                    <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
-                      {apiKeyValidating
-                        ? <Loader2 className="size-4 animate-spin text-text-secondary" />
-                        : apiKeyValid
-                          ? <Check className="size-4 text-green-500" />
-                          : <AlertCircle className="size-4 text-destructive" />
-                      }
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-text-secondary">
-                  {AI_PROVIDERS.find((p) => p.value === aiProvider)?.description}
-                </p>
-              </div>
+              )}
             </div>
           </div>
 

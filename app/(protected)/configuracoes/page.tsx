@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Users, Monitor, Box, Building2 } from "lucide-react"
+import { Users, Monitor, Box, Building2, Plug } from "lucide-react"
 
 export default function ConfiguracoesPage() {
   return (
@@ -41,6 +41,16 @@ export default function ConfiguracoesPage() {
             <Building2 className="size-6" />
           </div>
           <span className="font-semibold text-text-primary">Clientes</span>
+        </Link>
+
+        <Link
+          href="/configuracoes/integracoes"
+          className="flex flex-col items-center gap-3 rounded-xl bg-surface-card p-8 shadow-card transition-colors hover:bg-neutral-grey-50"
+        >
+          <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
+            <Plug className="size-6" />
+          </div>
+          <span className="font-semibold text-text-primary">Integrações</span>
         </Link>
     </div>
   )

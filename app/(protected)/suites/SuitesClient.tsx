@@ -27,6 +27,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 import { SuiteTipoBadge } from "@/components/qagrotis/StatusBadge"
+import type { SuiteTipo } from "@/lib/qagrotis-constants"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
@@ -294,7 +295,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                       </td>
                       <td className="px-4 py-3 text-text-secondary">{s.cenarios.length}</td>
                       <td className="px-4 py-3">
-                        <SuiteTipoBadge tipo={s.tipo} />
+                        <SuiteTipoBadge tipo={s.tipo as SuiteTipo} />
                       </td>
                       {showBulkActions && (
                         <td className="py-3 pl-2 pr-4">

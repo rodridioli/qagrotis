@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
+import { getIntegracao } from "@/lib/actions/integracoes"
 
 const SYSTEM_PROMPT = `Aja como um QA Engineer Sênior especialista em testes funcionais, testes manuais e BDD.
 
@@ -357,15 +358,22 @@ export async function POST(req: NextRequest) {
   const body = await req.json() as {
     jira?: string
     imagens?: { dataUrl: string; name: string }[]
-    provider?: string
-    apiKey?: string
+    integrationId?: string
   }
 
-  const { jira, imagens, provider = "gemini", apiKey } = body
-  const key = typeof apiKey === "string" && apiKey.trim() ? apiKey.trim() : undefined
+  const { jira, imagens, integrationId } = body
+
+  if (!integrationId) {
+    return new Response("Selecione um Motor de IA antes de gerar.", { status: 400 })
+  }
 
   if (!jira && (!imagens || imagens.length === 0)) {
     return new Response("Informe ao menos uma entrada.", { status: 400 })
+  }
+
+  const integracao = await getIntegracao(integrationId)
+  if (!integracao || !integracao.active) {
+    return new Response("Integração não encontrada ou inativa.", { status: 404 })
   }
 
   const textParts: string[] = []
@@ -373,23 +381,5 @@ export async function POST(req: NextRequest) {
   if (imagens?.length) textParts.push(`## Anexos\n${imagens.map((img) => img.name).join(", ")}`)
   const userMessage = textParts.join("\n\n")
 
-  switch (provider) {
-    case "gemini-2":
-      return streamGemini(userMessage, imagens, key, "gemini-2.0-flash")
-    case "gemini":
-      return streamGemini(userMessage, imagens, key, "gemini-1.5-flash")
-    case "copilot":
-      return streamOpenAI(userMessage, "gpt-4o", key)
-    case "claude":
-      return streamAnthropic(userMessage, key)
-    case "llama":
-      return streamGroq(userMessage, "llama-3.1-70b-versatile", key)
-    case "mistral":
-      return streamGroq(userMessage, "mixtral-8x7b-32768", key)
-    default:
-      if (key || process.env.GOOGLE_API_KEY) return streamGemini(userMessage, imagens, key)
-      if (process.env.ANTHROPIC_API_KEY)     return streamAnthropic(userMessage, key)
-      if (process.env.OPENAI_API_KEY)        return streamOpenAI(userMessage, "gpt-4o", key)
-      return new Response("Informe sua API Key no campo correspondente.", { status: 500 })
-  }
+  return streamGemini(userMessage, imagens, integracao.apiKey, "gemini-2.0-flash")
 }
