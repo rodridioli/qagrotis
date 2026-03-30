@@ -324,11 +324,9 @@ export default function LayoutClient({ children, sistemaNames }: Props) {
 
   function handleToggleTheme() {
     const next = !isDark
-    document.documentElement.classList.add("theme-transitioning")
     document.documentElement.classList.toggle("dark", next)
     setIsDark(next)
     localStorage.setItem(THEME_KEY, next ? "dark" : "light")
-    setTimeout(() => document.documentElement.classList.remove("theme-transitioning"), 250)
   }
 
   return (

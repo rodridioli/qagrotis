@@ -291,6 +291,10 @@
   html {
     @apply font-sans;
   }
+  ::placeholder {
+    color: var(--text-secondary);
+    opacity: 1;
+  }
 }
 
 /* ── Recharts tooltip dark mode ── */
@@ -428,15 +432,4 @@
 }
 /* [design-system:end] */
 
-/* ── Theme transition — all elements change together ── */
-html.theme-transitioning,
-html.theme-transitioning *,
-html.theme-transitioning *::before,
-html.theme-transitioning *::after {
-  transition:
-    background-color 200ms ease,
-    color 200ms ease,
-    border-color 200ms ease,
-    fill 200ms ease,
-    stroke 200ms ease !important;
-}
+

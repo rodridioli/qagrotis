@@ -30,9 +30,9 @@ import { SuiteTipoBadge } from "@/components/qagrotis/StatusBadge"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { MOCK_SUITES } from "@/lib/qagrotis-constants"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
+import type { SuiteRecord } from "@/lib/actions/suites"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 10
@@ -66,9 +66,10 @@ function AutomacaoBar({ pct }: { pct: number }) {
 
 interface Props {
   allModulos: ModuloRecord[]
+  suites: SuiteRecord[]
 }
 
-export default function SuitesClient({ allModulos }: Props) {
+export default function SuitesClient({ allModulos, suites }: Props) {
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   const modulosDosistema = useMemo(
@@ -97,7 +98,7 @@ export default function SuitesClient({ allModulos }: Props) {
   )
 
   const filtered = useMemo(() => {
-    return MOCK_SUITES.filter((s) => {
+    return suites.filter((s) => {
       if (inativadosIds.has(s.id)) return false
       const matchSistema = modulosDosistema.length === 0 || modulosDosistemaSet.has(s.modulo)
       const matchSearch =
@@ -109,7 +110,7 @@ export default function SuitesClient({ allModulos }: Props) {
       const matchAtivo = filters.apenasInativos ? !s.active : true
       return matchSistema && matchSearch && matchModulo && matchTipo && matchAtivo
     })
-  }, [search, filters, modulosDosistema, modulosDosistemaSet, inativadosIds])
+  }, [suites, search, filters, modulosDosistema, modulosDosistemaSet, inativadosIds])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -207,7 +208,7 @@ export default function SuitesClient({ allModulos }: Props) {
           onFilterOpen={() => { setPendingFilters(filters); setFilterOpen(true) }}
           totalLabel="Suítes de teste"
           totalCount={filtered.length}
-          baseCount={modulosDosistema.length === 0 ? MOCK_SUITES.length : MOCK_SUITES.filter((s) => modulosDosistemaSet.has(s.modulo)).length}
+          baseCount={modulosDosistema.length === 0 ? suites.length : suites.filter((s) => modulosDosistemaSet.has(s.modulo)).length}
         />
 
         {pageItems.length === 0 ? (
@@ -282,12 +283,16 @@ export default function SuitesClient({ allModulos }: Props) {
                       <td className="px-4 py-3 text-text-secondary">{s.versao}</td>
                       <td className="px-4 py-3 text-text-secondary truncate">{s.modulo}</td>
                       <td className="px-4 py-3 text-text-secondary truncate">{s.cliente}</td>
-                      <td className="px-4 py-3 text-text-secondary">{s.execucoes}</td>
-                      <td className="px-4 py-3">
-                        <AutomacaoBar pct={s.automacao} />
+                      <td className="px-4 py-3 text-text-secondary">
+                        {s.cenarios.reduce((acc, c) => acc + c.execucoes, 0)}
                       </td>
-                      <td className="px-4 py-3 text-text-secondary">{s.erros}</td>
-                      <td className="px-4 py-3 text-text-secondary">{s.cenarios}</td>
+                      <td className="px-4 py-3">
+                        <AutomacaoBar pct={s.cenarios.length === 0 ? 0 : Math.round(s.cenarios.filter((c) => c.tipo === "Automatizado").length / s.cenarios.length * 100)} />
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary">
+                        {s.cenarios.reduce((acc, c) => acc + c.erros, 0)}
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary">{s.cenarios.length}</td>
                       <td className="px-4 py-3">
                         <SuiteTipoBadge tipo={s.tipo} />
                       </td>

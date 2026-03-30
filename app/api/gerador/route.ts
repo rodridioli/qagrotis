@@ -213,26 +213,54 @@ async function streamOpenAI(userMessage: string, model = "gpt-4o", keyOverride?:
   return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
 }
 
-async function streamGemini(userMessage: string, keyOverride?: string): Promise<Response> {
+async function streamGemini(
+  userMessage: string,
+  images?: { dataUrl: string; name: string }[],
+  keyOverride?: string,
+  model = "gemini-1.5-flash",
+): Promise<Response> {
   const apiKey = keyOverride || process.env.GOOGLE_API_KEY
   if (!apiKey) return new Response("Informe sua GOOGLE_API_KEY no campo de API Key.", { status: 500 })
 
+  // Build message parts — text first, then inline images
+  const userParts: unknown[] = [{ text: userMessage }]
+  if (images?.length) {
+    for (const img of images) {
+      const commaIdx = img.dataUrl.indexOf(",")
+      if (commaIdx === -1) continue
+      const header = img.dataUrl.slice(0, commaIdx)
+      const base64 = img.dataUrl.slice(commaIdx + 1)
+      const mimeMatch = header.match(/data:([^;]+);base64/)
+      if (mimeMatch && base64) {
+        userParts.push({ inline_data: { mime_type: mimeMatch[1], data: base64 } })
+      }
+    }
+  }
+
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: "user", parts: [{ text: userMessage }] }],
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: userParts }],
         generationConfig: { maxOutputTokens: 8192 },
       }),
     }
   )
 
   if (!res.ok) {
-    const err = await res.text()
-    return new Response(`Erro na API Google Gemini: ${err}`, { status: 502 })
+    const errText = await res.text()
+    try {
+      const errJson = JSON.parse(errText)
+      if (errJson.error?.code === 429) {
+        return new Response("Cota excedida no Google Gemini (Free Tier). Por favor, aguarde alguns segundos ou utilize outro motor de IA (como Llama 3.1).", { status: 429 })
+      }
+      return new Response(`Erro na API Google Gemini: ${errJson.error?.message || errText}`, { status: res.status })
+    } catch {
+      return new Response(`Erro na API Google Gemini: ${errText}`, { status: res.status })
+    }
   }
 
   const encoder = new TextEncoder()
@@ -328,28 +356,30 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json() as {
     jira?: string
-    imagens?: string
+    imagens?: { dataUrl: string; name: string }[]
     provider?: string
     apiKey?: string
   }
 
-  const { jira, imagens, provider = "copilot", apiKey } = body
+  const { jira, imagens, provider = "gemini", apiKey } = body
   const key = typeof apiKey === "string" && apiKey.trim() ? apiKey.trim() : undefined
 
-  if (!jira && !imagens) {
+  if (!jira && (!imagens || imagens.length === 0)) {
     return new Response("Informe ao menos uma entrada.", { status: 400 })
   }
 
-  const parts: string[] = []
-  if (jira)    parts.push(`## Contexto\n${jira}`)
-  if (imagens) parts.push(`## Anexos\n${imagens}`)
-  const userMessage = parts.join("\n\n")
+  const textParts: string[] = []
+  if (jira) textParts.push(`## Contexto\n${jira}`)
+  if (imagens?.length) textParts.push(`## Anexos\n${imagens.map((img) => img.name).join(", ")}`)
+  const userMessage = textParts.join("\n\n")
 
   switch (provider) {
+    case "gemini-2":
+      return streamGemini(userMessage, imagens, key, "gemini-2.0-flash")
+    case "gemini":
+      return streamGemini(userMessage, imagens, key, "gemini-1.5-flash")
     case "copilot":
       return streamOpenAI(userMessage, "gpt-4o", key)
-    case "gemini":
-      return streamGemini(userMessage, key)
     case "claude":
       return streamAnthropic(userMessage, key)
     case "llama":
@@ -357,9 +387,9 @@ export async function POST(req: NextRequest) {
     case "mistral":
       return streamGroq(userMessage, "mixtral-8x7b-32768", key)
     default:
-      if (key || process.env.ANTHROPIC_API_KEY) return streamAnthropic(userMessage, key)
-      if (process.env.OPENAI_API_KEY)           return streamOpenAI(userMessage, "gpt-4o", key)
-      if (process.env.GOOGLE_API_KEY)           return streamGemini(userMessage, key)
+      if (key || process.env.GOOGLE_API_KEY) return streamGemini(userMessage, imagens, key)
+      if (process.env.ANTHROPIC_API_KEY)     return streamAnthropic(userMessage, key)
+      if (process.env.OPENAI_API_KEY)        return streamOpenAI(userMessage, "gpt-4o", key)
       return new Response("Informe sua API Key no campo correspondente.", { status: 500 })
   }
 }

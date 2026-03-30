@@ -157,6 +157,9 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
 
     // 2. Prosseguir com a geração do arquivo
     const id = savedId || "CT-???"
+    const sistema = sistemaSelecionado || ""
+    const modulo = moduloValue || ""
+
     const preconLinhas = preCondicoes
       .split(/\n+/)
       .map((l) => l.replace(/^[-*\s]+/, "").trim())
@@ -165,13 +168,12 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
       ? preconLinhas.map((l, i) => `${i + 1}. ${l}`).join("\n")
       : "1. Acessar o sistema."
 
-    const linhasSeparador = "|-------|------|------------------|"
     const linhasPassos = steps
       .filter((s) => s.acao.trim())
       .map((s, i) => `| ${i + 1} | ${s.acao.trim()} | ${s.resultado.trim()} |`)
 
     const md = [
-      `# Documentação de Testes - ${sistemaSelecionado}`,
+      `# Documentação de Testes - ${sistema} ${modulo}`.trimEnd(),
       "",
       "## Ambiente e Dados de Teste",
       "",
@@ -184,33 +186,42 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
       "",
       "---",
       "",
-      `## Casos de Teste: ${moduloValue || sistemaSelecionado}`,
+      `## Casos de Teste: ${sistema} ${modulo} ${scenarioName}`.trimEnd(),
       "",
       `### ${id}: ${scenarioName}`,
       "",
-      "### **Objetivo**",
-      descricao || resultadoEsperado || "Não informado.",
+      "### **Descrição**",
+      descricao || "Não informado.",
+      "",
+      "### **Regra de Negócio**",
+      regraDeNegocio || "Não informado.",
       "",
       "### **Pré-condições**",
       preconFormatado,
       "",
+      "### **BDD (Gherkin)**",
+      bdd || "Não informado.",
+      "",
       "---",
       "",
       "| Passo | Ação | Resultado Esperado |",
-      linhasSeparador,
+      "|-------|------|------------------|",
       ...linhasPassos,
       "",
       "---",
       "",
       "### **Resultado obtido**",
-      "Sucesso ou Falha",
+      resultadoEsperado || "Não informado.",
     ].join("\n")
 
     const blob = new Blob([md], { type: "text/markdown;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `${(scenarioName || id).replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")}.md`
+    
+    // Nome do arquivo fixo conforme solicitado
+    a.download = "prompt.md"
+    
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -246,6 +257,12 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
     if (!descricao.trim()) { toast.error("Descrição é obrigatória."); return false }
     if (!regraDeNegocio.trim()) { toast.error("Regra de Negócio é obrigatória."); return false }
     if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); return false }
+
+    if (automatizado) {
+      if (!usuarioTeste.trim()) { toast.error("Usuário de Teste é obrigatório para cenários automatizados."); return false }
+      if (!senhaTeste.trim()) { toast.error("Senha de Teste é obrigatória para cenários automatizados."); return false }
+      if (!senhaFalsa.trim()) { toast.error("Senha Falsa é obrigatória para cenários automatizados."); return false }
+    }
 
     const tipo: "Manual" | "Automatizado" | "Man./Auto." =
       manual && automatizado ? "Man./Auto." : automatizado ? "Automatizado" : "Manual"
@@ -324,7 +341,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
           {activeTab === "automacao" && (usuarioTeste && senhaTeste && senhaFalsa && steps.some(s => s.acao && s.resultado)) && (
             <Button variant="outline" onClick={exportarPrompt} disabled={isSaving}>
               <FileDown className="size-4" />
-              Gerar Prompt
+              Prompt.md
             </Button>
           )}
           <Button onClick={handleSave} disabled={isSaving}>
@@ -340,7 +357,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
           {(["cadastro", "dependencias", "automacao"] as const).map((tab) => {
             const label = tab === "cadastro" ? "Cadastro" : tab === "dependencias" ? "Dependências" : "Script de Automação"
             const badge = tab === "automacao" ? steps.length : tab === "dependencias" ? deps.length : null
-            const isDisabled = tab === "automacao" && (!automatizado || !hasSaved)
+            const isDisabled = tab === "automacao" && !automatizado
             return (
               <button
                 key={tab}
@@ -595,16 +612,6 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
             </div>
           </div>
 
-          {/* Script */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Script</h3>
-            <div className="rounded-lg border border-border-default bg-neutral-grey-50 p-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-text-primary">URL do repositório</label>
-                <Input value={urlScript} onChange={(e) => { setUrlScript(e.target.value); setHasSaved(false) }} placeholder="https://github.com/..." />
-              </div>
-            </div>
-          </div>
 
           {/* Passo a passo */}
           <div className="space-y-3">
@@ -669,7 +676,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
                             onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
                             className="flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
                           >
-                            <Trash2 className="size-4" style={{ color: "#ffffff" }} />
+                            <Trash2 className="size-4 text-white" />
                           </button>
                         </td>
                       </tr>
@@ -679,6 +686,16 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
               </div>
             )}
             {/* + Adicionar passo — bottom-left, last row style */}
+          </div>
+          {/* Script */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Script</h3>
+            <div className="rounded-lg border border-border-default bg-neutral-grey-50 p-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-text-primary">URL do repositório</label>
+                <Input value={urlScript} onChange={(e) => { setUrlScript(e.target.value); setHasSaved(false) }} placeholder="https://github.com/..." />
+              </div>
+            </div>
           </div>
         </div>
 

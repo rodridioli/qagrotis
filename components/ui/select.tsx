@@ -47,8 +47,17 @@ function SelectTrigger({
 }
 
 // ── Value ─────────────────────────────────────────────────────
-function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
-  return <SelectPrimitive.Value data-slot="select-value" className={cn("truncate", className)} {...props} />
+function SelectValue({ className, placeholder, ...props }: SelectPrimitive.Value.Props) {
+  return (
+    <SelectPrimitive.Value
+      data-slot="select-value"
+      className={cn("truncate", className)}
+      placeholder={placeholder !== undefined
+        ? <span className="text-text-secondary">{placeholder}</span>
+        : undefined}
+      {...props}
+    />
+  )
 }
 
 // ── Popup ─────────────────────────────────────────────────────

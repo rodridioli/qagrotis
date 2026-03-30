@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useRef, useMemo, useEffect } from "react"
+import { useState, useRef, useMemo, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   Sparkles, Copy, RotateCcw, ChevronDown, ChevronUp,
-  Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload,
+  Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2, Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -32,9 +32,10 @@ import { cn } from "@/lib/utils"
 // ── AI Providers ─────────────────────────────────────────────────────────────
 
 const AI_PROVIDERS = [
-  { value: "gemini",   label: "Google Gemini 2.0 Flash Lite (Gratuito)", description: "Gratuito — requer GOOGLE_API_KEY", isFree: true },
-  { value: "llama",    label: "Meta Llama 3.1 (Groq) (Gratuito)",       description: "Gratuito — requer GROQ_API_KEY", isFree: true },
-  { value: "mistral",  label: "Mistral Large (Groq) (Gratuito)",        description: "Gratuito — requer GROQ_API_KEY", isFree: true },
+  { value: "gemini-2", label: "Google Gemini 2.0 Flash (Gratuito, Visual)", description: "Gratuito — requer GOOGLE_API_KEY — analisa imagens", isFree: true },
+  { value: "gemini",   label: "Google Gemini 1.5 Flash (Gratuito, Visual)", description: "Gratuito — requer GOOGLE_API_KEY — analisa imagens", isFree: true },
+  { value: "llama",    label: "Meta Llama 3.1 (Groq) (Gratuito)",           description: "Gratuito — requer GROQ_API_KEY — somente texto",    isFree: true },
+  { value: "mistral",  label: "Mistral Large (Groq) (Gratuito)",            description: "Gratuito — requer GROQ_API_KEY — somente texto",    isFree: true },
 ]
 
 // ── Import types (same as CenariosClient) ────────────────────────────────────
@@ -181,18 +182,47 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
   const [aiProvider, setAiProvider] = useState("gemini")
   const [apiKey, setApiKey] = useState("")
   const [apiKeyValid, setApiKeyValid] = useState(false)
+  const [apiKeyValidating, setApiKeyValidating] = useState(false)
+  const validateDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Validação simples de API Key (ex: min 20 caracteres)
-  const isValidKey = (key: string) => key.trim().length >= 20
+  const validateKey = useCallback(async (key: string, provider: string) => {
+    if (!key.trim() || key.trim().length < 20) {
+      setApiKeyValid(false)
+      setApiKeyValidating(false)
+      return
+    }
+    setApiKeyValidating(true)
+    setApiKeyValid(false)
+    try {
+      const res = await fetch("/api/gerador/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, apiKey: key.trim() }),
+      })
+      if (res.ok) {
+        setApiKeyValid(true)
+        localStorage.setItem(`api_key_${provider}`, key.trim())
+      } else {
+        setApiKeyValid(false)
+      }
+    } catch {
+      setApiKeyValid(false)
+    } finally {
+      setApiKeyValidating(false)
+    }
+  }, [])
 
-  // Carregar chave salva ao trocar motor
+  // Carregar chave salva ao trocar motor e re-validar
   useEffect(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(`api_key_${aiProvider}`)
       setApiKey(saved || "")
-      setApiKeyValid(isValidKey(saved || ""))
+      setApiKeyValid(false)
+      if (saved) {
+        validateKey(saved, aiProvider)
+      }
     }
-  }, [aiProvider])
+  }, [aiProvider, validateKey])
 
   const [sections, setSections] = useState<SectionState>({
     contextoOpen: true,
@@ -238,14 +268,15 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
     setLoading(true)
 
     try {
-      const anexosDesc = anexoPreviews.length > 0
-        ? `Imagens anexadas: ${anexoPreviews.map((p) => p.name).join(", ")}`
-        : ""
-
       const res = await fetch("/api/gerador", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jira: contexto, imagens: anexosDesc, provider: aiProvider, apiKey: apiKey.trim() || undefined }),
+        body: JSON.stringify({
+          jira: contexto || undefined,
+          imagens: anexoPreviews.length > 0 ? anexoPreviews : undefined,
+          provider: aiProvider,
+          apiKey: apiKey.trim() || undefined,
+        }),
         signal: controller.signal,
       })
 
@@ -343,19 +374,22 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
       for (let i = 0; i < toImport.length; i++) {
         const item = toImport[i]
         const payload = {
-          scenarioName:      item.parsed.scenarioName,
-          system:            sistemaSelecionado,
-          module:            item.parsed.module,
-          client:            item.parsed.client,
-          risco:             item.parsed.risco,
-          tipo:              item.parsed.tipo,
+          scenarioName:      item.parsed.scenarioName ?? "",
+          system:            sistemaSelecionado || item.parsed.system || "",
+          module:            item.parsed.module ?? "",
+          client:            item.parsed.client ?? "",
+          risco:             item.parsed.risco ?? "",
+          tipo:              item.parsed.tipo ?? "Manual",
           descricao:         item.parsed.descricao || item.parsed.bdd || "-",
-          caminhoTela:       item.parsed.caminhoTela,
+          caminhoTela:       item.parsed.caminhoTela ?? "",
           regraDeNegocio:    item.parsed.regraDeNegocio || "Não informado.",
-          preCondicoes:      item.parsed.preCondicoes,
-          bdd:               item.parsed.bdd,
+          preCondicoes:      item.parsed.preCondicoes ?? "",
+          bdd:               item.parsed.bdd ?? "",
           resultadoEsperado: item.parsed.resultadoEsperado || "-",
           urlScript: "",
+          usuarioTeste: "",
+          senhaTeste: "",
+          senhaFalsa: "",
           steps: [],
           deps: [],
         }
@@ -411,11 +445,11 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
               </Button>
             </>
           )}
-          <Button variant="outline" onClick={handleReset} disabled={loading} className="gap-2">
+          <Button variant="outline" onClick={handleReset} disabled={loading || !output} className="gap-2">
             <RotateCcw className="size-4" />
             Limpar
           </Button>
-          <Button onClick={generate} disabled={loading || !aiProvider || !apiKeyValid} className="gap-2">
+          <Button onClick={generate} disabled={loading || !aiProvider || !apiKeyValid || apiKeyValidating} className="gap-2">
             <Sparkles className="size-4" />
             {loading ? "Gerando..." : "Gerar CT"}
           </Button>
@@ -449,21 +483,39 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
                 <label className="text-sm font-medium text-text-primary">
                   API Key <span className="text-destructive">*</span>
                 </label>
-                <Input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    setApiKey(val)
-                    setApiKeyValid(isValidKey(val))
-                  }}
-                  placeholder="Cole sua chave de API aqui…"
-                  className={cn(
-                    "font-mono transition-colors",
-                    apiKey && !apiKeyValid ? "border-destructive focus:border-destructive focus:ring-destructive/20" : 
-                    apiKey && apiKeyValid ? "border-green-500 focus:border-green-500 focus:ring-green-500/20" : ""
+                <div className="relative">
+                  <Input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setApiKey(val)
+                      setApiKeyValid(false)
+                      setApiKeyValidating(false)
+                      if (validateDebounceRef.current) clearTimeout(validateDebounceRef.current)
+                      if (val.trim().length >= 20) {
+                        setApiKeyValidating(true)
+                        validateDebounceRef.current = setTimeout(() => validateKey(val, aiProvider), 800)
+                      }
+                    }}
+                    placeholder="Cole sua chave de API aqui…"
+                    className={cn(
+                      "font-mono transition-colors pr-8",
+                      apiKey && !apiKeyValidating && !apiKeyValid ? "border-destructive focus:border-destructive focus:ring-destructive/20" :
+                      apiKey && apiKeyValid ? "border-green-500 focus:border-green-500 focus:ring-green-500/20" : ""
+                    )}
+                  />
+                  {apiKey && (
+                    <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
+                      {apiKeyValidating
+                        ? <Loader2 className="size-4 animate-spin text-text-secondary" />
+                        : apiKeyValid
+                          ? <Check className="size-4 text-green-500" />
+                          : <AlertCircle className="size-4 text-destructive" />
+                      }
+                    </span>
                   )}
-                />
+                </div>
                 <p className="text-xs text-text-secondary">
                   {AI_PROVIDERS.find((p) => p.value === aiProvider)?.description}
                 </p>
@@ -888,7 +940,7 @@ function ScreenshotUploader({ previews, onChangePreviews }: ScreenshotUploaderPr
         onChange={(e) => handleFiles(e.target.files)}
       />
       {previews.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-4">
           {previews.map((p, i) => (
             <div key={i} className="group relative">
               <img
@@ -896,14 +948,16 @@ function ScreenshotUploader({ previews, onChangePreviews }: ScreenshotUploaderPr
                 alt={p.name}
                 className="h-20 w-20 rounded-md border border-border-default object-cover"
               />
-              <button
-                type="button"
-                onClick={() => removePreview(i)}
-                aria-label={`Remover ${p.name}`}
-                className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-red-500 dark:bg-red-400 text-xs leading-none text-white opacity-0 transition-opacity group-hover:opacity-100"
-              >
-                ×
-              </button>
+              {previews.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removePreview(i)}
+                  aria-label={`Remover ${p.name}`}
+                  className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-destructive text-white shadow-sm ring-1 ring-white/30 transition-transform hover:scale-110"
+                >
+                  <Trash2 size={14} color="white" strokeWidth={2.5} />
+                </button>
+              )}
               <p className="mt-1 max-w-[80px] truncate text-[10px] text-text-secondary">{p.name}</p>
             </div>
           ))}

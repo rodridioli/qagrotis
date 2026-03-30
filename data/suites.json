@@ -1,0 +1,34 @@
+[
+  {
+    "tipo": "Kanban",
+    "id": "S-0001",
+    "suiteName": "teste",
+    "versao": "teste",
+    "sistema": "Plataforma AGRO",
+    "modulo": "BEN - Beneficiamento de Sementes",
+    "cliente": "",
+    "objetivo": null,
+    "cenarios": [
+      {
+        "id": "CT-1043",
+        "name": "Pedido com receita emitida permite confirmação",
+        "module": "BEN - Beneficiamento de Sementes",
+        "execucoes": 0,
+        "erros": 0,
+        "deps": 0,
+        "tipo": "Manual"
+      },
+      {
+        "id": "CT-1158",
+        "name": "Aba de receitas exibida apenas quando necessário",
+        "module": "BEN - Beneficiamento de Sementes",
+        "execucoes": 0,
+        "erros": 0,
+        "deps": 0,
+        "tipo": "Man./Auto."
+      }
+    ],
+    "active": true,
+    "createdAt": 1774837104469
+  }
+]

@@ -18,7 +18,7 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:
-          "bg-destructive text-primary-foreground hover:bg-destructive/90 focus-visible:border-destructive/70 focus-visible:ring-destructive/30",
+          "bg-destructive hover:bg-destructive/90 focus-visible:border-destructive/70 focus-visible:ring-destructive/30",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
@@ -46,12 +46,14 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  style,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      style={variant === "destructive" ? { color: "#ffffff", ...style } : style}
       {...props}
     />
   )
