@@ -35,6 +35,9 @@ export interface CenarioRecord {
   bdd?: string
   resultadoEsperado?: string
   urlScript?: string
+  usuarioTeste?: string
+  senhaTeste?: string
+  senhaFalsa?: string
   steps?: CenarioStep[]
   deps?: string[]
   createdBy?: string
@@ -63,6 +66,9 @@ const cenarioCreateSchema = z.object({
   resultadoEsperado: z.string().min(1, "Resultado Esperado é obrigatório").max(5000),
   tipo:              z.enum(["Manual", "Automatizado", "Man./Auto."]),
   urlScript:         z.string().max(1000),
+  usuarioTeste:      z.string().max(200),
+  senhaTeste:        z.string().max(200),
+  senhaFalsa:        z.string().max(200),
   steps:             z.array(z.object({ acao: z.string().min(1).max(1000), resultado: z.string().min(1).max(1000) })).max(100),
   deps:              z.array(idSchema).max(100),
 })
@@ -111,6 +117,9 @@ export async function criarCenario(data: {
   resultadoEsperado: string
   tipo: string
   urlScript: string
+  usuarioTeste: string
+  senhaTeste: string
+  senhaFalsa: string
   steps: CenarioStep[]
   deps: string[]
 }): Promise<CenarioRecord> {
@@ -129,6 +138,9 @@ export async function criarCenario(data: {
     bdd:               data.bdd.trim(),
     resultadoEsperado: data.resultadoEsperado.trim(),
     urlScript:         data.urlScript.trim(),
+    usuarioTeste:      data.usuarioTeste.trim(),
+    senhaTeste:        data.senhaTeste.trim(),
+    senhaFalsa:        data.senhaFalsa.trim(),
   })
 
   const cenarios = await readCenarios()
@@ -154,6 +166,9 @@ export async function criarCenario(data: {
     bdd:               parsed.bdd,
     resultadoEsperado: parsed.resultadoEsperado,
     urlScript:         parsed.urlScript,
+    usuarioTeste:      parsed.usuarioTeste,
+    senhaTeste:        parsed.senhaTeste,
+    senhaFalsa:        parsed.senhaFalsa,
     steps:             parsed.steps,
     deps:              parsed.deps,
     createdBy,
@@ -179,6 +194,9 @@ export async function atualizarCenario(id: string, data: {
   resultadoEsperado: string
   tipo: string
   urlScript: string
+  usuarioTeste: string
+  senhaTeste: string
+  senhaFalsa: string
   steps: CenarioStep[]
   deps: string[]
 }): Promise<CenarioRecord> {
@@ -198,6 +216,9 @@ export async function atualizarCenario(id: string, data: {
     bdd:               data.bdd.trim(),
     resultadoEsperado: data.resultadoEsperado.trim(),
     urlScript:         data.urlScript.trim(),
+    usuarioTeste:      data.usuarioTeste.trim(),
+    senhaTeste:        data.senhaTeste.trim(),
+    senhaFalsa:        data.senhaFalsa.trim(),
   })
 
   const session = await auth()
@@ -223,6 +244,9 @@ export async function atualizarCenario(id: string, data: {
     bdd:               parsed.bdd,
     resultadoEsperado: parsed.resultadoEsperado,
     urlScript:         parsed.urlScript,
+    usuarioTeste:      parsed.usuarioTeste,
+    senhaTeste:        parsed.senhaTeste,
+    senhaFalsa:        parsed.senhaFalsa,
     steps:             parsed.steps,
     deps:              parsed.deps,
     createdBy:         existing.createdBy ?? updatedBy,

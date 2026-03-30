@@ -136,5 +136,13 @@
     "cpfCnpj": null,
     "active": true,
     "createdAt": 1774716804160
+  },
+  {
+    "id": "CLI-19",
+    "nomeFantasia": "Umbrella",
+    "razaoSocial": null,
+    "cpfCnpj": null,
+    "active": true,
+    "createdAt": 1774827404234
   }
 ]

@@ -101,9 +101,9 @@ export function DashboardCharts({
       {/* Row 1 — Ranking gerados hoje + Cobertura de automação */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 
-        {/* Cenários gerados hoje — ranking por usuário */}
+        {/* Ranking de geração de cenários — ranking por usuário */}
         <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-[300px]">
-          <h2 className="mb-4 text-sm font-semibold text-text-primary">Cenários gerados hoje</h2>
+          <h2 className="mb-4 text-sm font-semibold text-text-primary">Ranking de geração de cenários</h2>
           {rankingHoje.length === 0 ? (
             <p className="text-xs text-text-secondary">Nenhum cenário gerado hoje.</p>
           ) : (
@@ -178,7 +178,7 @@ export function DashboardCharts({
             <p className="text-xs text-text-secondary">Nenhum cenário automatizado cadastrado.</p>
           ) : (
             <div className="space-y-3">
-              {ultimasAutomacoes.map((item, i) => {
+              {ultimasAutomacoes.slice(0, 2).map((item, i) => {
                 const { displayName, photoPath } = resolveUser(item.createdBy)
                 return (
                   <div key={item.id} className="rounded-lg border border-border-default p-3 space-y-2">

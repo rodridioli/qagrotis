@@ -150,7 +150,12 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
     setSteps((prev) => [...prev, { id: Date.now(), acao: "", resultado: "" }])
   }
 
-  function exportarPrompt() {
+  async function exportarPrompt() {
+    // 1. Garantir que o cadastro está salvo primeiro
+    const saved = await handleSave()
+    if (!saved) return
+
+    // 2. Prosseguir com a geração do arquivo
     const id = savedId || "CT-???"
     const preconLinhas = preCondicoes
       .split(/\n+/)
@@ -210,6 +215,8 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+
+    toast.success("Arquivo gerado com sucesso.")
   }
 
   function updateStep(id: number, field: "acao" | "resultado", value: string) {
@@ -231,50 +238,55 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
     })
   }
 
-  function handleSave() {
-    if (!scenarioName.trim()) { toast.error("Nome do cenário é obrigatório."); return }
-    if (!moduloValue) { toast.error("Módulo é obrigatório."); return }
-    if (!risco) { toast.error("Risco é obrigatório."); return }
-    if (!manual && !automatizado) { toast.error("É obrigatório habilitar pelo menos um tipo: Manual ou Automatizado."); return }
-    if (!descricao.trim()) { toast.error("Descrição é obrigatória."); return }
-    if (!regraDeNegocio.trim()) { toast.error("Regra de Negócio é obrigatória."); return }
-    if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); return }
+  async function handleSave(): Promise<boolean> {
+    if (!scenarioName.trim()) { toast.error("Nome do cenário é obrigatório."); return false }
+    if (!moduloValue) { toast.error("Módulo é obrigatório."); return false }
+    if (!risco) { toast.error("Risco é obrigatório."); return false }
+    if (!manual && !automatizado) { toast.error("É obrigatório habilitar pelo menos um tipo: Manual ou Automatizado."); return false }
+    if (!descricao.trim()) { toast.error("Descrição é obrigatória."); return false }
+    if (!regraDeNegocio.trim()) { toast.error("Regra de Negócio é obrigatória."); return false }
+    if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); return false }
 
     const tipo: "Manual" | "Automatizado" | "Man./Auto." =
       manual && automatizado ? "Man./Auto." : automatizado ? "Automatizado" : "Manual"
 
-    startSaveTransition(async () => {
-      try {
-        const novo = await criarCenario({
-          scenarioName: scenarioName.trim(),
-          system: sistemaSelecionado,
-          module: moduloValue,
-          client: clienteSelecionado,
-          risco,
-          regraDeNegocio: regraDeNegocio.trim(),
-          descricao: descricao.trim(),
-          caminhoTela: caminhoTela.trim(),
-          preCondicoes: preCondicoes.trim(),
-          bdd: bdd.trim(),
-          resultadoEsperado: resultadoEsperado.trim(),
-          tipo,
-          urlScript: "",
-          steps: steps
-            .map((s) => ({ acao: s.acao.trim(), resultado: s.resultado.trim() }))
-            .filter((s) => s.acao.length > 0 && s.resultado.length > 0),
-          deps: deps.map((d) => d.id),
-        })
-        setSavedId(novo.id)
-        setHasSaved(true)
-        toast.success("Cenário criado com sucesso.")
-        if (automatizado && (steps.length > 0 || usuarioTeste || senhaTeste || senhaFalsa)) {
-          setActiveTab("automacao")
-        } else {
-          router.push("/cenarios")
+    return new Promise((resolve) => {
+      startSaveTransition(async () => {
+        try {
+          const novo = await criarCenario({
+            scenarioName: scenarioName.trim(),
+            system: sistemaSelecionado,
+            module: moduloValue,
+            client: clienteSelecionado,
+            risco,
+            regraDeNegocio: regraDeNegocio.trim(),
+            descricao: descricao.trim(),
+            caminhoTela: caminhoTela.trim(),
+            preCondicoes: preCondicoes.trim(),
+            bdd: bdd.trim(),
+            resultadoEsperado: resultadoEsperado.trim(),
+            tipo,
+            urlScript: urlScript.trim(),
+            usuarioTeste: usuarioTeste.trim(),
+            senhaTeste: senhaTeste.trim(),
+            senhaFalsa: senhaFalsa.trim(),
+            steps: steps
+              .map((s) => ({ acao: s.acao.trim(), resultado: s.resultado.trim() }))
+              .filter((s) => s.acao.length > 0 && s.resultado.length > 0),
+            deps: deps.map((d) => d.id),
+          })
+          setSavedId(novo.id)
+          setHasSaved(true)
+          toast.success("Cenário criado com sucesso.")
+          
+          // Redireciona para a edição para permitir continuar editando o mesmo registro
+          router.push(`/cenarios/${novo.id}/editar`)
+          resolve(true)
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Erro ao salvar cenário.")
+          resolve(false)
         }
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erro ao salvar cenário.")
-      }
+      })
     })
   }
 
@@ -309,6 +321,12 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
           <span className="font-medium text-text-primary">Novo Cenário</span>
         </div>
         <div className="flex items-center gap-2">
+          {activeTab === "automacao" && (usuarioTeste && senhaTeste && senhaFalsa && steps.some(s => s.acao && s.resultado)) && (
+            <Button variant="outline" onClick={exportarPrompt} disabled={isSaving}>
+              <FileDown className="size-4" />
+              Gerar Prompt
+            </Button>
+          )}
           <Button onClick={handleSave} disabled={isSaving}>
             <Check className="size-4" />
             {isSaving ? "Salvando…" : "Salvar"}
@@ -322,14 +340,14 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
           {(["cadastro", "dependencias", "automacao"] as const).map((tab) => {
             const label = tab === "cadastro" ? "Cadastro" : tab === "dependencias" ? "Dependências" : "Script de Automação"
             const badge = tab === "automacao" ? steps.length : tab === "dependencias" ? deps.length : null
-            const isDisabled = tab === "automacao" && !automatizado
+            const isDisabled = tab === "automacao" && (!automatizado || !hasSaved)
             return (
               <button
                 key={tab}
                 type="button"
                 onClick={() => !isDisabled && setActiveTab(tab)}
                 disabled={isDisabled}
-                title={isDisabled ? "Habilite o switch Automatizado para acessar esta aba" : undefined}
+                title={isDisabled ? "Salve os dados obrigatórios do cadastro e habilite o switch Automatizado para acessar esta aba" : undefined}
                 className={`flex flex-1 items-center justify-center gap-1.5 py-3 px-4 text-sm font-medium border-b-2 -mb-px transition-all ${
                   isDisabled
                     ? "cursor-not-allowed border-transparent text-text-secondary/40 opacity-50"
@@ -558,21 +576,32 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 rounded-lg border border-border-default bg-neutral-grey-50 p-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-text-primary">
-                  Usuário de Teste
+                  Usuário de Teste <span className="text-destructive">*</span>
                 </label>
                 <Input value={usuarioTeste} onChange={(e) => { setUsuarioTeste(e.target.value); setHasSaved(false) }} placeholder="usuario@exemplo.com" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-text-primary">
-                  Senha de Teste
+                  Senha de Teste <span className="text-destructive">*</span>
                 </label>
                 <Input type="password" value={senhaTeste} onChange={(e) => { setSenhaTeste(e.target.value); setHasSaved(false) }} placeholder="Senha correta" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-text-primary">
-                  Senha Falsa
+                  Senha Falsa <span className="text-destructive">*</span>
                 </label>
                 <Input type="password" value={senhaFalsa} onChange={(e) => { setSenhaFalsa(e.target.value); setHasSaved(false) }} placeholder="Senha inválida" />
+              </div>
+            </div>
+          </div>
+
+          {/* Script */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Script</h3>
+            <div className="rounded-lg border border-border-default bg-neutral-grey-50 p-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-text-primary">URL do repositório</label>
+                <Input value={urlScript} onChange={(e) => { setUrlScript(e.target.value); setHasSaved(false) }} placeholder="https://github.com/..." />
               </div>
             </div>
           </div>
@@ -580,10 +609,12 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
           {/* Passo a passo */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Passo a passo</h3>
-              <Button variant="outline" size="sm" onClick={exportarPrompt}>
-                <FileDown className="size-4" />
-                Gerar Prompt
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+                Passo a passo <span className="text-destructive">*</span>
+              </h3>
+              <Button variant="outline" size="sm" onClick={addStepRow}>
+                <Plus className="size-4" />
+                Adicionar passo
               </Button>
             </div>
             {steps.length === 0 ? (
@@ -648,12 +679,6 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
               </div>
             )}
             {/* + Adicionar passo — bottom-left, last row style */}
-            <div className="border-t border-border-default pt-2">
-              <Button variant="ghost" size="sm" onClick={addStepRow} className="gap-1.5 text-brand-primary hover:text-brand-primary hover:bg-brand-primary/5">
-                <Plus className="size-4" />
-                Adicionar passo
-              </Button>
-            </div>
           </div>
         </div>
 

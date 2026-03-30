@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useMemo } from "react"
+import { useState, useRef, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   Sparkles, Copy, RotateCcw, ChevronDown, ChevronUp,
@@ -27,15 +27,14 @@ import { toast } from "sonner"
 import { criarCenario, atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
+import { cn } from "@/lib/utils"
 
 // ── AI Providers ─────────────────────────────────────────────────────────────
 
 const AI_PROVIDERS = [
-  { value: "copilot",  label: "Microsoft Copilot (GPT-4o)",  description: "GPT-4o via OpenAI — requer OPENAI_API_KEY" },
-  { value: "gemini",   label: "Google Gemini 2.0 Flash Lite", description: "Gratuito — requer GOOGLE_API_KEY" },
-  { value: "claude",   label: "Anthropic Claude 3.5",        description: "Requer ANTHROPIC_API_KEY" },
-  { value: "llama",    label: "Meta Llama 3.1 (Groq)",       description: "Gratuito — requer GROQ_API_KEY" },
-  { value: "mistral",  label: "Mistral Large (Groq)",        description: "Gratuito — requer GROQ_API_KEY" },
+  { value: "gemini",   label: "Google Gemini 2.0 Flash Lite (Gratuito)", description: "Gratuito — requer GOOGLE_API_KEY", isFree: true },
+  { value: "llama",    label: "Meta Llama 3.1 (Groq) (Gratuito)",       description: "Gratuito — requer GROQ_API_KEY", isFree: true },
+  { value: "mistral",  label: "Mistral Large (Groq) (Gratuito)",        description: "Gratuito — requer GROQ_API_KEY", isFree: true },
 ]
 
 // ── Import types (same as CenariosClient) ────────────────────────────────────
@@ -179,12 +178,26 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   const [contexto, setContexto] = useState("")
+  const [aiProvider, setAiProvider] = useState("gemini")
+  const [apiKey, setApiKey] = useState("")
+  const [apiKeyValid, setApiKeyValid] = useState(false)
+
+  // Validação simples de API Key (ex: min 20 caracteres)
+  const isValidKey = (key: string) => key.trim().length >= 20
+
+  // Carregar chave salva ao trocar motor
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(`api_key_${aiProvider}`)
+      setApiKey(saved || "")
+      setApiKeyValid(isValidKey(saved || ""))
+    }
+  }, [aiProvider])
+
   const [sections, setSections] = useState<SectionState>({
     contextoOpen: true,
     anexosOpen: false,
   })
-  const [aiProvider, setAiProvider] = useState("copilot")
-  const [apiKey, setApiKey] = useState("")
   const [output, setOutput] = useState("")
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -245,6 +258,9 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
       let full = ""
+
+      // Salva a chave que funcionou
+      localStorage.setItem(`api_key_${aiProvider}`, apiKey.trim())
 
       while (true) {
         const { done, value } = await reader.read()
@@ -399,9 +415,9 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
             <RotateCcw className="size-4" />
             Limpar
           </Button>
-          <Button onClick={generate} disabled={loading} className="gap-2">
+          <Button onClick={generate} disabled={loading || !aiProvider || !apiKeyValid} className="gap-2">
             <Sparkles className="size-4" />
-            {loading ? "Gerando..." : "Gerar casos de teste"}
+            {loading ? "Gerando..." : "Gerar CT"}
           </Button>
       </div>
 
@@ -413,9 +429,15 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
           <div className="rounded-xl bg-surface-card p-5 shadow-card">
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-primary">Motor de IA</label>
-                <Select value={aiProvider} onValueChange={(v) => setAiProvider(v ?? "copilot")}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <label className="text-sm font-medium text-text-primary">
+                  Motor de IA <span className="text-destructive">*</span>
+                </label>
+                <Select value={aiProvider} onValueChange={(v) => setAiProvider(v ?? "gemini")}>
+                  <SelectTrigger>
+                    <SelectValue>
+                      {AI_PROVIDERS.find((p) => p.value === aiProvider)?.label}
+                    </SelectValue>
+                  </SelectTrigger>
                   <SelectPopup>
                     {AI_PROVIDERS.map((p) => (
                       <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
@@ -424,13 +446,23 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-primary">API Key</label>
+                <label className="text-sm font-medium text-text-primary">
+                  API Key <span className="text-destructive">*</span>
+                </label>
                 <Input
                   type="password"
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setApiKey(val)
+                    setApiKeyValid(isValidKey(val))
+                  }}
                   placeholder="Cole sua chave de API aqui…"
-                  className="font-mono"
+                  className={cn(
+                    "font-mono transition-colors",
+                    apiKey && !apiKeyValid ? "border-destructive focus:border-destructive focus:ring-destructive/20" : 
+                    apiKey && apiKeyValid ? "border-green-500 focus:border-green-500 focus:ring-green-500/20" : ""
+                  )}
                 />
                 <p className="text-xs text-text-secondary">
                   {AI_PROVIDERS.find((p) => p.value === aiProvider)?.description}
@@ -508,7 +540,7 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
                 </div>
                 <p className="max-w-xs text-sm text-text-secondary">
                   Preencha o contexto à esquerda e clique em{" "}
-                  <strong className="text-text-primary">Gerar casos de teste</strong>.
+                  <strong className="text-text-primary">Gerar CT</strong>.
                 </p>
               </div>
             )}
@@ -517,7 +549,7 @@ export function GeradorClient({ initialCenarios, allModulos }: Props) {
               <div className="flex h-full items-center justify-center">
                 <div className="flex items-center gap-2 text-sm text-text-secondary">
                   <span className="size-4 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
-                  Gerando casos de teste...
+                  Gerando...
                 </div>
               </div>
             )}
