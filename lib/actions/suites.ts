@@ -34,6 +34,8 @@ export interface SuiteRecord {
     tipo: string
     deps: number
     data: string
+    hora?: string
+    timestamp?: number
     resultado: "Sucesso" | "Erro" | "Pendente"
   }[]
 }
@@ -135,18 +137,42 @@ export async function registrarResultadoSuite(suiteId: string, cenarioId: string
   const cenarioRef = suite.cenarios.find((c) => c.id === cenarioId)
   if (!cenarioRef) throw new Error("Cenário não pertence à suíte")
 
+  const now = new Date()
   const historicoItem = {
     id: cenarioId,
     cenario: cenarioRef.name,
     module: cenarioRef.module,
     tipo: cenarioRef.tipo,
     deps: cenarioRef.deps,
-    data: new Date().toLocaleDateString("pt-BR"),
+    data: now.toLocaleDateString("pt-BR"),
+    hora: now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    timestamp: now.getTime(),
     resultado
   }
 
   suite.historico = suite.historico || []
   suite.historico.push(historicoItem)
+
+  await writeSuites(suites)
+  revalidatePath("/suites")
+  revalidatePath(`/suites/${suiteId}`)
+}
+
+export async function removerHistoricoSuite(suiteId: string, indices: number[]): Promise<void> {
+  await requireSession()
+  if (!suiteId || typeof suiteId !== "string") throw new Error("ID de suíte inválido")
+  if (!Array.isArray(indices) || indices.some((i) => !Number.isInteger(i) || i < 0))
+    throw new Error("Índices inválidos")
+
+  const suites = await readSuites()
+  const suiteIdx = suites.findIndex((s) => s.id === suiteId)
+  if (suiteIdx === -1) throw new Error("Suíte não encontrada")
+
+  const suite = suites[suiteIdx]
+  if (!suite.historico || suite.historico.length === 0) return
+
+  const indexSet = new Set(indices)
+  suite.historico = suite.historico.filter((_, i) => !indexSet.has(i))
 
   await writeSuites(suites)
   revalidatePath("/suites")

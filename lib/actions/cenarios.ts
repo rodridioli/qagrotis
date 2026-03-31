@@ -5,7 +5,6 @@ import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { MOCK_CENARIOS } from "@/lib/qagrotis-constants"
-import { auth } from "@/lib/auth"
 import { requireSession } from "@/lib/session"
 import { writeFileAtomic, nextId } from "@/lib/db-utils"
 
@@ -200,7 +199,7 @@ export async function atualizarCenario(id: string, data: {
   steps: CenarioStep[]
   deps: string[]
 }): Promise<CenarioRecord> {
-  await requireSession()
+  const session = await requireSession()
   const parsedId = idSchema.safeParse(id)
   if (!parsedId.success) throw new Error("ID inválido")
 
@@ -221,8 +220,7 @@ export async function atualizarCenario(id: string, data: {
     senhaFalsa:        (data.senhaFalsa || "").trim(),
   })
 
-  const session = await auth()
-  const updatedBy = session?.user?.name ?? session?.user?.email ?? undefined
+  const updatedBy = session.user?.name ?? session.user?.email ?? undefined
 
   const cenarios = await readCenarios()
   const idx = cenarios.findIndex((c) => c.id === id)

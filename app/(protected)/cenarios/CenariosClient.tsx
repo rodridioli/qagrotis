@@ -883,7 +883,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                     </div>
                     <div className="flex items-center gap-3 text-xs text-text-secondary">
                       {item.parsed.module && <span>Módulo: <span className="font-medium">{item.parsed.module}</span></span>}
-                      {item.parsed.risco && <span>Risco: <span className="font-medium">{item.parsed.risco}</span></span>}
+                      {item.parsed.risco && <span>Risco: {item.parsed.risco}</span>}
                       {item.parsed.tipo && <span>Tipo: <span className="font-medium">{item.parsed.tipo}</span></span>}
                     </div>
                     {hasErr && (

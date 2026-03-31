@@ -46,7 +46,7 @@ function formatBdd(text: string): React.ReactNode {
 
 function DisabledInput({ value }: { value?: string | null }) {
   return (
-    <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm text-text-primary cursor-not-allowed select-none min-h-[38px] flex items-center">
+    <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm text-text-primary cursor-not-allowed select-none min-h-9.5 flex items-center">
       {value ? <span>{value}</span> : <span className="text-text-secondary italic">—</span>}
     </div>
   )
@@ -54,7 +54,7 @@ function DisabledInput({ value }: { value?: string | null }) {
 
 function DisabledTextarea({ value }: { value?: string | null }) {
   return (
-    <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm text-text-primary cursor-not-allowed select-none whitespace-pre-wrap min-h-[60px]">
+    <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm text-text-primary cursor-not-allowed select-none whitespace-pre-wrap min-h-15">
       {value ? <span>{value}</span> : <span className="text-text-secondary italic">—</span>}
     </div>
   )
@@ -66,7 +66,7 @@ function PasswordField({ label, value }: { label: string; value?: string | null 
     <div className="flex flex-col gap-1">
       <span className="text-xs font-medium text-text-secondary">{label}</span>
       <div className="relative">
-        <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 pr-9 text-sm text-text-primary cursor-not-allowed select-none min-h-[38px] flex items-center">
+        <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 pr-9 text-sm text-text-primary cursor-not-allowed select-none min-h-9.5 flex items-center">
           {value ? (
             show ? (
               <span>{value}</span>
@@ -179,12 +179,12 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm">
           <Link
-            href="/cenarios"
-            title="Voltar para Cenários"
+            href={suite ? "/suites" : "/cenarios"}
+            title={suite ? "Voltar para Suítes" : "Voltar para Cenários"}
             className="flex items-center gap-1 text-text-secondary hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />
-            Cenários
+            {suite ? "Suítes" : "Cenários"}
           </Link>
           {suite && (
             <>
@@ -204,18 +204,17 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
         <div className="flex flex-wrap items-center gap-2">
           {suite && (
             <>
-              <Button 
-                onClick={() => handleResult("Sucesso")} 
+              <Button
+                onClick={() => handleResult("Sucesso")}
                 disabled={isRegistering}
-                className="bg-brand-primary hover:bg-brand-primary/90 text-white"
               >
                 <Check className="size-4" />
                 Sucesso
               </Button>
-              <Button 
-                onClick={() => handleResult("Erro")} 
-                disabled={isRegistering}
+              <Button
                 variant="destructive"
+                onClick={() => handleResult("Erro")}
+                disabled={isRegistering}
               >
                 <X className="size-4" />
                 Erro
@@ -241,10 +240,10 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
             <DisabledInput value={cenario.module} />
           </Field>
           <Field label="Risco">
-            <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 min-h-[38px] flex items-center cursor-not-allowed">
+            <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 min-h-9.5 flex items-center cursor-not-allowed">
               {cenario.risco ? (
                 <span
-                  className={`text-sm font-medium ${
+                  className={`text-sm ${
                     cenario.risco === "Alto"
                       ? "text-red-600"
                       : cenario.risco === "Médio"
@@ -277,7 +276,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
           <DisabledTextarea value={cenario.preCondicoes} />
         </Field>
         <Field label="BDD (Gherkin)">
-          <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm text-text-primary cursor-not-allowed select-none min-h-[80px] font-mono leading-6">
+          <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm text-text-primary cursor-not-allowed select-none min-h-20 font-mono leading-6">
             {formatBdd(cenario.bdd ?? "")}
           </div>
         </Field>
@@ -351,7 +350,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
             <div>
               <p className="text-xs font-semibold text-text-secondary mb-2">URL do Script</p>
               <div className="flex items-center gap-2">
-                <div className="flex-1 rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm cursor-not-allowed select-none min-h-[38px] flex items-center">
+                <div className="flex-1 rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm cursor-not-allowed select-none min-h-9.5 flex items-center">
                   {cenario.urlScript ? (
                     <span className="text-brand-primary break-all">{cenario.urlScript}</span>
                   ) : (

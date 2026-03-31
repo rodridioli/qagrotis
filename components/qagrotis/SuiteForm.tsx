@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Check, Plus, MoreVertical, Trash2 } from "lucide-react"
+import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -28,12 +28,13 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 import { SYSTEM_LIST } from "@/lib/qagrotis-constants"
-import { CenarioTipoBadge, StatusBadge } from "@/components/qagrotis/StatusBadge"
+import { CenarioTipoBadge, ResultadoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
+import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
-import { criarSuite, atualizarSuite, type SuiteRecord } from "@/lib/actions/suites"
+import { criarSuite, atualizarSuite, removerHistoricoSuite, type SuiteRecord } from "@/lib/actions/suites"
 import { toast } from "sonner"
 
 export interface SuiteFormProps {
@@ -61,17 +62,12 @@ interface HistoricoItem {
   tipo: string
   deps: number
   data: string
+  hora?: string
+  timestamp?: number
   resultado: "Sucesso" | "Erro" | "Pendente"
 }
 
-function ResultadoBadge({ resultado }: { resultado: HistoricoItem["resultado"] }) {
-  const map: Record<string, string> = {
-    Sucesso:  "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400",
-    Erro:     "border-red-500/30 bg-red-500/10 text-red-700 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-400",
-    Pendente: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
-  }
-  return <StatusBadge label={resultado} colorClass={map[resultado]} />
-}
+type SortedHistoricoItem = HistoricoItem & { _originalIdx: number }
 
 export function SuiteForm({
   mode,
@@ -86,7 +82,7 @@ export function SuiteForm({
   const initialTab = searchParams.get("tab") === "historico" ? "historico" : "cadastro"
   const [activeTab, setActiveTab] = useState<"cadastro" | "cenarios" | "historico">(initialTab)
   const [cenarios, setCenarios] = useState<SuiteCenario[]>(suite?.cenarios ?? [])
-  const historico = (suite?.historico ?? []) as HistoricoItem[]
+  const [historico, setHistorico] = useState<HistoricoItem[]>((suite?.historico ?? []) as HistoricoItem[])
 
   useEffect(() => {
     if (systemList.length === 0)
@@ -102,7 +98,8 @@ export function SuiteForm({
   const [removeOpen, setRemoveOpen] = useState(false)
   const [removeId, setRemoveId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [selectedHistorico, setSelectedHistorico] = useState<Set<string>>(new Set())
+  const [selectedHistorico, setSelectedHistorico] = useState<Set<number>>(new Set())
+  const [removerHistoricoOpen, setRemoverHistoricoOpen] = useState(false)
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
   const [addSearch, setAddSearch] = useState("")
 
@@ -126,6 +123,34 @@ export function SuiteForm({
     const matchesModule = !modSelected || cMod === modSelected
     return matchesSearch && matchesSystem && matchesModule
   }).slice(0, 100)
+
+  // Stats computed from historico (execuções and erros per cenário)
+  const historicoStats = useMemo(() => {
+    const stats: Record<string, { execucoes: number; erros: number }> = {}
+    for (const h of historico) {
+      if (!stats[h.id]) stats[h.id] = { execucoes: 0, erros: 0 }
+      stats[h.id].execucoes++
+      if (h.resultado === "Erro") stats[h.id].erros++
+    }
+    return stats
+  }, [historico])
+
+  // Historico sorted ascending by timestamp (or parsed date)
+  const sortedHistorico = useMemo((): SortedHistoricoItem[] => {
+    const parseDate = (s: string): number => {
+      const parts = s.split("/")
+      if (parts.length !== 3) return 0
+      return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime()
+    }
+    return historico
+      .map((h, i) => ({ ...h, _originalIdx: i }))
+      .sort((a, b) => {
+        if (a.timestamp !== undefined && b.timestamp !== undefined) return a.timestamp - b.timestamp
+        if (a.timestamp !== undefined) return 1
+        if (b.timestamp !== undefined) return -1
+        return parseDate(a.data) - parseDate(b.data)
+      })
+  }, [historico])
 
   function handleRemove(id: string) {
     setRemoveId(id)
@@ -198,6 +223,30 @@ export function SuiteForm({
     })
     setSelectedAddIds(new Set())
     setAddCenarioOpen(false)
+  }
+
+  async function confirmRemoverHistorico() {
+    if (!suite?.id) return
+    const indicesToRemove = [...selectedHistorico]
+    const previousHistorico = historico
+
+    // Optimistic update
+    const indexSet = new Set(indicesToRemove)
+    setHistorico((prev) => prev.filter((_, i) => !indexSet.has(i)))
+    setSelectedHistorico(new Set())
+    setRemoverHistoricoOpen(false)
+
+    try {
+      await removerHistoricoSuite(suite.id, indicesToRemove)
+      toast.success(
+        indicesToRemove.length === 1
+          ? "Registro removido do histórico."
+          : `${indicesToRemove.length} registros removidos do histórico.`
+      )
+    } catch {
+      setHistorico(previousHistorico)
+      toast.error("Erro ao remover registros do histórico.")
+    }
   }
 
   const TABS = [
@@ -350,7 +399,6 @@ export function SuiteForm({
                   <col className="w-32" />
                   <col className="w-24" />
                   <col className="w-16" />
-                  <col className="w-16" />
                   <col className="w-32" />
                   <col className="w-16" />
                 </colgroup>
@@ -361,7 +409,6 @@ export function SuiteForm({
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Execuções</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Erros</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Suítes</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
                     <th className="py-3 pl-2 pr-4" />
                   </tr>
@@ -370,13 +417,15 @@ export function SuiteForm({
                   {cenarios.map((c) => (
                     <tr key={c.id} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <Link href={`/cenarios/${c.id}`} className="font-medium text-brand-primary hover:underline">{c.id}</Link>
+                        <Link
+                          href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
+                          className="font-medium text-brand-primary hover:underline"
+                        >{c.id}</Link>
                       </td>
                       <td className="px-4 py-3 truncate font-medium text-text-primary">{c.name}</td>
                       <td className="px-4 py-3 text-text-secondary truncate">{c.module}</td>
-                      <td className="px-4 py-3 text-text-secondary">{c.execucoes}</td>
-                      <td className="px-4 py-3 text-text-secondary">{c.erros}</td>
-                      <td className="px-4 py-3 text-text-secondary">{c.deps}</td>
+                      <td className="px-4 py-3 text-text-secondary">{historicoStats[c.id]?.execucoes ?? 0}</td>
+                      <td className="px-4 py-3 text-text-secondary">{historicoStats[c.id]?.erros ?? 0}</td>
                       <td className="px-4 py-3">
                         <CenarioTipoBadge tipo={c.tipo as CenarioTipo} />
                       </td>
@@ -401,7 +450,7 @@ export function SuiteForm({
                             <DropdownMenuContent align="end" side="bottom">
                               <DropdownMenuItem>
                                 <Link
-                                  href={`/cenarios/${c.id}${suite?.id ? `?suiteId=${suite.id}` : ""}`}
+                                  href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
                                   className="w-full"
                                 >
                                   Executar
@@ -424,15 +473,27 @@ export function SuiteForm({
 
         {/* ── Histórico ── */}
         <div className={`p-5 space-y-3${activeTab !== "historico" ? " hidden" : ""}`}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h2 className="font-semibold text-text-primary">Histórico de Testes</h2>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={selectedHistorico.size === 0}
-            >
-              Exportar para o Jira
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={selectedHistorico.size === 0}
+                onClick={() => setRemoverHistoricoOpen(true)}
+              >
+                <Trash2 className="size-4" />
+                Remover
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={selectedHistorico.size === 0}
+              >
+                <ExternalLink className="size-4" />
+                Exportar para o Jira
+              </Button>
+            </div>
           </div>
 
           {historico.length === 0 ? (
@@ -446,12 +507,12 @@ export function SuiteForm({
                   <tr className="border-b border-border-default bg-neutral-grey-50">
                     <th className="px-4 py-3 text-left">
                       <Checkbox
-                        checked={historico.length > 0 && selectedHistorico.size === historico.length}
+                        checked={sortedHistorico.length > 0 && selectedHistorico.size === sortedHistorico.length}
                         onChange={() => {
-                          if (selectedHistorico.size === historico.length) {
+                          if (selectedHistorico.size === sortedHistorico.length) {
                             setSelectedHistorico(new Set())
                           } else {
-                            setSelectedHistorico(new Set(historico.map((h) => h.id)))
+                            setSelectedHistorico(new Set(sortedHistorico.map((h) => h._originalIdx)))
                           }
                         }}
                       />
@@ -462,33 +523,38 @@ export function SuiteForm({
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Dep.</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Execução</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Hora</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Resultado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {historico.map((h) => (
-                    <tr key={`${h.id}-${h.data}`} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
+                  {sortedHistorico.map((h) => (
+                    <tr key={`${h.id}-${h._originalIdx}`} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
                       <td className="px-4 py-3">
                         <Checkbox
-                          checked={selectedHistorico.has(h.id)}
+                          checked={selectedHistorico.has(h._originalIdx)}
                           onChange={() => {
                             setSelectedHistorico((prev) => {
                               const next = new Set(prev)
-                              if (next.has(h.id)) next.delete(h.id)
-                              else next.add(h.id)
+                              if (next.has(h._originalIdx)) next.delete(h._originalIdx)
+                              else next.add(h._originalIdx)
                               return next
                             })
                           }}
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <Link href={`/cenarios/${h.id}`} className="font-medium text-brand-primary hover:underline">{h.id}</Link>
+                        <Link
+                          href={suite?.id ? `/suites/${suite.id}/${h.id}` : `/cenarios/${h.id}`}
+                          className="font-medium text-brand-primary hover:underline"
+                        >{h.id}</Link>
                       </td>
                       <td className="px-4 py-3 text-text-primary">{h.cenario}</td>
                       <td className="px-4 py-3 text-text-secondary">{h.module}</td>
                       <td className="px-4 py-3"><CenarioTipoBadge tipo={h.tipo as CenarioTipo} /></td>
                       <td className="px-4 py-3 text-text-secondary">{h.deps}</td>
                       <td className="px-4 py-3 text-text-secondary">{h.data}</td>
+                      <td className="px-4 py-3 text-text-secondary">{h.hora ?? "—"}</td>
                       <td className="px-4 py-3"><ResultadoBadge resultado={h.resultado} /></td>
                     </tr>
                   ))}
@@ -562,6 +628,19 @@ export function SuiteForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={removerHistoricoOpen}
+        onOpenChange={setRemoverHistoricoOpen}
+        title="Remover do histórico?"
+        description={
+          selectedHistorico.size === 1
+            ? "1 registro será removido do histórico. Essa ação não pode ser desfeita."
+            : `${selectedHistorico.size} registros serão removidos do histórico. Essa ação não pode ser desfeita.`
+        }
+        confirmLabel="Remover"
+        onConfirm={confirmRemoverHistorico}
+      />
     </div>
   )
 }

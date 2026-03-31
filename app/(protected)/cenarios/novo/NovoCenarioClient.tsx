@@ -337,7 +337,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
           <span className="text-text-secondary">/</span>
           <span className="font-medium text-text-primary">Novo Cenário</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {activeTab === "automacao" && (usuarioTeste && senhaTeste && senhaFalsa && steps.some(s => s.acao && s.resultado)) && (
             <Button variant="outline" onClick={exportarPrompt} disabled={isSaving}>
               <FileDown className="size-4" />
@@ -566,7 +566,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
               onChange={(e) => setBdd(e.target.value)}
               placeholder={`DADO O contexto inicial (ex: "Dado que o cliente está logado").\nQUANDO A ação realizada (ex: "Quando ele adiciona um item ao carrinho").\nENTÃO O resultado esperado (ex: "Então o item deve aparecer na tela de checkout")`}
               onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-              className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
+              className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm font-sans text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
             />
           </div>
 

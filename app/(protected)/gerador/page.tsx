@@ -5,5 +5,8 @@ import { getIntegracoes } from "@/lib/actions/integracoes"
 
 export default async function GeradorPage() {
   const [cenarios, modulos, integracoes] = await Promise.all([getCenarios(), getModulos(), getIntegracoes()])
-  return <GeradorClient initialCenarios={cenarios} allModulos={modulos} integracoes={integracoes.filter((i) => i.active)} />
+  const integracoesSafe = integracoes
+    .filter((i) => i.active)
+    .map(({ apiKey: _, ...safe }) => ({ ...safe, apiKey: "" }))
+  return <GeradorClient initialCenarios={cenarios} allModulos={modulos} integracoes={integracoesSafe} />
 }

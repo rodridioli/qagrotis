@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import {
   StatusBadge,
+  ResultadoBadge,
   CenarioTipoBadge,
   SuiteTipoBadge,
   AutomacaoBadge,
@@ -113,6 +114,32 @@ Escala de 4 faixas de cor baseada na porcentagem de automação:
       <AutomacaoBadge pct={60} />
       <AutomacaoBadge pct={85} />
       <AutomacaoBadge pct={100} />
+    </div>
+  ),
+}
+
+// ── ResultadoBadge ──────────────────────────────────────────────────────────
+
+export const ResultadoTipos: Story = {
+  name: "Resultado — histórico de testes",
+  parameters: {
+    docs: {
+      description: {
+        story: `
+| Valor | Cor |
+|-------|-----|
+| Sucesso | Verde (\`green-600\`) |
+| Erro | Vermelho (\`red-500\`) |
+| Pendente | Âmbar (\`amber-500\`) |
+        `,
+      },
+    },
+  },
+  render: () => (
+    <div className="flex flex-wrap gap-2 p-4">
+      <ResultadoBadge resultado="Sucesso" />
+      <ResultadoBadge resultado="Erro" />
+      <ResultadoBadge resultado="Pendente" />
     </div>
   ),
 }

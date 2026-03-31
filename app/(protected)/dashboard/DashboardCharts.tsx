@@ -127,7 +127,7 @@ export function DashboardCharts({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 
         {/* Ranking de geração de cenários — ranking por usuário */}
-        <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-[300px]">
+        <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
           <h2 className="mb-4 text-sm font-semibold text-text-primary">Ranking de geração de cenários</h2>
           {rankingHoje.length === 0 ? (
             <p className="text-xs text-text-secondary">Nenhum cenário gerado hoje.</p>
@@ -157,7 +157,7 @@ export function DashboardCharts({
         </div>
 
         {/* Cobertura de automação — ocupa toda a altura disponível */}
-        <div className="col-span-1 flex flex-col rounded-xl bg-surface-card p-5 shadow-card md:col-span-2 min-h-[300px]">
+        <div className="col-span-1 flex flex-col rounded-xl bg-surface-card p-5 shadow-card md:col-span-2 min-h-75">
           <h2 className="mb-4 shrink-0 text-sm font-semibold text-text-primary">Cobertura de automação por módulo</h2>
           <div className="min-h-0 flex-1">
             <ResponsiveContainer width="100%" height="100%">

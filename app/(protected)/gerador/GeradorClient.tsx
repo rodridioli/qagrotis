@@ -476,7 +476,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         </div>
 
         {/* Right — output */}
-        <div className="flex min-h-[500px] flex-col overflow-hidden rounded-xl bg-surface-card shadow-card">
+        <div className="flex min-h-125 flex-col overflow-hidden rounded-xl bg-surface-card shadow-card">
           <div className="border-b border-border-default px-5 py-4">
             <h2 className="text-sm font-semibold text-text-primary">Casos de teste gerados</h2>
           </div>
@@ -513,7 +513,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
               <textarea
                 value={output}
                 onChange={(e) => setOutput(e.target.value)}
-                className="h-full min-h-[400px] w-full resize-none bg-transparent font-sans text-sm leading-relaxed text-text-primary outline-none"
+                className="h-full min-h-100 w-full resize-none bg-transparent font-sans text-sm leading-relaxed text-text-primary outline-none"
               />
             )}
           </div>
@@ -657,7 +657,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                     </div>
                     <div className="flex items-center gap-3 text-xs text-text-secondary">
                       {item.parsed.module && <span>Módulo: <span className="font-medium">{item.parsed.module}</span></span>}
-                      {item.parsed.risco && <span>Risco: <span className="font-medium">{item.parsed.risco}</span></span>}
+                      {item.parsed.risco && <span>Risco: {item.parsed.risco}</span>}
                       {item.parsed.tipo && <span>Tipo: <span className="font-medium">{item.parsed.tipo}</span></span>}
                     </div>
                     {hasErr && <p className="text-xs text-destructive">{item.error}</p>}
@@ -853,7 +853,7 @@ function ScreenshotUploader({ previews, onChangePreviews }: ScreenshotUploaderPr
               >
                 <Trash2 size={14} color="white" strokeWidth={2.5} />
               </button>
-              <p className="mt-1 max-w-[80px] truncate text-[10px] text-text-secondary">{p.name}</p>
+              <p className="mt-1 max-w-20 truncate text-[10px] text-text-secondary">{p.name}</p>
             </div>
           ))}
         </div>

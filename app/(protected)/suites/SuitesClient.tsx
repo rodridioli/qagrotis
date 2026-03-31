@@ -226,7 +226,6 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                   <col />
                   <col className="w-16" />
                   <col className={showBulkActions ? "w-32" : "w-36"} />
-                  <col className={showBulkActions ? "w-32" : "w-36"} />
                   <col className="w-20" />
                   <col className={showBulkActions ? "w-36" : "w-40"} />
                   <col className="w-14" />
@@ -248,7 +247,6 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Suíte</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Versão</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cliente</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Execuções</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Automação</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Erros</th>
@@ -283,15 +281,14 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                       <td className="px-4 py-3 truncate font-medium text-text-primary">{s.suiteName}</td>
                       <td className="px-4 py-3 text-text-secondary">{s.versao}</td>
                       <td className="px-4 py-3 text-text-secondary truncate">{s.modulo}</td>
-                      <td className="px-4 py-3 text-text-secondary truncate">{s.cliente}</td>
                       <td className="px-4 py-3 text-text-secondary">
-                        {s.cenarios.reduce((acc, c) => acc + c.execucoes, 0)}
+                        {(s.historico ?? []).length}
                       </td>
                       <td className="px-4 py-3">
-                        <AutomacaoBar pct={s.cenarios.length === 0 ? 0 : Math.round(s.cenarios.filter((c) => c.tipo === "Automatizado").length / s.cenarios.length * 100)} />
+                        <AutomacaoBar pct={s.cenarios.length === 0 ? 0 : Math.round(s.cenarios.filter((c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto.").length / s.cenarios.length * 100)} />
                       </td>
                       <td className="px-4 py-3 text-text-secondary">
-                        {s.cenarios.reduce((acc, c) => acc + c.erros, 0)}
+                        {(s.historico ?? []).filter((h) => h.resultado === "Erro").length}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">{s.cenarios.length}</td>
                       <td className="px-4 py-3">
