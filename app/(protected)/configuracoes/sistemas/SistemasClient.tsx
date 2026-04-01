@@ -116,13 +116,18 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
     setInativarIds([])
 
     startTransition(async () => {
-      await inativarSistemas(inativarIds)
-      router.refresh()
-      toast.success(
-        count === 1
-          ? "Sistema inativado com sucesso."
-          : `${count} sistemas inativados com sucesso.`
-      )
+      try {
+        await inativarSistemas(inativarIds)
+        router.refresh()
+        toast.success(
+          count === 1
+            ? "Sistema inativado com sucesso."
+            : `${count} sistemas inativados com sucesso.`
+        )
+      } catch {
+        router.refresh()
+        toast.error("Erro ao inativar. Tente novamente.")
+      }
     })
   }
 

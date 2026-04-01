@@ -29,6 +29,8 @@ import type { SistemaRecord } from "@/lib/actions/sistemas"
 import { criarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import { formatCpfCnpj } from "@/lib/utils"
+import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
+import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 
 const RISCO_OPTIONS = [
   {
@@ -69,6 +71,7 @@ interface Dep {
   name: string
   module: string
   system: string
+  tipo: string
 }
 
 export default function NovoCenarioClient({ initialModulos = [], allSistemas = [], initialClientes = [], allCenarios = [] }: Props) {
@@ -132,6 +135,8 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
     [localModulos, depSistema]
   )
 
+  const existingDepIds = useMemo(() => new Set(deps.map((d) => d.id)), [deps])
+
   const DEP_LIMIT = 50
   const filteredDepCenarios = useMemo(() => {
     if (!depSistema || !depModulo) return { items: [], total: 0 }
@@ -140,10 +145,11 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
       (c) =>
         c.system === depSistema &&
         c.module === depModulo &&
+        !existingDepIds.has(c.id) &&
         (!q || c.id.toLowerCase().includes(q) || c.scenarioName.toLowerCase().includes(q))
     )
     return { items: all.slice(0, DEP_LIMIT), total: all.length }
-  }, [allCenarios, depSistema, depModulo, depSearch])
+  }, [allCenarios, depSistema, depModulo, depSearch, existingDepIds])
 
   function addStepRow() {
     setHasSaved(false)
@@ -262,6 +268,12 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
       if (!usuarioTeste.trim()) { toast.error("Usuário de Teste é obrigatório para cenários automatizados."); return false }
       if (!senhaTeste.trim()) { toast.error("Senha de Teste é obrigatória para cenários automatizados."); return false }
       if (!senhaFalsa.trim()) { toast.error("Senha Falsa é obrigatória para cenários automatizados."); return false }
+      const validSteps = steps.filter((s) => s.acao.trim() && s.resultado.trim())
+      if (validSteps.length === 0) {
+        toast.error("É obrigatório adicionar pelo menos 1 passo com ação e resultado esperado.")
+        setActiveTab("automacao")
+        return false
+      }
     }
 
     const tipo: "Manual" | "Automatizado" | "Man./Auto." =
@@ -313,6 +325,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
       name: c.scenarioName,
       module: c.module,
       system: c.system,
+      tipo: c.tipo,
     }))
     setDeps((prev) => {
       const existing = new Set(prev.map((d) => d.id))
@@ -717,14 +730,16 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
                 <colgroup>
                   <col className="w-28" />
                   <col />
-                  <col className="w-1/4" />
-                  <col className="w-1/4" />
+                  <col className="w-32" />
+                  <col className="w-1/5" />
+                  <col className="w-1/5" />
                   <col className="w-16" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
                     <th className="px-4 py-3" />
@@ -739,6 +754,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
                         </Link>
                       </td>
                       <td className="px-4 py-3 text-text-primary truncate">{d.name}</td>
+                      <td className="px-4 py-3"><CenarioTipoBadge tipo={d.tipo as CenarioTipo} /></td>
                       <td className="px-4 py-3 text-text-secondary truncate">{d.system}</td>
                       <td className="px-4 py-3 text-text-secondary truncate">{d.module}</td>
                       <td className="py-3 pl-2 pr-4">
@@ -854,9 +870,12 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
                               })
                             }}
                           />
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <span className="text-xs font-mono text-text-secondary">{c.id}</span>
                             <p className="text-sm font-medium text-text-primary truncate">{c.scenarioName}</p>
+                          </div>
+                          <div className="shrink-0">
+                            <CenarioTipoBadge tipo={c.tipo as CenarioTipo} />
                           </div>
                         </label>
                       ))}
@@ -904,6 +923,13 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
               disabled={isClientePending}
               onClick={() => {
                 if (!newClienteName.trim()) return
+                const duplicate = clientes.some(
+                  (c) => c.nomeFantasia.trim().toLowerCase() === newClienteName.trim().toLowerCase()
+                )
+                if (duplicate) {
+                  toast.error("Cliente já cadastrado.", { description: "Este cliente já existe na lista." })
+                  return
+                }
                 startClienteTransition(async () => {
                   const novo = await criarCliente({
                     nomeFantasia: newClienteName,

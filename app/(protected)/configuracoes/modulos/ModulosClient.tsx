@@ -108,11 +108,16 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
     })
     setInativarIds([])
     startTransition(async () => {
-      await inativarModulos(inativarIds)
-      router.refresh()
-      toast.success(
-        count === 1 ? "Módulo inativado com sucesso." : `${count} módulos inativados com sucesso.`
-      )
+      try {
+        await inativarModulos(inativarIds)
+        router.refresh()
+        toast.success(
+          count === 1 ? "Módulo inativado com sucesso." : `${count} módulos inativados com sucesso.`
+        )
+      } catch {
+        router.refresh()
+        toast.error("Erro ao inativar. Tente novamente.")
+      }
     })
   }
 

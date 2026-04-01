@@ -118,11 +118,16 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
     })
     setInativarIds([])
     startTransition(async () => {
-      await inativarClientes(inativarIds)
-      router.refresh()
-      toast.success(
-        count === 1 ? "Cliente inativado com sucesso." : `${count} clientes inativados com sucesso.`
-      )
+      try {
+        await inativarClientes(inativarIds)
+        router.refresh()
+        toast.success(
+          count === 1 ? "Cliente inativado com sucesso." : `${count} clientes inativados com sucesso.`
+        )
+      } catch {
+        router.refresh()
+        toast.error("Erro ao inativar. Tente novamente.")
+      }
     })
   }
 

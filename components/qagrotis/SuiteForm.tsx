@@ -193,13 +193,14 @@ export function SuiteForm({
       }
 
       if (mode === "create") {
-        await criarSuite(payload)
+        const nova = await criarSuite(payload)
+        toast.success("Suíte criada com sucesso!")
+        router.push(`/suites/${nova.id}`)
       } else if (suite?.id) {
         await atualizarSuite(suite.id, payload)
+        toast.success("Suíte atualizada!")
+        router.push("/suites")
       }
-
-      toast.success(mode === "create" ? "Suíte criada com sucesso!" : "Suíte atualizada!")
-      router.push("/suites")
     } catch (error: unknown) {
       toast.error("Erro ao salvar suíte: " + (error instanceof Error ? error.message : "Erro desconhecido"))
     } finally {
@@ -250,9 +251,9 @@ export function SuiteForm({
   }
 
   const TABS = [
-    { id: "cadastro" as const,  label: "Cadastro",  badge: null },
-    { id: "cenarios" as const,  label: "Cenários",  badge: cenarios.length },
-    { id: "historico" as const, label: "Histórico", badge: historico.length > 0 ? historico.length : null },
+    { id: "cadastro" as const,  label: "Cadastro",  badge: null, disabled: false },
+    { id: "cenarios" as const,  label: "Cenários",  badge: cenarios.length, disabled: false },
+    { id: "historico" as const, label: "Histórico", badge: historico.length > 0 ? historico.length : null, disabled: mode === "create" },
   ]
 
   return (
@@ -279,13 +280,17 @@ export function SuiteForm({
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
         {/* Tab nav */}
         <div className="flex border-b border-border-default">
-          {TABS.map(({ id, label, badge }) => (
+          {TABS.map(({ id, label, badge, disabled }) => (
             <button
               key={id}
               type="button"
-              onClick={() => setActiveTab(id)}
+              onClick={() => !disabled && setActiveTab(id)}
+              disabled={disabled}
+              title={disabled ? "Disponível após salvar a suíte" : undefined}
               className={`flex flex-1 items-center justify-center gap-1.5 py-3 px-4 text-sm font-medium border-b-2 -mb-px transition-all ${
-                activeTab === id
+                disabled
+                  ? "cursor-not-allowed border-transparent text-text-secondary/40 opacity-50"
+                  : activeTab === id
                   ? "border-brand-primary text-brand-primary bg-brand-primary/5"
                   : "border-transparent text-text-secondary hover:text-text-primary hover:bg-neutral-grey-50"
               }`}

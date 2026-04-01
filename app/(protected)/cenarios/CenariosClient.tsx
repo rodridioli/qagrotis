@@ -304,13 +304,18 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
     setInativarIds([])
 
     startTransition(async () => {
-      await inativarCenarios(inativarIds)
-      router.refresh()
-      toast.success(
-        count === 1
-          ? "Cenário inativado com sucesso."
-          : `${count} cenários inativados com sucesso.`
-      )
+      try {
+        await inativarCenarios(inativarIds)
+        router.refresh()
+        toast.success(
+          count === 1
+            ? "Cenário inativado com sucesso."
+            : `${count} cenários inativados com sucesso.`
+        )
+      } catch {
+        router.refresh()
+        toast.error("Erro ao inativar. Tente novamente.")
+      }
     })
   }
 
