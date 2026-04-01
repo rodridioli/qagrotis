@@ -77,8 +77,8 @@ type ResultadoTipo = "Sucesso" | "Erro" | "Pendente"
 function ResultadoBadge({ resultado }: { resultado: ResultadoTipo }) {
   const styles: Record<ResultadoTipo, string> = {
     Sucesso:  "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400",
-    Erro:     "border-red-500/30 bg-red-500/10 text-red-700 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-400",
-    Pendente: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
+    Erro:     "border-red-500/30 bg-red-500/10 text-red-600 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-400",
+    Pendente: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
   }
   return badge(styles[resultado], resultado)
 }

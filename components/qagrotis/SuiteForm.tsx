@@ -99,6 +99,63 @@ export function SuiteForm({
   const [removeId, setRemoveId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [selectedHistorico, setSelectedHistorico] = useState<Set<number>>(new Set())
+
+  function handleExportarJira() {
+    const selected = sortedHistorico.filter((h) => selectedHistorico.has(h._originalIdx))
+    if (selected.length === 0) return
+
+    const resultIcon = (r: string) => r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : "⏳"
+
+    // ── Detailed blocks ───────────────────────────────────────────────────────
+    const details = selected.map((h) => {
+      const icon = resultIcon(h.resultado)
+      return [
+        `### ${h.id} — ${h.cenario} ${icon} ${h.resultado}`,
+        `- **Módulo:** ${h.module || "—"}`,
+        `- **Tipo:** ${h.tipo || "—"}`,
+        `- **Execução:** ${h.data}${h.hora ? ` às ${h.hora}` : ""}`,
+        `- **Resultado:** ${icon} ${h.resultado}`,
+      ].join("\n")
+    }).join("\n\n---\n\n")
+
+    // ── Summary table ─────────────────────────────────────────────────────────
+    const tableRows = selected.map((h) =>
+      `| ${h.id} | ${h.cenario} | ${h.module || "—"} | ${resultIcon(h.resultado)} ${h.resultado} | ${h.data}${h.hora ? ` ${h.hora}` : ""} |`
+    ).join("\n")
+
+    const sucessos = selected.filter((h) => h.resultado === "Sucesso").length
+    const erros    = selected.filter((h) => h.resultado === "Erro").length
+
+    const summary = [
+      `## Resumo da Execução`,
+      ``,
+      `| Código | Cenário | Módulo | Resultado | Data/Hora |`,
+      `|--------|---------|--------|-----------|-----------|`,
+      tableRows,
+      ``,
+      `**Total:** ${selected.length} | ✅ Sucesso: ${sucessos} | ❌ Erro: ${erros}`,
+    ].join("\n")
+
+    const suiteName = suite?.suiteName ?? "Suíte"
+    const exportDate = new Date().toLocaleDateString("pt-BR")
+    const content = [
+      `## Histórico de Execução — ${suiteName}`,
+      `*Exportado em ${exportDate}*`,
+      ``,
+      `---`,
+      ``,
+      details,
+      ``,
+      `---`,
+      ``,
+      summary,
+    ].join("\n")
+
+    navigator.clipboard.writeText(content)
+    toast.success("Cole o conteúdo selecionado no Jira.", {
+      description: `${selected.length} cenário${selected.length !== 1 ? "s" : ""} copiado${selected.length !== 1 ? "s" : ""} para a área de transferência.`,
+    })
+  }
   const [removerHistoricoOpen, setRemoverHistoricoOpen] = useState(false)
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
   const [addSearch, setAddSearch] = useState("")
@@ -494,6 +551,7 @@ export function SuiteForm({
                 variant="outline"
                 size="sm"
                 disabled={selectedHistorico.size === 0}
+                onClick={handleExportarJira}
               >
                 <ExternalLink className="size-4" />
                 Exportar para o Jira
@@ -512,9 +570,8 @@ export function SuiteForm({
                   <col className="w-10" />
                   <col className="w-24" />
                   <col />
-                  <col className="w-32" />
                   <col className="w-28" />
-                  <col className="w-14" />
+                  <col className="w-28" />
                   <col className="w-28" />
                   <col className="w-20" />
                   <col className="w-28" />
@@ -537,7 +594,6 @@ export function SuiteForm({
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Dep.</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Execução</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Hora</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Resultado</th>
@@ -566,9 +622,12 @@ export function SuiteForm({
                         >{h.id}</Link>
                       </td>
                       <td className="px-4 py-3 text-text-primary">{h.cenario}</td>
-                      <td className="px-4 py-3 text-text-secondary">{h.module}</td>
+                      <td className="px-4 py-3 text-text-secondary max-w-0">
+                        <span className="block truncate" title={h.module}>
+                          {h.module && h.module.length > 16 ? `${h.module.slice(0, 16)}…` : (h.module || "—")}
+                        </span>
+                      </td>
                       <td className="px-4 py-3"><CenarioTipoBadge tipo={h.tipo as CenarioTipo} /></td>
-                      <td className="px-4 py-3 text-text-secondary">{h.deps}</td>
                       <td className="px-4 py-3 text-text-secondary">{h.data}</td>
                       <td className="px-4 py-3 text-text-secondary">{h.hora ?? "—"}</td>
                       <td className="px-4 py-3"><ResultadoBadge resultado={h.resultado} /></td>

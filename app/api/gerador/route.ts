@@ -292,6 +292,70 @@ async function streamGemini(
   return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
 }
 
+async function streamOpenRouter(userMessage: string, model: string, keyOverride?: string): Promise<Response> {
+  const apiKey = keyOverride || process.env.OPENROUTER_API_KEY
+  if (!apiKey) return new Response("Informe sua OPENROUTER_API_KEY no campo de API Key.", { status: 500 })
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 8192,
+      stream: true,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userMessage },
+      ],
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    try {
+      const errJson = JSON.parse(err)
+      if (errJson.error?.code === 429) {
+        return new Response("Cota excedida no modelo selecionado. Tente outro modelo gratuito do OpenRouter.", { status: 429 })
+      }
+      return new Response(`Erro na API OpenRouter: ${errJson.error?.message || err}`, { status: res.status })
+    } catch {
+      return new Response(`Erro na API OpenRouter: ${err}`, { status: res.status })
+    }
+  }
+
+  const encoder = new TextEncoder()
+  const readable = new ReadableStream({
+    async start(controller) {
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() ?? ""
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue
+          const data = line.slice(5).trim()
+          if (data === "[DONE]") continue
+          try {
+            const parsed = JSON.parse(data)
+            const delta = parsed.choices?.[0]?.delta?.content
+            if (delta) controller.enqueue(encoder.encode(delta))
+          } catch { /* ignore */ }
+        }
+      }
+      controller.close()
+    },
+  })
+  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
+}
+
 async function streamGroq(userMessage: string, model: string, keyOverride?: string): Promise<Response> {
   const apiKey = keyOverride || process.env.GROQ_API_KEY
   if (!apiKey) return new Response("Informe sua GROQ_API_KEY no campo de API Key.", { status: 500 })
@@ -391,6 +455,8 @@ export async function POST(req: NextRequest) {
       return streamOpenAI(userMessage, model, apiKey)
     case "anthropic":
       return streamAnthropic(userMessage, apiKey)
+    case "openrouter":
+      return streamOpenRouter(userMessage, model, apiKey)
     default:
       return new Response("Provedor não suportado.", { status: 400 })
   }

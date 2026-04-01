@@ -4,16 +4,25 @@ import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 const FROM = process.env.EMAIL_FROM ?? "noreply@qagrotis.com.br"
 
-async function sendWithResend(to: string, subject: string, html: string): Promise<object | null> {
+async function sendWithResend(to: string, subject: string, html: string): Promise<string | null> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
-    console.log(`\n[forgot-password] No RESEND_API_KEY — would send to: ${to}\n`)
-    return null
+    console.warn(`\n[forgot-password] RESEND_API_KEY não configurada — e-mail NÃO enviado para: ${to}\n`)
+    return "Serviço de e-mail não configurado. Contate o administrador."
   }
-  const { Resend } = await import("resend")
-  const resend = new Resend(apiKey)
-  const { error } = await resend.emails.send({ from: `QAgrotis <${FROM}>`, to, subject, html })
-  return error ?? null
+  try {
+    const { Resend } = await import("resend")
+    const resend = new Resend(apiKey)
+    const { error } = await resend.emails.send({ from: `QAgrotis <${FROM}>`, to, subject, html })
+    if (error) {
+      console.error("[forgot-password] Resend error:", JSON.stringify(error))
+      return (error as { message?: string }).message ?? "Erro ao enviar e-mail."
+    }
+    return null
+  } catch (err) {
+    console.error("[forgot-password] Unexpected error sending email:", err)
+    return "Erro inesperado ao enviar e-mail. Tente novamente."
+  }
 }
 
 export async function POST(request: Request) {
@@ -33,14 +42,13 @@ export async function POST(request: Request) {
   // Case 1: prototype credential user — send credentials directly
   const prototypePassword = PROTOTYPE_USERS[email]
   if (prototypePassword) {
-    const emailError = await sendWithResend(
+    const sendError = await sendWithResend(
       email,
       "Suas credenciais de acesso — QAgrotis",
       buildCredentialsHtml(email, prototypePassword)
     )
-    if (emailError) {
-      console.error("[forgot-password] Resend error:", JSON.stringify(emailError))
-      return NextResponse.json({ error: "Erro ao enviar e-mail. Tente novamente." }, { status: 500 })
+    if (sendError) {
+      return NextResponse.json({ error: sendError }, { status: 500 })
     }
     return NextResponse.json({ ok: true })
   }
@@ -71,14 +79,13 @@ export async function POST(request: Request) {
     ])
 
     const resetUrl = `${APP_URL}/definir-senha/${token}`
-    const emailError = await sendWithResend(
+    const sendError = await sendWithResend(
       email,
       "Redefinição de senha — QAgrotis",
       buildResetHtml(email, resetUrl)
     )
-    if (emailError) {
-      console.error("[forgot-password] Resend error:", JSON.stringify(emailError))
-      return NextResponse.json({ error: "Erro ao enviar e-mail. Tente novamente." }, { status: 500 })
+    if (sendError) {
+      return NextResponse.json({ error: sendError }, { status: 500 })
     }
     return NextResponse.json({ ok: true })
   } catch (err) {

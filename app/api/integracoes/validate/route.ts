@@ -74,5 +74,17 @@ export async function POST(req: NextRequest) {
     } catch { /* ignore */ }
   }
 
+  } else if (provider === "openrouter") {
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+        body: JSON.stringify({ model: "meta-llama/llama-3.1-8b-instruct:free", messages: [{ role: "user", content: "hi" }], max_tokens: 1 }),
+      })
+      if (res.ok || res.status === 429) return new Response("ok", { status: 200 })
+      if (res.status === 401 || res.status === 403) return new Response("Chave inválida.", { status: 401 })
+    } catch { /* ignore */ }
+  }
+
   return new Response("Não foi possível confirmar.", { status: 422 })
 }

@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma"
 export interface IntegracaoRecord {
   id: string
   descricao: string
-  provider: "google" | "openai" | "anthropic" | "groq"
+  provider: "google" | "openai" | "anthropic" | "groq" | "openrouter"
   model: string
   apiKey: string
   active: boolean
@@ -18,7 +18,7 @@ export interface IntegracaoRecord {
 
 const integracaoSchema = z.object({
   descricao: z.string().max(200, "Máximo de 200 caracteres").optional().default(""),
-  provider:  z.enum(["google", "openai", "anthropic", "groq"]),
+  provider:  z.enum(["google", "openai", "anthropic", "groq", "openrouter"]),
   model:     z.string().min(1, "Modelo é obrigatório"),
   apiKey:    z.string().min(1, "API Key é obrigatória"),
 })

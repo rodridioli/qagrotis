@@ -24,9 +24,9 @@ type KeyStatus = "idle" | "validating" | "valid" | "invalid" | "uncertain"
 export default function NovaIntegracaoForm() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [provider, setProvider] = useState<"google" | "openai" | "anthropic" | "groq">("google")
+  const [provider, setProvider] = useState<"google" | "openai" | "anthropic" | "groq" | "openrouter">("openrouter")
 
-  const [model, setModel] = useState("gemini-2.0-flash")
+  const [model, setModel] = useState("meta-llama/llama-3.1-8b-instruct:free")
   const [apiKey, setApiKey] = useState("")
   const [showKey, setShowKey] = useState(false)
 
@@ -79,9 +79,9 @@ export default function NovaIntegracaoForm() {
     const prov = p as any
     setProvider(prov)
     // Defaults for each provider
-    if (prov === "google") setModel("gemini-2.0-flash")
+    if (prov === "openrouter") setModel("meta-llama/llama-3.1-8b-instruct:free")
+    else if (prov === "google") setModel("gemini-2.0-flash")
     else if (prov === "groq") setModel("llama-3.1-70b-versatile")
-
     else if (prov === "openai") setModel("gpt-4o-mini")
     else if (prov === "anthropic") setModel("claude-3-5-sonnet-latest")
   }
@@ -140,8 +140,9 @@ export default function NovaIntegracaoForm() {
                 </SelectValue>
               </SelectTrigger>
               <SelectPopup>
-                <SelectItem value="google">Google Gemini</SelectItem>
+                <SelectItem value="openrouter">OpenRouter (Gratuito)</SelectItem>
                 <SelectItem value="groq">Groq (Llama, Mixtral)</SelectItem>
+                <SelectItem value="google">Google Gemini</SelectItem>
                 <SelectItem value="openai">OpenAI (GPT)</SelectItem>
                 <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
               </SelectPopup>
@@ -158,10 +159,12 @@ export default function NovaIntegracaoForm() {
               onChange={(e) => setModel(e.target.value)}
               placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
             />
+            {provider === "openrouter" && (
+              <p className="text-[10px] text-text-secondary">Modelos gratuitos: meta-llama/llama-3.1-8b-instruct:free · mistralai/mistral-7b-instruct:free · google/gemma-2-9b-it:free · microsoft/phi-3-mini-128k-instruct:free</p>
+            )}
             {provider === "groq" && (
               <p className="text-[10px] text-text-secondary">Sugestão: llama-3.1-70b-versatile, llama-3.1-8b-instant</p>
             )}
-
             {provider === "google" && (
               <p className="text-[10px] text-text-secondary">Sugestão: gemini-2.0-flash-exp, gemini-1.5-flash</p>
             )}
