@@ -2,14 +2,11 @@
 
 import { useMemo } from "react"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
-import {
-  MONTHLY_TESTS_DATA,
-  MONTHLY_ERRORS_DATA,
-} from "@/lib/qagrotis-constants"
 import { DashboardCharts } from "./DashboardCharts"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { QaUserRecord } from "@/lib/actions/usuarios"
+import type { SuiteRecord } from "@/lib/actions/suites"
 
 function MetricCard({
   label,
@@ -35,11 +32,12 @@ interface Props {
   allCenarios: CenarioRecord[]
   allModulos: ModuloRecord[]
   allUsers: QaUserRecord[]
+  allSuites: SuiteRecord[]
   currentUser: string | null
   currentUserPhotoPath: string | null
 }
 
-export function DashboardClient({ allCenarios, allModulos, allUsers, currentUser, currentUserPhotoPath }: Props) {
+export function DashboardClient({ allCenarios, allModulos, allUsers, allSuites, currentUser, currentUserPhotoPath }: Props) {
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   // Maps both name and email to a user's display name and photo
@@ -141,6 +139,34 @@ export function DashboardClient({ allCenarios, allModulos, allUsers, currentUser
     }
   }, [allCenarios, allModulos, sistemaSelecionado])
 
+  const { monthlyTests, monthlyErrors } = useMemo(() => {
+    const now = new Date()
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+      return {
+        month: d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
+        tests: 0,
+        errors: 0,
+      }
+    })
+    const sixMonthsAgoTs = new Date(now.getFullYear(), now.getMonth() - 5, 1).getTime()
+    for (const suite of allSuites) {
+      for (const h of suite.historico ?? []) {
+        const ts = h.timestamp
+        if (!ts || ts < sixMonthsAgoTs) continue
+        const d = new Date(ts)
+        const idx = (d.getFullYear() - now.getFullYear()) * 12 + (d.getMonth() - now.getMonth()) + 5
+        if (idx < 0 || idx > 5) continue
+        months[idx].tests++
+        if (h.resultado === "Erro") months[idx].errors++
+      }
+    }
+    return {
+      monthlyTests: months.map(m => ({ month: m.month, value: m.tests })),
+      monthlyErrors: months.map(m => ({ month: m.month, value: m.errors })),
+    }
+  }, [allSuites])
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -152,8 +178,8 @@ export function DashboardClient({ allCenarios, allModulos, allUsers, currentUser
 
       <DashboardCharts
         automationData={automationData}
-        monthlyTests={MONTHLY_TESTS_DATA}
-        monthlyErrors={MONTHLY_ERRORS_DATA}
+        monthlyTests={monthlyTests}
+        monthlyErrors={monthlyErrors}
         rankingHoje={rankingHoje}
         ultimasAutomacoes={ultimasAutomacoes}
         resolveUser={resolveUser}

@@ -34,9 +34,9 @@ const DEFAULT_SISTEMA = "Gerencial"
 
 const NAV_ITEMS = [
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",             disabled: false },
-  { href: "/gerador",       icon: Sparkles,        label: "Gerador",            disabled: false },
-  { href: "/cenarios",      icon: FileText,        label: "Cenários",           disabled: false },
   { href: "/suites",        icon: Rocket,          label: "Suítes",             disabled: false },
+  { href: "/cenarios",      icon: FileText,        label: "Cenários",           disabled: false },
+  { href: "/gerador",       icon: Sparkles,        label: "Gerador",            disabled: false },
   { href: "/documentos",    icon: BookOpen,        label: "Documentos",         disabled: true  },
   { href: "/assistente",    icon: Bot,             label: "Assistente de IA",   disabled: true  },
   { href: "/configuracoes", icon: Settings,        label: "Configurações",      disabled: false },

@@ -4,7 +4,7 @@ import React, { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { ArrowLeft, ChevronDown, ChevronUp, Eye, EyeOff, ExternalLink, Check, X } from "lucide-react"
+import { ArrowLeft, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, ExternalLink, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { SuiteRecord } from "@/lib/actions/suites"
@@ -242,15 +242,14 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
           <Field label="Risco">
             <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 min-h-9.5 flex items-center cursor-not-allowed">
               {cenario.risco ? (
-                <span
-                  className={`text-sm ${
-                    cenario.risco === "Alto"
-                      ? "text-red-600"
-                      : cenario.risco === "Médio"
-                      ? "text-amber-600"
-                      : "text-blue-600"
-                  }`}
+                <span className="flex items-center gap-1.5 text-sm font-medium"
+                  style={{
+                    color: cenario.risco === "Alto" ? "#ef4444" : cenario.risco === "Médio" ? "#f59e0b" : "#3b82f6"
+                  }}
                 >
+                  {cenario.risco === "Alto" && <ArrowUp className="size-3.5 shrink-0" />}
+                  {cenario.risco === "Médio" && <Circle className="size-3.5 shrink-0 fill-amber-400" />}
+                  {cenario.risco === "Baixo" && <ArrowDown className="size-3.5 shrink-0" />}
                   {cenario.risco}
                 </span>
               ) : (
@@ -263,9 +262,6 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
 
       {/* ── Bloco 2: Teste Manual ── */}
       <BlockCard title="Teste Manual">
-        <Field label="Caminho da Tela">
-          <DisabledInput value={cenario.caminhoTela} />
-        </Field>
         <Field label="Descrição">
           <DisabledTextarea value={cenario.descricao} />
         </Field>
@@ -276,7 +272,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
           <DisabledTextarea value={cenario.preCondicoes} />
         </Field>
         <Field label="BDD (Gherkin)">
-          <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm text-text-primary cursor-not-allowed select-none min-h-20 font-mono leading-6">
+          <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm text-text-primary cursor-not-allowed select-none min-h-20 leading-6 whitespace-pre-wrap">
             {formatBdd(cenario.bdd ?? "")}
           </div>
         </Field>
@@ -286,16 +282,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
       </BlockCard>
 
       {/* ── Bloco 3: Automação ── */}
-      <BlockCard title="Automação">
-        {!isAutomatizado ? (
-          <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
-            Este cenário não está configurado como Automatizado.{" "}
-            <Link href={`/cenarios/${cenario.id}/editar`} className="text-brand-primary hover:underline">
-              Editar cenário
-            </Link>{" "}
-            para habilitar.
-          </div>
-        ) : (
+      {isAutomatizado && <BlockCard title="Automação">
           <div className="space-y-5">
 
             {/* Credenciais — mesma linha */}
@@ -369,16 +356,10 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
             </div>
 
           </div>
-        )}
-      </BlockCard>
+      </BlockCard>}
 
       {/* ── Bloco 4: Dependências ── */}
-      <BlockCard title={`Dependências (${depIds.length})`}>
-        {depIds.length === 0 ? (
-          <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
-            Nenhuma dependência vinculada a este cenário.
-          </div>
-        ) : (
+      {depIds.length > 0 && <BlockCard title={`Dependências (${depIds.length})`}>
           <div className="overflow-x-auto rounded-lg border border-border-default">
             <table className="w-full table-fixed text-sm">
               <colgroup>
@@ -431,8 +412,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
               </tbody>
             </table>
           </div>
-        )}
-      </BlockCard>
+      </BlockCard>}
 
     </div>
   )

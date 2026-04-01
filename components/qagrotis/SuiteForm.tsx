@@ -507,7 +507,18 @@ export function SuiteForm({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full table-fixed text-sm">
+                <colgroup>
+                  <col className="w-10" />
+                  <col className="w-24" />
+                  <col />
+                  <col className="w-32" />
+                  <col className="w-28" />
+                  <col className="w-14" />
+                  <col className="w-28" />
+                  <col className="w-20" />
+                  <col className="w-28" />
+                </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
                     <th className="px-4 py-3 text-left">

@@ -537,15 +537,6 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">Caminho da Tela</label>
-            <Input
-              value={caminhoTela}
-              onChange={(e) => setCaminhoTela(e.target.value)}
-              placeholder="Ex: Menu > Cadastros > Produtores"
-            />
-          </div>
-
-          <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">
               Regra de Negócio <span className="text-destructive">*</span>
             </label>

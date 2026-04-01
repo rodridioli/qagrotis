@@ -1,14 +1,16 @@
 import { getModulos } from "@/lib/actions/modulos"
 import { getCenarios } from "@/lib/actions/cenarios"
 import { getQaUsers } from "@/lib/actions/usuarios"
+import { getSuites } from "@/lib/actions/suites"
 import { auth } from "@/lib/auth"
 import { DashboardClient } from "./DashboardClient"
 
 export default async function DashboardPage() {
-  const [modulos, cenarios, users, session] = await Promise.all([
+  const [modulos, cenarios, users, suites, session] = await Promise.all([
     getModulos(),
     getCenarios(),
     getQaUsers(),
+    getSuites(),
     auth(),
   ])
   const currentUser = session?.user?.name ?? session?.user?.email ?? null
@@ -23,6 +25,7 @@ export default async function DashboardPage() {
       allCenarios={cenarios}
       allModulos={modulos}
       allUsers={users}
+      allSuites={suites}
       currentUser={currentUser}
       currentUserPhotoPath={currentUserPhotoPath}
     />

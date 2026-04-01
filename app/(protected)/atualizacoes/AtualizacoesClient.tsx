@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { ChevronDown, ChevronUp } from "lucide-react"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ChangelogTagBadge } from "@/components/qagrotis/StatusBadge"
@@ -191,8 +192,8 @@ export function AtualizacoesClient({ entries }: Props) {
                               title={isExpanded ? "Recolher" : "Expandir"}
                             >
                               {isExpanded
-                                ? <span className="text-base leading-none">−</span>
-                                : <span className="text-base leading-none">+</span>
+                                ? <ChevronUp className="size-4" />
+                                : <ChevronDown className="size-4" />
                               }
                             </button>
                           )}

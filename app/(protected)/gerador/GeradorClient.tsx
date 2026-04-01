@@ -487,7 +487,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                 <div className="flex size-12 items-center justify-center rounded-full bg-brand-primary/10">
                   <Sparkles className="size-6 text-brand-primary" />
                 </div>
-                <p className="max-w-xs text-sm text-text-secondary">
+                <p className="text-sm text-text-secondary whitespace-nowrap">
                   Preencha o contexto à esquerda e clique em{" "}
                   <strong className="text-text-primary">Gerar CT</strong>.
                 </p>
