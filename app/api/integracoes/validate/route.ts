@@ -72,8 +72,6 @@ export async function POST(req: NextRequest) {
       if (res.ok || res.status === 429) return new Response("ok", { status: 200 })
       if (res.status === 401) return new Response("Chave inválida.", { status: 401 })
     } catch { /* ignore */ }
-  }
-
   } else if (provider === "openrouter") {
     try {
       const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
