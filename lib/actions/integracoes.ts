@@ -1,11 +1,10 @@
 "use server"
 
-import { promises as fs } from "fs"
-import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { writeFileAtomic, nextId } from "@/lib/db-utils"
+import { nextId } from "@/lib/db-utils"
 import { requireAdmin } from "@/lib/session"
+import { prisma } from "@/lib/prisma"
 
 export interface IntegracaoRecord {
   id: string
@@ -17,53 +16,42 @@ export interface IntegracaoRecord {
   createdAt: number
 }
 
-const DATA_DIR = path.join(process.cwd(), "data")
-const INTEGRACOES_FILE = path.join(DATA_DIR, "integracoes.json")
-
 const integracaoSchema = z.object({
   descricao: z.string().max(200, "Máximo de 200 caracteres").optional().default(""),
-
-  provider: z.enum(["google", "openai", "anthropic", "groq"]),
-  model: z.string().min(1, "Modelo é obrigatório"),
-  apiKey: z.string().min(1, "API Key é obrigatória"),
+  provider:  z.enum(["google", "openai", "anthropic", "groq"]),
+  model:     z.string().min(1, "Modelo é obrigatório"),
+  apiKey:    z.string().min(1, "API Key é obrigatória"),
 })
 
 const idSchema = z.string().regex(/^INT-\d+$/, "ID inválido")
 const idsArraySchema = z.array(idSchema).max(1000)
 
-async function readIntegracoes(): Promise<IntegracaoRecord[]> {
-  try {
-    const content = await fs.readFile(INTEGRACOES_FILE, "utf-8")
-    return JSON.parse(content) as IntegracaoRecord[]
-  } catch {
-    await writeIntegracoes([])
-    return []
-  }
-}
-
-async function writeIntegracoes(integracoes: IntegracaoRecord[]): Promise<void> {
-  await writeFileAtomic(INTEGRACOES_FILE, JSON.stringify(integracoes, null, 2))
-}
+// ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getIntegracoes(): Promise<IntegracaoRecord[]> {
-  return readIntegracoes()
+  const rows = await prisma.integracao.findMany({ orderBy: { createdAt: "asc" } })
+  return rows.map((r) => ({
+    ...r,
+    provider: r.provider as IntegracaoRecord["provider"],
+    createdAt: r.createdAt.getTime(),
+  }))
 }
 
 export async function getIntegracao(id: string): Promise<IntegracaoRecord | null> {
   const result = idSchema.safeParse(id)
   if (!result.success) return null
-  const integracoes = await readIntegracoes()
-  return integracoes.find((i) => i.id === id) ?? null
+  const row = await prisma.integracao.findUnique({ where: { id } })
+  if (!row) return null
+  return { ...row, provider: row.provider as IntegracaoRecord["provider"], createdAt: row.createdAt.getTime() }
 }
 
 export async function criarIntegracao(data: unknown): Promise<void> {
   await requireAdmin()
   const parsed = integracaoSchema.parse(data)
-  const integracoes = await readIntegracoes()
-  const id = nextId(integracoes.map((i) => i.id), "INT")
+  const existing = await prisma.integracao.findMany({ select: { id: true } })
+  const id = nextId(existing.map((i) => i.id), "INT")
 
-  integracoes.push({ id, ...parsed, active: true, createdAt: Date.now() })
-  await writeIntegracoes(integracoes)
+  await prisma.integracao.create({ data: { id, ...parsed, active: true } })
   revalidatePath("/configuracoes/integracoes")
 }
 
@@ -71,11 +59,11 @@ export async function atualizarIntegracao(id: string, data: unknown): Promise<vo
   await requireAdmin()
   idSchema.parse(id)
   const parsed = integracaoSchema.parse(data)
-  const integracoes = await readIntegracoes()
-  const idx = integracoes.findIndex((i) => i.id === id)
-  if (idx === -1) throw new Error("Integração não encontrada")
-  integracoes[idx] = { ...integracoes[idx], ...parsed }
-  await writeIntegracoes(integracoes)
+
+  const existing = await prisma.integracao.findUnique({ where: { id }, select: { id: true } })
+  if (!existing) throw new Error("Integração não encontrada")
+
+  await prisma.integracao.update({ where: { id }, data: parsed })
   revalidatePath("/configuracoes/integracoes")
   revalidatePath(`/configuracoes/integracoes/${id}/editar`)
 }
@@ -84,11 +72,7 @@ export async function inativarIntegracoes(ids: string[]): Promise<void> {
   await requireAdmin()
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
-  const integracoes = await readIntegracoes()
-  const idSet = new Set(ids)
-  for (const i of integracoes) {
-    if (idSet.has(i.id)) i.active = false
-  }
-  await writeIntegracoes(integracoes)
+
+  await prisma.integracao.updateMany({ where: { id: { in: ids } }, data: { active: false } })
   revalidatePath("/configuracoes/integracoes")
 }

@@ -1,7 +1,7 @@
 "use server"
 
-import { promises as fs } from "fs"
-import path from "path"
+// Static import — bundled at build time, works on Vercel (no fs access needed)
+import changelogData from "@/data/changelog.json"
 
 export interface ChangelogEntry {
   version: string
@@ -12,13 +12,6 @@ export interface ChangelogEntry {
   changes: string[]
 }
 
-const CHANGELOG_FILE = path.join(process.cwd(), "data", "changelog.json")
-
 export async function getChangelog(): Promise<ChangelogEntry[]> {
-  try {
-    const content = await fs.readFile(CHANGELOG_FILE, "utf-8")
-    return JSON.parse(content) as ChangelogEntry[]
-  } catch {
-    return []
-  }
+  return changelogData as ChangelogEntry[]
 }

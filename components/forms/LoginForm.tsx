@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useId, useRef } from "react"
-import { useRouter } from "next/navigation"
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react"
 import { signIn } from "next-auth/react"
 import { toast } from "sonner"
@@ -103,7 +102,6 @@ function Divider({ label = "ou" }: { label?: string }) {
 
 // ── Login view ────────────────────────────────────────────────
 function LoginView({ onForgotPassword, callbackUrl }: { onForgotPassword: () => void; callbackUrl: string }) {
-  const router = useRouter()
   const emailId = useId()
   const passwordId = useId()
   const captchaRef = useRef<CaptchaHandle>(null)
@@ -158,24 +156,26 @@ function LoginView({ onForgotPassword, callbackUrl }: { onForgotPassword: () => 
         return
       }
 
-      const res = await signIn("credentials", {
+      await signIn("credentials", {
         email,
         password,
-        redirect: false,
+        redirectTo: callbackUrl,
       })
-
-      if (!res || res.error) {
+    } catch (err: unknown) {
+      // Re-throw Next.js redirect errors so the browser actually redirects
+      if (err instanceof Error && "digest" in err && typeof (err as { digest?: string }).digest === "string" && (err as { digest: string }).digest.startsWith("NEXT_REDIRECT")) {
+        throw err
+      }
+      // NextAuth v5 throws AuthError on invalid credentials
+      const message = err instanceof Error ? err.message : ""
+      if (message.includes("CredentialsSignin") || message.includes("credentials")) {
         toast.error("E-mail ou senha incorretos.", {
           description: "Verifique suas credenciais e tente novamente.",
         })
         captchaRef.current?.reset()
-        return
+      } else {
+        toast.error("Erro ao autenticar. Tente novamente.")
       }
-
-      toast.success("Acesso autorizado!", { description: "Redirecionando para o painel..." })
-      router.push(callbackUrl)
-    } catch {
-      toast.error("Erro ao autenticar. Tente novamente.")
     } finally {
       setLoading(false)
     }
@@ -183,7 +183,7 @@ function LoginView({ onForgotPassword, callbackUrl }: { onForgotPassword: () => 
 
   const handleGoogle = () => {
     setGoogleLoading(true)
-    signIn("google", { callbackUrl })
+    signIn("google", { redirectTo: callbackUrl })
   }
 
   return (

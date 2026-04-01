@@ -1,6 +1,5 @@
 "use server"
 
-import { promises as fs } from "fs"
 import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
@@ -8,8 +7,9 @@ import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 import { gerarConvite } from "@/lib/actions/invite-tokens"
 import { sendInviteEmail } from "@/lib/email"
-import { writeFileAtomic, nextId, verifyPassword } from "@/lib/db-utils"
+import { nextId, verifyPassword } from "@/lib/db-utils"
 import { requireAdmin, requireSession, checkIsAdmin } from "@/lib/session"
+import { prisma } from "@/lib/prisma"
 
 export interface QaUserRecord {
   id: string
@@ -42,62 +42,6 @@ const idsArraySchema = z.array(idSchema).max(1000)
 // Allowed uploads directory — photoPath must resolve inside it
 const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads")
 
-// ── Storage helpers ─────────────────────────────────────────────────────────
-
-const DATA_DIR = path.join(process.cwd(), "data")
-const INACTIVE_FILE = path.join(DATA_DIR, "inactive-users.json")
-const PROFILES_FILE = path.join(DATA_DIR, "user-profiles.json")
-const CREATED_FILE  = path.join(DATA_DIR, "created-users.json")
-
-interface CreatedUser {
-  id: string
-  name: string
-  email: string
-  type: string
-  photoPath: string | null
-  password: string
-  createdAt?: number
-}
-
-async function readCreatedUsers(): Promise<CreatedUser[]> {
-  try {
-    const content = await fs.readFile(CREATED_FILE, "utf-8")
-    return JSON.parse(content) as CreatedUser[]
-  } catch {
-    return []
-  }
-}
-
-async function writeCreatedUsers(users: CreatedUser[]): Promise<void> {
-  await writeFileAtomic(CREATED_FILE, JSON.stringify(users, null, 2))
-}
-
-async function readInactiveIds(): Promise<Set<string>> {
-  try {
-    const content = await fs.readFile(INACTIVE_FILE, "utf-8")
-    return new Set(JSON.parse(content) as string[])
-  } catch {
-    return new Set()
-  }
-}
-
-async function writeInactiveIds(ids: Set<string>): Promise<void> {
-  await writeFileAtomic(INACTIVE_FILE, JSON.stringify([...ids]))
-}
-
-async function readProfiles(): Promise<Record<string, QaUserProfile>> {
-  try {
-    const content = await fs.readFile(PROFILES_FILE, "utf-8")
-    return JSON.parse(content) as Record<string, QaUserProfile>
-  } catch {
-    return {}
-  }
-}
-
-async function writeProfiles(profiles: Record<string, QaUserProfile>): Promise<void> {
-  await writeFileAtomic(PROFILES_FILE, JSON.stringify(profiles, null, 2))
-}
-
 /**
  * Validate that a photo path is inside the allowed uploads directory.
  * Prevents path traversal attacks where a caller could store "../../../etc/passwd".
@@ -114,34 +58,37 @@ function validatePhotoPath(photoPath: string | null | undefined): string | null 
 // ── Public actions ─────────────────────────────────────────────────────────
 
 export async function getQaUsers(): Promise<QaUserRecord[]> {
-  const [inactiveIds, profiles, createdUsers] = await Promise.all([
-    readInactiveIds(),
-    readProfiles(),
-    readCreatedUsers(),
+  const [inactiveRecords, profiles, createdUsers] = await Promise.all([
+    prisma.inactiveUser.findMany({ select: { userId: true } }),
+    prisma.userProfile.findMany(),
+    prisma.createdUser.findMany({ orderBy: { createdAt: "asc" } }),
   ])
 
+  const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
+  const profileMap = new Map(profiles.map((p) => [p.userId, p]))
+
   const mockRecords: QaUserRecord[] = MOCK_USERS.map((u) => {
-    const p = profiles[u.id]
+    const p = profileMap.get(u.id)
     return {
-      id: u.id,
-      name: p?.name ?? u.name,
-      email: p?.email ?? u.email,
-      type: p?.type ?? u.type,
-      active: inactiveIds.has(u.id) ? false : u.active,
+      id:        u.id,
+      name:      p?.name ?? u.name,
+      email:     p?.email ?? u.email,
+      type:      p?.type ?? u.type,
+      active:    !inactiveIds.has(u.id) && u.active,
       photoPath: p?.photoPath ?? null,
     }
   })
 
   const createdRecords: QaUserRecord[] = createdUsers.map((u) => {
-    const p = profiles[u.id]
+    const p = profileMap.get(u.id)
     return {
-      id: u.id,
-      name: p?.name ?? u.name,
-      email: p?.email ?? u.email,
-      type: p?.type ?? u.type,
-      active: !inactiveIds.has(u.id),
+      id:        u.id,
+      name:      p?.name ?? u.name,
+      email:     p?.email ?? u.email,
+      type:      p?.type ?? u.type,
+      active:    !inactiveIds.has(u.id),
       photoPath: p?.photoPath ?? u.photoPath,
-      createdAt: u.createdAt,
+      createdAt: u.createdAt.getTime(),
     }
   })
 
@@ -152,17 +99,21 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
   const result = idSchema.safeParse(id)
   if (!result.success) return null
 
-  const [profiles, createdUsers] = await Promise.all([readProfiles(), readCreatedUsers()])
   const mockUser = MOCK_USERS.find((u) => u.id === id)
-  const createdUser = createdUsers.find((u) => u.id === id)
+
+  const [savedProfile, createdUser] = await Promise.all([
+    prisma.userProfile.findUnique({ where: { userId: id } }),
+    prisma.createdUser.findUnique({ where: { id } }),
+  ])
+
   const base = mockUser ?? createdUser
   if (!base) return null
-  const saved = profiles[id]
+
   return {
-    name: saved?.name ?? base.name,
-    email: saved?.email ?? base.email,
-    type: saved?.type ?? base.type,
-    photoPath: saved?.photoPath ?? createdUser?.photoPath ?? null,
+    name:      savedProfile?.name ?? base.name,
+    email:     savedProfile?.email ?? base.email,
+    type:      savedProfile?.type ?? base.type,
+    photoPath: savedProfile?.photoPath ?? (createdUser?.photoPath ?? null),
   }
 }
 
@@ -171,9 +122,10 @@ export async function inativarQaUsers(ids: string[]): Promise<void> {
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 
-  const inactiveIds = await readInactiveIds()
-  for (const id of ids) inactiveIds.add(id)
-  await writeInactiveIds(inactiveIds)
+  await prisma.inactiveUser.createMany({
+    data: ids.map((userId) => ({ userId })),
+    skipDuplicates: true,
+  })
   revalidatePath("/configuracoes/usuarios")
 }
 
@@ -184,30 +136,41 @@ export async function criarQaUser(data: {
 }): Promise<void> {
   await requireAdmin()
   const parsed = userInputSchema.parse({
-    name: data.name.trim(),
+    name:  data.name.trim(),
     email: data.email.trim().toLowerCase(),
-    type: data.type,
+    type:  data.type,
   })
 
-  const [users, inactiveIds] = await Promise.all([readCreatedUsers(), readInactiveIds()])
+  const [inactiveRecords, existingCreated] = await Promise.all([
+    prisma.inactiveUser.findMany({ select: { userId: true } }),
+    prisma.createdUser.findFirst({
+      where: { email: { equals: parsed.email, mode: "insensitive" } },
+      select: { id: true },
+    }),
+  ])
+
+  const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
 
   // Block if email is already active (mock or created)
   const activeMockEmails = MOCK_USERS
     .filter((u) => !inactiveIds.has(u.id))
     .map((u) => u.email.toLowerCase())
-  const activeCreatedUser = users.find(
-    (u) => u.email.toLowerCase() === parsed.email && !inactiveIds.has(u.id)
-  )
-  if (activeMockEmails.includes(parsed.email) || activeCreatedUser) {
+
+  if (activeMockEmails.includes(parsed.email)) {
+    throw new Error("E-mail já cadastrado.")
+  }
+  if (existingCreated && !inactiveIds.has(existingCreated.id)) {
     throw new Error("E-mail já cadastrado.")
   }
 
-  const allIds = [...MOCK_USERS.map((u) => u.id), ...users.map((u) => u.id)]
+  const createdIds = await prisma.createdUser.findMany({ select: { id: true } })
+  const allIds = [...MOCK_USERS.map((u) => u.id), ...createdIds.map((u) => u.id)]
   const id = nextId(allIds, "U")
 
   // Store user without password — password is set via invite link
-  users.push({ id, ...parsed, photoPath: null, password: "", createdAt: Date.now() })
-  await writeCreatedUsers(users)
+  await prisma.createdUser.create({
+    data: { id, name: parsed.name, email: parsed.email, type: parsed.type, photoPath: null, password: "" },
+  })
 
   // Generate invite token and send email (non-blocking — user is saved regardless)
   const token = await gerarConvite(id, parsed.email)
@@ -229,13 +192,14 @@ export async function validateLogin(
   password: string
 ): Promise<{ ok: true } | { ok: false; reason: "invalid_credentials" | "inactive" }> {
   const normalizedEmail = email.trim().toLowerCase()
-  const [inactiveIds, createdUsers, profiles] = await Promise.all([
-    readInactiveIds(),
-    readCreatedUsers(),
-    readProfiles(),
+
+  const [inactiveRecords, createdUser] = await Promise.all([
+    prisma.inactiveUser.findMany({ select: { userId: true } }),
+    prisma.createdUser.findFirst({ where: { email: { equals: normalizedEmail, mode: "insensitive" } } }),
   ])
 
-  const createdUser = createdUsers.find((u) => u.email.toLowerCase() === normalizedEmail)
+  const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
+
   if (createdUser) {
     if (!verifyPassword(password, createdUser.password)) return { ok: false, reason: "invalid_credentials" }
     if (inactiveIds.has(createdUser.id)) return { ok: false, reason: "inactive" }
@@ -246,7 +210,7 @@ export async function validateLogin(
   if (mockUser) {
     const expectedPassword = PROTOTYPE_USERS[normalizedEmail] ?? "admin"
     if (password !== expectedPassword) return { ok: false, reason: "invalid_credentials" }
-    const profile = profiles[mockUser.id]
+    const profile = await prisma.userProfile.findUnique({ where: { userId: mockUser.id } })
     const emailMatch = (profile?.email ?? mockUser.email).toLowerCase() === normalizedEmail
     if (!emailMatch) return { ok: false, reason: "invalid_credentials" }
     if (inactiveIds.has(mockUser.id)) return { ok: false, reason: "inactive" }
@@ -266,7 +230,6 @@ export async function atualizarQaUser(
   const isAdmin = await checkIsAdmin()
   const sessionEmail = session.user?.email?.toLowerCase() ?? ""
 
-  // Load target profile to get their current email (needed for self-check)
   const targetProfile = await getQaUserProfile(id)
   if (!targetProfile) throw new Error("Usuário não encontrado.")
 
@@ -279,7 +242,7 @@ export async function atualizarQaUser(
   const type = isAdmin ? data.type : targetProfile.type
 
   const parsed = userInputSchema.parse({
-    name: data.name.trim(),
+    name:  data.name.trim(),
     email: data.email.trim().toLowerCase(),
     type,
   })
@@ -287,15 +250,19 @@ export async function atualizarQaUser(
   // Validate photo path to prevent directory traversal
   const safePhotoPath = data.photoPath !== undefined ? validatePhotoPath(data.photoPath) : undefined
 
-  const profiles = await readProfiles()
-  const current = profiles[id]
-
-  profiles[id] = {
-    ...parsed,
-    photoPath: safePhotoPath !== undefined ? safePhotoPath : (current?.photoPath ?? null),
+  const profileData: { name: string; email: string; type: string; photoPath?: string | null } = {
+    name:  parsed.name,
+    email: parsed.email,
+    type:  parsed.type,
   }
+  if (safePhotoPath !== undefined) profileData.photoPath = safePhotoPath
 
-  await writeProfiles(profiles)
+  await prisma.userProfile.upsert({
+    where:  { userId: id },
+    create: { userId: id, name: parsed.name, email: parsed.email, type: parsed.type, photoPath: safePhotoPath ?? null },
+    update: profileData,
+  })
+
   revalidatePath("/configuracoes/usuarios")
   revalidatePath(`/configuracoes/usuarios/${id}`)
   revalidatePath(`/configuracoes/usuarios/${id}/editar`)

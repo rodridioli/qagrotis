@@ -1,11 +1,10 @@
 "use server"
 
-import { promises as fs } from "fs"
-import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { requireSession } from "@/lib/session"
-import { writeFileAtomic, nextId } from "@/lib/db-utils"
+import { nextId } from "@/lib/db-utils"
+import { prisma } from "@/lib/prisma"
 
 export interface SuiteRecord {
   id: string
@@ -40,9 +39,6 @@ export interface SuiteRecord {
   }[]
 }
 
-const DATA_DIR = path.join(process.cwd(), "data")
-const SUITES_FILE = path.join(DATA_DIR, "suites.json")
-
 const suiteSchema = z.object({
   suiteName: z.string().min(1, "Nome da suíte é obrigatório").max(200),
   versao: z.string().min(1, "Versão é obrigatória").max(100),
@@ -62,98 +58,120 @@ const suiteSchema = z.object({
   })).min(1, "Pelo menos um cenário é obrigatório"),
 })
 
-async function readSuites(): Promise<SuiteRecord[]> {
-  try {
-    const content = await fs.readFile(SUITES_FILE, "utf-8")
-    const raw: any[] = JSON.parse(content)
-    // Normalise legacy records that may not have `tipo`
-    return raw.map((s) => ({ tipo: "Sprint", ...s })) as SuiteRecord[]
-  } catch {
-    // File missing — start with empty list
-    await writeSuites([])
-    return []
+// ── Mapping helper ──────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toRecord(row: any): SuiteRecord {
+  return {
+    id:        row.id,
+    suiteName: row.suiteName,
+    versao:    row.versao,
+    sistema:   row.sistema,
+    modulo:    row.modulo,
+    cliente:   row.cliente,
+    tipo:      row.tipo ?? "Sprint",
+    objetivo:  row.objetivo,
+    active:    row.active,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.getTime() : row.createdAt,
+    cenarios:  (row.cenarios as unknown as SuiteRecord["cenarios"]) ?? [],
+    historico: (row.historico as unknown as SuiteRecord["historico"]) ?? [],
   }
 }
 
-async function writeSuites(suites: SuiteRecord[]): Promise<void> {
-  await writeFileAtomic(SUITES_FILE, JSON.stringify(suites, null, 2))
-}
+// ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getSuites(): Promise<SuiteRecord[]> {
-  return readSuites()
+  const rows = await prisma.suite.findMany({ orderBy: { createdAt: "asc" } })
+  return rows.map(toRecord)
 }
 
 export async function getSuiteById(id: string): Promise<SuiteRecord | null> {
   if (!id || typeof id !== "string") return null
-  const suites = await readSuites()
-  return suites.find((s) => s.id === id) ?? null
+  const row = await prisma.suite.findUnique({ where: { id } })
+  return row ? toRecord(row) : null
 }
 
 export async function criarSuite(data: unknown): Promise<SuiteRecord> {
   await requireSession()
   const parsed = suiteSchema.parse(data)
-  const suites = await readSuites()
-  const id = nextId(suites.map((s) => s.id), "S", 4)
+  const existing = await prisma.suite.findMany({ select: { id: true } })
+  const id = nextId(existing.map((s) => s.id), "S", 4)
 
-  const nova: SuiteRecord = {
-    id,
-    ...parsed,
-    active: true,
-    createdAt: Date.now(),
-  }
+  const row = await prisma.suite.create({
+    data: {
+      id,
+      suiteName: parsed.suiteName,
+      versao:    parsed.versao,
+      sistema:   parsed.sistema,
+      modulo:    parsed.modulo,
+      tipo:      parsed.tipo,
+      cliente:   parsed.cliente,
+      objetivo:  parsed.objetivo,
+      active:    true,
+      cenarios:  parsed.cenarios,
+      historico: [],
+    },
+  })
 
-  suites.push(nova)
-  await writeSuites(suites)
   revalidatePath("/suites")
-  return nova
+  return toRecord(row)
 }
 
 export async function atualizarSuite(id: string, data: unknown): Promise<SuiteRecord> {
   await requireSession()
   if (!id || typeof id !== "string") throw new Error("ID inválido")
   const parsed = suiteSchema.parse(data)
-  const suites = await readSuites()
-  const idx = suites.findIndex((s) => s.id === id)
-  if (idx === -1) throw new Error("Suíte não encontrada")
 
-  suites[idx] = {
-    ...suites[idx],
-    ...parsed,
-  }
+  const existing = await prisma.suite.findUnique({ where: { id }, select: { historico: true } })
+  if (!existing) throw new Error("Suíte não encontrada")
 
-  await writeSuites(suites)
+  const row = await prisma.suite.update({
+    where: { id },
+    data: {
+      suiteName: parsed.suiteName,
+      versao:    parsed.versao,
+      sistema:   parsed.sistema,
+      modulo:    parsed.modulo,
+      tipo:      parsed.tipo,
+      cliente:   parsed.cliente,
+      objetivo:  parsed.objetivo,
+      cenarios:  parsed.cenarios,
+      // Preserve historico — do not overwrite
+    },
+  })
+
   revalidatePath("/suites")
   revalidatePath(`/suites/${id}`)
-  return suites[idx]
+  return toRecord(row)
 }
 
 export async function registrarResultadoSuite(suiteId: string, cenarioId: string, resultado: "Sucesso" | "Erro"): Promise<void> {
   await requireSession()
-  const suites = await readSuites()
-  const suiteIdx = suites.findIndex((s) => s.id === suiteId)
-  if (suiteIdx === -1) throw new Error("Suíte não encontrada")
-  
-  const suite = suites[suiteIdx]
-  const cenarioRef = suite.cenarios.find((c) => c.id === cenarioId)
+
+  const suite = await prisma.suite.findUnique({ where: { id: suiteId } })
+  if (!suite) throw new Error("Suíte não encontrada")
+
+  const cenarios = suite.cenarios as unknown as SuiteRecord["cenarios"]
+  const cenarioRef = cenarios.find((c) => c.id === cenarioId)
   if (!cenarioRef) throw new Error("Cenário não pertence à suíte")
 
   const now = new Date()
   const historicoItem = {
-    id: cenarioId,
-    cenario: cenarioRef.name,
-    module: cenarioRef.module,
-    tipo: cenarioRef.tipo,
-    deps: cenarioRef.deps,
-    data: now.toLocaleDateString("pt-BR"),
-    hora: now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    id:       cenarioId,
+    cenario:  cenarioRef.name,
+    module:   cenarioRef.module,
+    tipo:     cenarioRef.tipo,
+    deps:     cenarioRef.deps,
+    data:     now.toLocaleDateString("pt-BR"),
+    hora:     now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
     timestamp: now.getTime(),
-    resultado
+    resultado,
   }
 
-  suite.historico = suite.historico || []
-  suite.historico.push(historicoItem)
+  const historico = (suite.historico as unknown as NonNullable<SuiteRecord["historico"]>) ?? []
+  historico.push(historicoItem)
 
-  await writeSuites(suites)
+  await prisma.suite.update({ where: { id: suiteId }, data: { historico } })
   revalidatePath("/suites")
   revalidatePath(`/suites/${suiteId}`)
 }
@@ -164,17 +182,16 @@ export async function removerHistoricoSuite(suiteId: string, indices: number[]):
   if (!Array.isArray(indices) || indices.some((i) => !Number.isInteger(i) || i < 0))
     throw new Error("Índices inválidos")
 
-  const suites = await readSuites()
-  const suiteIdx = suites.findIndex((s) => s.id === suiteId)
-  if (suiteIdx === -1) throw new Error("Suíte não encontrada")
+  const suite = await prisma.suite.findUnique({ where: { id: suiteId } })
+  if (!suite) throw new Error("Suíte não encontrada")
 
-  const suite = suites[suiteIdx]
-  if (!suite.historico || suite.historico.length === 0) return
+  const historico = (suite.historico as unknown as NonNullable<SuiteRecord["historico"]>) ?? []
+  if (historico.length === 0) return
 
   const indexSet = new Set(indices)
-  suite.historico = suite.historico.filter((_, i) => !indexSet.has(i))
+  const updated = historico.filter((_, i) => !indexSet.has(i))
 
-  await writeSuites(suites)
+  await prisma.suite.update({ where: { id: suiteId }, data: { historico: updated } })
   revalidatePath("/suites")
   revalidatePath(`/suites/${suiteId}`)
 }

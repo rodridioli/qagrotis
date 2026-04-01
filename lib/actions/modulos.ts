@@ -1,11 +1,10 @@
 "use server"
 
-import { promises as fs } from "fs"
-import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { writeFileAtomic, nextId } from "@/lib/db-utils"
+import { nextId } from "@/lib/db-utils"
 import { requireAdmin } from "@/lib/session"
+import { prisma } from "@/lib/prisma"
 
 export interface ModuloRecord {
   id: string
@@ -16,10 +15,6 @@ export interface ModuloRecord {
   active: boolean
   createdAt?: number
 }
-
-const DATA_DIR = path.join(process.cwd(), "data")
-const MODULOS_FILE  = path.join(DATA_DIR, "modulos.json")
-const CENARIOS_FILE = path.join(DATA_DIR, "cenarios.json")
 
 // ── Validation schemas ──────────────────────────────────────────────────────
 
@@ -33,32 +28,18 @@ const moduloInputSchema = z.object({
 const idSchema = z.string().regex(/^MOD-\d+$/, "ID inválido")
 const idsArraySchema = z.array(idSchema).max(1000)
 
-// ── Storage helpers ─────────────────────────────────────────────────────────
-
-async function readModulos(): Promise<ModuloRecord[]> {
-  try {
-    const content = await fs.readFile(MODULOS_FILE, "utf-8")
-    return JSON.parse(content) as ModuloRecord[]
-  } catch {
-    return []
-  }
-}
-
-async function writeModulos(modulos: ModuloRecord[]): Promise<void> {
-  await writeFileAtomic(MODULOS_FILE, JSON.stringify(modulos, null, 2))
-}
-
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getModulos(): Promise<ModuloRecord[]> {
-  return readModulos()
+  const rows = await prisma.modulo.findMany({ orderBy: { createdAt: "asc" } })
+  return rows.map((r) => ({ ...r, createdAt: r.createdAt.getTime() }))
 }
 
 export async function getModulo(id: string): Promise<ModuloRecord | null> {
   const result = idSchema.safeParse(id)
   if (!result.success) return null
-  const modulos = await readModulos()
-  return modulos.find((m) => m.id === id) ?? null
+  const row = await prisma.modulo.findUnique({ where: { id } })
+  return row ? { ...row, createdAt: row.createdAt.getTime() } : null
 }
 
 export async function criarModulo(data: {
@@ -75,14 +56,12 @@ export async function criarModulo(data: {
     sistemaName: data.sistemaName.trim(),
   })
 
-  const modulos = await readModulos()
-  const id = nextId(modulos.map((m) => m.id), "MOD")
+  const existing = await prisma.modulo.findMany({ select: { id: true } })
+  const id = nextId(existing.map((m) => m.id), "MOD")
 
-  const novo: ModuloRecord = { id, ...parsed, active: true, createdAt: Date.now() }
-  modulos.push(novo)
-  await writeModulos(modulos)
+  const row = await prisma.modulo.create({ data: { id, ...parsed, active: true } })
   revalidatePath("/configuracoes/modulos")
-  return novo
+  return { ...row, createdAt: row.createdAt.getTime() }
 }
 
 export async function atualizarModulo(
@@ -98,37 +77,21 @@ export async function atualizarModulo(
     sistemaName: data.sistemaName.trim(),
   })
 
-  const modulos = await readModulos()
-  const idx = modulos.findIndex((m) => m.id === id)
-  if (idx === -1) return
+  const existing = await prisma.modulo.findUnique({ where: { id }, select: { name: true } })
+  if (!existing) return
 
-  const oldName = modulos[idx].name
-  modulos[idx] = { ...modulos[idx], ...parsed }
-  await writeModulos(modulos)
+  const oldName = existing.name
 
-  if (oldName !== parsed.name) {
-    await propagateModuloRename(oldName, parsed.name)
-  }
+  await prisma.$transaction([
+    prisma.modulo.update({ where: { id }, data: parsed }),
+    ...(oldName !== parsed.name
+      ? [prisma.cenario.updateMany({ where: { module: oldName }, data: { module: parsed.name } })]
+      : []),
+  ])
 
   revalidatePath("/configuracoes/modulos")
   revalidatePath(`/configuracoes/modulos/${id}/editar`)
-}
-
-async function propagateModuloRename(oldName: string, newName: string): Promise<void> {
-  try {
-    const cenariosRaw = await fs.readFile(CENARIOS_FILE, "utf-8")
-    const cenarios = JSON.parse(cenariosRaw) as Array<{ module: string; [key: string]: unknown }>
-    let changed = false
-    for (const c of cenarios) {
-      if (c.module === oldName) { c.module = newName; changed = true }
-    }
-    if (changed) {
-      await writeFileAtomic(CENARIOS_FILE, JSON.stringify(cenarios, null, 2))
-      revalidatePath("/cenarios")
-    }
-  } catch {
-    // cenarios.json may not exist yet — nothing to propagate
-  }
+  if (oldName !== parsed.name) revalidatePath("/cenarios")
 }
 
 export async function inativarModulos(ids: string[]): Promise<void> {
@@ -136,11 +99,6 @@ export async function inativarModulos(ids: string[]): Promise<void> {
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 
-  const modulos = await readModulos()
-  const idSet = new Set(ids)
-  for (const modulo of modulos) {
-    if (idSet.has(modulo.id)) modulo.active = false
-  }
-  await writeModulos(modulos)
+  await prisma.modulo.updateMany({ where: { id: { in: ids } }, data: { active: false } })
   revalidatePath("/configuracoes/modulos")
 }

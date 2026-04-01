@@ -2,29 +2,25 @@ import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
 import { authConfig } from "@/lib/auth.config"
-import { promises as fs } from "fs"
-import path from "path"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 import { verifyPassword } from "@/lib/db-utils"
+import { prisma } from "@/lib/prisma"
 
 // Inline credential validation (can't import "use server" actions here)
 async function checkCredentials(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase()
-  const DATA_DIR = path.join(process.cwd(), "data")
 
-  const [inactiveRaw, createdRaw] = await Promise.all([
-    fs.readFile(path.join(DATA_DIR, "inactive-users.json"), "utf-8").catch(() => "[]"),
-    fs.readFile(path.join(DATA_DIR, "created-users.json"), "utf-8").catch(() => "[]"),
+  const [inactiveRecords, createdUser] = await Promise.all([
+    prisma.inactiveUser.findMany({ select: { userId: true } }),
+    prisma.createdUser.findFirst({
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+    }),
   ])
 
-  const inactiveIds = new Set<string>(JSON.parse(inactiveRaw) as string[])
-  const createdUsers = JSON.parse(createdRaw) as Array<{
-    id: string; email: string; password: string
-  }>
+  const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
 
   // Check dynamically created users
-  const createdUser = createdUsers.find((u) => u.email.toLowerCase() === normalizedEmail)
   if (createdUser) {
     if (!createdUser.password) return null // invite not yet accepted
     if (!verifyPassword(password, createdUser.password)) return null

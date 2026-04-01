@@ -1,11 +1,10 @@
 "use server"
 
-import { promises as fs } from "fs"
-import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { writeFileAtomic, nextId } from "@/lib/db-utils"
+import { nextId } from "@/lib/db-utils"
 import { requireAdmin } from "@/lib/session"
+import { prisma } from "@/lib/prisma"
 
 export interface ClienteRecord {
   id: string
@@ -15,9 +14,6 @@ export interface ClienteRecord {
   active: boolean
   createdAt?: number
 }
-
-const DATA_DIR = path.join(process.cwd(), "data")
-const CLIENTES_FILE = path.join(DATA_DIR, "clientes.json")
 
 // ── Validation schemas ──────────────────────────────────────────────────────
 
@@ -40,32 +36,24 @@ const clienteInputSchema = z.object({
 const idSchema = z.string().regex(/^CLI-\d+$/, "ID inválido")
 const idsArraySchema = z.array(idSchema).max(1000)
 
-// ── Storage helpers ─────────────────────────────────────────────────────────
+// ── Mapping helper ──────────────────────────────────────────────────────────
 
-async function readClientes(): Promise<ClienteRecord[]> {
-  try {
-    const content = await fs.readFile(CLIENTES_FILE, "utf-8")
-    return JSON.parse(content) as ClienteRecord[]
-  } catch {
-    return []
-  }
-}
-
-async function writeClientes(clientes: ClienteRecord[]): Promise<void> {
-  await writeFileAtomic(CLIENTES_FILE, JSON.stringify(clientes, null, 2))
+function toRecord(row: { id: string; nomeFantasia: string; razaoSocial: string | null; cpfCnpj: string | null; active: boolean; createdAt: Date }): ClienteRecord {
+  return { ...row, createdAt: row.createdAt.getTime() }
 }
 
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getClientes(): Promise<ClienteRecord[]> {
-  return readClientes()
+  const rows = await prisma.cliente.findMany({ orderBy: { createdAt: "asc" } })
+  return rows.map(toRecord)
 }
 
 export async function getCliente(id: string): Promise<ClienteRecord | null> {
   const result = idSchema.safeParse(id)
   if (!result.success) return null
-  const clientes = await readClientes()
-  return clientes.find((c) => c.id === id) ?? null
+  const row = await prisma.cliente.findUnique({ where: { id } })
+  return row ? toRecord(row) : null
 }
 
 export async function criarCliente(data: {
@@ -80,14 +68,12 @@ export async function criarCliente(data: {
     cpfCnpj: data.cpfCnpj?.trim() || null,
   })
 
-  const clientes = await readClientes()
-  const id = nextId(clientes.map((c) => c.id), "CLI")
+  const existing = await prisma.cliente.findMany({ select: { id: true } })
+  const id = nextId(existing.map((c) => c.id), "CLI")
 
-  const novo: ClienteRecord = { id, ...parsed, active: true, createdAt: Date.now() }
-  clientes.push(novo)
-  await writeClientes(clientes)
+  const row = await prisma.cliente.create({ data: { id, ...parsed, active: true } })
   revalidatePath("/configuracoes/clientes")
-  return novo
+  return toRecord(row)
 }
 
 export async function atualizarCliente(
@@ -102,12 +88,7 @@ export async function atualizarCliente(
     cpfCnpj: data.cpfCnpj?.trim() || null,
   })
 
-  const clientes = await readClientes()
-  const idx = clientes.findIndex((c) => c.id === id)
-  if (idx === -1) return
-
-  clientes[idx] = { ...clientes[idx], ...parsed }
-  await writeClientes(clientes)
+  await prisma.cliente.update({ where: { id }, data: parsed })
   revalidatePath("/configuracoes/clientes")
   revalidatePath(`/configuracoes/clientes/${id}/editar`)
 }
@@ -117,11 +98,6 @@ export async function inativarClientes(ids: string[]): Promise<void> {
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 
-  const clientes = await readClientes()
-  const idSet = new Set(ids)
-  for (const cliente of clientes) {
-    if (idSet.has(cliente.id)) cliente.active = false
-  }
-  await writeClientes(clientes)
+  await prisma.cliente.updateMany({ where: { id: { in: ids } }, data: { active: false } })
   revalidatePath("/configuracoes/clientes")
 }

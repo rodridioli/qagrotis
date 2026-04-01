@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { getSuiteById } from "@/lib/actions/suites"
 import { getActiveSistemaNames } from "@/lib/actions/sistemas"
@@ -5,12 +6,7 @@ import { getModulos } from "@/lib/actions/modulos"
 import { getCenarios } from "@/lib/actions/cenarios"
 import { SuiteForm } from "@/components/qagrotis/SuiteForm"
 
-export default async function SuiteDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
+async function SuiteDetailContent({ id }: { id: string }) {
   const [suite, systemList, allModulos, allCenarios] = await Promise.all([
     getSuiteById(id),
     getActiveSistemaNames(),
@@ -31,5 +27,18 @@ export default async function SuiteDetailPage({
       allModulos={activeModulos}
       allCenarios={activeCenarios}
     />
+  )
+}
+
+export default async function SuiteDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+  return (
+    <Suspense>
+      <SuiteDetailContent id={id} />
+    </Suspense>
   )
 }

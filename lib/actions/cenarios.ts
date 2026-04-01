@@ -1,12 +1,10 @@
 "use server"
 
-import { promises as fs } from "fs"
-import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { MOCK_CENARIOS } from "@/lib/qagrotis-constants"
 import { requireSession } from "@/lib/session"
-import { writeFileAtomic, nextId } from "@/lib/db-utils"
+import { nextId } from "@/lib/db-utils"
+import { prisma } from "@/lib/prisma"
 
 export interface CenarioStep {
   acao: string
@@ -42,9 +40,6 @@ export interface CenarioRecord {
   createdBy?: string
 }
 
-const DATA_DIR = path.join(process.cwd(), "data")
-const CENARIOS_FILE = path.join(DATA_DIR, "cenarios.json")
-
 // ── Validation schemas ──────────────────────────────────────────────────────
 
 // Cenário IDs are free-form (CT-001, CT-002, etc.) from mock data
@@ -72,34 +67,51 @@ const cenarioCreateSchema = z.object({
   deps:              z.array(idSchema).max(100),
 })
 
-// ── Storage helpers ─────────────────────────────────────────────────────────
+// ── Mapping helper ──────────────────────────────────────────────────────────
 
-async function readCenarios(): Promise<CenarioRecord[]> {
-  try {
-    const content = await fs.readFile(CENARIOS_FILE, "utf-8")
-    return JSON.parse(content) as CenarioRecord[]
-  } catch {
-    const seeded: CenarioRecord[] = MOCK_CENARIOS.map((c) => ({ ...c }))
-    await writeCenarios(seeded)
-    return seeded
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toRecord(row: any): CenarioRecord {
+  return {
+    id:                row.id,
+    scenarioName:      row.scenarioName,
+    system:            row.system,
+    module:            row.module,
+    client:            row.client,
+    execucoes:         row.execucoes,
+    erros:             row.erros,
+    suites:            row.suites,
+    tipo:              row.tipo,
+    active:            row.active,
+    createdAt:         row.createdAt instanceof Date ? row.createdAt.getTime() : (row.createdAt ?? undefined),
+    risco:             row.risco ?? undefined,
+    regraDeNegocio:    row.regraDeNegocio ?? undefined,
+    descricao:         row.descricao ?? undefined,
+    caminhoTela:       row.caminhoTela ?? undefined,
+    preCondicoes:      row.preCondicoes ?? undefined,
+    bdd:               row.bdd ?? undefined,
+    resultadoEsperado: row.resultadoEsperado ?? undefined,
+    urlScript:         row.urlScript ?? undefined,
+    usuarioTeste:      row.usuarioTeste ?? undefined,
+    senhaTeste:        row.senhaTeste ?? undefined,
+    senhaFalsa:        row.senhaFalsa ?? undefined,
+    steps:             (row.steps as unknown as CenarioStep[]) ?? [],
+    deps:              (row.deps as string[]) ?? [],
+    createdBy:         row.createdBy ?? undefined,
   }
-}
-
-async function writeCenarios(cenarios: CenarioRecord[]): Promise<void> {
-  await writeFileAtomic(CENARIOS_FILE, JSON.stringify(cenarios, null, 2))
 }
 
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getCenarios(): Promise<CenarioRecord[]> {
-  return readCenarios()
+  const rows = await prisma.cenario.findMany({ orderBy: { createdAt: "asc" } })
+  return rows.map(toRecord)
 }
 
 export async function getCenario(id: string): Promise<CenarioRecord | null> {
   const result = idSchema.safeParse(id)
   if (!result.success) return null
-  const cenarios = await readCenarios()
-  return cenarios.find((c) => c.id === id) ?? null
+  const row = await prisma.cenario.findUnique({ where: { id } })
+  return row ? toRecord(row) : null
 }
 
 export async function criarCenario(data: {
@@ -142,41 +154,40 @@ export async function criarCenario(data: {
     senhaFalsa:        (data.senhaFalsa || "").trim(),
   })
 
-  const cenarios = await readCenarios()
-  const id = nextId(cenarios.map((c) => c.id), "CT", 3)
+  const existing = await prisma.cenario.findMany({ select: { id: true } })
+  const id = nextId(existing.map((c) => c.id), "CT", 3)
 
-  const novo: CenarioRecord = {
-    id,
-    scenarioName:      parsed.scenarioName,
-    system:            parsed.system,
-    module:            parsed.module,
-    client:            parsed.client,
-    execucoes:         0,
-    erros:             0,
-    suites:            0,
-    tipo:              parsed.tipo,
-    active:            true,
-    createdAt:         Date.now(),
-    risco:             parsed.risco,
-    regraDeNegocio:    parsed.regraDeNegocio,
-    descricao:         parsed.descricao,
-    caminhoTela:       parsed.caminhoTela,
-    preCondicoes:      parsed.preCondicoes,
-    bdd:               parsed.bdd,
-    resultadoEsperado: parsed.resultadoEsperado,
-    urlScript:         parsed.urlScript,
-    usuarioTeste:      parsed.usuarioTeste,
-    senhaTeste:        parsed.senhaTeste,
-    senhaFalsa:        parsed.senhaFalsa,
-    steps:             parsed.steps,
-    deps:              parsed.deps,
-    createdBy,
-  }
+  const row = await prisma.cenario.create({
+    data: {
+      id,
+      scenarioName:      parsed.scenarioName,
+      system:            parsed.system,
+      module:            parsed.module,
+      client:            parsed.client,
+      execucoes:         0,
+      erros:             0,
+      suites:            0,
+      tipo:              parsed.tipo,
+      active:            true,
+      risco:             parsed.risco,
+      regraDeNegocio:    parsed.regraDeNegocio,
+      descricao:         parsed.descricao,
+      caminhoTela:       parsed.caminhoTela,
+      preCondicoes:      parsed.preCondicoes,
+      bdd:               parsed.bdd,
+      resultadoEsperado: parsed.resultadoEsperado,
+      urlScript:         parsed.urlScript,
+      usuarioTeste:      parsed.usuarioTeste,
+      senhaTeste:        parsed.senhaTeste,
+      senhaFalsa:        parsed.senhaFalsa,
+      steps:             parsed.steps,
+      deps:              parsed.deps,
+      createdBy,
+    },
+  })
 
-  cenarios.push(novo)
-  await writeCenarios(cenarios)
   revalidatePath("/cenarios")
-  return novo
+  return toRecord(row)
 }
 
 export async function atualizarCenario(id: string, data: {
@@ -222,39 +233,38 @@ export async function atualizarCenario(id: string, data: {
 
   const updatedBy = session.user?.name ?? session.user?.email ?? undefined
 
-  const cenarios = await readCenarios()
-  const idx = cenarios.findIndex((c) => c.id === id)
-  if (idx === -1) throw new Error("Cenário não encontrado")
+  const existing = await prisma.cenario.findUnique({ where: { id }, select: { createdBy: true } })
+  if (!existing) throw new Error("Cenário não encontrado")
 
-  const existing = cenarios[idx]
-  cenarios[idx] = {
-    ...existing,
-    scenarioName:      parsed.scenarioName,
-    system:            parsed.system,
-    module:            parsed.module,
-    client:            parsed.client,
-    tipo:              parsed.tipo,
-    risco:             parsed.risco,
-    regraDeNegocio:    parsed.regraDeNegocio,
-    descricao:         parsed.descricao,
-    caminhoTela:       parsed.caminhoTela,
-    preCondicoes:      parsed.preCondicoes,
-    bdd:               parsed.bdd,
-    resultadoEsperado: parsed.resultadoEsperado,
-    urlScript:         parsed.urlScript,
-    usuarioTeste:      parsed.usuarioTeste,
-    senhaTeste:        parsed.senhaTeste,
-    senhaFalsa:        parsed.senhaFalsa,
-    steps:             parsed.steps,
-    deps:              parsed.deps,
-    createdBy:         existing.createdBy ?? updatedBy,
-  }
+  const row = await prisma.cenario.update({
+    where: { id },
+    data: {
+      scenarioName:      parsed.scenarioName,
+      system:            parsed.system,
+      module:            parsed.module,
+      client:            parsed.client,
+      tipo:              parsed.tipo,
+      risco:             parsed.risco,
+      regraDeNegocio:    parsed.regraDeNegocio,
+      descricao:         parsed.descricao,
+      caminhoTela:       parsed.caminhoTela,
+      preCondicoes:      parsed.preCondicoes,
+      bdd:               parsed.bdd,
+      resultadoEsperado: parsed.resultadoEsperado,
+      urlScript:         parsed.urlScript,
+      usuarioTeste:      parsed.usuarioTeste,
+      senhaTeste:        parsed.senhaTeste,
+      senhaFalsa:        parsed.senhaFalsa,
+      steps:             parsed.steps,
+      deps:              parsed.deps,
+      createdBy:         existing.createdBy ?? updatedBy,
+    },
+  })
 
-  await writeCenarios(cenarios)
   revalidatePath("/cenarios")
   revalidatePath(`/cenarios/${id}`)
   revalidatePath(`/cenarios/${id}/editar`)
-  return cenarios[idx]
+  return toRecord(row)
 }
 
 export async function inativarCenarios(ids: string[]): Promise<void> {
@@ -262,11 +272,6 @@ export async function inativarCenarios(ids: string[]): Promise<void> {
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 
-  const cenarios = await readCenarios()
-  const idSet = new Set(ids)
-  for (const cenario of cenarios) {
-    if (idSet.has(cenario.id)) cenario.active = false
-  }
-  await writeCenarios(cenarios)
+  await prisma.cenario.updateMany({ where: { id: { in: ids } }, data: { active: false } })
   revalidatePath("/cenarios")
 }

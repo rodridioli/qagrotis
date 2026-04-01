@@ -1,12 +1,10 @@
 "use server"
 
-import { promises as fs } from "fs"
-import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { SYSTEM_LIST } from "@/lib/qagrotis-constants"
-import { writeFileAtomic, nextId } from "@/lib/db-utils"
+import { nextId } from "@/lib/db-utils"
 import { requireAdmin } from "@/lib/session"
+import { prisma } from "@/lib/prisma"
 
 export interface SistemaRecord {
   id: string
@@ -15,11 +13,6 @@ export interface SistemaRecord {
   active: boolean
   createdAt?: number
 }
-
-const DATA_DIR = path.join(process.cwd(), "data")
-const SISTEMAS_FILE = path.join(DATA_DIR, "sistemas.json")
-const MODULOS_FILE  = path.join(DATA_DIR, "modulos.json")
-const CENARIOS_FILE = path.join(DATA_DIR, "cenarios.json")
 
 // ── Validation schemas ──────────────────────────────────────────────────────
 
@@ -31,44 +24,27 @@ const sistemaInputSchema = z.object({
 const idSchema = z.string().regex(/^SIS-\d+$/, "ID inválido")
 const idsArraySchema = z.array(idSchema).max(1000)
 
-// ── Storage helpers ─────────────────────────────────────────────────────────
-
-async function readSistemas(): Promise<SistemaRecord[]> {
-  try {
-    const content = await fs.readFile(SISTEMAS_FILE, "utf-8")
-    return JSON.parse(content) as SistemaRecord[]
-  } catch {
-    const seeded: SistemaRecord[] = SYSTEM_LIST.map((name, i) => ({
-      id: `SIS-${String(i + 1).padStart(2, "0")}`,
-      name,
-      description: null,
-      active: true,
-    }))
-    await writeSistemas(seeded)
-    return seeded
-  }
-}
-
-async function writeSistemas(sistemas: SistemaRecord[]): Promise<void> {
-  await writeFileAtomic(SISTEMAS_FILE, JSON.stringify(sistemas, null, 2))
-}
-
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getSistemas(): Promise<SistemaRecord[]> {
-  return readSistemas()
+  const rows = await prisma.sistema.findMany({ orderBy: { createdAt: "asc" } })
+  return rows.map((r) => ({ ...r, createdAt: r.createdAt.getTime() }))
 }
 
 export async function getSistema(id: string): Promise<SistemaRecord | null> {
   const result = idSchema.safeParse(id)
   if (!result.success) return null
-  const sistemas = await readSistemas()
-  return sistemas.find((s) => s.id === id) ?? null
+  const row = await prisma.sistema.findUnique({ where: { id } })
+  return row ? { ...row, createdAt: row.createdAt.getTime() } : null
 }
 
 export async function getActiveSistemaNames(): Promise<string[]> {
-  const sistemas = await readSistemas()
-  return sistemas.filter((s) => s.active).map((s) => s.name)
+  const rows = await prisma.sistema.findMany({
+    where: { active: true },
+    select: { name: true },
+    orderBy: { name: "asc" },
+  })
+  return rows.map((r) => r.name)
 }
 
 export async function criarSistema(data: {
@@ -81,11 +57,10 @@ export async function criarSistema(data: {
     description: data.description?.trim() || null,
   })
 
-  const sistemas = await readSistemas()
-  const id = nextId(sistemas.map((s) => s.id), "SIS")
+  const existing = await prisma.sistema.findMany({ select: { id: true } })
+  const id = nextId(existing.map((s) => s.id), "SIS")
 
-  sistemas.push({ id, ...parsed, active: true, createdAt: Date.now() })
-  await writeSistemas(sistemas)
+  await prisma.sistema.create({ data: { id, ...parsed, active: true } })
   revalidatePath("/configuracoes/sistemas")
 }
 
@@ -100,65 +75,29 @@ export async function atualizarSistema(
     description: data.description?.trim() || null,
   })
 
-  const sistemas = await readSistemas()
-  const idx = sistemas.findIndex((s) => s.id === id)
-  if (idx === -1) return
+  const existing = await prisma.sistema.findUnique({ where: { id }, select: { name: true } })
+  if (!existing) return
 
-  const oldName = sistemas[idx].name
-  sistemas[idx] = { ...sistemas[idx], ...parsed }
-  await writeSistemas(sistemas)
+  const oldName = existing.name
 
-  if (oldName !== parsed.name) {
-    await propagateSistemaRename(id, oldName, parsed.name)
-  }
+  // Update sistema + propagate rename atomically
+  await prisma.$transaction([
+    prisma.sistema.update({ where: { id }, data: parsed }),
+    ...(oldName !== parsed.name
+      ? [
+          prisma.modulo.updateMany({ where: { sistemaId: id }, data: { sistemaName: parsed.name } }),
+          prisma.cenario.updateMany({ where: { system: oldName }, data: { system: parsed.name } }),
+        ]
+      : []),
+  ])
 
   revalidatePath("/configuracoes/sistemas")
   revalidatePath(`/configuracoes/sistemas/${id}`)
   revalidatePath(`/configuracoes/sistemas/${id}/editar`)
-}
-
-async function propagateSistemaRename(
-  sistemaId: string,
-  oldName: string,
-  newName: string,
-): Promise<void> {
-  // Read both files in parallel
-  const [modulosRaw, cenariosRaw] = await Promise.allSettled([
-    fs.readFile(MODULOS_FILE, "utf-8"),
-    fs.readFile(CENARIOS_FILE, "utf-8"),
-  ])
-
-  const writes: Promise<void>[] = []
-
-  if (modulosRaw.status === "fulfilled") {
-    const modulos = JSON.parse(modulosRaw.value) as Array<{ sistemaId: string; sistemaName: string; [key: string]: unknown }>
-    let changed = false
-    for (const m of modulos) {
-      if (m.sistemaId === sistemaId) { m.sistemaName = newName; changed = true }
-    }
-    if (changed) {
-      writes.push(
-        writeFileAtomic(MODULOS_FILE, JSON.stringify(modulos, null, 2))
-          .then(() => { revalidatePath("/configuracoes/modulos") })
-      )
-    }
+  if (oldName !== parsed.name) {
+    revalidatePath("/configuracoes/modulos")
+    revalidatePath("/cenarios")
   }
-
-  if (cenariosRaw.status === "fulfilled") {
-    const cenarios = JSON.parse(cenariosRaw.value) as Array<{ system: string; [key: string]: unknown }>
-    let changed = false
-    for (const c of cenarios) {
-      if (c.system === oldName) { c.system = newName; changed = true }
-    }
-    if (changed) {
-      writes.push(
-        writeFileAtomic(CENARIOS_FILE, JSON.stringify(cenarios, null, 2))
-          .then(() => { revalidatePath("/cenarios") })
-      )
-    }
-  }
-
-  await Promise.all(writes)
 }
 
 export async function inativarSistemas(ids: string[]): Promise<void> {
@@ -166,11 +105,6 @@ export async function inativarSistemas(ids: string[]): Promise<void> {
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 
-  const sistemas = await readSistemas()
-  const idSet = new Set(ids)
-  for (const sistema of sistemas) {
-    if (idSet.has(sistema.id)) sistema.active = false
-  }
-  await writeSistemas(sistemas)
+  await prisma.sistema.updateMany({ where: { id: { in: ids } }, data: { active: false } })
   revalidatePath("/configuracoes/sistemas")
 }

@@ -1,35 +1,12 @@
 /**
- * Shared utilities for the file-based data layer.
+ * Shared utilities for the data layer.
  *
- * - writeFileAtomic  : write to a temp file first, then rename — prevents
- *                      file corruption on crash or mid-write failure
- * - nextId           : safe replacement for Math.max(...ids) that avoids
- *                      stack-overflow on large arrays
- * - hashPassword     : PBKDF2-SHA512 password hashing (built-in crypto, no deps)
- * - verifyPassword   : constant-time comparison; handles legacy plaintext
- *                      passwords transparently so existing accounts keep working
+ * - nextId        : safe sequential ID generation (e.g. "CT-001", "SIS-01")
+ * - hashPassword  : PBKDF2-SHA512 password hashing (built-in crypto, no deps)
+ * - verifyPassword: constant-time comparison; handles legacy plaintext passwords
  */
 
-import { promises as fs } from "fs"
-import path from "path"
 import { pbkdf2Sync, randomBytes, timingSafeEqual } from "crypto"
-
-// ── Atomic file write ───────────────────────────────────────────────────────
-
-export async function writeFileAtomic(filePath: string, data: string): Promise<void> {
-  const dir = path.dirname(filePath)
-  await fs.mkdir(dir, { recursive: true })
-  const tmp = `${filePath}.${process.pid}.tmp`
-  await fs.writeFile(tmp, data, "utf-8")
-  try {
-    await fs.rename(tmp, filePath)
-  } catch {
-    // On some Windows configurations rename may fail when destination exists.
-    // Fall back to a direct write — still better than overwriting in-place.
-    await fs.copyFile(tmp, filePath)
-    await fs.unlink(tmp).catch(() => {})
-  }
-}
 
 // ── Safe ID generation ──────────────────────────────────────────────────────
 

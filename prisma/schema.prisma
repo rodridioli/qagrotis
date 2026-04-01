@@ -16,6 +16,8 @@ enum Plan {
   PRO
 }
 
+// ── Auth.js models ────────────────────────────────────────────────────────────
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -25,14 +27,12 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // Plan & Trial
   plan                   Plan      @default(TRIAL)
   trialEndsAt            DateTime?
   stripeCustomerId       String?   @unique
   stripeSubscriptionId   String?   @unique
   stripeCurrentPeriodEnd DateTime?
 
-  // Auth relations
   accounts Account[]
   sessions Session[]
 }
@@ -76,6 +76,8 @@ model VerificationToken {
   @@id([identifier, token])
 }
 
+// ── Legacy (kept for schema compatibility) ────────────────────────────────────
+
 model QaUser {
   id        String   @id
   name      String
@@ -84,4 +86,126 @@ model QaUser {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ── QAgrotis domain models ────────────────────────────────────────────────────
+
+model Cliente {
+  id           String   @id
+  nomeFantasia String
+  razaoSocial  String?
+  cpfCnpj      String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model Sistema {
+  id          String   @id
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  modulos     Modulo[]
+}
+
+model Modulo {
+  id          String   @id
+  name        String
+  description String?
+  sistemaId   String
+  sistemaName String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  sistema     Sistema  @relation(fields: [sistemaId], references: [id])
+}
+
+model Cenario {
+  id                String    @id
+  scenarioName      String
+  system            String
+  module            String
+  client            String    @default("")
+  execucoes         Int       @default(0)
+  erros             Int       @default(0)
+  suites            Int       @default(0)
+  tipo              String
+  active            Boolean   @default(true)
+  createdAt         DateTime? @default(now())
+  createdBy         String?
+  risco             String?
+  regraDeNegocio    String?
+  descricao         String?
+  caminhoTela       String?
+  preCondicoes      String?
+  bdd               String?
+  resultadoEsperado String?
+  urlScript         String?
+  usuarioTeste      String?
+  senhaTeste        String?
+  senhaFalsa        String?
+  steps             Json      @default("[]")
+  deps              String[]  @default([])
+}
+
+// Suite stores cenarios and historico as embedded JSON arrays (denormalized)
+model Suite {
+  id        String   @id
+  suiteName String
+  versao    String
+  sistema   String
+  modulo    String
+  cliente   String   @default("")
+  tipo      String
+  objetivo  String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  cenarios  Json     @default("[]")
+  historico Json     @default("[]")
+}
+
+// ── Auth / user management ────────────────────────────────────────────────────
+
+// Users created by admins (have passwords, managed manually)
+model CreatedUser {
+  id        String   @id
+  name      String
+  email     String   @unique
+  type      String   @default("Padrão")
+  photoPath String?
+  password  String   @default("")
+  createdAt DateTime @default(now())
+}
+
+// Profile overrides for both mock and created users (name, email, type, photo)
+model UserProfile {
+  userId    String  @id
+  name      String?
+  email     String?
+  type      String?
+  photoPath String?
+}
+
+// Soft-delete registry for mock users (mock users cannot be deleted from constants)
+model InactiveUser {
+  userId String @id
+}
+
+// One-time invite links for new users to set their password
+model InviteToken {
+  token     String   @id
+  userId    String
+  email     String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+}
+
+// AI provider integrations (Google, OpenAI, Anthropic, Groq)
+model Integracao {
+  id        String   @id
+  descricao String   @default("")
+  provider  String
+  model     String
+  apiKey    String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
 }

@@ -1,35 +1,28 @@
 "use server"
 
 import { auth } from "@/lib/auth"
-import { promises as fs } from "fs"
-import path from "path"
+import { prisma } from "@/lib/prisma"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 
-const DATA_DIR = path.join(process.cwd(), "data")
-
 async function getUserType(email: string): Promise<string | null> {
-  const normalizedEmail = email.toLowerCase()
+  const normalized = email.toLowerCase()
 
-  // Check profiles (overrides)
-  try {
-    const profilesRaw = await fs.readFile(path.join(DATA_DIR, "user-profiles.json"), "utf-8")
-    const profiles = JSON.parse(profilesRaw) as Record<string, { email?: string; type?: string }>
-    const profileEntry = Object.values(profiles).find(
-      (p) => p.email?.toLowerCase() === normalizedEmail
-    )
-    if (profileEntry?.type) return profileEntry.type
-  } catch { /* ignore */ }
+  // Check UserProfile overrides (keyed by userId, but email field enables lookup by email)
+  const profile = await prisma.userProfile.findFirst({
+    where: { email: { equals: normalized, mode: "insensitive" } },
+    select: { type: true },
+  })
+  if (profile?.type) return profile.type
 
-  // Check created users
-  try {
-    const createdRaw = await fs.readFile(path.join(DATA_DIR, "created-users.json"), "utf-8")
-    const created = JSON.parse(createdRaw) as Array<{ email: string; type: string }>
-    const found = created.find((u) => u.email.toLowerCase() === normalizedEmail)
-    if (found) return found.type
-  } catch { /* ignore */ }
+  // Check dynamically created users
+  const created = await prisma.createdUser.findFirst({
+    where: { email: { equals: normalized, mode: "insensitive" } },
+    select: { type: true },
+  })
+  if (created) return created.type
 
-  // Fall back to MOCK_USERS
-  const mockUser = MOCK_USERS.find((u) => u.email.toLowerCase() === normalizedEmail)
+  // Fall back to MOCK_USERS constants
+  const mockUser = MOCK_USERS.find((u) => u.email.toLowerCase() === normalized)
   return mockUser?.type ?? null
 }
 
