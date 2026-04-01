@@ -838,7 +838,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                     hasErr
                       ? "border-destructive/30 bg-destructive/5"
                       : isDup
-                      ? "border-amber-300 bg-amber-50"
+                      ? "border-amber-500/30 bg-amber-500/10"
                       : "border-border-default bg-surface-card"
                   }`}
                 >
@@ -901,7 +901,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                     <button
                       type="button"
                       onClick={() => setCompareItem(item)}
-                      className="shrink-0 flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+                      className="shrink-0 flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/20 transition-colors"
                     >
                       <ArrowRightLeft className="size-3.5" />
                       Comparar
@@ -973,12 +973,12 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                       const importedVal = String(compareItem.parsed[pKey] ?? "")
                       const isDiff = existingVal !== importedVal
                       return (
-                        <tr key={label} className={`border-b border-border-default last:border-0 ${isDiff ? "bg-amber-50" : ""}`}>
+                        <tr key={label} className={`border-b border-border-default last:border-0 ${isDiff ? "bg-amber-500/10" : ""}`}>
                           <td className="px-3 py-2 text-xs font-medium text-text-secondary align-top">{label}</td>
                           <td className={`px-3 py-2 text-text-primary align-top whitespace-pre-wrap ${isDiff ? "line-through text-text-secondary" : ""}`}>
                             {existingVal || <span className="text-text-secondary italic">—</span>}
                           </td>
-                          <td className={`px-3 py-2 align-top whitespace-pre-wrap ${isDiff ? "text-amber-800 font-medium" : "text-text-primary"}`}>
+                          <td className={`px-3 py-2 align-top whitespace-pre-wrap ${isDiff ? "text-amber-600 font-medium dark:text-amber-400" : "text-text-primary"}`}>
                             {importedVal || <span className="text-text-secondary italic">—</span>}
                           </td>
                         </tr>

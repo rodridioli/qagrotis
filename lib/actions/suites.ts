@@ -80,9 +80,29 @@ function toRecord(row: any): SuiteRecord {
 
 // ── Public actions ──────────────────────────────────────────────────────────
 
-export async function getSuites(): Promise<SuiteRecord[]> {
-  const rows = await prisma.suite.findMany({ orderBy: { createdAt: "asc" } })
-  return rows.map(toRecord)
+export interface SuiteListRecord extends Omit<SuiteRecord, "historico"> {
+  historicoCount: number
+  historicoErros: number
+}
+
+export async function getSuites(): Promise<SuiteListRecord[]> {
+  const rows = await prisma.suite.findMany({
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true, suiteName: true, versao: true, sistema: true,
+      modulo: true, cliente: true, tipo: true, objetivo: true,
+      active: true, createdAt: true, cenarios: true, historico: true,
+    },
+  })
+  return rows.map((row) => {
+    const historico = (row.historico as unknown as NonNullable<SuiteRecord["historico"]>) ?? []
+    return {
+      ...toRecord(row),
+      historicoCount: historico.length,
+      historicoErros: historico.filter((h) => h.resultado === "Erro").length,
+      historico: undefined,
+    }
+  })
 }
 
 export async function getSuiteById(id: string): Promise<SuiteRecord | null> {
@@ -174,6 +194,13 @@ export async function registrarResultadoSuite(suiteId: string, cenarioId: string
   await prisma.suite.update({ where: { id: suiteId }, data: { historico } })
   revalidatePath("/suites")
   revalidatePath(`/suites/${suiteId}`)
+}
+
+export async function inativarSuites(ids: string[]): Promise<void> {
+  await requireSession()
+  if (!Array.isArray(ids) || ids.length === 0) return
+  await prisma.suite.updateMany({ where: { id: { in: ids } }, data: { active: false } })
+  revalidatePath("/suites")
 }
 
 export async function removerHistoricoSuite(suiteId: string, indices: number[]): Promise<void> {

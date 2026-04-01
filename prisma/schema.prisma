@@ -199,7 +199,7 @@ model InviteToken {
   used      Boolean  @default(false)
 }
 
-// AI provider integrations (Google, OpenAI, Anthropic, Groq)
+// AI provider integrations (Google, OpenAI, Anthropic, Groq, OpenRouter)
 model Integracao {
   id        String   @id
   descricao String   @default("")

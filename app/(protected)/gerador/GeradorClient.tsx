@@ -622,7 +622,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                     hasErr
                       ? "border-destructive/30 bg-destructive/5"
                       : isDup
-                      ? "border-amber-300 bg-amber-50 dark:bg-amber-950/20"
+                      ? "border-amber-500/30 bg-amber-500/10"
                       : "border-border-default bg-surface-card"
                   }`}
                 >
@@ -666,7 +666,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                     <button
                       type="button"
                       onClick={() => setCompareItem(item)}
-                      className="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+                      className="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-600 transition-colors hover:bg-amber-500/20"
                     >
                       <ArrowRightLeft className="size-3.5" />
                       Comparar
@@ -739,12 +739,12 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                       const importedVal = String(compareItem.parsed[pKey] ?? "")
                       const isDiff = existingVal !== importedVal
                       return (
-                        <tr key={label} className={`border-b border-border-default last:border-0 ${isDiff ? "bg-amber-50 dark:bg-amber-950/20" : ""}`}>
+                        <tr key={label} className={`border-b border-border-default last:border-0 ${isDiff ? "bg-amber-500/10" : ""}`}>
                           <td className="align-top px-3 py-2 text-xs font-medium text-text-secondary">{label}</td>
                           <td className={`align-top whitespace-pre-wrap px-3 py-2 ${isDiff ? "text-text-secondary line-through" : "text-text-primary"}`}>
                             {existingVal || <span className="italic text-text-secondary">—</span>}
                           </td>
-                          <td className={`align-top whitespace-pre-wrap px-3 py-2 ${isDiff ? "font-medium text-amber-800 dark:text-amber-400" : "text-text-primary"}`}>
+                          <td className={`align-top whitespace-pre-wrap px-3 py-2 ${isDiff ? "font-medium text-amber-600 dark:text-amber-400" : "text-text-primary"}`}>
                             {importedVal || <span className="italic text-text-secondary">—</span>}
                           </td>
                         </tr>

@@ -11,6 +11,7 @@ import type { SuiteRecord } from "@/lib/actions/suites"
 import { registrarResultadoSuite } from "@/lib/actions/suites"
 import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
+import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 
 interface Props {
   cenario: CenarioRecord
@@ -159,8 +160,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
       await registrarResultadoSuite(suite.id, cenario.id, resultado)
       toast.success("Teste registrado com sucesso!")
       router.push(`/suites/${suite.id}?tab=historico`)
-    } catch (e: any) {
-      toast.error(e.message || "Erro ao registrar o resultado")
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erro ao registrar o resultado")
     } finally {
       setIsRegistering(false)
     }
@@ -174,6 +175,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
 
   return (
     <div className="space-y-4">
+      <LoadingOverlay visible={isRegistering} label="Registrando resultado..." />
 
       {/* ── Header / Breadcrumb ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">

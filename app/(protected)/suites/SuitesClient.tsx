@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Filter, Plus, Power, X, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -33,7 +34,7 @@ import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
-import type { SuiteRecord } from "@/lib/actions/suites"
+import { inativarSuites, type SuiteListRecord } from "@/lib/actions/suites"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 10
@@ -47,17 +48,17 @@ interface FilterState {
 const EMPTY_FILTERS: FilterState = { modulo: "", tipo: "", apenasInativos: false }
 
 function AutomacaoBar({ pct }: { pct: number }) {
-  const fillColor =
-    pct === 100 ? "#16a34a" :   // green
-    pct === 0   ? "transparent" :
-                  "#f97316"     // orange
+  const fillClass =
+    pct === 100 ? "bg-green-600 dark:bg-green-500" :
+    pct === 0   ? "" :
+                  "bg-orange-500"
 
   return (
     <div className="flex items-center gap-2">
       <div className="relative h-1.5 w-20 overflow-hidden rounded-full bg-neutral-grey-100">
         <div
-          className="absolute inset-y-0 left-0 rounded-full"
-          style={{ width: `${pct}%`, backgroundColor: fillColor }}
+          className={`absolute inset-y-0 left-0 rounded-full ${fillClass}`}
+          style={{ width: `${pct}%` }}
         />
       </div>
       <span className="text-xs tabular-nums text-text-secondary">{pct}%</span>
@@ -67,10 +68,12 @@ function AutomacaoBar({ pct }: { pct: number }) {
 
 interface Props {
   allModulos: ModuloRecord[]
-  suites: SuiteRecord[]
+  suites: SuiteListRecord[]
 }
 
 export default function SuitesClient({ allModulos, suites }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   const modulosDosistema = useMemo(
@@ -108,7 +111,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
         s.suiteName.toLowerCase().includes(search.toLowerCase())
       const matchModulo = !filters.modulo || s.modulo === filters.modulo
       const matchTipo = !filters.tipo || s.tipo === filters.tipo
-      const matchAtivo = filters.apenasInativos ? !s.active : true
+      const matchAtivo = filters.apenasInativos ? !s.active : s.active
       return matchSistema && matchSearch && matchModulo && matchTipo && matchAtivo
     })
   }, [suites, search, filters, modulosDosistema, modulosDosistemaSet, inativadosIds])
@@ -154,16 +157,33 @@ export default function SuitesClient({ allModulos, suites }: Props) {
   }
 
   function confirmInativar() {
-    const count = inativarIds.length
-    setInativadosIds((prev) => new Set([...prev, ...inativarIds]))
+    const ids = inativarIds
+    const count = ids.length
+    // Optimistic update
+    setInativadosIds((prev) => new Set([...prev, ...ids]))
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      inativarIds.forEach((id) => next.delete(id))
+      ids.forEach((id) => next.delete(id))
       return next
     })
     setInativarIds([])
     setInativarOpen(false)
-    toast.success(count === 1 ? "Suíte inativada com sucesso." : `${count} suítes inativadas com sucesso.`)
+    startTransition(async () => {
+      try {
+        await inativarSuites(ids)
+        router.refresh()
+        toast.success(count === 1 ? "Suíte inativada com sucesso." : `${count} suítes inativadas com sucesso.`)
+      } catch {
+        // Rollback optimistic update
+        setInativadosIds((prev) => {
+          const next = new Set(prev)
+          ids.forEach((id) => next.delete(id))
+          return next
+        })
+        router.refresh()
+        toast.error("Erro ao inativar. Tente novamente.")
+      }
+    })
   }
 
   function applyFilters() {
@@ -282,13 +302,13 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                       <td className="px-4 py-3 text-text-secondary">{s.versao}</td>
                       <td className="px-4 py-3 text-text-secondary truncate">{s.modulo}</td>
                       <td className="px-4 py-3 text-text-secondary">
-                        {(s.historico ?? []).length}
+                        {s.historicoCount}
                       </td>
                       <td className="px-4 py-3">
                         <AutomacaoBar pct={s.cenarios.length === 0 ? 0 : Math.round(s.cenarios.filter((c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto.").length / s.cenarios.length * 100)} />
                       </td>
                       <td className="px-4 py-3 text-text-secondary">
-                        {(s.historico ?? []).filter((h) => h.resultado === "Erro").length}
+                        {s.historicoErros}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">{s.cenarios.length}</td>
                       <td className="px-4 py-3">

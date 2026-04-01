@@ -31,6 +31,7 @@ import { useSistemaSelecionado } from "@/lib/modulo-context"
 import { formatCpfCnpj } from "@/lib/utils"
 import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
+import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 
 const RISCO_OPTIONS = [
   {
@@ -341,6 +342,7 @@ export default function NovoCenarioClient({ initialModulos = [], allSistemas = [
 
   return (
     <div className="space-y-4">
+      <LoadingOverlay visible={isSaving} label="Salvando cenário..." />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           <Link href="/cenarios" title="Voltar" className="flex items-center gap-1 text-text-secondary hover:text-brand-primary">

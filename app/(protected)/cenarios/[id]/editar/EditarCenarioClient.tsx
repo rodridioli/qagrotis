@@ -29,6 +29,7 @@ import type { SistemaRecord } from "@/lib/actions/sistemas"
 import { atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import { formatCpfCnpj } from "@/lib/utils"
+import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 
 const RISCO_OPTIONS = [
   {
@@ -335,6 +336,7 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
 
   return (
     <div className="space-y-4">
+      <LoadingOverlay visible={isSaving} label="Salvando cenário..." />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           <Link href="/cenarios" title="Voltar" className="flex items-center gap-1 text-text-secondary hover:text-brand-primary">

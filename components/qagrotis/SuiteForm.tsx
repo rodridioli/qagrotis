@@ -31,6 +31,7 @@ import { SYSTEM_LIST } from "@/lib/qagrotis-constants"
 import { CenarioTipoBadge, ResultadoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
+import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
@@ -252,11 +253,11 @@ export function SuiteForm({
       if (mode === "create") {
         const nova = await criarSuite(payload)
         toast.success("Suíte criada com sucesso!")
-        router.push(`/suites/${nova.id}`)
+        router.replace(`/suites/${nova.id}`)
       } else if (suite?.id) {
         await atualizarSuite(suite.id, payload)
         toast.success("Suíte atualizada!")
-        router.push("/suites")
+        router.refresh()
       }
     } catch (error: unknown) {
       toast.error("Erro ao salvar suíte: " + (error instanceof Error ? error.message : "Erro desconhecido"))
@@ -315,6 +316,7 @@ export function SuiteForm({
 
   return (
     <div className="space-y-4">
+      <LoadingOverlay visible={isSaving} label="Salvando suíte..." />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm">
