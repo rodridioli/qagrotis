@@ -2,7 +2,6 @@
 
 import React, { useCallback, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { ArrowDown, ArrowLeft, ArrowUp, Check, Circle, FileDown, GripVertical, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,28 +28,17 @@ import type { SistemaRecord } from "@/lib/actions/sistemas"
 import { atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import { formatCpfCnpj } from "@/lib/utils"
+import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
+import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 
 const RISCO_OPTIONS = [
-  {
-    value: "Alto",
-    label: "Alto",
-    icon: <ArrowUp className="size-3.5 shrink-0" />,
-    color: "#ef4444",
-  },
-  {
-    value: "Médio",
-    label: "Médio",
-    icon: <Circle className="size-3.5 shrink-0 fill-amber-400" />,
-    color: "#f59e0b",
-  },
-  {
-    value: "Baixo",
-    label: "Baixo",
-    icon: <ArrowDown className="size-3.5 shrink-0" />,
-    color: "#3b82f6",
-  },
+  { value: "Alto",  label: "Alto",  icon: <ArrowUp   className="size-3.5 shrink-0" />,               color: "#ef4444" },
+  { value: "Médio", label: "Médio", icon: <Circle    className="size-3.5 shrink-0 fill-amber-400" />, color: "#f59e0b" },
+  { value: "Baixo", label: "Baixo", icon: <ArrowDown className="size-3.5 shrink-0" />,               color: "#3b82f6" },
 ]
+
+type TabId = "cadastro" | "manual" | "automatizado" | "dependencias"
 
 interface Props {
   cenario: CenarioRecord
@@ -71,71 +59,94 @@ interface Dep {
   name: string
   module: string
   system: string
+  tipo?: string
 }
 
-export default function EditarCenarioClient({ cenario, initialModulos = [], allSistemas = [], initialClientes = [], allCenarios = [] }: Props) {
-  const router = useRouter()
+const TEXTAREA_CLASS =
+  "w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
+
+export default function EditarCenarioClient({
+  cenario,
+  initialModulos = [],
+  allSistemas = [],
+  initialClientes = [],
+  allCenarios = [],
+}: Props) {
   const { sistemaSelecionado } = useSistemaSelecionado()
   const [localModulos, setLocalModulos] = useState<ModuloRecord[]>(initialModulos)
   const modulosDosistema = useMemo(
-    () => localModulos.filter((m) => m.sistemaName === sistemaSelecionado),
-    [localModulos, sistemaSelecionado]
+    () => localModulos.filter((m) => m.sistemaName === (sistemaSelecionado || cenario.system)),
+    [localModulos, sistemaSelecionado, cenario.system]
   )
 
+  // ── Cadastro fields ──────────────────────────────────────────────────────────
+  const [moduloValue, setModuloValue] = useState(cenario.module ?? "")
+  const [moduloSelectOpen, setModuloSelectOpen] = useState(false)
   const [risco, setRisco] = useState(cenario.risco ?? "")
   const riscoSelecionado = RISCO_OPTIONS.find((r) => r.value === risco)
-
   const [clientes, setClientes] = useState<ClienteRecord[]>(initialClientes)
   const [clienteSelecionado, setClienteSelecionado] = useState(cenario.client ?? "")
-  const [isSaving, startSaveTransition] = useTransition()
-  const [isClientePending, startClienteTransition] = useTransition()
-  const [isModuloPending, startModuloTransition] = useTransition()
-  const [isDepSearchPending, startDepSearchTransition] = useTransition()
-
   const [scenarioName, setScenarioName] = useState(cenario.scenarioName)
-  const [descricao, setDescricao] = useState(cenario.descricao ?? "")
-  const [caminhoTela, setCaminhoTela] = useState(cenario.caminhoTela ?? "")
-  const [regraDeNegocio, setRegraDeNegocio] = useState(cenario.regraDeNegocio ?? "")
-  const [preCondicoes, setPreCondicoes] = useState(cenario.preCondicoes ?? "")
-  const [bdd, setBdd] = useState(cenario.bdd ?? "")
-  const [resultadoEsperado, setResultadoEsperado] = useState(cenario.resultadoEsperado ?? "")
-  const [urlScript, setUrlScript] = useState(cenario.urlScript ?? "")
-  const [usuarioTeste, setUsuarioTeste] = useState(cenario.usuarioTeste ?? "")
-  const [senhaTeste, setSenhaTeste] = useState(cenario.senhaTeste ?? "")
-  const [senhaFalsa, setSenhaFalsa] = useState(cenario.senhaFalsa ?? "")
-  const [hasSaved, setHasSaved] = useState(false)
 
-  const [noModuloOpen, setNoModuloOpen] = useState(false)
-  const [noModuloNome, setNoModuloNome] = useState("")
-  const [moduloSelectOpen, setModuloSelectOpen] = useState(false)
-  const [moduloValue, setModuloValue] = useState(cenario.module ?? "")
-
+  // ── Switches ─────────────────────────────────────────────────────────────────
   const initialTipo = cenario.tipo ?? "Manual"
   const [manual, setManual] = useState(initialTipo === "Manual" || initialTipo === "Man./Auto.")
   const [automatizado, setAutomatizado] = useState(initialTipo === "Automatizado" || initialTipo === "Man./Auto.")
 
+  // ── Teste Manual fields ──────────────────────────────────────────────────────
+  const [descricao, setDescricao] = useState(cenario.descricao ?? "")
+  const [regraDeNegocio, setRegraDeNegocio] = useState(cenario.regraDeNegocio ?? "")
+  const [preCondicoes, setPreCondicoes] = useState(cenario.preCondicoes ?? "")
+  const [bdd, setBdd] = useState(cenario.bdd ?? "")
+  const [resultadoEsperado, setResultadoEsperado] = useState(cenario.resultadoEsperado ?? "")
+
+  // ── Teste Automatizado fields ────────────────────────────────────────────────
+  const [urlAmbiente, setUrlAmbiente] = useState(cenario.urlAmbiente ?? "")
+  const [usuarioTeste, setUsuarioTeste] = useState(cenario.usuarioTeste ?? "")
+  const [senhaTeste, setSenhaTeste] = useState(cenario.senhaTeste ?? "")
+  const [objetivo, setObjetivo] = useState(cenario.objetivo ?? "")
+  const [urlScript, setUrlScript] = useState(cenario.urlScript ?? "")
   const [steps, setSteps] = useState<Step[]>(
     (cenario.steps ?? []).map((s, i) => ({ id: i + 1, acao: s.acao, resultado: s.resultado }))
   )
+  const draggedStepId = useRef<number | null>(null)
+
+  // ── Deps ─────────────────────────────────────────────────────────────────────
   const [deps, setDeps] = useState<Dep[]>(
     (cenario.deps ?? []).map((id) => {
       const found = allCenarios.find((c) => c.id === id)
       return found
-        ? { id: found.id, name: found.scenarioName, module: found.module, system: found.system }
-        : { id, name: id, module: "", system: "" }
+        ? { id: found.id, name: found.scenarioName, module: found.module, system: found.system, tipo: found.tipo }
+        : { id, name: id, module: "", system: "", tipo: "Manual" }
     })
   )
+
+  // ── Tab state ────────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<TabId>("cadastro")
+
+  // ── Save state ───────────────────────────────────────────────────────────────
+  const [isSaving, startSaveTransition] = useTransition()
+  const [hasSaved, setHasSaved] = useState(false)
+
+  // ── Loading for sub-operations ───────────────────────────────────────────────
+  const [isClientePending, startClienteTransition] = useTransition()
+  const [isModuloPending, startModuloTransition] = useTransition()
+  const [isDepSearchPending, startDepSearchTransition] = useTransition()
+
+  // ── Modals ───────────────────────────────────────────────────────────────────
+  const [noModuloOpen, setNoModuloOpen] = useState(false)
+  const [noModuloNome, setNoModuloNome] = useState("")
   const [addDepOpen, setAddDepOpen] = useState(false)
   const [addClienteOpen, setAddClienteOpen] = useState(false)
-  const draggedStepId = useRef<number | null>(null)
-  const [activeTab, setActiveTab] = useState<"cadastro" | "dependencias" | "automacao">("cadastro")
+  const [newClienteName, setNewClienteName] = useState("")
+  const [newClienteCpf, setNewClienteCpf] = useState("")
+
+  // ── Dep search state ─────────────────────────────────────────────────────────
   const [depSearchInput, setDepSearchInput] = useState("")
   const [depSearch, setDepSearch] = useState("")
   const [depSistema, setDepSistema] = useState("")
   const [depModulo, setDepModulo] = useState("")
   const [selectedDepIds, setSelectedDepIds] = useState<Set<string>>(new Set())
-  const [newClienteName, setNewClienteName] = useState("")
-  const [newClienteCpf, setNewClienteCpf] = useState("")
 
   const depModulos = useMemo(
     () => localModulos.filter((m) => m.active && m.sistemaName === depSistema),
@@ -146,98 +157,52 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
   const filteredDepCenarios = useMemo(() => {
     if (!depSistema || !depModulo) return { items: [], total: 0 }
     const q = depSearch.toLowerCase()
+    const existingIds = new Set(deps.map((d) => d.id))
     const all = allCenarios.filter(
       (c) =>
         c.system === depSistema &&
         c.module === depModulo &&
+        !existingIds.has(c.id) &&
         (!q || c.id.toLowerCase().includes(q) || c.scenarioName.toLowerCase().includes(q))
     )
     return { items: all.slice(0, DEP_LIMIT), total: all.length }
-  }, [allCenarios, depSistema, depModulo, depSearch])
+  }, [allCenarios, depSistema, depModulo, depSearch, deps])
 
+  // ── Switch toggles ───────────────────────────────────────────────────────────
+  function toggleManual() {
+    const next = !manual
+    setManual(next)
+    if (next) {
+      if (activeTab === "cadastro") setActiveTab("manual")
+    } else {
+      if (activeTab === "manual") setActiveTab("cadastro")
+      if (!automatizado && activeTab === "dependencias") setActiveTab("cadastro")
+    }
+  }
+
+  function toggleAutomatizado() {
+    const next = !automatizado
+    setAutomatizado(next)
+    if (next) {
+      if (activeTab === "cadastro" || (!manual && activeTab !== "dependencias")) setActiveTab("automatizado")
+    } else {
+      if (activeTab === "automatizado") setActiveTab("cadastro")
+      if (!manual && activeTab === "dependencias") setActiveTab("cadastro")
+    }
+  }
+
+  // ── Visible tabs ─────────────────────────────────────────────────────────────
+  const visibleTabs: { id: TabId; label: string; badge: number | null }[] = [
+    { id: "cadastro",     label: "Cadastro",           badge: null },
+    ...(manual        ? [{ id: "manual" as TabId,       label: "Teste Manual",       badge: null }] : []),
+    ...(automatizado  ? [{ id: "automatizado" as TabId, label: "Teste Automatizado", badge: steps.length > 0 ? steps.length : null }] : []),
+    ...((manual || automatizado) ? [{ id: "dependencias" as TabId, label: "Dependências", badge: deps.length > 0 ? deps.length : null }] : []),
+  ]
+
+  // ── Steps ────────────────────────────────────────────────────────────────────
   function addStepRow() {
     setHasSaved(false)
     setSteps((prev) => [...prev, { id: Date.now(), acao: "", resultado: "" }])
-  }
-
-  async function exportarPrompt() {
-    // 1. Garantir que o cadastro está salvo primeiro
-    const saved = await handleSave()
-    if (!saved) return
-
-    // 2. Prosseguir com a geração do arquivo
-    const id = cenario.id
-    const sistema = sistemaSelecionado || cenario.system || ""
-    const modulo = moduloValue || cenario.module || ""
-
-    const preconLinhas = preCondicoes
-      .split(/\n+/)
-      .map((l) => l.replace(/^[-*\s]+/, "").trim())
-      .filter(Boolean)
-    const preconFormatado = preconLinhas.length
-      ? preconLinhas.map((l, i) => `${i + 1}. ${l}`).join("\n")
-      : "1. Acessar o sistema."
-
-    const linhasPassos = steps
-      .filter((s) => s.acao.trim())
-      .map((s, i) => `| ${i + 1} | ${s.acao.trim()} | ${s.resultado.trim()} |`)
-
-    const md = [
-      `# Documentação de Testes - ${sistema} ${modulo}`.trimEnd(),
-      "",
-      "## Ambiente e Dados de Teste",
-      "",
-      "### Massa de Dados: Credenciais",
-      "",
-      "| Tipo | Usuário | Senha |",
-      "|------|---------|-------|",
-      `| Padrão | ${usuarioTeste} | ${senhaTeste} |`,
-      `| Inválida | - | ${senhaFalsa} |`,
-      "",
-      "---",
-      "",
-      `## Casos de Teste: ${sistema} ${modulo} ${scenarioName}`.trimEnd(),
-      "",
-      `### ${id}: ${scenarioName}`,
-      "",
-      "### **Descrição**",
-      descricao || "Não informado.",
-      "",
-      "### **Regra de Negócio**",
-      regraDeNegocio || "Não informado.",
-      "",
-      "### **Pré-condições**",
-      preconFormatado,
-      "",
-      "### **BDD (Gherkin)**",
-      bdd || "Não informado.",
-      "",
-      "---",
-      "",
-      "| Passo | Ação | Resultado Esperado |",
-      "|-------|------|------------------|",
-      ...linhasPassos,
-      "",
-      "---",
-      "",
-      "### **Resultado obtido**",
-      resultadoEsperado || "Não informado.",
-    ].join("\n")
-
-    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    
-    // Nome do arquivo fixo conforme solicitado
-    a.download = "prompt.md"
-    
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-
-    toast.success("Arquivo gerado com sucesso.")
   }
 
   function updateStep(id: number, field: "acao" | "resultado", value: string) {
@@ -261,19 +226,28 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
     })
   }
 
+  // ── Save ─────────────────────────────────────────────────────────────────────
   async function handleSave(): Promise<boolean> {
-    if (!scenarioName.trim()) { toast.error("Nome do cenário é obrigatório."); return false }
-    if (!moduloValue) { toast.error("Módulo é obrigatório."); return false }
-    if (!risco) { toast.error("Risco é obrigatório."); return false }
-    if (!manual && !automatizado) { toast.error("É obrigatório habilitar pelo menos um tipo: Manual ou Automatizado."); return false }
-    if (!descricao.trim()) { toast.error("Descrição é obrigatória."); return false }
-    if (!regraDeNegocio.trim()) { toast.error("Regra de Negócio é obrigatória."); return false }
-    if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); return false }
+    if (!moduloValue) { toast.error("Módulo é obrigatório."); setActiveTab("cadastro"); return false }
+    if (!risco) { toast.error("Risco é obrigatório."); setActiveTab("cadastro"); return false }
+    if (!manual && !automatizado) { toast.error("É obrigatório habilitar pelo menos um tipo: Manual ou Automatizado."); setActiveTab("cadastro"); return false }
+    if (!scenarioName.trim()) { toast.error("Nome do cenário é obrigatório."); setActiveTab(manual ? "manual" : "automatizado"); return false }
+
+    if (manual) {
+      if (!descricao.trim()) { toast.error("Descrição é obrigatória."); setActiveTab("manual"); return false }
+      if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); setActiveTab("manual"); return false }
+    }
 
     if (automatizado) {
-      if (!usuarioTeste.trim()) { toast.error("Usuário de Teste é obrigatório para cenários automatizados."); return false }
-      if (!senhaTeste.trim()) { toast.error("Senha de Teste é obrigatória para cenários automatizados."); return false }
-      if (!senhaFalsa.trim()) { toast.error("Senha Falsa é obrigatória para cenários automatizados."); return false }
+      if (!urlAmbiente.trim()) { toast.error("URL do Ambiente é obrigatória."); setActiveTab("automatizado"); return false }
+      if (!usuarioTeste.trim()) { toast.error("Usuário é obrigatório."); setActiveTab("automatizado"); return false }
+      if (!senhaTeste.trim()) { toast.error("Senha é obrigatória."); setActiveTab("automatizado"); return false }
+      if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); setActiveTab("automatizado"); return false }
+      if (steps.filter((s) => s.acao.trim() && s.resultado.trim()).length === 0) {
+        toast.error("Adicione pelo menos 1 passo com ação e resultado.")
+        setActiveTab("automatizado")
+        return false
+      }
     }
 
     const tipo: "Manual" | "Automatizado" | "Man./Auto." =
@@ -290,15 +264,17 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
             risco,
             regraDeNegocio: regraDeNegocio.trim(),
             descricao: descricao.trim(),
-            caminhoTela: caminhoTela.trim(),
+            caminhoTela: cenario.caminhoTela ?? "",
             preCondicoes: preCondicoes.trim(),
             bdd: bdd.trim(),
             resultadoEsperado: resultadoEsperado.trim(),
             tipo,
+            urlAmbiente: urlAmbiente.trim(),
+            objetivo: objetivo.trim(),
             urlScript: urlScript.trim(),
             usuarioTeste: usuarioTeste.trim(),
             senhaTeste: senhaTeste.trim(),
-            senhaFalsa: senhaFalsa.trim(),
+            senhaFalsa: cenario.senhaFalsa ?? "",
             steps: steps
               .map((s) => ({ acao: s.acao.trim(), resultado: s.resultado.trim() }))
               .filter((s) => s.acao.length > 0 && s.resultado.length > 0),
@@ -315,13 +291,84 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
     })
   }
 
+  // ── Prompt.md export ─────────────────────────────────────────────────────────
+  async function exportarPrompt() {
+    const saved = await handleSave()
+    if (!saved) return
+
+    const id = cenario.id
+    const preconLinhas = preCondicoes
+      .split(/\n+/)
+      .map((l) => l.replace(/^[-*\s]+/, "").trim())
+      .filter(Boolean)
+    const preconFormatado = preconLinhas.length
+      ? preconLinhas.map((l) => `- ${l}`).join("\n")
+      : "- Acessar o sistema."
+
+    const linhasPassos = steps
+      .filter((s) => s.acao.trim())
+      .map((s, i) => `| ${i + 1} | ${s.acao.trim()} | ${s.resultado.trim()} |`)
+
+    const resultadoLinhas = resultadoEsperado
+      .split(/\n+/)
+      .map((l) => l.replace(/^[-*\s]+/, "").trim())
+      .filter(Boolean)
+    const resultadoRows = resultadoLinhas.length
+      ? resultadoLinhas.map((l) => `| **${l}** | Sucesso ✅ |`)
+      : [`| **${resultadoEsperado.trim()}** | Sucesso ✅ |`]
+
+    const md = [
+      `---`,
+      ``,
+      `## **${id}: ${scenarioName}**`,
+      ``,
+      `#### **Objetivo**`,
+      ``,
+      objetivo.trim() || "Não informado.",
+      ``,
+      `#### **Pré-condições**`,
+      ``,
+      preconFormatado,
+      ``,
+      `#### **Passos**`,
+      ``,
+      `| **Id** | **Ação** | **Resultado Esperado** |`,
+      `| ------ | -------- | ---------------------- |`,
+      ...linhasPassos,
+      ``,
+      `#### **Resultados**`,
+      ``,
+      `| **Resultado Obtido** | **Status** |`,
+      `| -------------------- | ---------- |`,
+      ...resultadoRows,
+    ].join("\n")
+
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "prompt.md"
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success("Arquivo prompt.md gerado com sucesso.")
+  }
+
+  const showPromptBtn =
+    hasSaved &&
+    automatizado &&
+    urlAmbiente.trim() !== "" &&
+    usuarioTeste.trim() !== "" &&
+    senhaTeste.trim() !== "" &&
+    resultadoEsperado.trim() !== "" &&
+    steps.some((s) => s.acao.trim() && s.resultado.trim())
+
+  // ── Deps ─────────────────────────────────────────────────────────────────────
   const addDeps = useCallback(() => {
-    const newDeps = allCenarios.filter((c) => selectedDepIds.has(c.id)).map((c) => ({
-      id: c.id,
-      name: c.scenarioName,
-      module: c.module,
-      system: c.system,
-    }))
+    const newDeps = allCenarios
+      .filter((c) => selectedDepIds.has(c.id))
+      .map((c) => ({ id: c.id, name: c.scenarioName, module: c.module, system: c.system, tipo: c.tipo }))
     setDeps((prev) => {
       const existing = new Set(prev.map((d) => d.id))
       return [...prev, ...newDeps.filter((d) => !existing.has(d.id))]
@@ -334,20 +381,23 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
     setAddDepOpen(false)
   }, [allCenarios, selectedDepIds])
 
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
       <LoadingOverlay visible={isSaving} label="Salvando cenário..." />
+
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
-          <Link href="/cenarios" title="Voltar" className="flex items-center gap-1 text-text-secondary hover:text-brand-primary">
+          <Link href="/cenarios" className="flex items-center gap-1 text-text-secondary hover:text-brand-primary">
             <ArrowLeft className="size-4" />
             Cenários
           </Link>
           <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">{cenario.id} - Editar</span>
+          <span className="font-medium text-text-primary">{cenario.id} — Editar</span>
         </div>
         <div className="flex items-center gap-3">
-          {activeTab === "automacao" && (usuarioTeste && senhaTeste && senhaFalsa && steps.some(s => s.acao && s.resultado)) && (
+          {showPromptBtn && (
             <Button variant="outline" onClick={exportarPrompt} disabled={isSaving}>
               <FileDown className="size-4" />
               Prompt.md
@@ -360,44 +410,37 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
         </div>
       </div>
 
+      {/* Tab card */}
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
+
         {/* Tab nav */}
         <div className="flex border-b border-border-default">
-          {(["cadastro", "dependencias", "automacao"] as const).map((tab) => {
-            const label = tab === "cadastro" ? "Cadastro" : tab === "dependencias" ? "Dependências" : "Script de Automação"
-            const badge = tab === "automacao" ? steps.length : tab === "dependencias" ? deps.length : null
-            const isDisabled = tab === "automacao" && !automatizado
-            return (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => !isDisabled && setActiveTab(tab)}
-                disabled={isDisabled}
-                title={isDisabled ? "Salve os dados obrigatórios do cadastro e habilite o switch Automatizado para acessar esta aba" : undefined}
-                className={`flex flex-1 items-center justify-center gap-1.5 py-3 px-4 text-sm font-medium border-b-2 -mb-px transition-all ${
-                  isDisabled
-                    ? "cursor-not-allowed border-transparent text-text-secondary/40 opacity-50"
-                    : activeTab === tab
-                    ? "border-brand-primary text-brand-primary bg-brand-primary/5"
-                    : "border-transparent text-text-secondary hover:text-text-primary hover:bg-neutral-grey-50"
-                }`}
-              >
-                {label}
-                {badge !== null && badge > 0 && (
-                  <span className={`inline-flex items-center justify-center rounded-full text-xs font-semibold min-w-4.5 h-4.5 px-1 ${
-                    activeTab === tab
-                      ? "bg-brand-primary/15 text-brand-primary border border-brand-primary/30"
-                      : "bg-neutral-grey-200 text-text-secondary"
-                  }`}>
-                    {badge}
-                  </span>
-                )}
-              </button>
-            )
-          })}
+          {visibleTabs.map(({ id, label, badge }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 -mb-px px-4 py-3 text-sm font-medium transition-all ${
+                activeTab === id
+                  ? "border-brand-primary text-brand-primary bg-brand-primary/5"
+                  : "border-transparent text-text-secondary hover:text-text-primary hover:bg-neutral-grey-50"
+              }`}
+            >
+              {label}
+              {badge !== null && badge > 0 && (
+                <span className={`inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-xs font-semibold ${
+                  activeTab === id
+                    ? "border border-brand-primary/30 bg-brand-primary/15 text-brand-primary"
+                    : "bg-neutral-grey-200 text-text-secondary"
+                }`}>
+                  {badge}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
-        {/* ── Cadastro ── */}
+        {/* ── Cadastro tab ── */}
         <div className={`p-5 space-y-4${activeTab !== "cadastro" ? " hidden" : ""}`}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -416,7 +459,7 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
                 open={moduloSelectOpen}
                 onOpenChange={(open) => {
                   if (open && modulosDosistema.length === 0) {
-                    toast.warning(`O sistema "${sistemaSelecionado || cenario.system}" não possui módulos cadastrados. Cadastre um módulo para continuar.`)
+                    toast.warning(`O sistema "${sistemaSelecionado || cenario.system}" não possui módulos cadastrados.`)
                     setNoModuloOpen(true)
                     return
                   }
@@ -450,11 +493,8 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
               <Select value={risco} onValueChange={(v) => setRisco(v ?? "")}>
                 <SelectTrigger>
                   {riscoSelecionado ? (
-                    <span
-                      className="flex items-center gap-1.5"
-                      style={{ color: riscoSelecionado.color }}
-                    >
-                      <span style={{ color: riscoSelecionado.color }}>{riscoSelecionado.icon}</span>
+                    <span className="flex items-center gap-1.5" style={{ color: riscoSelecionado.color }}>
+                      <span>{riscoSelecionado.icon}</span>
                       {riscoSelecionado.label}
                     </span>
                   ) : (
@@ -464,11 +504,8 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
                 <SelectPopup>
                   {RISCO_OPTIONS.map((r) => (
                     <SelectItem key={r.value} value={r.value}>
-                      <span
-                        className="flex items-center gap-1.5"
-                        style={{ color: r.color }}
-                      >
-                        <span style={{ color: r.color }}>{r.icon}</span>
+                      <span className="flex items-center gap-1.5" style={{ color: r.color }}>
+                        <span>{r.icon}</span>
                         {r.label}
                       </span>
                     </SelectItem>
@@ -478,214 +515,347 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">
-              Cenário <span className="text-destructive">*</span>
-            </label>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <Input
-                  value={scenarioName}
-                  onChange={(e) => setScenarioName(e.target.value)}
-                  placeholder="Nome do cenário"
-                />
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                {[
-                  { label: "Manual", checked: manual, toggle: () => setManual((v) => !v) },
-                  { label: "Automatizado", checked: automatizado, toggle: () => setAutomatizado((v) => !v) },
-                ].map(({ label, checked, toggle }) => (
-                  <label key={label} className="flex cursor-pointer select-none items-center gap-1.5">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={checked}
-                      onClick={toggle}
-                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-1 ${
-                        checked ? "bg-brand-primary" : "bg-neutral-grey-400"
+          {/* Switches */}
+          <div className="rounded-lg border border-border-default bg-neutral-grey-50 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-secondary">Tipo de teste</p>
+            <div className="flex flex-wrap items-center gap-6">
+              {[
+                { label: "Manual", checked: manual, toggle: toggleManual },
+                { label: "Automatizado", checked: automatizado, toggle: toggleAutomatizado },
+              ].map(({ label, checked, toggle }) => (
+                <label key={label} className="flex cursor-pointer select-none items-center gap-2">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={checked}
+                    onClick={toggle}
+                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-1 ${
+                      checked ? "bg-brand-primary" : "bg-neutral-grey-400"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block size-4 shrink-0 rounded-full bg-white transition-transform duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.3)] ${
+                        checked ? "translate-x-4" : "translate-x-0"
                       }`}
-                    >
-                      <span
-                        className={`inline-block size-4 shrink-0 rounded-full bg-[#ffffff] transition-transform duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.3)] ${
-                          checked ? "translate-x-4" : "translate-x-0"
-                        }`}
-                      />
-                    </button>
-                    <span className="text-sm text-text-primary">{label}</span>
-                  </label>
-                ))}
-              </div>
+                    />
+                  </button>
+                  <span className="text-sm font-medium text-text-primary">{label}</span>
+                </label>
+              ))}
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">
-              Descrição <span className="text-destructive">*</span>
-            </label>
-            <textarea
-              rows={2}
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-              placeholder="Descrição do cenário de teste..."
-              onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-              className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">Caminho da Tela</label>
-            <Input
-              value={caminhoTela}
-              onChange={(e) => setCaminhoTela(e.target.value)}
-              placeholder="Ex: Menu > Cadastros > Produtores"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">
-              Regra de Negócio <span className="text-destructive">*</span>
-            </label>
-            <textarea
-              rows={2}
-              value={regraDeNegocio}
-              onChange={(e) => setRegraDeNegocio(e.target.value)}
-              placeholder="Descreva a regra de negócio..."
-              onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-              className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">Pré-condições</label>
-            <textarea
-              rows={2}
-              value={preCondicoes}
-              onChange={(e) => setPreCondicoes(e.target.value)}
-              placeholder="Pré-condições necessárias..."
-              onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-              className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">BDD (Gherkin)</label>
-            <textarea
-              rows={4}
-              value={bdd}
-              onChange={(e) => setBdd(e.target.value)}
-              placeholder={`DADO O contexto inicial (ex: "Dado que o cliente está logado").\nQUANDO A ação realizada (ex: "Quando ele adiciona um item ao carrinho").\nENTÃO O resultado esperado (ex: "Então o item deve aparecer na tela de checkout")`}
-              onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-              className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm font-sans text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">
-              Resultado Esperado <span className="text-destructive">*</span>
-            </label>
-            <textarea
-              rows={2}
-              value={resultadoEsperado}
-              onChange={(e) => setResultadoEsperado(e.target.value)}
-              placeholder="Descreva o resultado esperado..."
-              onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-              className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
-            />
+            {!manual && !automatizado && (
+              <p className="mt-2 text-xs text-text-secondary">
+                Habilite pelo menos um tipo para continuar.
+              </p>
+            )}
           </div>
         </div>
 
-        {/* ── Script de Automação ── */}
-        <div className={`p-5 space-y-5${activeTab !== "automacao" ? " hidden" : ""}`}>
-          {/* Credenciais */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Credenciais</h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 rounded-lg border border-border-default bg-neutral-grey-50 p-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-text-primary">
-                  Usuário de Teste <span className="text-destructive">*</span>
-                </label>
-                <Input value={usuarioTeste} onChange={(e) => { setUsuarioTeste(e.target.value); setHasSaved(false) }} placeholder="usuario@exemplo.com" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-text-primary">
-                  Senha de Teste <span className="text-destructive">*</span>
-                </label>
-                <Input type="password" value={senhaTeste} onChange={(e) => { setSenhaTeste(e.target.value); setHasSaved(false) }} placeholder="Senha correta" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-text-primary">
-                  Senha Falsa <span className="text-destructive">*</span>
-                </label>
-                <Input type="password" value={senhaFalsa} onChange={(e) => { setSenhaFalsa(e.target.value); setHasSaved(false) }} placeholder="Senha inválida" />
-              </div>
+        {/* ── Teste Manual tab ── */}
+        {manual && (
+          <div className={`p-5 space-y-4${activeTab !== "manual" ? " hidden" : ""}`}>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Cenário <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={scenarioName}
+                onChange={(e) => setScenarioName(e.target.value)}
+                placeholder="Nome do cenário de teste"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Descrição <span className="text-destructive">*</span>
+              </label>
+              <textarea
+                rows={2}
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder="Descrição do cenário de teste..."
+                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
+                className={TEXTAREA_CLASS}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Regra de Negócio</label>
+              <textarea
+                rows={2}
+                value={regraDeNegocio}
+                onChange={(e) => setRegraDeNegocio(e.target.value)}
+                placeholder="Descreva a regra de negócio..."
+                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
+                className={TEXTAREA_CLASS}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Pré-condições</label>
+              <textarea
+                rows={2}
+                value={preCondicoes}
+                onChange={(e) => setPreCondicoes(e.target.value)}
+                placeholder="Pré-condições necessárias..."
+                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
+                className={TEXTAREA_CLASS}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">BDD (Gherkin)</label>
+              <textarea
+                rows={4}
+                value={bdd}
+                onChange={(e) => setBdd(e.target.value)}
+                placeholder={`Dado que o usuário está na tela de...\nQuando ele realiza a ação...\nEntão o sistema deve...`}
+                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
+                className={TEXTAREA_CLASS}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Resultado Esperado <span className="text-destructive">*</span>
+              </label>
+              <textarea
+                rows={2}
+                value={resultadoEsperado}
+                onChange={(e) => setResultadoEsperado(e.target.value)}
+                placeholder="Descreva o resultado esperado..."
+                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
+                className={TEXTAREA_CLASS}
+              />
             </div>
           </div>
+        )}
 
+        {/* ── Teste Automatizado tab ── */}
+        {automatizado && (
+          <div className={`p-5 space-y-5${activeTab !== "automatizado" ? " hidden" : ""}`}>
+            {!manual && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">
+                  Cenário <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  value={scenarioName}
+                  onChange={(e) => setScenarioName(e.target.value)}
+                  placeholder="Nome do cenário de teste"
+                />
+              </div>
+            )}
 
-          {/* Passo a passo */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-                Passo a passo <span className="text-destructive">*</span>
-              </h3>
-              <Button variant="outline" size="sm" onClick={addStepRow}>
+            {/* Credentials */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Credenciais</h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 rounded-lg border border-border-default bg-neutral-grey-50 p-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-text-primary">
+                    URL do Ambiente <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    value={urlAmbiente}
+                    onChange={(e) => { setUrlAmbiente(e.target.value); setHasSaved(false) }}
+                    placeholder="https://app.exemplo.com"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-text-primary">
+                    Usuário <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    value={usuarioTeste}
+                    onChange={(e) => { setUsuarioTeste(e.target.value); setHasSaved(false) }}
+                    placeholder="usuario@exemplo.com"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-text-primary">
+                    Senha <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    type="password"
+                    value={senhaTeste}
+                    onChange={(e) => { setSenhaTeste(e.target.value); setHasSaved(false) }}
+                    placeholder="Senha de acesso"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Objetivo */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Objetivo</label>
+              <textarea
+                rows={2}
+                value={objetivo}
+                onChange={(e) => { setObjetivo(e.target.value); setHasSaved(false) }}
+                placeholder="Descreva o objetivo do teste..."
+                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
+                className={TEXTAREA_CLASS}
+              />
+            </div>
+
+            {/* Pré-condições */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Pré-condições</label>
+              <textarea
+                rows={2}
+                value={preCondicoes}
+                onChange={(e) => { setPreCondicoes(e.target.value); setHasSaved(false) }}
+                placeholder="Pré-condições necessárias..."
+                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
+                className={TEXTAREA_CLASS}
+              />
+            </div>
+
+            {/* Passo a passo */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+                  Passo a passo <span className="text-destructive">*</span>
+                </h3>
+                <Button variant="outline" size="sm" onClick={addStepRow}>
+                  <Plus className="size-4" />
+                  Adicionar passo
+                </Button>
+              </div>
+              {steps.length === 0 ? (
+                <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
+                  Nenhum passo adicionado. Clique em <strong>+ Adicionar passo</strong>.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border-default">
+                        <th className="w-8 py-2" />
+                        <th className="w-8 py-2 text-left text-xs font-semibold text-text-secondary">#</th>
+                        <th className="px-2 py-2 text-left text-xs font-semibold text-text-secondary">Ação</th>
+                        <th className="px-2 py-2 text-left text-xs font-semibold text-text-secondary">Resultado esperado</th>
+                        <th className="w-8 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {steps.map((s, idx) => (
+                        <tr
+                          key={s.id}
+                          draggable
+                          onDragStart={() => { draggedStepId.current = s.id }}
+                          onDragOver={(e) => handleStepDragOver(e, s.id)}
+                          onDragEnd={() => { draggedStepId.current = null }}
+                          className="group border-b border-border-default last:border-0"
+                        >
+                          <td className="cursor-grab py-1.5 pr-1 active:cursor-grabbing">
+                            <GripVertical className="size-4 text-text-secondary opacity-40 transition-opacity group-hover:opacity-100" />
+                          </td>
+                          <td className="w-8 py-1.5 text-xs font-medium text-text-secondary">{idx + 1}</td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              value={s.acao}
+                              onChange={(e) => updateStep(s.id, "acao", e.target.value)}
+                              placeholder="Descreva a ação..."
+                              className="w-full rounded-custom border border-border-default bg-surface-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              value={s.resultado}
+                              onChange={(e) => updateStep(s.id, "resultado", e.target.value)}
+                              placeholder="Resultado esperado..."
+                              className="w-full rounded-custom border border-border-default bg-surface-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                            />
+                          </td>
+                          <td className="py-1.5 pl-1">
+                            <button
+                              type="button"
+                              onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
+                              className="flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
+                            >
+                              <Trash2 className="size-4 text-white" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Resultado Esperado */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Resultado Esperado <span className="text-destructive">*</span>
+              </label>
+              <textarea
+                rows={2}
+                value={resultadoEsperado}
+                onChange={(e) => { setResultadoEsperado(e.target.value); setHasSaved(false) }}
+                placeholder="Descreva o resultado esperado do teste automatizado..."
+                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
+                className={TEXTAREA_CLASS}
+              />
+            </div>
+
+            {/* URL do Script */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">URL do Script</label>
+              <Input
+                value={urlScript}
+                onChange={(e) => { setUrlScript(e.target.value); setHasSaved(false) }}
+                placeholder="https://github.com/..."
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ── Dependências tab ── */}
+        {(manual || automatizado) && (
+          <div className={activeTab !== "dependencias" ? "hidden" : ""}>
+            <div className="flex justify-end px-5 pt-5 pb-3">
+              <Button variant="outline" size="sm" onClick={() => setAddDepOpen(true)}>
                 <Plus className="size-4" />
-                Adicionar passo
+                Adicionar dependência
               </Button>
             </div>
-            {steps.length === 0 ? (
-              <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
-                Nenhum passo adicionado. Clique em <strong>+ Adicionar passo</strong> abaixo.
+            {deps.length === 0 ? (
+              <div className="mx-5 mb-5 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
+                Nenhuma dependência adicionada.
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
+                <table className="w-full table-fixed text-sm">
+                  <colgroup>
+                    <col className="w-28" /><col /><col className="w-1/4" /><col className="w-1/4" /><col className="w-16" />
+                  </colgroup>
                   <thead>
-                    <tr className="border-b border-border-default">
-                      <th className="w-8 py-2" />
-                      <th className="w-8 py-2 text-left text-xs font-semibold text-text-secondary">#</th>
-                      <th className="px-2 py-2 text-left text-xs font-semibold text-text-secondary">Ação</th>
-                      <th className="px-2 py-2 text-left text-xs font-semibold text-text-secondary">Resultado esperado</th>
-                      <th className="w-8 py-2" />
+                    <tr className="border-b border-border-default bg-neutral-grey-50">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
+                      <th className="px-4 py-3" />
                     </tr>
                   </thead>
                   <tbody>
-                    {steps.map((s, idx) => (
-                      <tr
-                        key={s.id}
-                        draggable
-                        onDragStart={() => { draggedStepId.current = s.id }}
-                        onDragOver={(e) => handleStepDragOver(e, s.id)}
-                        onDragEnd={() => { draggedStepId.current = null }}
-                        className="group border-b border-border-default last:border-0"
-                      >
-                        <td className="cursor-grab py-1.5 pr-1 active:cursor-grabbing">
-                          <GripVertical className="size-4 text-text-secondary opacity-40 transition-opacity group-hover:opacity-100" />
+                    {deps.map((d) => (
+                      <tr key={d.id} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
+                        <td className="px-4 py-3">
+                          <Link href={`/cenarios/${d.id}`} className="font-medium text-brand-primary hover:underline">{d.id}</Link>
                         </td>
-                        <td className="w-8 py-1.5 text-xs font-medium text-text-secondary">{idx + 1}</td>
-                        <td className="px-2 py-1.5">
-                          <input
-                            value={s.acao}
-                            onChange={(e) => updateStep(s.id, "acao", e.target.value)}
-                            placeholder="Descreva a ação..."
-                            className="w-full rounded-custom border border-border-default bg-surface-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
-                          />
-                        </td>
-                        <td className="px-2 py-1.5">
-                          <input
-                            value={s.resultado}
-                            onChange={(e) => updateStep(s.id, "resultado", e.target.value)}
-                            placeholder="Resultado esperado..."
-                            className="w-full rounded-custom border border-border-default bg-surface-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
-                          />
-                        </td>
-                        <td className="py-1.5 pl-1">
+                        <td className="px-4 py-3 truncate text-text-primary">{d.name}</td>
+                        <td className="px-4 py-3 truncate text-text-secondary">{d.system}</td>
+                        <td className="px-4 py-3 truncate text-text-secondary">{d.module}</td>
+                        <td className="py-3 pl-2 pr-4">
                           <button
                             type="button"
-                            onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
-                            className="flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
+                            onClick={() => setDeps((prev) => prev.filter((x) => x.id !== d.id))}
+                            className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                           >
-                            <Trash2 className="size-4" style={{ color: '#ffffff' }} />
+                            <Trash2 className="size-4" />
                           </button>
                         </td>
                       </tr>
@@ -695,79 +865,10 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
               </div>
             )}
           </div>
-          {/* Script */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Script</h3>
-            <div className="rounded-lg border border-border-default bg-neutral-grey-50 p-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-text-primary">URL do repositório</label>
-                <Input value={urlScript} onChange={(e) => { setUrlScript(e.target.value); setHasSaved(false) }} placeholder="https://github.com/..." />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Dependências ── */}
-        <div className={activeTab !== "dependencias" ? "hidden" : ""}>
-          <div className="flex justify-end px-5 pt-5 pb-3">
-            <Button variant="outline" size="sm" onClick={() => setAddDepOpen(true)}>
-              <Plus className="size-4" />
-              Adicionar dependência
-            </Button>
-          </div>
-          {deps.length === 0 ? (
-            <div className="mx-5 mb-5 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-              Nenhuma dependência adicionada.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full table-fixed text-sm">
-                <colgroup>
-                  <col className="w-28" />
-                  <col />
-                  <col className="w-1/4" />
-                  <col className="w-1/4" />
-                  <col className="w-16" />
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-border-default bg-neutral-grey-50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {deps.map((d) => (
-                    <tr key={d.id} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
-                      <td className="px-4 py-3">
-                        <Link href={`/cenarios/${d.id}`} className="font-medium text-brand-primary hover:underline">
-                          {d.id}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-text-primary truncate">{d.name}</td>
-                      <td className="px-4 py-3 text-text-secondary truncate">{d.system}</td>
-                      <td className="px-4 py-3 text-text-secondary truncate">{d.module}</td>
-                      <td className="py-3 pl-2 pr-4">
-                        <button
-                          type="button"
-                          title="Remover dependência"
-                          onClick={() => setDeps((prev) => prev.filter((x) => x.id !== d.id))}
-                          className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
+      {/* ── Dialog: Adicionar Dependência ── */}
       <Dialog open={addDepOpen} onOpenChange={(open) => {
         if (!open) { setDepSistema(""); setDepModulo(""); setDepSearchInput(""); setDepSearch(""); setSelectedDepIds(new Set()) }
         else if (allSistemas.filter((s) => s.active).length === 0) {
@@ -776,9 +877,7 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
         setAddDepOpen(open)
       }}>
         <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Adicionar Dependência</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Adicionar Dependência</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -789,13 +888,11 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
                   onValueChange={(v) => {
                     const val = v ?? ""
                     setDepSistema(val); setDepModulo(""); setDepSearchInput(""); setDepSearch("")
-                    const hasModulos = localModulos.some((m) => m.active && m.sistemaName === val)
-                    if (!hasModulos) toast.warning(`É preciso cadastrar um módulo dentro do sistema "${val}" e seus respectivos cenários.`)
+                    if (!localModulos.some((m) => m.active && m.sistemaName === val))
+                      toast.warning(`É preciso cadastrar um módulo dentro do sistema "${val}".`)
                   }}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar sistema" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecionar sistema" /></SelectTrigger>
                   <SelectPopup>
                     {allSistemas.filter((s) => s.active).map((s) => (
                       <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
@@ -805,10 +902,12 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-primary">Módulo</label>
-                <Select value={depModulo} onValueChange={(v) => { setDepModulo(v ?? ""); setDepSearchInput(""); setDepSearch("") }} disabled={!depSistema || depModulos.length === 0}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar módulo" />
-                  </SelectTrigger>
+                <Select
+                  value={depModulo}
+                  onValueChange={(v) => { setDepModulo(v ?? ""); setDepSearchInput(""); setDepSearch("") }}
+                  disabled={!depSistema || depModulos.length === 0}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecionar módulo" /></SelectTrigger>
                   <SelectPopup>
                     {depModulos.map((m) => (
                       <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
@@ -837,20 +936,20 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
                     </span>
                   )}
                 </div>
-                <div className="max-h-72 overflow-y-auto border border-border-default rounded-lg">
+                <div className="max-h-72 overflow-y-auto rounded-lg border border-border-default">
                   {isDepSearchPending ? (
-                    <p className="text-sm text-text-secondary text-center py-6">Buscando...</p>
+                    <p className="py-6 text-center text-sm text-text-secondary">Buscando...</p>
                   ) : filteredDepCenarios.items.length === 0 ? (
-                    <p className="text-sm text-text-secondary text-center py-6">Nenhum cenário encontrado.</p>
+                    <p className="py-6 text-center text-sm text-text-secondary">Nenhum cenário encontrado.</p>
                   ) : (
                     <>
                       {filteredDepCenarios.total > DEP_LIMIT && (
-                        <p className="px-3 pt-2 pb-1 text-xs text-text-secondary border-b border-border-default">
-                          Mostrando {DEP_LIMIT} de {filteredDepCenarios.total} — refine a busca para ver mais.
+                        <p className="border-b border-border-default px-3 pb-1 pt-2 text-xs text-text-secondary">
+                          Mostrando {DEP_LIMIT} de {filteredDepCenarios.total} — refine a busca.
                         </p>
                       )}
                       {filteredDepCenarios.items.map((c) => (
-                        <label key={c.id} className="flex items-center gap-3 px-3 py-2.5 border-b border-border-default last:border-0 hover:bg-neutral-grey-50 cursor-pointer">
+                        <label key={c.id} className="flex cursor-pointer items-center gap-3 border-b border-border-default px-3 py-2.5 last:border-0 hover:bg-neutral-grey-50">
                           <Checkbox
                             checked={selectedDepIds.has(c.id)}
                             onChange={() => {
@@ -863,8 +962,8 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
                             }}
                           />
                           <div className="min-w-0">
-                            <span className="text-xs font-mono text-text-secondary">{c.id}</span>
-                            <p className="text-sm font-medium text-text-primary truncate">{c.scenarioName}</p>
+                            <span className="font-mono text-xs text-text-secondary">{c.id}</span>
+                            <p className="truncate text-sm font-medium text-text-primary">{c.scenarioName}</p>
                           </div>
                         </label>
                       ))}
@@ -881,21 +980,16 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
         </DialogContent>
       </Dialog>
 
+      {/* ── Dialog: Adicionar Cliente ── */}
       <Dialog open={addClienteOpen} onOpenChange={setAddClienteOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Adicionar Cliente</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Adicionar Cliente</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
                 Cliente <span className="text-destructive">*</span>
               </label>
-              <Input
-                placeholder="Nome do cliente"
-                value={newClienteName}
-                onChange={(e) => setNewClienteName(e.target.value)}
-              />
+              <Input placeholder="Nome do cliente" value={newClienteName} onChange={(e) => setNewClienteName(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">CPF/CNPJ</label>
@@ -913,11 +1007,7 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
               onClick={() => {
                 if (!newClienteName.trim()) return
                 startClienteTransition(async () => {
-                  const novo = await criarCliente({
-                    nomeFantasia: newClienteName,
-                    razaoSocial: null,
-                    cpfCnpj: newClienteCpf || null,
-                  })
+                  const novo = await criarCliente({ nomeFantasia: newClienteName, razaoSocial: null, cpfCnpj: newClienteCpf || null })
                   setClientes((prev) => [...prev, novo])
                   setClienteSelecionado(novo.nomeFantasia)
                   setNewClienteName("")
@@ -932,15 +1022,13 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
         </DialogContent>
       </Dialog>
 
+      {/* ── Dialog: Nenhum módulo cadastrado ── */}
       <Dialog open={noModuloOpen} onOpenChange={setNoModuloOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nenhum módulo cadastrado</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Nenhum módulo cadastrado</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-sm text-text-secondary">
-              O sistema <span className="font-medium text-text-primary">{sistemaSelecionado}</span> ainda
-              não tem módulos vinculados. Adicione pelo menos um módulo para poder cadastrar cenários neste sistema.
+              O sistema <span className="font-medium text-text-primary">{sistemaSelecionado || cenario.system}</span> não tem módulos vinculados.
             </p>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
@@ -962,12 +1050,7 @@ export default function EditarCenarioClient({ cenario, initialModulos = [], allS
                 const sistema = allSistemas.find((s) => s.name === (sistemaSelecionado || cenario.system))
                 if (!sistema) return
                 startModuloTransition(async () => {
-                  const novo = await criarModulo({
-                    name: noModuloNome,
-                    description: null,
-                    sistemaId: sistema.id,
-                    sistemaName: sistema.name,
-                  })
+                  const novo = await criarModulo({ name: noModuloNome, description: null, sistemaId: sistema.id, sistemaName: sistema.name })
                   setLocalModulos((prev) => [...prev, novo])
                   setModuloValue(novo.name)
                   setNoModuloNome("")

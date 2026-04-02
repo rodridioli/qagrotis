@@ -31,6 +31,8 @@ export interface CenarioRecord {
   preCondicoes?: string
   bdd?: string
   resultadoEsperado?: string
+  urlAmbiente?: string
+  objetivo?: string
   urlScript?: string
   usuarioTeste?: string
   senhaTeste?: string
@@ -59,6 +61,8 @@ const cenarioCreateSchema = z.object({
   bdd:               z.string().max(5000),
   resultadoEsperado: z.string().min(1, "Resultado Esperado é obrigatório").max(5000),
   tipo:              z.enum(["Manual", "Automatizado", "Man./Auto."]),
+  urlAmbiente:       z.string().max(1000),
+  objetivo:          z.string().max(5000),
   urlScript:         z.string().max(1000),
   usuarioTeste:      z.string().max(200),
   senhaTeste:        z.string().max(200),
@@ -90,6 +94,8 @@ function toRecord(row: any): CenarioRecord {
     preCondicoes:      row.preCondicoes ?? undefined,
     bdd:               row.bdd ?? undefined,
     resultadoEsperado: row.resultadoEsperado ?? undefined,
+    urlAmbiente:       row.urlAmbiente ?? undefined,
+    objetivo:          row.objetivo ?? undefined,
     urlScript:         row.urlScript ?? undefined,
     usuarioTeste:      row.usuarioTeste ?? undefined,
     senhaTeste:        row.senhaTeste ?? undefined,
@@ -127,6 +133,8 @@ export async function criarCenario(data: {
   bdd: string
   resultadoEsperado: string
   tipo: string
+  urlAmbiente: string
+  objetivo: string
   urlScript: string
   usuarioTeste: string
   senhaTeste: string
@@ -148,6 +156,8 @@ export async function criarCenario(data: {
     preCondicoes:      (data.preCondicoes || "").trim(),
     bdd:               (data.bdd || "").trim(),
     resultadoEsperado: (data.resultadoEsperado || "").trim(),
+    urlAmbiente:       (data.urlAmbiente || "").trim(),
+    objetivo:          (data.objetivo || "").trim(),
     urlScript:         (data.urlScript || "").trim(),
     usuarioTeste:      (data.usuarioTeste || "").trim(),
     senhaTeste:        (data.senhaTeste || "").trim(),
@@ -176,6 +186,8 @@ export async function criarCenario(data: {
       preCondicoes:      parsed.preCondicoes,
       bdd:               parsed.bdd,
       resultadoEsperado: parsed.resultadoEsperado,
+      urlAmbiente:       parsed.urlAmbiente,
+      objetivo:          parsed.objetivo,
       urlScript:         parsed.urlScript,
       usuarioTeste:      parsed.usuarioTeste,
       senhaTeste:        parsed.senhaTeste,
@@ -203,6 +215,8 @@ export async function atualizarCenario(id: string, data: {
   bdd: string
   resultadoEsperado: string
   tipo: string
+  urlAmbiente: string
+  objetivo: string
   urlScript: string
   usuarioTeste: string
   senhaTeste: string
@@ -225,6 +239,8 @@ export async function atualizarCenario(id: string, data: {
     preCondicoes:      (data.preCondicoes || "").trim(),
     bdd:               (data.bdd || "").trim(),
     resultadoEsperado: (data.resultadoEsperado || "").trim(),
+    urlAmbiente:       (data.urlAmbiente || "").trim(),
+    objetivo:          (data.objetivo || "").trim(),
     urlScript:         (data.urlScript || "").trim(),
     usuarioTeste:      (data.usuarioTeste || "").trim(),
     senhaTeste:        (data.senhaTeste || "").trim(),
@@ -251,6 +267,8 @@ export async function atualizarCenario(id: string, data: {
       preCondicoes:      parsed.preCondicoes,
       bdd:               parsed.bdd,
       resultadoEsperado: parsed.resultadoEsperado,
+      urlAmbiente:       parsed.urlAmbiente,
+      objetivo:          parsed.objetivo,
       urlScript:         parsed.urlScript,
       usuarioTeste:      parsed.usuarioTeste,
       senhaTeste:        parsed.senhaTeste,

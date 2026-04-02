@@ -139,6 +139,8 @@ model Cenario {
   preCondicoes      String?
   bdd               String?
   resultadoEsperado String?
+  urlAmbiente       String?
+  objetivo          String?
   urlScript         String?
   usuarioTeste      String?
   senhaTeste        String?
