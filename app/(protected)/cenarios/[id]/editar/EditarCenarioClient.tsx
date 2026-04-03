@@ -192,11 +192,11 @@ export default function EditarCenarioClient({
   }
 
   // ── Visible tabs ─────────────────────────────────────────────────────────────
-  const visibleTabs: { id: TabId; label: string; badge: number | null }[] = [
+  const visibleTabs: { id: TabId; label: string; badge: number | null; disabled?: boolean }[] = [
     { id: "cadastro",     label: "Cadastro",           badge: null },
-    ...(manual        ? [{ id: "manual" as TabId,       label: "Teste Manual",       badge: null }] : []),
-    ...(automatizado  ? [{ id: "automatizado" as TabId, label: "Teste Automatizado", badge: steps.length > 0 ? steps.length : null }] : []),
-    ...((manual || automatizado) ? [{ id: "dependencias" as TabId, label: "Dependências", badge: deps.length > 0 ? deps.length : null }] : []),
+    { id: "manual",       label: "Teste Manual",       badge: null, disabled: !manual },
+    { id: "automatizado", label: "Teste Automatizado", badge: steps.length > 0 ? steps.length : null, disabled: !automatizado },
+    { id: "dependencias", label: "Dependências",       badge: deps.length > 0 ? deps.length : null, disabled: !(manual || automatizado) },
   ]
 
   // ── Steps ────────────────────────────────────────────────────────────────────
@@ -415,14 +415,17 @@ export default function EditarCenarioClient({
 
         {/* Tab nav */}
         <div className="flex border-b border-border-default">
-          {visibleTabs.map(({ id, label, badge }) => (
+          {visibleTabs.map(({ id, label, badge, disabled }) => (
             <button
               key={id}
               type="button"
               onClick={() => setActiveTab(id)}
+              disabled={disabled}
               className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 -mb-px px-4 py-3 text-sm font-medium transition-all ${
                 activeTab === id
                   ? "border-brand-primary text-brand-primary bg-brand-primary/5"
+                  : disabled
+                  ? "border-transparent text-text-secondary/40 cursor-not-allowed bg-transparent"
                   : "border-transparent text-text-secondary hover:text-text-primary hover:bg-neutral-grey-50"
               }`}
             >
@@ -431,6 +434,8 @@ export default function EditarCenarioClient({
                 <span className={`inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-xs font-semibold ${
                   activeTab === id
                     ? "border border-brand-primary/30 bg-brand-primary/15 text-brand-primary"
+                    : disabled
+                    ? "bg-neutral-grey-100 text-text-secondary/40"
                     : "bg-neutral-grey-200 text-text-secondary"
                 }`}>
                   {badge}
