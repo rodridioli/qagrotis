@@ -169,7 +169,8 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   const [contexto, setContexto] = useState("")
-  const [aiProvider, setAiProvider] = useState(() => integracoes[0]?.id ?? "")
+  const activeIntegracoes = useMemo(() => integracoes.filter(i => i.active !== false), [integracoes])
+  const [aiProvider, setAiProvider] = useState(() => activeIntegracoes[0]?.id ?? "")
 
   const [output, setOutput] = useState("")
 
@@ -409,9 +410,9 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
               <label className="text-sm font-medium text-text-primary">
                 Modelo de IA <span className="text-destructive">*</span>
               </label>
-              {integracoes.length === 0 ? (
+              {activeIntegracoes.length === 0 ? (
                 <p className="text-sm text-text-secondary">
-                  Nenhuma integração cadastrada.{" "}
+                  Nenhuma integração cadastrada ou ativa.{" "}
                   <a href="/configuracoes/integracoes/novo" className="text-brand-primary hover:underline">
                     Adicionar integração
                   </a>
@@ -421,7 +422,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                   <SelectTrigger>
                     <SelectValue>
                       {(() => {
-                        const i = integracoes.find((it) => it.id === aiProvider)
+                        const i = activeIntegracoes.find((it) => it.id === aiProvider)
                         if (!i) return "Selecione um modelo"
                         return (
                           <span className="flex items-center gap-2">
@@ -433,7 +434,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                     </SelectValue>
                   </SelectTrigger>
                   <SelectPopup>
-                    {integracoes.map((i) => (
+                    {activeIntegracoes.map((i) => (
                       <SelectItem key={i.id} value={i.id}>
                         <div className="flex flex-col gap-0.5">
                           <span className="text-[10px] uppercase tracking-wider text-text-secondary">{i.provider}</span>

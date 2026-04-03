@@ -404,10 +404,10 @@ export default function NovoCenarioClient({
       </div>
 
       {/* Tab card */}
-      <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
+      <div className="rounded-xl bg-surface-card shadow-card">
 
         {/* Tab nav */}
-        <div className="flex border-b border-border-default">
+        <div className="flex border-b border-border-default overflow-hidden rounded-t-xl">
           {visibleTabs.map(({ id, label, badge, disabled }) => (
             <button
               key={id}
@@ -521,24 +521,13 @@ export default function NovoCenarioClient({
                 { label: "Manual", checked: manual, toggle: toggleManual },
                 { label: "Automatizado", checked: automatizado, toggle: toggleAutomatizado },
               ].map(({ label, checked, toggle }) => (
-                <label key={label} className="flex cursor-pointer select-none items-center gap-2">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={checked}
-                    onClick={toggle}
-                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-1 ${
-                      checked ? "bg-brand-primary" : "bg-neutral-grey-400"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block size-4 shrink-0 rounded-full bg-white transition-transform duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.3)] ${
-                        checked ? "translate-x-4" : "translate-x-0"
-                      }`}
-                    />
-                  </button>
-                  <span className="text-sm font-medium text-text-primary">{label}</span>
-                </label>
+                <Checkbox
+                  key={label}
+                  id={label}
+                  label={label}
+                  checked={checked}
+                  onChange={toggle}
+                />
               ))}
             </div>
             {!manual && !automatizado && (
