@@ -397,6 +397,8 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
             preCondicoes:      item.parsed.preCondicoes,
             bdd:               item.parsed.bdd,
             resultadoEsperado: item.parsed.resultadoEsperado || "-",
+            urlAmbiente: "",
+            objetivo: "",
             urlScript: "",
             usuarioTeste: "",
             senhaTeste: "",

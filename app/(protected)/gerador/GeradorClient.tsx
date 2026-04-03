@@ -323,6 +323,8 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
           preCondicoes:      item.parsed.preCondicoes ?? "",
           bdd:               item.parsed.bdd ?? "",
           resultadoEsperado: item.parsed.resultadoEsperado || "-",
+          urlAmbiente: "",
+          objetivo: "",
           urlScript: "",
           usuarioTeste: "",
           senhaTeste: "",
