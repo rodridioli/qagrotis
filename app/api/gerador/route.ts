@@ -292,9 +292,24 @@ async function streamGemini(
   return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
 }
 
-async function streamOpenRouter(userMessage: string, model: string, keyOverride?: string): Promise<Response> {
+async function streamOpenRouter(
+  userMessage: string,
+  model: string,
+  images?: { dataUrl: string; name: string }[],
+  keyOverride?: string
+): Promise<Response> {
   const apiKey = keyOverride || process.env.OPENROUTER_API_KEY
   if (!apiKey) return new Response("Informe sua OPENROUTER_API_KEY no campo de API Key.", { status: 500 })
+
+  const contentParts: any[] = [{ type: "text", text: userMessage }]
+  if (images && images.length > 0) {
+    for (const img of images) {
+      contentParts.push({
+        type: "image_url",
+        image_url: { url: img.dataUrl },
+      })
+    }
+  }
 
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -309,7 +324,7 @@ async function streamOpenRouter(userMessage: string, model: string, keyOverride?
       stream: true,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userMessage },
+        { role: "user", content: contentParts },
       ],
     }),
   })
@@ -456,7 +471,7 @@ export async function POST(req: NextRequest) {
     case "anthropic":
       return streamAnthropic(userMessage, apiKey)
     case "openrouter":
-      return streamOpenRouter(userMessage, model, apiKey)
+      return streamOpenRouter(userMessage, model, imagens, apiKey)
     default:
       return new Response("Provedor não suportado.", { status: 400 })
   }
