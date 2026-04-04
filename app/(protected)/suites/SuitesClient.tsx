@@ -286,13 +286,13 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                           <Checkbox checked={selectedIds.has(s.id)} onChange={() => toggleRow(s.id)} />
                         </td>
                       )}
-                      <td className="px-4 py-3 font-medium">
+                      <td className="px-4 py-3 font-medium whitespace-nowrap">
                         <Link href={`/suites/${s.id}`} className="text-brand-primary hover:underline">
                           {s.id}
                         </Link>
                       </td>
                       <td className="px-4 py-3 truncate font-medium text-text-primary">{s.suiteName}</td>
-                      <td className="px-4 py-3 text-text-secondary">{s.versao}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-text-secondary">{s.versao}</td>
                       <td className="px-4 py-3 text-text-secondary truncate">{s.modulo}</td>
                       <td className="px-4 py-3 text-center tabular-nums text-text-secondary">
                         {s.historicoCount}

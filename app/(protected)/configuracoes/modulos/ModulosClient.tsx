@@ -241,11 +241,11 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
                           />
                         </td>
                       )}
-                      <td className="px-4 py-3 font-medium">
+                      <td className="px-4 py-3 font-medium whitespace-nowrap">
                         <Link href={`/configuracoes/modulos/${m.id}/editar`} className="text-brand-primary hover:underline">{m.id}</Link>
                       </td>
-                      <td className="px-4 py-3 font-medium text-text-primary">{m.name}</td>
-                      <td className="px-4 py-3 text-text-secondary">{m.sistemaName}</td>
+                      <td className="px-4 py-3 font-medium text-text-primary truncate">{m.name}</td>
+                      <td className="px-4 py-3 text-text-secondary truncate">{m.sistemaName}</td>
                       <td className="px-4 py-3 text-text-secondary truncate">
                         {m.description ?? <span className="italic text-text-secondary/60">—</span>}
                       </td>

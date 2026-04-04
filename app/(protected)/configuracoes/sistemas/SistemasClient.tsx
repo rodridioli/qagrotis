@@ -250,10 +250,10 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                             />
                           </td>
                         )}
-                        <td className="px-4 py-3 font-medium">
+                        <td className="px-4 py-3 font-medium whitespace-nowrap">
                           <Link href={`/configuracoes/sistemas/${s.id}/editar`} className="text-brand-primary hover:underline">{s.id}</Link>
                         </td>
-                        <td className="px-4 py-3 font-medium text-text-primary">{s.name}</td>
+                        <td className="px-4 py-3 font-medium text-text-primary truncate">{s.name}</td>
                         <td className="px-4 py-3 text-text-secondary truncate">
                           {s.description ?? <span className="italic text-text-secondary/60">—</span>}
                         </td>

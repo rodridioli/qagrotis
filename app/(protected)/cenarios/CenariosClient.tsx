@@ -537,7 +537,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                           />
                         </td>
                       )}
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <Link href={`/cenarios/${c.id}/editar`} className="font-medium text-brand-primary hover:underline">
                           {c.id}
                         </Link>

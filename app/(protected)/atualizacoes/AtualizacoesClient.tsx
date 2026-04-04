@@ -148,17 +148,17 @@ export function AtualizacoesClient({ entries }: Props) {
                         key={entry.version}
                         className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
                       >
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span className="font-mono text-sm font-semibold text-text-primary">
                             v{entry.version}
                           </span>
                           {entry.commit !== "pendente" && (
-                            <p className="font-mono text-xs text-text-secondary/70 mt-0.5">
+                            <p className="font-mono text-xs text-text-secondary/70 mt-0.5 truncate">
                               {entry.commit}
                             </p>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-text-secondary">{formatDate(entry.date)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-text-secondary">{formatDate(entry.date)}</td>
                         <td className="px-4 py-3">
                           <ChangelogTagBadge tag={entry.tag} />
                         </td>

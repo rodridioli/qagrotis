@@ -265,11 +265,11 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                             />
                           </td>
                         )}
-                        <td className="px-4 py-3 font-medium">
+                        <td className="px-4 py-3 font-medium whitespace-nowrap">
                           <Link href={`/configuracoes/usuarios/${u.id}/editar`} className="text-brand-primary hover:underline">{u.id}</Link>
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
+                        <td className="px-4 py-3 min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
                             {u.photoPath ? (
                               <img
                                 src={u.photoPath}
@@ -281,10 +281,10 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                                 {getInitials(u.name)}
                               </div>
                             )}
-                            <span className="font-medium text-text-primary">{u.name}</span>
+                            <span className="truncate font-medium text-text-primary">{u.name}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-text-secondary">{u.email}</td>
+                        <td className="px-4 py-3 text-text-secondary truncate">{u.email}</td>
                         <td className="px-4 py-3"><UserTipoBadge tipo={u.type} /></td>
                         <td className="px-4 py-3">
                           {isSelf ? (
