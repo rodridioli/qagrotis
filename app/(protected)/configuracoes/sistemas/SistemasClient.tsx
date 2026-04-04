@@ -211,11 +211,11 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
               <table className="w-full table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
-                  <col className="w-24" />
+                  <col className="w-20" />
                   <col />
-                  <col className="w-72" />
-                  <col className="w-24" />
-                  <col className="w-12" />
+                  <col className="w-52" />
+                  <col className="w-20" />
+                  <col className="w-10" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -230,7 +230,7 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Nome</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulos</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Módulos</th>
                     <th className="py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
@@ -255,7 +255,7 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                         <td className="px-4 py-3 text-text-secondary truncate">
                           {s.description ?? <span className="italic text-text-secondary/60">—</span>}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 text-center tabular-nums">
                           {modulosDoSistema.length > 0 ? (
                             <button
                               type="button"

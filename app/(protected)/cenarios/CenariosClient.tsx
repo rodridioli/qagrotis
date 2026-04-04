@@ -492,15 +492,15 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
               <table className="w-full table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
-                  <col className="w-24" />
-                  <col />
-                  <col className="w-40" />
-                  <col className="w-36" />
                   <col className="w-20" />
-                  <col className="w-16" />
-                  <col className="w-16" />
+                  <col />
+                  <col className="w-36" />
                   <col className="w-28" />
-                  <col className="w-12" />
+                  <col className="w-16" />
+                  <col className="w-14" />
+                  <col className="w-14" />
+                  <col className="w-24" />
+                  <col className="w-10" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -516,9 +516,9 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cliente</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Execuções</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Erros</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Suítes</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Execuções</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Erros</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Suítes</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
                     <th className="py-3 pl-2 pr-4" />
                   </tr>
@@ -547,9 +547,9 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                       </td>
                       <td className="px-4 py-3 text-text-secondary truncate">{c.module}</td>
                       <td className="px-4 py-3 text-text-secondary truncate">{c.client}</td>
-                      <td className="px-4 py-3 text-text-secondary">{c.execucoes}</td>
-                      <td className="px-4 py-3 text-text-secondary">{c.erros}</td>
-                      <td className="px-4 py-3 text-text-secondary">{c.suites}</td>
+                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary">{c.execucoes}</td>
+                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary">{c.erros}</td>
+                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary">{c.suites}</td>
                       <td className="px-4 py-3">
                         <CenarioTipoBadge tipo={c.tipo as "Automatizado" | "Manual" | "Man./Auto."} />
                       </td>

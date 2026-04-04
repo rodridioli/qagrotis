@@ -242,16 +242,16 @@ export default function SuitesClient({ allModulos, suites }: Props) {
               <table className="w-full table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
-                  <col className={showBulkActions ? "w-24" : "w-28"} />
+                  <col className="w-20" />
                   <col />
-                  <col className="w-16" />
-                  <col className={showBulkActions ? "w-32" : "w-36"} />
-                  <col className="w-20" />
-                  <col className={showBulkActions ? "w-36" : "w-40"} />
                   <col className="w-14" />
-                  <col className="w-20" />
-                  <col className={showBulkActions ? "w-24" : "w-28"} />
-                  {showBulkActions && <col className="w-16" />}
+                  <col className="w-28" />
+                  <col className="w-16" />
+                  <col className="w-32" />
+                  <col className="w-12" />
+                  <col className="w-14" />
+                  <col className="w-24" />
+                  {showBulkActions && <col className="w-10" />}
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -267,10 +267,10 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Suíte</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Versão</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Execuções</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Execuções</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Automação</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Erros</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenários</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Erros</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Cenários</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
                     {showBulkActions && <th className="py-3 pl-2 pr-4" />}
                   </tr>
@@ -301,16 +301,16 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                       <td className="px-4 py-3 truncate font-medium text-text-primary">{s.suiteName}</td>
                       <td className="px-4 py-3 text-text-secondary">{s.versao}</td>
                       <td className="px-4 py-3 text-text-secondary truncate">{s.modulo}</td>
-                      <td className="px-4 py-3 text-text-secondary">
+                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary">
                         {s.historicoCount}
                       </td>
                       <td className="px-4 py-3">
                         <AutomacaoBar pct={s.cenarios.length === 0 ? 0 : Math.round(s.cenarios.filter((c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto.").length / s.cenarios.length * 100)} />
                       </td>
-                      <td className="px-4 py-3 text-text-secondary">
+                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary">
                         {s.historicoErros}
                       </td>
-                      <td className="px-4 py-3 text-text-secondary">{s.cenarios.length}</td>
+                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary">{s.cenarios.length}</td>
                       <td className="px-4 py-3">
                         <SuiteTipoBadge tipo={s.tipo as SuiteTipo} />
                       </td>

@@ -365,12 +365,12 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
           <div className="overflow-x-auto rounded-lg border border-border-default">
             <table className="w-full table-fixed text-sm">
               <colgroup>
-                <col className="w-28" />
+                <col className="w-24" />
                 <col />
-                <col className="w-36" />
-                <col className="w-32" />
                 <col className="w-32" />
                 <col className="w-28" />
+                <col className="w-28" />
+                <col className="w-24" />
               </colgroup>
               <thead>
                 <tr className="border-b border-border-default bg-neutral-grey-50">

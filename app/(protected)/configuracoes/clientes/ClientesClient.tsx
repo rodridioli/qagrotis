@@ -212,12 +212,12 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
               <table className="w-full table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
-                  <col className="w-24" />
+                  <col className="w-20" />
                   <col />
-                  <col className="w-48" />
-                  <col className="w-36" />
-                  <col className="w-52" />
-                  <col className="w-12" />
+                  <col className="w-40" />
+                  <col className="w-32" />
+                  <col className="w-44" />
+                  <col className="w-10" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">

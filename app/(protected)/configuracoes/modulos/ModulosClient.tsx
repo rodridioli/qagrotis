@@ -202,12 +202,12 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
               <table className="w-full table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
-                  <col className="w-24" />
-                  <col className="w-44" />
-                  <col className="w-44" />
+                  <col className="w-20" />
+                  <col className="w-40" />
+                  <col className="w-36" />
                   <col />
-                  <col className="w-24" />
-                  <col className="w-12" />
+                  <col className="w-20" />
+                  <col className="w-10" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -223,7 +223,7 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Nome</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenários</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Cenários</th>
                     <th className="py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
@@ -247,7 +247,7 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
                       <td className="px-4 py-3 text-text-secondary truncate">
                         {m.description ?? <span className="italic text-text-secondary/60">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-text-secondary text-sm">
+                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary text-sm">
                         {initialCenarios.filter((c) => c.module === m.name && c.active).length || <span className="italic text-text-secondary/60">0</span>}
                       </td>
                       <td className="py-3 pl-2 pr-4">

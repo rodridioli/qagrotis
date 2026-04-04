@@ -829,7 +829,7 @@ export default function EditarCenarioClient({
               <div className="overflow-x-auto">
                 <table className="w-full table-fixed text-sm">
                   <colgroup>
-                    <col className="w-28" /><col /><col className="w-1/4" /><col className="w-1/4" /><col className="w-16" />
+                    <col className="w-24" /><col /><col className="w-44" /><col className="w-44" /><col className="w-10" />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50">

@@ -190,15 +190,25 @@ export async function criarQaUser(data: {
     if (activeMockEmails.includes(parsed.email)) return { error: "E-mail já cadastrado." }
     if (existingCreated && !inactiveIds.has(existingCreated.id)) return { error: "E-mail já cadastrado." }
 
-    const createdIds = await prisma.createdUser.findMany({ select: { id: true } })
-    const allIds = [...MOCK_USERS.map((u) => u.id), ...createdIds.map((u) => u.id)]
-    const id = nextId(allIds, "U")
-
     const hashedPassword = hashPassword(data.password)
 
-    await prisma.createdUser.create({
-      data: { id, name: parsed.name, email: parsed.email, type: parsed.type, photoPath: null, password: hashedPassword },
-    })
+    if (existingCreated && inactiveIds.has(existingCreated.id)) {
+      // Reactivate existing inactive user — avoids unique-email constraint violation
+      await prisma.$transaction([
+        prisma.createdUser.update({
+          where: { id: existingCreated.id },
+          data: { name: parsed.name, type: parsed.type, password: hashedPassword },
+        }),
+        prisma.inactiveUser.delete({ where: { userId: existingCreated.id } }),
+      ])
+    } else {
+      const createdIds = await prisma.createdUser.findMany({ select: { id: true } })
+      const allIds = [...MOCK_USERS.map((u) => u.id), ...createdIds.map((u) => u.id)]
+      const id = nextId(allIds, "U")
+      await prisma.createdUser.create({
+        data: { id, name: parsed.name, email: parsed.email, type: parsed.type, photoPath: null, password: hashedPassword },
+      })
+    }
 
     // Send welcome email with temporary password
     let emailEnviado = false
