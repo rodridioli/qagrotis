@@ -5,8 +5,69 @@ import {
   BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
+import { cn } from "@/lib/utils"
+import type {
+  RankingFilter, TestesFilter, ChartFilter,
+  DataPoint, RankingItem,
+} from "./DashboardClient"
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface AutomationDataPoint { module: string; coverage: number }
+
+interface UltimaAutomacao {
+  id: string
+  scenarioName: string
+  descricao: string
+  createdAt: number | null
+  createdBy: string | undefined
+  module: string
+}
+
+interface Props {
+  automationData:    AutomationDataPoint[]
+  rankingData:       RankingItem[]
+  rankingFilter:     RankingFilter
+  onRankingFilterChange: (v: RankingFilter) => void
+  testesData:        DataPoint[]
+  testesFilter:      TestesFilter
+  onTestesFilterChange: (v: TestesFilter) => void
+  errosData:         DataPoint[]
+  errosFilter:       ChartFilter
+  onErrosFilterChange: (v: ChartFilter) => void
+  sucessoData:       DataPoint[]
+  sucessoFilter:     ChartFilter
+  onSucessoFilterChange: (v: ChartFilter) => void
+  ultimasAutomacoes: UltimaAutomacao[]
+  resolveUser: (createdBy: string | undefined) => { displayName: string; photoPath: string | null }
+}
+
+// ── Filter options ─────────────────────────────────────────────────────────────
+
+const RANKING_FILTERS: { value: RankingFilter; label: string }[] = [
+  { value: "hoje",         label: "Hoje" },
+  { value: "semana",       label: "Última semana" },
+  { value: "mes-atual",    label: "Mês atual" },
+  { value: "mes-anterior", label: "Mês anterior" },
+  { value: "ano-atual",    label: "Ano atual" },
+]
+
+const TESTES_FILTERS: { value: TestesFilter; label: string }[] = [
+  { value: "semana",       label: "Última semana" },
+  { value: "mes-atual",    label: "Mês atual" },
+  { value: "mes-anterior", label: "Mês anterior" },
+  { value: "ano-atual",    label: "Ano atual" },
+]
+
+const CHART_FILTERS: { value: ChartFilter; label: string }[] = [
+  { value: "hoje",         label: "Hoje" },
+  { value: "semana",       label: "Última semana" },
+  { value: "mes-atual",    label: "Mês atual" },
+  { value: "mes-anterior", label: "Mês anterior" },
+  { value: "ano-atual",    label: "Ano atual" },
+]
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 const MAX_TICK_CHARS = 14
 
@@ -19,9 +80,7 @@ function TruncatedTick({ x, y, payload }: { x?: number; y?: number; payload?: { 
     <g transform={`translate(${x},${y})`}>
       <title>{payload.value}</title>
       <text
-        x={0}
-        y={0}
-        dy={10}
+        x={0} y={0} dy={10}
         textAnchor="end"
         fill="var(--text-secondary)"
         fontSize={10}
@@ -32,33 +91,9 @@ function TruncatedTick({ x, y, payload }: { x?: number; y?: number; payload?: { 
     </g>
   )
 }
-interface MonthlyDataPoint    { month: string;  value: number    }
-
-interface RankingItem {
-  createdBy: string
-  count: number
-}
-
-interface UltimaAutomacao {
-  id: string
-  scenarioName: string
-  descricao: string
-  createdAt: number | null
-  createdBy: string | undefined
-  module: string
-}
-
-interface Props {
-  automationData:   AutomationDataPoint[]
-  monthlyTests:     MonthlyDataPoint[]
-  monthlyErrors:    MonthlyDataPoint[]
-  rankingHoje:      RankingItem[]
-  ultimasAutomacoes: UltimaAutomacao[]
-  resolveUser: (createdBy: string | undefined) => { displayName: string; photoPath: string | null }
-}
 
 function getInitials(name: string): string {
-  return name.split(/\s+/).slice(0, 2).map((n) => n[0]).join("").toUpperCase()
+  return name.split(/\s+/).slice(0, 2).map(n => n[0]).join("").toUpperCase()
 }
 
 function formatDateTime(ts: number | null): string {
@@ -80,16 +115,22 @@ const TOOLTIP_STYLE = {
   borderRadius: 8,
   border: "1px solid var(--border-default)",
   background: "var(--surface-card)",
+  color: "var(--text-primary)",
 }
 
-interface AvatarProps {
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function Avatar({
+  displayName,
+  photoPath,
+  colorIndex,
+  size = "md",
+}: {
   displayName: string
   photoPath: string | null
   colorIndex: number
   size?: "sm" | "md"
-}
-
-function Avatar({ displayName, photoPath, colorIndex, size = "md" }: AvatarProps) {
+}) {
   const sz = size === "sm" ? "size-6" : "size-8"
   const textSz = size === "sm" ? "text-[10px]" : "text-xs"
   return (
@@ -99,10 +140,10 @@ function Avatar({ displayName, photoPath, colorIndex, size = "md" }: AvatarProps
           src={photoPath}
           alt={displayName}
           className={`${sz} rounded-full object-cover`}
-          onError={(e) => {
+          onError={e => {
             e.currentTarget.style.display = "none"
-            const sibling = e.currentTarget.nextElementSibling as HTMLElement | null
-            if (sibling) sibling.style.display = "flex"
+            const sib = e.currentTarget.nextElementSibling as HTMLElement | null
+            if (sib) sib.style.display = "flex"
           }}
         />
       ) : null}
@@ -116,24 +157,71 @@ function Avatar({ displayName, photoPath, colorIndex, size = "md" }: AvatarProps
   )
 }
 
+function FilterPills<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (v: T) => void
+}) {
+  return (
+    <div className="flex flex-wrap gap-1" role="group" aria-label="Filtro de período">
+      {options.map(opt => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          aria-pressed={value === opt.value}
+          className={cn(
+            "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+            value === opt.value
+              ? "bg-brand-primary text-white"
+              : "bg-neutral-grey-100 text-text-secondary hover:bg-neutral-grey-200 hover:text-text-primary"
+          )}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ── Main export ────────────────────────────────────────────────────────────────
+
 export function DashboardCharts({
-  automationData, monthlyTests, monthlyErrors,
-  rankingHoje, ultimasAutomacoes, resolveUser,
+  automationData,
+  rankingData, rankingFilter, onRankingFilterChange,
+  testesData,  testesFilter,  onTestesFilterChange,
+  errosData,   errosFilter,   onErrosFilterChange,
+  sucessoData, sucessoFilter, onSucessoFilterChange,
+  ultimasAutomacoes, resolveUser,
 }: Props) {
   return (
     <div className="space-y-4">
 
-      {/* Row 1 — Ranking gerados hoje + Cobertura de automação */}
+      {/* Row 1 — Ranking + Cobertura de automação */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 
-        {/* Ranking de geração de cenários — ranking por usuário */}
+        {/* Ranking */}
         <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
-          <h2 className="mb-4 text-sm font-semibold text-text-primary">Ranking de geração de cenários</h2>
-          {rankingHoje.length === 0 ? (
-            <p className="text-xs text-text-secondary">Nenhum cenário gerado hoje.</p>
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <h2 className="shrink-0 text-sm font-semibold text-text-primary">
+              Ranking de geração de cenários
+            </h2>
+            <FilterPills<RankingFilter>
+              options={RANKING_FILTERS}
+              value={rankingFilter}
+              onChange={onRankingFilterChange}
+            />
+          </div>
+
+          {rankingData.length === 0 ? (
+            <p className="text-xs text-text-secondary">Nenhum cenário gerado no período.</p>
           ) : (
             <div className="space-y-2.5">
-              {rankingHoje.map((item, i) => {
+              {rankingData.map((item, i) => {
                 const { displayName, photoPath } = resolveUser(item.createdBy)
                 const posLabel = i === 0 ? "1°" : i === 1 ? "2°" : i === 2 ? "3°" : `${i + 1}°`
                 const posColor = i === 0
@@ -156,9 +244,11 @@ export function DashboardCharts({
           )}
         </div>
 
-        {/* Cobertura de automação — ocupa toda a altura disponível */}
+        {/* Cobertura de automação */}
         <div className="col-span-1 flex flex-col rounded-xl bg-surface-card p-5 shadow-card md:col-span-2 min-h-75">
-          <h2 className="mb-4 shrink-0 text-sm font-semibold text-text-primary">Cobertura de automação por módulo</h2>
+          <h2 className="mb-4 shrink-0 text-sm font-semibold text-text-primary">
+            Cobertura de automação por módulo
+          </h2>
           <div className="min-h-0 flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={automationData} margin={{ top: 0, right: 0, left: -20, bottom: 60 }}>
@@ -170,9 +260,17 @@ export function DashboardCharts({
                   tickLine={false}
                   interval={0}
                 />
-
-                <YAxis tick={{ fontSize: 12, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} domain={[0, 100]} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "transparent" }} formatter={(v) => [`${v}%`, "Cobertura"]} />
+                <YAxis
+                  tick={{ fontSize: 12, fill: "var(--text-secondary)" }}
+                  axisLine={false}
+                  tickLine={false}
+                  domain={[0, 100]}
+                />
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  cursor={{ fill: "transparent" }}
+                  formatter={(v) => [`${v}%`, "Cobertura"]}
+                />
                 <Bar dataKey="coverage" fill="var(--brand-primary)" radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
@@ -180,30 +278,54 @@ export function DashboardCharts({
         </div>
       </div>
 
-      {/* Row 2 — Testes por mês + Últimas automações */}
+      {/* Row 2 — Testes executados + Últimas automações */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
 
-        {/* Testes executados por mês */}
+        {/* Testes executados */}
         <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
-          <h2 className="mb-4 text-sm font-semibold text-text-primary">Testes executados por mês</h2>
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <h2 className="shrink-0 text-sm font-semibold text-text-primary">Testes executados</h2>
+            <FilterPills<TestesFilter>
+              options={TESTES_FILTERS}
+              value={testesFilter}
+              onChange={onTestesFilterChange}
+            />
+          </div>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={monthlyTests} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <AreaChart data={testesData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="testsGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="var(--qagrotis-primary-500)" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="var(--qagrotis-primary-500)" stopOpacity={0}   />
+                  <stop offset="95%" stopColor="var(--qagrotis-primary-500)" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} />
-              <Area type="monotone" dataKey="value" stroke="var(--qagrotis-primary-500)" strokeWidth={2} fill="url(#testsGradient)" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "var(--text-secondary)" }}
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--text-secondary)" }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [v, "Execuções"]} />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="var(--qagrotis-primary-500)"
+                strokeWidth={2}
+                fill="url(#testsGradient)"
+              />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Últimas automações — 4 mais recentes */}
+        {/* Últimas automações */}
         <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-2">
           <h2 className="mb-4 text-sm font-semibold text-text-primary">Últimas automações</h2>
           {ultimasAutomacoes.length === 0 ? (
@@ -214,7 +336,6 @@ export function DashboardCharts({
                 const { displayName, photoPath } = resolveUser(item.createdBy)
                 return (
                   <div key={item.id} className="rounded-lg border border-border-default p-3 space-y-2">
-                    {/* Author + date */}
                     <div className="flex items-center gap-2">
                       <Avatar displayName={displayName} photoPath={photoPath} colorIndex={i} size="sm" />
                       <div className="min-w-0 flex-1">
@@ -222,7 +343,6 @@ export function DashboardCharts({
                         <p className="text-xs text-text-secondary/70">{formatDateTime(item.createdAt)}</p>
                       </div>
                     </div>
-                    {/* Code (link) + description */}
                     <div>
                       <Link
                         href={`/cenarios/${item.id}`}
@@ -245,24 +365,96 @@ export function DashboardCharts({
         </div>
       </div>
 
-      {/* Row 3 — Erros por mês (full width) */}
-      <div className="rounded-xl bg-surface-card p-5 shadow-card">
-        <h2 className="mb-4 text-sm font-semibold text-text-primary">Erros encontrados por mês</h2>
-        <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={monthlyErrors} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="errorsGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="var(--color-red-500)" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="var(--color-red-500)" stopOpacity={0}   />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--color-red-500)" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} />
-            <Tooltip contentStyle={TOOLTIP_STYLE} />
-            <Area type="monotone" dataKey="value" stroke="var(--color-red-500)" strokeWidth={2} fill="url(#errorsGradient)" />
-          </AreaChart>
-        </ResponsiveContainer>
+      {/* Row 3 — Erros + Sucesso */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+
+        {/* Erros encontrados */}
+        <div className="rounded-xl bg-surface-card p-5 shadow-card">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <h2 className="shrink-0 text-sm font-semibold text-text-primary">Erros encontrados</h2>
+            <FilterPills<ChartFilter>
+              options={CHART_FILTERS}
+              value={errosFilter}
+              onChange={onErrosFilterChange}
+            />
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={errosData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="errorsGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="var(--color-red-500)" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="var(--color-red-500)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "var(--color-red-500)" }}
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--text-secondary)" }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [v, "Erros"]} />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="var(--color-red-500)"
+                strokeWidth={2}
+                fill="url(#errorsGradient)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Testes de sucesso */}
+        <div className="rounded-xl bg-surface-card p-5 shadow-card">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <h2 className="shrink-0 text-sm font-semibold text-text-primary">Testes de sucesso</h2>
+            <FilterPills<ChartFilter>
+              options={CHART_FILTERS}
+              value={sucessoFilter}
+              onChange={onSucessoFilterChange}
+            />
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={sucessoData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="successGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="var(--qagrotis-primary-500)" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="var(--qagrotis-primary-500)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "var(--qagrotis-primary-600)" }}
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--text-secondary)" }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [v, "Sucessos"]} />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="var(--qagrotis-primary-500)"
+                strokeWidth={2}
+                fill="url(#successGradient)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
     </div>

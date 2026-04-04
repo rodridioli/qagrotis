@@ -1,12 +1,112 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import { DashboardCharts } from "./DashboardCharts"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { QaUserRecord } from "@/lib/actions/usuarios"
 import type { SuiteRecord } from "@/lib/actions/suites"
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export type RankingFilter = "hoje" | "semana" | "mes-atual" | "mes-anterior" | "ano-atual"
+export type TestesFilter  = "semana" | "mes-atual" | "mes-anterior" | "ano-atual"
+export type ChartFilter   = "hoje" | "semana" | "mes-atual" | "mes-anterior" | "ano-atual"
+export interface DataPoint  { label: string; value: number }
+export interface RankingItem { createdBy: string; count: number }
+
+interface UltimaAutomacao {
+  id: string
+  scenarioName: string
+  descricao: string
+  createdAt: number | null
+  createdBy: string | undefined
+  module: string
+}
+
+// ── Date helpers ──────────────────────────────────────────────────────────────
+
+function getDateRange(period: string): { start: number; end: number } {
+  const now = new Date()
+  switch (period) {
+    case "hoje": {
+      const s = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      return { start: s.getTime(), end: s.getTime() + 86400000 - 1 }
+    }
+    case "semana": {
+      const s = new Date(now)
+      s.setDate(now.getDate() - 6)
+      s.setHours(0, 0, 0, 0)
+      return { start: s.getTime(), end: now.getTime() }
+    }
+    case "mes-atual": {
+      const s = new Date(now.getFullYear(), now.getMonth(), 1)
+      const e = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+      return { start: s.getTime(), end: e.getTime() }
+    }
+    case "mes-anterior": {
+      const s = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const e = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
+      return { start: s.getTime(), end: e.getTime() }
+    }
+    case "ano-atual": {
+      const s = new Date(now.getFullYear(), 0, 1)
+      return { start: s.getTime(), end: now.getTime() }
+    }
+    default:
+      return { start: 0, end: now.getTime() }
+  }
+}
+
+function makeBuckets(period: string): { label: string; start: number; end: number }[] {
+  const now = new Date()
+  if (period === "hoje") {
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    return Array.from({ length: 24 }, (_, i) => {
+      const s = new Date(today); s.setHours(i, 0, 0, 0)
+      const e = new Date(today); e.setHours(i, 59, 59, 999)
+      return { label: `${i}h`, start: s.getTime(), end: e.getTime() }
+    }).filter(b => b.start <= now.getTime())
+  }
+  if (period === "semana") {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(now)
+      d.setDate(now.getDate() - 6 + i)
+      d.setHours(0, 0, 0, 0)
+      const e = new Date(d); e.setHours(23, 59, 59, 999)
+      const label = d.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric" }).replace(".", "")
+      return { label, start: d.getTime(), end: e.getTime() }
+    })
+  }
+  if (period === "mes-atual") {
+    const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+    return Array.from({ length: days }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth(), i + 1)
+      const e = new Date(now.getFullYear(), now.getMonth(), i + 1, 23, 59, 59, 999)
+      return { label: String(i + 1), start: d.getTime(), end: e.getTime() }
+    })
+  }
+  if (period === "mes-anterior") {
+    const y = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()
+    const m = now.getMonth() === 0 ? 11 : now.getMonth() - 1
+    const days = new Date(y, m + 1, 0).getDate()
+    return Array.from({ length: days }, (_, i) => {
+      const d = new Date(y, m, i + 1)
+      const e = new Date(y, m, i + 1, 23, 59, 59, 999)
+      return { label: String(i + 1), start: d.getTime(), end: e.getTime() }
+    })
+  }
+  // ano-atual
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now.getFullYear(), i, 1)
+    const e = new Date(now.getFullYear(), i + 1, 0, 23, 59, 59, 999)
+    const label = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")
+    return { label, start: d.getTime(), end: e.getTime() }
+  })
+}
+
+// ── MetricCard ────────────────────────────────────────────────────────────────
 
 function MetricCard({
   label,
@@ -28,6 +128,8 @@ function MetricCard({
   )
 }
 
+// ── Props ─────────────────────────────────────────────────────────────────────
+
 interface Props {
   allCenarios: CenarioRecord[]
   allModulos: ModuloRecord[]
@@ -37,15 +139,30 @@ interface Props {
   currentUserPhotoPath: string | null
 }
 
-export function DashboardClient({ allCenarios, allModulos, allUsers, allSuites, currentUser, currentUserPhotoPath }: Props) {
+// ── Main component ────────────────────────────────────────────────────────────
+
+export function DashboardClient({
+  allCenarios,
+  allModulos,
+  allUsers,
+  allSuites,
+  currentUser,
+  currentUserPhotoPath,
+}: Props) {
   const { sistemaSelecionado } = useSistemaSelecionado()
 
-  // Maps both name and email to a user's display name and photo
+  // ── Filter states ──────────────────────────────────────────────────────────
+  const [rankingFilter, setRankingFilter] = useState<RankingFilter>("hoje")
+  const [testesFilter,  setTestesFilter]  = useState<TestesFilter>("mes-atual")
+  const [errosFilter,   setErrosFilter]   = useState<ChartFilter>("mes-atual")
+  const [sucessoFilter, setSucessoFilter] = useState<ChartFilter>("mes-atual")
+
+  // ── User map ───────────────────────────────────────────────────────────────
   const userMap = useMemo(() => {
     const map = new Map<string, { displayName: string; photoPath: string | null }>()
     for (const u of allUsers) {
-      if (u.name) map.set(u.name, { displayName: u.name, photoPath: u.photoPath ?? null })
-      if (u.email) map.set(u.email, { displayName: u.name, photoPath: u.photoPath ?? null })
+      if (u.name)  map.set(u.name,  { displayName: u.name,  photoPath: u.photoPath ?? null })
+      if (u.email) map.set(u.email, { displayName: u.name,  photoPath: u.photoPath ?? null })
     }
     if (currentUser && currentUserPhotoPath) {
       map.set(currentUser, { displayName: currentUser, photoPath: currentUserPhotoPath })
@@ -57,73 +174,46 @@ export function DashboardClient({ allCenarios, allModulos, allUsers, allSuites, 
     if (!createdBy) return { displayName: "Desconhecido", photoPath: null }
     const found = userMap.get(createdBy)
     if (found) return found
-    // If createdBy looks like an email, try to strip domain to get initials
     if (createdBy.includes("@")) {
-      const localPart = createdBy.split("@")[0]
-      const name = localPart.replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+      const name = createdBy.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase())
       return { displayName: name, photoPath: null }
     }
     return { displayName: createdBy, photoPath: null }
   }
 
+  // ── Cenários filtrados ─────────────────────────────────────────────────────
   const {
     totalModulos, totalCenarios, totalManuais, totalAutomatizados,
-    pctManuais, pctAuto, automationData,
-    rankingHoje, ultimasAutomacoes,
+    pctManuais, pctAuto, automationData, ultimasAutomacoes, cenariosFiltrados,
   } = useMemo(() => {
     const modsFiltrados = allModulos.filter(
-      (m) => (!sistemaSelecionado || m.sistemaName === sistemaSelecionado)
+      m => !sistemaSelecionado || m.sistemaName === sistemaSelecionado
     )
     const totalModulos = modsFiltrados.length
 
-
     const cenariosFiltrados = allCenarios.filter(
-      (c) => c.active && (!sistemaSelecionado || c.system === sistemaSelecionado)
+      c => c.active && (!sistemaSelecionado || c.system === sistemaSelecionado)
     )
     const totalCenarios = cenariosFiltrados.length
-    const totalManuais = cenariosFiltrados.filter((c) => c.tipo === "Manual").length
+    const totalManuais = cenariosFiltrados.filter(c => c.tipo === "Manual").length
     const totalAutomatizados = cenariosFiltrados.filter(
-      (c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto."
+      c => c.tipo === "Automatizado" || c.tipo === "Man./Auto."
     ).length
     const pctManuais = totalCenarios > 0 ? Math.round((totalManuais / totalCenarios) * 100) : 0
-    const pctAuto = totalCenarios > 0 ? Math.round((totalAutomatizados / totalCenarios) * 100) : 0
+    const pctAuto    = totalCenarios > 0 ? Math.round((totalAutomatizados / totalCenarios) * 100) : 0
 
-    // Automation coverage per module
-    const modNames = modsFiltrados.map((m) => m.name)
-    const automationData = modNames.length > 0
-      ? modNames.map((mod) => {
-          const cenariosDoModulo = cenariosFiltrados.filter((c) => c.module === mod)
-          const total = cenariosDoModulo.length
-          const auto = cenariosDoModulo.filter(
-            (c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto."
-          ).length
-          return { module: mod, coverage: total > 0 ? Math.round((auto / total) * 100) : 0 }
-        })
-      : []
+    const automationData = modsFiltrados.map(m => {
+      const cenariosDoMod = cenariosFiltrados.filter(c => c.module === m.name)
+      const total = cenariosDoMod.length
+      const auto  = cenariosDoMod.filter(c => c.tipo === "Automatizado" || c.tipo === "Man./Auto.").length
+      return { module: m.name, coverage: total > 0 ? Math.round((auto / total) * 100) : 0 }
+    })
 
-    // Ranking today: count scenarios created today per user
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-    const todayTs = todayStart.getTime()
-
-    const countByUser = new Map<string, number>()
-    for (const c of cenariosFiltrados) {
-      if ((c.createdAt ?? 0) >= todayTs) {
-        const key = c.createdBy ?? "Desconhecido"
-        countByUser.set(key, (countByUser.get(key) ?? 0) + 1)
-      }
-    }
-    const rankingHoje = [...countByUser.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([createdBy, count]) => ({ createdBy, count }))
-
-    // Last 4 automated scenarios
-    const ultimasAutomacoes = cenariosFiltrados
-      .filter((c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto.")
+    const ultimasAutomacoes: UltimaAutomacao[] = cenariosFiltrados
+      .filter(c => c.tipo === "Automatizado" || c.tipo === "Man./Auto.")
       .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
       .slice(0, 4)
-      .map((c) => ({
+      .map(c => ({
         id: c.id,
         scenarioName: c.scenarioName,
         descricao: c.descricao ?? "",
@@ -134,53 +224,98 @@ export function DashboardClient({ allCenarios, allModulos, allUsers, allSuites, 
 
     return {
       totalModulos, totalCenarios, totalManuais, totalAutomatizados,
-      pctManuais, pctAuto, automationData,
-      rankingHoje, ultimasAutomacoes,
+      pctManuais, pctAuto, automationData, ultimasAutomacoes, cenariosFiltrados,
     }
   }, [allCenarios, allModulos, sistemaSelecionado])
 
-  const { monthlyTests, monthlyErrors } = useMemo(() => {
-    const now = new Date()
-    const months = Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
-      return {
-        month: d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
-        tests: 0,
-        errors: 0,
-      }
-    })
-    const sixMonthsAgoTs = new Date(now.getFullYear(), now.getMonth() - 5, 1).getTime()
-    for (const suite of allSuites) {
+  // ── Suites filtradas ───────────────────────────────────────────────────────
+  const suitesFiltradas = useMemo(() =>
+    allSuites.filter(s => !sistemaSelecionado || s.sistema === sistemaSelecionado),
+    [allSuites, sistemaSelecionado]
+  )
+
+  // ── Historico entries (flat) ───────────────────────────────────────────────
+  const historicoEntries = useMemo(() => {
+    const entries: { timestamp: number; resultado: string }[] = []
+    for (const suite of suitesFiltradas) {
       for (const h of suite.historico ?? []) {
-        const ts = h.timestamp
-        if (!ts || ts < sixMonthsAgoTs) continue
-        const d = new Date(ts)
-        const idx = (d.getFullYear() - now.getFullYear()) * 12 + (d.getMonth() - now.getMonth()) + 5
-        if (idx < 0 || idx > 5) continue
-        months[idx].tests++
-        if (h.resultado === "Erro") months[idx].errors++
+        if (h.timestamp) entries.push({ timestamp: h.timestamp, resultado: h.resultado })
       }
     }
-    return {
-      monthlyTests: months.map(m => ({ month: m.month, value: m.tests })),
-      monthlyErrors: months.map(m => ({ month: m.month, value: m.errors })),
+    return entries
+  }, [suitesFiltradas])
+
+  // ── Ranking ────────────────────────────────────────────────────────────────
+  const rankingData = useMemo((): RankingItem[] => {
+    const { start, end } = getDateRange(rankingFilter)
+    const countByUser = new Map<string, number>()
+    for (const c of cenariosFiltrados) {
+      const ts = c.createdAt ?? 0
+      if (ts >= start && ts <= end) {
+        const key = c.createdBy ?? "Desconhecido"
+        countByUser.set(key, (countByUser.get(key) ?? 0) + 1)
+      }
     }
-  }, [allSuites])
+    return [...countByUser.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([createdBy, count]) => ({ createdBy, count }))
+  }, [cenariosFiltrados, rankingFilter])
+
+  // ── Testes chart ───────────────────────────────────────────────────────────
+  const testesData = useMemo((): DataPoint[] => {
+    const buckets = makeBuckets(testesFilter)
+    return buckets.map(b => ({
+      label: b.label,
+      value: historicoEntries.filter(e => e.timestamp >= b.start && e.timestamp <= b.end).length,
+    }))
+  }, [historicoEntries, testesFilter])
+
+  // ── Erros chart ────────────────────────────────────────────────────────────
+  const errosData = useMemo((): DataPoint[] => {
+    const buckets = makeBuckets(errosFilter)
+    return buckets.map(b => ({
+      label: b.label,
+      value: historicoEntries.filter(
+        e => e.timestamp >= b.start && e.timestamp <= b.end && e.resultado === "Erro"
+      ).length,
+    }))
+  }, [historicoEntries, errosFilter])
+
+  // ── Sucesso chart ──────────────────────────────────────────────────────────
+  const sucessoData = useMemo((): DataPoint[] => {
+    const buckets = makeBuckets(sucessoFilter)
+    return buckets.map(b => ({
+      label: b.label,
+      value: historicoEntries.filter(
+        e => e.timestamp >= b.start && e.timestamp <= b.end && e.resultado === "Sucesso"
+      ).length,
+    }))
+  }, [historicoEntries, sucessoFilter])
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricCard label="Módulos" value={String(totalModulos)} />
+        <MetricCard label="Módulos"          value={String(totalModulos)} />
         <MetricCard label="Total de cenários" value={totalCenarios.toLocaleString("pt-BR")} />
-        <MetricCard label="Manuais" value={totalManuais.toLocaleString("pt-BR")} percentage={`${pctManuais}%`} />
-        <MetricCard label="Automatizados" value={totalAutomatizados.toLocaleString("pt-BR")} percentage={`${pctAuto}%`} />
+        <MetricCard label="Manuais"           value={totalManuais.toLocaleString("pt-BR")}       percentage={`${pctManuais}%`} />
+        <MetricCard label="Automatizados"     value={totalAutomatizados.toLocaleString("pt-BR")} percentage={`${pctAuto}%`} />
       </div>
 
       <DashboardCharts
         automationData={automationData}
-        monthlyTests={monthlyTests}
-        monthlyErrors={monthlyErrors}
-        rankingHoje={rankingHoje}
+        rankingData={rankingData}
+        rankingFilter={rankingFilter}
+        onRankingFilterChange={setRankingFilter}
+        testesData={testesData}
+        testesFilter={testesFilter}
+        onTestesFilterChange={setTestesFilter}
+        errosData={errosData}
+        errosFilter={errosFilter}
+        onErrosFilterChange={setErrosFilter}
+        sucessoData={sucessoData}
+        sucessoFilter={sucessoFilter}
+        onSucessoFilterChange={setSucessoFilter}
         ultimasAutomacoes={ultimasAutomacoes}
         resolveUser={resolveUser}
       />

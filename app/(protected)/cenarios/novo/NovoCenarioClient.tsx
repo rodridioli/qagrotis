@@ -160,13 +160,11 @@ export default function NovoCenarioClient({
     return { items: all.slice(0, DEP_LIMIT), total: all.length }
   }, [allCenarios, depSistema, depModulo, depSearch, existingDepIds])
 
-  // ── Switch toggles (with tab navigation) ────────────────────────────────────
+  // ── Switch toggles — stay on cadastro tab ──────────────────────────────────
   function toggleManual() {
     const next = !manual
     setManual(next)
-    if (next) {
-      if (activeTab === "cadastro") setActiveTab("manual")
-    } else {
+    if (!next) {
       if (activeTab === "manual") setActiveTab("cadastro")
       if (!automatizado && activeTab === "dependencias") setActiveTab("cadastro")
     }
@@ -175,9 +173,7 @@ export default function NovoCenarioClient({
   function toggleAutomatizado() {
     const next = !automatizado
     setAutomatizado(next)
-    if (next) {
-      if (activeTab === "cadastro" || (!manual && activeTab !== "dependencias")) setActiveTab("automatizado")
-    } else {
+    if (!next) {
       if (activeTab === "automatizado") setActiveTab("cadastro")
       if (!manual && activeTab === "dependencias") setActiveTab("cadastro")
     }
@@ -513,21 +509,33 @@ export default function NovoCenarioClient({
             </div>
           </div>
 
-          {/* Switches */}
+          {/* Tipo de teste — toggle switches */}
           <div className="rounded-lg border border-border-default bg-neutral-grey-50 p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-secondary">Tipo de teste</p>
             <div className="flex flex-wrap items-center gap-6">
               {[
-                { label: "Manual", checked: manual, toggle: toggleManual },
-                { label: "Automatizado", checked: automatizado, toggle: toggleAutomatizado },
-              ].map(({ label, checked, toggle }) => (
-                <Checkbox
-                  key={label}
-                  id={label}
-                  label={label}
-                  checked={checked}
-                  onChange={toggle}
-                />
+                { label: "Manual", checked: manual, toggle: toggleManual, id: "switch-manual" },
+                { label: "Automatizado", checked: automatizado, toggle: toggleAutomatizado, id: "switch-auto" },
+              ].map(({ label, checked, toggle, id }) => (
+                <label key={id} className="flex cursor-pointer select-none items-center gap-2">
+                  <button
+                    type="button"
+                    role="switch"
+                    id={id}
+                    aria-checked={checked}
+                    onClick={toggle}
+                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-1 ${
+                      checked ? "bg-brand-primary" : "bg-neutral-grey-400"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block size-4 shrink-0 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-transform duration-200 ${
+                        checked ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                  <span className="text-sm text-text-primary">{label}</span>
+                </label>
               ))}
             </div>
             {!manual && !automatizado && (
@@ -712,7 +720,7 @@ export default function NovoCenarioClient({
               </div>
               {steps.length === 0 ? (
                 <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
-                  Nenhum passo adicionado. Clique em <strong>+ Adicionar passo</strong>.
+                  Nenhum passo adicionado.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -968,7 +976,7 @@ export default function NovoCenarioClient({
           </div>
           <DialogFooter showCloseButton={false}>
             <Button variant="outline" onClick={() => setAddDepOpen(false)}>Cancelar</Button>
-            <Button onClick={addDeps}>Adicionar</Button>
+            <Button onClick={addDeps} disabled={selectedDepIds.size === 0}>Adicionar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

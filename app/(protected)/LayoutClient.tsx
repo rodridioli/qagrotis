@@ -85,7 +85,7 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark }: SidebarProps)
 
       <aside
         className={cn(
-          "flex h-screen flex-col border-r border-border-default bg-surface-card transition-[transform,width] duration-200",
+          "flex h-screen flex-col border-r border-border-default bg-surface-card text-text-primary transition-[transform,width] duration-200",
           "fixed inset-y-0 left-0 z-50 w-52",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           "lg:relative lg:translate-x-0",
@@ -131,10 +131,10 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark }: SidebarProps)
                 "group flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium transition-all duration-150",
                 collapsed ? "lg:justify-center" : "",
                 isActive
-                  ? "bg-brand-primary"
+                  ? "bg-brand-primary text-white"
                   : "text-text-secondary hover:bg-neutral-grey-100 hover:text-text-primary hover:translate-x-0.5"
               )
-              const linkStyle = isActive ? { color: "var(--primary-foreground)" } : undefined
+              const linkStyle = undefined
               const linkChildren = (
                 <>
                   <Icon className="size-4.5 shrink-0 transition-transform duration-150 group-hover:scale-110" />

@@ -77,7 +77,7 @@ export function ClienteCombobox({ clientes, value, onChange, onAddCliente }: Pro
 
       {/* Dropdown — absolutely positioned, always below the trigger */}
       {open && (
-        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-custom border border-border-default bg-surface-card shadow-card">
+        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-500 overflow-hidden rounded-custom border border-border-default bg-surface-card shadow-card">
           {/* Search */}
           <div className="flex items-center gap-2 border-b border-border-default px-3 py-2">
             <SearchIcon className="size-3.5 shrink-0 text-text-secondary" />
