@@ -2,7 +2,7 @@
 
 import React, { useCallback, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
-import { ArrowDown, ArrowLeft, ArrowUp, Check, Circle, FileDown, GripVertical, Plus, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowLeft, ArrowUp, Bot, Check, Circle, ClipboardList, FileDown, GripVertical, LayoutList, Network, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -39,6 +39,13 @@ const RISCO_OPTIONS = [
 ]
 
 type TabId = "cadastro" | "manual" | "automatizado" | "dependencias"
+
+const TAB_ICONS: Record<TabId, React.ElementType> = {
+  cadastro: LayoutList,
+  manual: ClipboardList,
+  automatizado: Bot,
+  dependencias: Network,
+}
 
 interface Props {
   cenario: CenarioRecord
@@ -411,34 +418,38 @@ export default function EditarCenarioClient({
 
         {/* Tab nav */}
         <div className="flex border-b border-border-default overflow-hidden rounded-t-xl">
-          {visibleTabs.map(({ id, label, badge, disabled }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveTab(id)}
-              disabled={disabled}
-              className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 -mb-px px-4 py-3 text-sm font-medium transition-all ${
-                activeTab === id
-                  ? "border-brand-primary text-brand-primary bg-brand-primary/5"
-                  : disabled
-                  ? "border-transparent text-text-secondary/40 cursor-not-allowed bg-transparent"
-                  : "border-transparent text-text-secondary hover:text-text-primary hover:bg-neutral-grey-50"
-              }`}
-            >
-              {label}
-              {badge !== null && badge > 0 && (
-                <span className={`inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-xs font-semibold ${
+          {visibleTabs.map(({ id, label, badge, disabled }) => {
+            const Icon = TAB_ICONS[id]
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveTab(id)}
+                disabled={disabled}
+                className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 -mb-px px-2 sm:px-4 py-3 text-sm font-medium transition-all ${
                   activeTab === id
-                    ? "border border-brand-primary/30 bg-brand-primary/15 text-brand-primary"
+                    ? "border-brand-primary text-brand-primary bg-brand-primary/5"
                     : disabled
-                    ? "bg-neutral-grey-100 text-text-secondary/40"
-                    : "bg-neutral-grey-200 text-text-secondary"
-                }`}>
-                  {badge}
-                </span>
-              )}
-            </button>
-          ))}
+                    ? "border-transparent text-text-secondary/40 cursor-not-allowed bg-transparent"
+                    : "border-transparent text-text-secondary hover:text-text-primary hover:bg-neutral-grey-50"
+                }`}
+              >
+                <Icon className="size-4 shrink-0" />
+                <span className={activeTab === id ? "" : "hidden sm:inline"}>{label}</span>
+                {badge !== null && badge > 0 && (
+                  <span className={`inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-xs font-semibold ${
+                    activeTab === id
+                      ? "border border-brand-primary/30 bg-brand-primary/15 text-brand-primary"
+                      : disabled
+                      ? "bg-neutral-grey-100 text-text-secondary/40"
+                      : "bg-neutral-grey-200 text-text-secondary"
+                  }`}>
+                    {badge}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
 
         {/* ── Cadastro tab ── */}
@@ -685,6 +696,8 @@ export default function EditarCenarioClient({
               </div>
             </div>
 
+            <div className="border-t border-border-default" />
+
             {/* Objetivo */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Objetivo</label>
@@ -774,7 +787,7 @@ export default function EditarCenarioClient({
                               onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
                               className="flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
                             >
-                              <Trash2 className="size-4 text-white" />
+                              <Trash2 className="size-4" style={{ color: "white" }} />
                             </button>
                           </td>
                         </tr>

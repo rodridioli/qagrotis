@@ -89,7 +89,7 @@ function FilterSelect<T extends string>({
 }) {
   return (
     <Select value={value} onValueChange={(v) => { if (v) onChange(v as T) }}>
-      <SelectTrigger className="h-8 min-w-32 text-xs" aria-label={label ?? "Filtrar por período"}>
+      <SelectTrigger className="h-8 min-w-20 shrink-0 text-xs" aria-label={label ?? "Filtrar por período"}>
         <SelectValue />
       </SelectTrigger>
       <SelectPopup>
@@ -202,7 +202,7 @@ export function DashboardCharts({
         {/* Ranking */}
         <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="min-w-0 text-sm font-semibold text-text-primary">
+            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">
               Ranking de geração
             </h2>
             <FilterSelect<RankingFilter>
@@ -265,7 +265,7 @@ export function DashboardCharts({
         {/* Testes executados */}
         <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
           <div className="mb-4 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-text-primary">Testes executados</h2>
+            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">Testes executados</h2>
             <FilterSelect<TestesFilter>
               options={TESTES_OPTS}
               value={testesFilter}
@@ -336,7 +336,7 @@ export function DashboardCharts({
         {/* Erros encontrados */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
           <div className="mb-4 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-text-primary">Erros encontrados</h2>
+            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">Erros encontrados</h2>
             <FilterSelect<ChartFilter>
               options={CHART_OPTS}
               value={errosFilter}
@@ -364,7 +364,7 @@ export function DashboardCharts({
         {/* Testes de sucesso */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
           <div className="mb-4 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-text-primary">Testes de sucesso</h2>
+            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">Testes de sucesso</h2>
             <FilterSelect<ChartFilter>
               options={CHART_OPTS}
               value={sucessoFilter}

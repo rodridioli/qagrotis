@@ -239,7 +239,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full table-fixed text-sm">
+              <table className="w-full min-w-215 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
@@ -251,7 +251,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                   <col className="w-12" />
                   <col className="w-14" />
                   <col className="w-24" />
-                  {showBulkActions && <col className="w-10" />}
+                  {showBulkActions && <col className="w-16" />}
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -272,7 +272,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Erros</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Cenários</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                    {showBulkActions && <th className="py-3 pl-2 pr-4" />}
+                    {showBulkActions && <th className="px-4 py-3" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -286,17 +286,10 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                           <Checkbox checked={selectedIds.has(s.id)} onChange={() => toggleRow(s.id)} />
                         </td>
                       )}
-                      <td className="px-4 py-3">
-                        {showBulkActions ? (
-                          <Link
-                            href={`/suites/${s.id}`}
-                            className="font-medium text-brand-primary hover:underline"
-                          >
-                            {s.id}
-                          </Link>
-                        ) : (
-                          <span className="font-medium text-text-secondary">{s.id}</span>
-                        )}
+                      <td className="px-4 py-3 font-medium">
+                        <Link href={`/suites/${s.id}`} className="text-brand-primary hover:underline">
+                          {s.id}
+                        </Link>
                       </td>
                       <td className="px-4 py-3 truncate font-medium text-text-primary">{s.suiteName}</td>
                       <td className="px-4 py-3 text-text-secondary">{s.versao}</td>
@@ -315,7 +308,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                         <SuiteTipoBadge tipo={s.tipo as SuiteTipo} />
                       </td>
                       {showBulkActions && (
-                        <td className="py-3 pl-2 pr-4">
+                        <td className="px-4 py-3">
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               render={

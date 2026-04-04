@@ -120,13 +120,13 @@ export function AtualizacoesClient({ entries }: Props) {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full table-fixed text-sm">
+              <table className="w-full min-w-120 table-fixed text-sm">
                 <colgroup>
                   <col className="w-24" />
                   <col className="w-28" />
                   <col className="w-28" />
                   <col />
-                  <col className="w-10" />
+                  <col className="w-16" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -134,7 +134,7 @@ export function AtualizacoesClient({ entries }: Props) {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Data</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Categoria</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Alterações</th>
-                    <th className="py-3 pl-2 pr-4" />
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody>
@@ -183,7 +183,7 @@ export function AtualizacoesClient({ entries }: Props) {
                             </p>
                           )}
                         </td>
-                        <td className="py-3 pl-2 pr-4">
+                        <td className="px-4 py-3">
                           {hasMore && (
                             <button
                               type="button"

@@ -199,7 +199,7 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full table-fixed text-sm">
+              <table className="w-full min-w-150 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
@@ -207,7 +207,7 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
                   <col className="w-36" />
                   <col />
                   <col className="w-20" />
-                  <col className="w-10" />
+                  <col className="w-16" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -224,7 +224,7 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Cenários</th>
-                    <th className="py-3 pl-2 pr-4" />
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody>
@@ -241,7 +241,9 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
                           />
                         </td>
                       )}
-                      <td className="px-4 py-3 font-medium text-text-secondary">{m.id}</td>
+                      <td className="px-4 py-3 font-medium">
+                        <Link href={`/configuracoes/modulos/${m.id}/editar`} className="text-brand-primary hover:underline">{m.id}</Link>
+                      </td>
                       <td className="px-4 py-3 font-medium text-text-primary">{m.name}</td>
                       <td className="px-4 py-3 text-text-secondary">{m.sistemaName}</td>
                       <td className="px-4 py-3 text-text-secondary truncate">
@@ -250,7 +252,7 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
                       <td className="px-4 py-3 text-center tabular-nums text-text-secondary text-sm">
                         {initialCenarios.filter((c) => c.module === m.name && c.active).length || <span className="italic text-text-secondary/60">0</span>}
                       </td>
-                      <td className="py-3 pl-2 pr-4">
+                      <td className="px-4 py-3">
                         {showBulkActions && m.active ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger

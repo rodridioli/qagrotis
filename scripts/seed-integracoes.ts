@@ -30,7 +30,7 @@ const integracoes = [
     id: "INT-01",
     descricao: "Gemini 2.0 Flash (visão, gratuito)",
     provider: "openrouter",
-    model: "google/gemini-2.0-flash-exp:free",
+    model: "google/gemini-2.0-flash-lite:free",
     apiKey: API_KEY,
     active: true,
   },

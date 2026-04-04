@@ -489,7 +489,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full table-fixed text-sm">
+              <table className="w-full min-w-175 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
@@ -500,7 +500,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                   <col className="w-14" />
                   <col className="w-14" />
                   <col className="w-24" />
-                  <col className="w-10" />
+                  <col className="w-16" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -520,7 +520,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Erros</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Suítes</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                    <th className="py-3 pl-2 pr-4" />
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody>
@@ -553,7 +553,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                       <td className="px-4 py-3">
                         <CenarioTipoBadge tipo={c.tipo as "Automatizado" | "Manual" | "Man./Auto."} />
                       </td>
-                      <td className="py-3 pl-2 pr-4">
+                      <td className="px-4 py-3">
                         {showBulkActions && c.active ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger

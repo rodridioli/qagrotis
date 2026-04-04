@@ -222,14 +222,14 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full table-fixed text-sm">
+              <table className="w-full min-w-125 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
                   <col />
                   <col className="w-48" />
                   <col className="w-28" />
-                  <col className="w-10" />
+                  <col className="w-16" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -245,7 +245,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">E-mail</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                    <th className="py-3 pl-2 pr-4" />
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody>
@@ -265,7 +265,9 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                             />
                           </td>
                         )}
-                        <td className="px-4 py-3 font-medium text-text-secondary">{u.id}</td>
+                        <td className="px-4 py-3 font-medium">
+                          <Link href={`/configuracoes/usuarios/${u.id}/editar`} className="text-brand-primary hover:underline">{u.id}</Link>
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             {u.photoPath ? (
@@ -284,7 +286,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                         </td>
                         <td className="px-4 py-3 text-text-secondary">{u.email}</td>
                         <td className="px-4 py-3"><UserTipoBadge tipo={u.type} /></td>
-                        <td className="py-3 pl-2 pr-4">
+                        <td className="px-4 py-3">
                           {isSelf ? (
                             <Link
                               href={`/configuracoes/usuarios/${u.id}/editar`}
@@ -307,8 +309,8 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" side="bottom">
                                 <DropdownMenuItem>
-                                  <Link href={`/configuracoes/usuarios/${u.id}`} className="w-full">
-                                    Visualizar
+                                  <Link href={`/configuracoes/usuarios/${u.id}/editar`} className="w-full">
+                                    Editar
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
