@@ -5,9 +5,8 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { PROTOTYPE_USERS } from "@/lib/prototype-users"
-import { gerarConvite } from "@/lib/actions/invite-tokens"
-import { sendInviteEmail } from "@/lib/email"
-import { nextId, verifyPassword } from "@/lib/db-utils"
+import { sendWelcomeEmail } from "@/lib/email"
+import { nextId, verifyPassword, hashPassword } from "@/lib/db-utils"
 import { requireAdmin, requireSession, checkIsAdmin } from "@/lib/session"
 import { prisma } from "@/lib/prisma"
 
@@ -117,74 +116,105 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
   }
 }
 
-export async function inativarQaUsers(ids: string[]): Promise<void> {
-  await requireAdmin()
-  if (ids.length === 0) return
-  idsArraySchema.parse(ids)
+export async function inativarQaUsers(ids: string[]): Promise<{ error?: string }> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { error: "Não autorizado." }
+  }
+  if (ids.length === 0) return {}
+  const result = idsArraySchema.safeParse(ids)
+  if (!result.success) return { error: "IDs inválidos." }
 
-  await prisma.inactiveUser.createMany({
-    data: ids.map((userId) => ({ userId })),
-    skipDuplicates: true,
-  })
-  revalidatePath("/configuracoes/usuarios")
+  try {
+    await prisma.inactiveUser.createMany({
+      data: ids.map((userId) => ({ userId })),
+      skipDuplicates: true,
+    })
+    revalidatePath("/configuracoes/usuarios")
+    return {}
+  } catch (e) {
+    console.error("[inativarQaUsers]", e)
+    return { error: "Erro ao inativar usuários." }
+  }
 }
 
 export async function criarQaUser(data: {
   name: string
   email: string
   type: string
-}): Promise<void> {
-  await requireAdmin()
-  const parsed = userInputSchema.parse({
-    name:  data.name.trim(),
-    email: data.email.trim().toLowerCase(),
-    type:  data.type,
-  })
-
-  const [inactiveRecords, existingCreated] = await Promise.all([
-    prisma.inactiveUser.findMany({ select: { userId: true } }),
-    prisma.createdUser.findFirst({
-      where: { email: { equals: parsed.email, mode: "insensitive" } },
-      select: { id: true },
-    }),
-  ])
-
-  const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
-
-  // Block if email is already active (mock or created)
-  const activeMockEmails = MOCK_USERS
-    .filter((u) => !inactiveIds.has(u.id))
-    .map((u) => u.email.toLowerCase())
-
-  if (activeMockEmails.includes(parsed.email)) {
-    throw new Error("E-mail já cadastrado.")
-  }
-  if (existingCreated && !inactiveIds.has(existingCreated.id)) {
-    throw new Error("E-mail já cadastrado.")
-  }
-
-  const createdIds = await prisma.createdUser.findMany({ select: { id: true } })
-  const allIds = [...MOCK_USERS.map((u) => u.id), ...createdIds.map((u) => u.id)]
-  const id = nextId(allIds, "U")
-
-  // Store user without password — password is set via invite link
-  await prisma.createdUser.create({
-    data: { id, name: parsed.name, email: parsed.email, type: parsed.type, photoPath: null, password: "" },
-  })
-
-  // Generate invite token and send email (non-blocking — user is saved regardless)
-  const token = await gerarConvite(id, parsed.email)
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+  password: string
+}): Promise<{ error?: string; emailEnviado?: boolean }> {
+  // Auth — return error instead of throwing so Next.js error boundary isn't triggered
   try {
-    await sendInviteEmail({ to: parsed.email, name: parsed.name, token })
+    await requireAdmin()
   } catch {
-    console.warn(
-      `[invite] E-mail não enviado. Link de convite para ${parsed.email}:\n` +
-      `${appUrl}/definir-senha/${token}`
-    )
+    return { error: "Não autorizado." }
   }
 
-  revalidatePath("/configuracoes/usuarios")
+  if (!data.password || data.password.length < 8) {
+    return { error: "A senha deve ter no mínimo 8 caracteres." }
+  }
+  if (data.password.length > 100) {
+    return { error: "Senha muito longa." }
+  }
+
+  let parsed: { name: string; email: string; type: "Padrão" | "Administrador" }
+  try {
+    parsed = userInputSchema.parse({
+      name:  data.name.trim(),
+      email: data.email.trim().toLowerCase(),
+      type:  data.type,
+    })
+  } catch (e) {
+    if (e instanceof z.ZodError) return { error: e.issues[0]?.message ?? "Dados inválidos." }
+    return { error: "Dados inválidos." }
+  }
+
+  try {
+    const [inactiveRecords, existingCreated] = await Promise.all([
+      prisma.inactiveUser.findMany({ select: { userId: true } }),
+      prisma.createdUser.findFirst({
+        where: { email: { equals: parsed.email, mode: "insensitive" } },
+        select: { id: true },
+      }),
+    ])
+
+    const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
+
+    // Block if email is already active (mock or created)
+    const activeMockEmails = MOCK_USERS
+      .filter((u) => !inactiveIds.has(u.id))
+      .map((u) => u.email.toLowerCase())
+
+    if (activeMockEmails.includes(parsed.email)) return { error: "E-mail já cadastrado." }
+    if (existingCreated && !inactiveIds.has(existingCreated.id)) return { error: "E-mail já cadastrado." }
+
+    const createdIds = await prisma.createdUser.findMany({ select: { id: true } })
+    const allIds = [...MOCK_USERS.map((u) => u.id), ...createdIds.map((u) => u.id)]
+    const id = nextId(allIds, "U")
+
+    const hashedPassword = hashPassword(data.password)
+
+    await prisma.createdUser.create({
+      data: { id, name: parsed.name, email: parsed.email, type: parsed.type, photoPath: null, password: hashedPassword },
+    })
+
+    // Send welcome email with temporary password
+    let emailEnviado = false
+    try {
+      await sendWelcomeEmail({ to: parsed.email, name: parsed.name, password: data.password })
+      emailEnviado = true
+    } catch {
+      console.warn(`[welcome] E-mail não enviado para ${parsed.email}.`)
+    }
+
+    revalidatePath("/configuracoes/usuarios")
+    return { emailEnviado }
+  } catch (e) {
+    console.error("[criarQaUser]", e)
+    return { error: "Erro ao criar usuário. Tente novamente." }
+  }
 }
 
 export async function validateLogin(
@@ -223,47 +253,71 @@ export async function validateLogin(
 export async function atualizarQaUser(
   id: string,
   data: { name: string; email: string; type: string; photoPath?: string | null }
-): Promise<void> {
-  const session = await requireSession()
-  idSchema.parse(id)
-
-  const isAdmin = await checkIsAdmin()
-  const sessionEmail = session.user?.email?.toLowerCase() ?? ""
-
-  const targetProfile = await getQaUserProfile(id)
-  if (!targetProfile) throw new Error("Usuário não encontrado.")
-
-  // Non-admins can only edit their own profile
-  if (!isAdmin && targetProfile.email.toLowerCase() !== sessionEmail) {
-    throw new Error("Não autorizado.")
+): Promise<{ error?: string }> {
+  let session: Awaited<ReturnType<typeof requireSession>>
+  try {
+    session = await requireSession()
+  } catch {
+    return { error: "Não autenticado." }
   }
 
-  // Non-admins cannot change user type (prevents privilege escalation)
-  const type = isAdmin ? data.type : targetProfile.type
+  const idResult = idSchema.safeParse(id)
+  if (!idResult.success) return { error: "ID inválido." }
 
-  const parsed = userInputSchema.parse({
-    name:  data.name.trim(),
-    email: data.email.trim().toLowerCase(),
-    type,
-  })
+  try {
+    const isAdmin = await checkIsAdmin()
+    const sessionEmail = session.user?.email?.toLowerCase() ?? ""
 
-  // Validate photo path to prevent directory traversal
-  const safePhotoPath = data.photoPath !== undefined ? validatePhotoPath(data.photoPath) : undefined
+    const targetProfile = await getQaUserProfile(id)
+    if (!targetProfile) return { error: "Usuário não encontrado." }
 
-  const profileData: { name: string; email: string; type: string; photoPath?: string | null } = {
-    name:  parsed.name,
-    email: parsed.email,
-    type:  parsed.type,
+    // Non-admins can only edit their own profile
+    if (!isAdmin && targetProfile.email.toLowerCase() !== sessionEmail) {
+      return { error: "Não autorizado." }
+    }
+
+    // Non-admins cannot change user type (prevents privilege escalation)
+    const type = isAdmin ? data.type : targetProfile.type
+
+    let parsed: { name: string; email: string; type: "Padrão" | "Administrador" }
+    try {
+      parsed = userInputSchema.parse({
+        name:  data.name.trim(),
+        email: data.email.trim().toLowerCase(),
+        type,
+      })
+    } catch (e) {
+      if (e instanceof z.ZodError) return { error: e.issues[0]?.message ?? "Dados inválidos." }
+      return { error: "Dados inválidos." }
+    }
+
+    // Validate photo path to prevent directory traversal
+    let safePhotoPath: string | null | undefined
+    try {
+      safePhotoPath = data.photoPath !== undefined ? validatePhotoPath(data.photoPath) : undefined
+    } catch {
+      return { error: "Caminho de foto inválido." }
+    }
+
+    const profileData: { name: string; email: string; type: string; photoPath?: string | null } = {
+      name:  parsed.name,
+      email: parsed.email,
+      type:  parsed.type,
+    }
+    if (safePhotoPath !== undefined) profileData.photoPath = safePhotoPath
+
+    await prisma.userProfile.upsert({
+      where:  { userId: id },
+      create: { userId: id, name: parsed.name, email: parsed.email, type: parsed.type, photoPath: safePhotoPath ?? null },
+      update: profileData,
+    })
+
+    revalidatePath("/configuracoes/usuarios")
+    revalidatePath(`/configuracoes/usuarios/${id}`)
+    revalidatePath(`/configuracoes/usuarios/${id}/editar`)
+    return {}
+  } catch (e) {
+    console.error("[atualizarQaUser]", e)
+    return { error: "Erro ao atualizar usuário. Tente novamente." }
   }
-  if (safePhotoPath !== undefined) profileData.photoPath = safePhotoPath
-
-  await prisma.userProfile.upsert({
-    where:  { userId: id },
-    create: { userId: id, name: parsed.name, email: parsed.email, type: parsed.type, photoPath: safePhotoPath ?? null },
-    update: profileData,
-  })
-
-  revalidatePath("/configuracoes/usuarios")
-  revalidatePath(`/configuracoes/usuarios/${id}`)
-  revalidatePath(`/configuracoes/usuarios/${id}/editar`)
 }

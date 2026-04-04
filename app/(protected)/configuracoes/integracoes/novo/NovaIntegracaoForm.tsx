@@ -26,7 +26,7 @@ export default function NovaIntegracaoForm() {
   const [isPending, startTransition] = useTransition()
   const [provider, setProvider] = useState<"google" | "openai" | "anthropic" | "groq" | "openrouter">("openrouter")
 
-  const [model, setModel] = useState("meta-llama/llama-3.1-8b-instruct:free")
+  const [model, setModel] = useState("google/gemini-2.0-flash-exp:free")
   const [apiKey, setApiKey] = useState("")
   const [showKey, setShowKey] = useState(false)
 
@@ -78,12 +78,12 @@ export default function NovaIntegracaoForm() {
     if (!p) return
     const prov = p as any
     setProvider(prov)
-    // Defaults for each provider
-    if (prov === "openrouter") setModel("meta-llama/llama-3.1-8b-instruct:free")
-    else if (prov === "google") setModel("gemini-2.0-flash")
+    // Default to vision-capable models where possible
+    if (prov === "openrouter") setModel("google/gemini-2.0-flash-exp:free")
+    else if (prov === "google") setModel("gemini-2.0-flash-exp")
     else if (prov === "groq") setModel("llama-3.1-70b-versatile")
     else if (prov === "openai") setModel("gpt-4o-mini")
-    else if (prov === "anthropic") setModel("claude-3-5-sonnet-latest")
+    else if (prov === "anthropic") setModel("claude-opus-4-6")
   }
 
 
@@ -160,7 +160,10 @@ export default function NovaIntegracaoForm() {
               placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
             />
             {provider === "openrouter" && (
-              <p className="text-[10px] text-text-secondary">Modelos gratuitos: meta-llama/llama-3.1-8b-instruct:free · mistralai/mistral-7b-instruct:free · google/gemma-2-9b-it:free · microsoft/phi-3-mini-128k-instruct:free</p>
+              <p className="text-[10px] text-text-secondary">
+                Com visão (recomendado): <span className="font-medium">google/gemini-2.0-flash-exp:free</span> · meta-llama/llama-3.2-11b-vision-instruct:free<br />
+                Apenas texto: meta-llama/llama-3.1-8b-instruct:free · mistralai/mistral-7b-instruct:free · google/gemma-2-9b-it:free
+              </p>
             )}
             {provider === "groq" && (
               <p className="text-[10px] text-text-secondary">Sugestão: llama-3.1-70b-versatile, llama-3.1-8b-instant</p>

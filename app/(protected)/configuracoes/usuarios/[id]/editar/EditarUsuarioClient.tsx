@@ -83,12 +83,17 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
         resolvedPhotoPath = null
       }
 
-      await atualizarQaUser(id, {
+      const result = await atualizarQaUser(id, {
         name: nome,
         email,
         type: tipo,
         photoPath: resolvedPhotoPath,
       })
+
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
 
       toast.success("Cadastro atualizado com sucesso.")
       router.refresh()

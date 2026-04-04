@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import React, { useMemo, useState } from "react"
+import { Layers, FileText, ClipboardList, Cpu } from "lucide-react"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import { DashboardCharts } from "./DashboardCharts"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
@@ -11,7 +12,7 @@ import type { SuiteRecord } from "@/lib/actions/suites"
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type RankingFilter = "hoje" | "semana" | "mes-atual" | "mes-anterior" | "ano-atual"
-export type TestesFilter  = "semana" | "mes-atual" | "mes-anterior" | "ano-atual"
+export type TestesFilter  = "hoje" | "semana" | "mes-atual" | "mes-anterior" | "ano-atual"
 export type ChartFilter   = "hoje" | "semana" | "mes-atual" | "mes-anterior" | "ano-atual"
 export interface DataPoint  { label: string; value: number }
 export interface RankingItem { createdBy: string; count: number }
@@ -112,18 +113,32 @@ function MetricCard({
   label,
   value,
   percentage,
+  icon: Icon,
+  iconColor,
 }: {
   label: string
   value: string
   percentage?: string
+  icon: React.ElementType
+  iconColor: string
 }) {
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
-      <p className="text-sm text-text-secondary">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-text-primary">{value}</p>
-      {percentage && (
-        <p className="mt-1 text-xs text-text-secondary">{percentage}</p>
-      )}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm text-text-secondary">{label}</p>
+          <p className="mt-1 text-2xl font-bold text-text-primary">{value}</p>
+          {percentage && (
+            <p className="mt-1 text-xs text-text-secondary">{percentage}</p>
+          )}
+        </div>
+        <div
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg"
+          style={{ background: iconColor + "1a" }}
+        >
+          <Icon className="size-5" style={{ color: iconColor }} aria-hidden />
+        </div>
+      </div>
     </div>
   )
 }
@@ -153,9 +168,9 @@ export function DashboardClient({
 
   // ── Filter states ──────────────────────────────────────────────────────────
   const [rankingFilter, setRankingFilter] = useState<RankingFilter>("hoje")
-  const [testesFilter,  setTestesFilter]  = useState<TestesFilter>("mes-atual")
-  const [errosFilter,   setErrosFilter]   = useState<ChartFilter>("mes-atual")
-  const [sucessoFilter, setSucessoFilter] = useState<ChartFilter>("mes-atual")
+  const [testesFilter,  setTestesFilter]  = useState<TestesFilter>("hoje")
+  const [errosFilter,   setErrosFilter]   = useState<ChartFilter>("hoje")
+  const [sucessoFilter, setSucessoFilter] = useState<ChartFilter>("hoje")
 
   // ── User map ───────────────────────────────────────────────────────────────
   const userMap = useMemo(() => {
@@ -296,10 +311,10 @@ export function DashboardClient({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricCard label="Módulos"          value={String(totalModulos)} />
-        <MetricCard label="Total de cenários" value={totalCenarios.toLocaleString("pt-BR")} />
-        <MetricCard label="Manuais"           value={totalManuais.toLocaleString("pt-BR")}       percentage={`${pctManuais}%`} />
-        <MetricCard label="Automatizados"     value={totalAutomatizados.toLocaleString("pt-BR")} percentage={`${pctAuto}%`} />
+        <MetricCard label="Módulos"           value={String(totalModulos)}                        icon={Layers}        iconColor="#00735D" />
+        <MetricCard label="Total de cenários" value={totalCenarios.toLocaleString("pt-BR")}      icon={FileText}      iconColor="#6366f1" />
+        <MetricCard label="Manuais"           value={totalManuais.toLocaleString("pt-BR")}       icon={ClipboardList} iconColor="#f59e0b" percentage={`${pctManuais}%`} />
+        <MetricCard label="Automatizados"     value={totalAutomatizados.toLocaleString("pt-BR")} icon={Cpu}           iconColor="#0ea5e9" percentage={`${pctAuto}%`} />
       </div>
 
       <DashboardCharts

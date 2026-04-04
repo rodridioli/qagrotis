@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Check } from "lucide-react"
+import { ArrowLeft, Check, Eye, EyeOff, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -17,6 +17,37 @@ import { PhotoUpload } from "@/components/qagrotis/PhotoUpload"
 import { criarQaUser } from "@/lib/actions/usuarios"
 import { toast } from "sonner"
 
+function generateSecurePassword(): string {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+  const lower = "abcdefghjkmnpqrstuvwxyz"
+  const digits = "23456789"
+  const special = "!@#$%&*"
+  const all = upper + lower + digits + special
+  const arr = new Uint8Array(12)
+  crypto.getRandomValues(arr)
+  const chars = [
+    upper[arr[0] % upper.length],
+    upper[arr[1] % upper.length],
+    lower[arr[2] % lower.length],
+    lower[arr[3] % lower.length],
+    digits[arr[4] % digits.length],
+    digits[arr[5] % digits.length],
+    special[arr[6] % special.length],
+    special[arr[7] % special.length],
+    all[arr[8] % all.length],
+    all[arr[9] % all.length],
+    all[arr[10] % all.length],
+    all[arr[11] % all.length],
+  ]
+  const shuffleArr = new Uint8Array(chars.length)
+  crypto.getRandomValues(shuffleArr)
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = shuffleArr[i] % (i + 1)
+    ;[chars[i], chars[j]] = [chars[j], chars[i]]
+  }
+  return chars.join("")
+}
+
 export default function NovoUsuarioForm() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -25,6 +56,18 @@ export default function NovoUsuarioForm() {
   const [email, setEmail] = useState("")
   const [tipo, setTipo] = useState<string>("Padrão")
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+
+  const [initialPassword] = useState(() => generateSecurePassword())
+  const [password, setPassword] = useState(initialPassword)
+  const [confirmPassword, setConfirmPassword] = useState(initialPassword)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+
+  function handleGeneratePassword() {
+    const pwd = generateSecurePassword()
+    setPassword(pwd)
+    setConfirmPassword(pwd)
+  }
 
   function handlePhotoSelect(file: File) {
     const reader = new FileReader()
@@ -45,10 +88,26 @@ export default function NovoUsuarioForm() {
       toast.error("Formato de e-mail inválido.")
       return
     }
+    if (password.length < 8) {
+      toast.error("A senha deve ter no mínimo 8 caracteres.")
+      return
+    }
+    if (password !== confirmPassword) {
+      toast.error("As senhas não coincidem.")
+      return
+    }
 
     startTransition(async () => {
-      await criarQaUser({ name: nome, email, type: tipo })
-      toast.success("Usuário criado. Um e-mail de convite foi enviado.")
+      const result = await criarQaUser({ name: nome, email, type: tipo, password })
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      if (result.emailEnviado) {
+        toast.success("Usuário criado. E-mail com senha enviado.")
+      } else {
+        toast.success("Usuário criado. O e-mail com senha não pôde ser enviado — informe-o manualmente.")
+      }
       router.push("/configuracoes/usuarios")
     })
   }
@@ -118,9 +177,67 @@ export default function NovoUsuarioForm() {
             </Select>
           </div>
 
-          <p className="text-sm text-text-secondary">
-            O usuário receberá um e-mail para definir sua própria senha.
-          </p>
+          {/* ── Password section ── */}
+          <div className="border-t border-border-default pt-4 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-medium text-text-primary">
+                Senha de acesso <span className="text-destructive">*</span>
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleGeneratePassword}
+                disabled={isPending}
+              >
+                <RefreshCw className="size-3.5" />
+                Gerar senha segura
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">Senha</label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">Confirmar senha</label>
+                <div className="relative">
+                  <Input
+                    type={showConfirm ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
+                  >
+                    {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-text-secondary">
+              O usuário receberá um e-mail com a senha e deverá alterá-la no primeiro acesso.
+            </p>
+          </div>
         </div>
 
         <div className="rounded-xl bg-surface-card p-5 shadow-card">

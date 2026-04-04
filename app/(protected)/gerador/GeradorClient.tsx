@@ -454,7 +454,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
               <textarea
                 value={contexto}
                 onChange={(e) => setContexto(e.target.value)}
-                placeholder="Cole aqui o texto da tarefa do Jira, história de usuário, requisito ou qualquer contexto relevante..."
+                placeholder="Cole aqui o texto da tarefa do Jira ou especifique o contexto."
                 rows={8}
                 className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 transition-colors"
               />

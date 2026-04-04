@@ -1,5 +1,41 @@
 [
   {
+    "version": "1.2.0",
+    "commit": "pendente",
+    "date": "2026-04-04",
+    "tag": "Melhoria",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Correção do cadastro de usuários: erros não causam mais crash da página (error boundary + retorno de estado)",
+      "Módulo de Visão IA: prompt de sistema aprimorado para análise de prints de tela",
+      "Suporte multimodal adicionado ao provedor Anthropic (Claude com visão)",
+      "Nova Integração: modelos com visão exibidos com destaque (google/gemini-2.0-flash-exp:free, llama-3.2-vision)",
+      "Adicionado error boundary global para rotas protegidas (evita tela branca em erros de servidor)",
+      "Script de atualização automática de changelog (npm run changelog:update)",
+      "Auditoria de segurança e performance geral do sistema"
+    ]
+  },
+  {
+    "version": "1.1.0",
+    "commit": "895b342",
+    "date": "2026-04-04",
+    "tag": "Melhoria",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Dashboard: filtros de período (hoje/semana/mês/ano) nos blocos Ranking, Testes e Erros",
+      "Dashboard: novo bloco 'Testes de sucesso' com filtro de período",
+      "Dashboard: filtros substituídos por select nativo (chips removidos)",
+      "Dashboard: ícones grandes nos cards de métricas (Módulos, Cenários, Manuais, Automatizados)",
+      "Cadastro de cenários: switch Manual/Automatizado mantém aba Cadastro ativa ao habilitar",
+      "Cadastro de cenários: toggle visual corrigido (thumb branco visível em dark mode)",
+      "Menu lateral: texto dos itens ativos corrigido para branco sobre fundo verde",
+      "Menu responsivo: itens visíveis em telas mobile (cor corrigida)",
+      "ClienteCombobox: z-index corrigido para dropdown não ser cortado pelo card",
+      "Cadastro de usuário: link de convite exibido na tela quando e-mail não pode ser enviado",
+      "E-mail de convite: suporte a SMTP próprio (Gmail, Outlook, etc.) sem depender do Resend"
+    ]
+  },
+  {
     "version": "1.0.0",
     "commit": "e8fce46",
     "date": "2026-04-01",

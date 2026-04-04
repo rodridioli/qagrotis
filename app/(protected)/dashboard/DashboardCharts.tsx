@@ -5,7 +5,13 @@ import {
   BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
-import { cn } from "@/lib/utils"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "@/components/ui/select"
 import type {
   RankingFilter, TestesFilter, ChartFilter,
   DataPoint, RankingItem,
@@ -44,7 +50,7 @@ interface Props {
 
 // ── Filter options ─────────────────────────────────────────────────────────────
 
-const RANKING_FILTERS: { value: RankingFilter; label: string }[] = [
+const RANKING_OPTS: { value: RankingFilter; label: string }[] = [
   { value: "hoje",         label: "Hoje" },
   { value: "semana",       label: "Última semana" },
   { value: "mes-atual",    label: "Mês atual" },
@@ -52,20 +58,48 @@ const RANKING_FILTERS: { value: RankingFilter; label: string }[] = [
   { value: "ano-atual",    label: "Ano atual" },
 ]
 
-const TESTES_FILTERS: { value: TestesFilter; label: string }[] = [
-  { value: "semana",       label: "Última semana" },
-  { value: "mes-atual",    label: "Mês atual" },
-  { value: "mes-anterior", label: "Mês anterior" },
-  { value: "ano-atual",    label: "Ano atual" },
-]
-
-const CHART_FILTERS: { value: ChartFilter; label: string }[] = [
+const TESTES_OPTS: { value: TestesFilter; label: string }[] = [
   { value: "hoje",         label: "Hoje" },
   { value: "semana",       label: "Última semana" },
   { value: "mes-atual",    label: "Mês atual" },
   { value: "mes-anterior", label: "Mês anterior" },
   { value: "ano-atual",    label: "Ano atual" },
 ]
+
+const CHART_OPTS: { value: ChartFilter; label: string }[] = [
+  { value: "hoje",         label: "Hoje" },
+  { value: "semana",       label: "Última semana" },
+  { value: "mes-atual",    label: "Mês atual" },
+  { value: "mes-anterior", label: "Mês anterior" },
+  { value: "ano-atual",    label: "Ano atual" },
+]
+
+// ── FilterSelect ───────────────────────────────────────────────────────────────
+
+function FilterSelect<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+}: {
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (v: T) => void
+  label?: string
+}) {
+  return (
+    <Select value={value} onValueChange={(v) => { if (v) onChange(v as T) }}>
+      <SelectTrigger className="h-8 min-w-32 text-xs" aria-label={label ?? "Filtrar por período"}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectPopup>
+        {options.map(o => (
+          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+        ))}
+      </SelectPopup>
+    </Select>
+  )
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -79,13 +113,7 @@ function TruncatedTick({ x, y, payload }: { x?: number; y?: number; payload?: { 
   return (
     <g transform={`translate(${x},${y})`}>
       <title>{payload.value}</title>
-      <text
-        x={0} y={0} dy={10}
-        textAnchor="end"
-        fill="var(--text-secondary)"
-        fontSize={10}
-        transform="rotate(-35)"
-      >
+      <text x={0} y={0} dy={10} textAnchor="end" fill="var(--text-secondary)" fontSize={10} transform="rotate(-35)">
         {label}
       </text>
     </g>
@@ -117,8 +145,6 @@ const TOOLTIP_STYLE = {
   background: "var(--surface-card)",
   color: "var(--text-primary)",
 }
-
-// ── Sub-components ─────────────────────────────────────────────────────────────
 
 function Avatar({
   displayName,
@@ -157,37 +183,6 @@ function Avatar({
   )
 }
 
-function FilterPills<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: T; label: string }[]
-  value: T
-  onChange: (v: T) => void
-}) {
-  return (
-    <div className="flex flex-wrap gap-1" role="group" aria-label="Filtro de período">
-      {options.map(opt => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          aria-pressed={value === opt.value}
-          className={cn(
-            "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
-            value === opt.value
-              ? "bg-brand-primary text-white"
-              : "bg-neutral-grey-100 text-text-secondary hover:bg-neutral-grey-200 hover:text-text-primary"
-          )}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 // ── Main export ────────────────────────────────────────────────────────────────
 
 export function DashboardCharts({
@@ -206,14 +201,15 @@ export function DashboardCharts({
 
         {/* Ranking */}
         <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
-          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <h2 className="shrink-0 text-sm font-semibold text-text-primary">
-              Ranking de geração de cenários
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="min-w-0 text-sm font-semibold text-text-primary">
+              Ranking de geração
             </h2>
-            <FilterPills<RankingFilter>
-              options={RANKING_FILTERS}
+            <FilterSelect<RankingFilter>
+              options={RANKING_OPTS}
               value={rankingFilter}
               onChange={onRankingFilterChange}
+              label="Filtro ranking"
             />
           </div>
 
@@ -253,24 +249,9 @@ export function DashboardCharts({
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={automationData} margin={{ top: 0, right: 0, left: -20, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-                <XAxis
-                  dataKey="module"
-                  tick={<TruncatedTick />}
-                  axisLine={false}
-                  tickLine={false}
-                  interval={0}
-                />
-                <YAxis
-                  tick={{ fontSize: 12, fill: "var(--text-secondary)" }}
-                  axisLine={false}
-                  tickLine={false}
-                  domain={[0, 100]}
-                />
-                <Tooltip
-                  contentStyle={TOOLTIP_STYLE}
-                  cursor={{ fill: "transparent" }}
-                  formatter={(v) => [`${v}%`, "Cobertura"]}
-                />
+                <XAxis dataKey="module" tick={<TruncatedTick />} axisLine={false} tickLine={false} interval={0} />
+                <YAxis tick={{ fontSize: 12, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "transparent" }} formatter={v => [`${v}%`, "Cobertura"]} />
                 <Bar dataKey="coverage" fill="var(--brand-primary)" radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
@@ -283,12 +264,13 @@ export function DashboardCharts({
 
         {/* Testes executados */}
         <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <h2 className="shrink-0 text-sm font-semibold text-text-primary">Testes executados</h2>
-            <FilterPills<TestesFilter>
-              options={TESTES_FILTERS}
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-text-primary">Testes executados</h2>
+            <FilterSelect<TestesFilter>
+              options={TESTES_OPTS}
               value={testesFilter}
               onChange={onTestesFilterChange}
+              label="Filtro testes"
             />
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -300,27 +282,10 @@ export function DashboardCharts({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11, fill: "var(--text-secondary)" }}
-                axisLine={false}
-                tickLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: "var(--text-secondary)" }}
-                axisLine={false}
-                tickLine={false}
-                allowDecimals={false}
-              />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [v, "Execuções"]} />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="var(--qagrotis-primary-500)"
-                strokeWidth={2}
-                fill="url(#testsGradient)"
-              />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v, "Execuções"]} />
+              <Area type="monotone" dataKey="value" stroke="var(--qagrotis-primary-500)" strokeWidth={2} fill="url(#testsGradient)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -370,12 +335,13 @@ export function DashboardCharts({
 
         {/* Erros encontrados */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <h2 className="shrink-0 text-sm font-semibold text-text-primary">Erros encontrados</h2>
-            <FilterPills<ChartFilter>
-              options={CHART_FILTERS}
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-text-primary">Erros encontrados</h2>
+            <FilterSelect<ChartFilter>
+              options={CHART_OPTS}
               value={errosFilter}
               onChange={onErrosFilterChange}
+              label="Filtro erros"
             />
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -387,39 +353,23 @@ export function DashboardCharts({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11, fill: "var(--color-red-500)" }}
-                axisLine={false}
-                tickLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: "var(--text-secondary)" }}
-                axisLine={false}
-                tickLine={false}
-                allowDecimals={false}
-              />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [v, "Erros"]} />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="var(--color-red-500)"
-                strokeWidth={2}
-                fill="url(#errorsGradient)"
-              />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--color-red-500)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v, "Erros"]} />
+              <Area type="monotone" dataKey="value" stroke="var(--color-red-500)" strokeWidth={2} fill="url(#errorsGradient)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
         {/* Testes de sucesso */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <h2 className="shrink-0 text-sm font-semibold text-text-primary">Testes de sucesso</h2>
-            <FilterPills<ChartFilter>
-              options={CHART_FILTERS}
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-text-primary">Testes de sucesso</h2>
+            <FilterSelect<ChartFilter>
+              options={CHART_OPTS}
               value={sucessoFilter}
               onChange={onSucessoFilterChange}
+              label="Filtro sucesso"
             />
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -431,27 +381,10 @@ export function DashboardCharts({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11, fill: "var(--qagrotis-primary-600)" }}
-                axisLine={false}
-                tickLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: "var(--text-secondary)" }}
-                axisLine={false}
-                tickLine={false}
-                allowDecimals={false}
-              />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [v, "Sucessos"]} />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="var(--qagrotis-primary-500)"
-                strokeWidth={2}
-                fill="url(#successGradient)"
-              />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--qagrotis-primary-600)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v, "Sucessos"]} />
+              <Area type="monotone" dataKey="value" stroke="var(--qagrotis-primary-500)" strokeWidth={2} fill="url(#successGradient)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>

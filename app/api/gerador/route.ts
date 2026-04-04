@@ -104,9 +104,31 @@ Antes de finalizar, valide:
 
 // ── Provider routing ──────────────────────────────────────────────────────────
 
-async function streamAnthropic(userMessage: string, keyOverride?: string): Promise<Response> {
+async function streamAnthropic(
+  userMessage: string,
+  images?: { dataUrl: string; name: string }[],
+  keyOverride?: string
+): Promise<Response> {
   const apiKey = keyOverride || process.env.ANTHROPIC_API_KEY
   if (!apiKey) return new Response("Informe sua ANTHROPIC_API_KEY no campo de API Key.", { status: 500 })
+
+  // Build multimodal content for Anthropic
+  const contentParts: unknown[] = []
+  if (images?.length) {
+    for (const img of images) {
+      const commaIdx = img.dataUrl.indexOf(",")
+      if (commaIdx === -1) continue
+      const base64 = img.dataUrl.slice(commaIdx + 1)
+      const mimeMatch = img.dataUrl.slice(0, commaIdx).match(/data:([^;]+);base64/)
+      if (mimeMatch && base64) {
+        contentParts.push({
+          type: "image",
+          source: { type: "base64", media_type: mimeMatch[1], data: base64 },
+        })
+      }
+    }
+  }
+  contentParts.push({ type: "text", text: userMessage })
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -120,7 +142,7 @@ async function streamAnthropic(userMessage: string, keyOverride?: string): Promi
       max_tokens: 8192,
       stream: true,
       system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userMessage }],
+      messages: [{ role: "user", content: contentParts }],
     }),
   })
 
@@ -426,6 +448,22 @@ async function streamGroq(userMessage: string, model: string, keyOverride?: stri
   return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
 }
 
+// ── Vision-specific instruction injected when images are present ───────────────
+
+const VISION_INSTRUCTION = `
+## ANÁLISE DE INTERFACE (IMAGENS ANEXADAS)
+
+Analise cuidadosamente cada imagem fornecida como se fosse um QA Engineer inspecionando a tela:
+
+1. **Mapeamento de elementos**: Identifique todos os elementos visíveis — campos de texto, selects, checkboxes, botões, links, mensagens de erro/sucesso, tabelas, modais, etc.
+2. **Fluxos de interação**: Trace os caminhos que o usuário pode percorrer a partir da tela.
+3. **Estados possíveis**: Para cada elemento interativo, considere os estados: vazio, preenchido, erro, desabilitado, carregando.
+4. **Validações implícitas**: Inferir regras de negócio a partir de labels, placeholders, asteriscos obrigatórios e estrutura visual.
+5. **Cobertura de testes**: Gere cenários específicos para os elementos que você ver, nomeando-os exatamente como aparecem na interface.
+
+Cruze a análise visual com o contexto/requisitos fornecidos para gerar cenários mais precisos e completos.
+`
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -455,9 +493,11 @@ export async function POST(req: NextRequest) {
     return new Response("Integração não encontrada ou inativa.", { status: 404 })
   }
 
+  const hasImages = imagens && imagens.length > 0
   const textParts: string[] = []
-  if (jira) textParts.push(`## Contexto\n${jira}`)
-  if (imagens?.length) textParts.push(`## Anexos\n${imagens.map((img) => img.name).join(", ")}`)
+  if (hasImages) textParts.push(VISION_INSTRUCTION)
+  if (jira) textParts.push(`## Contexto / Requisitos\n${jira}`)
+  if (hasImages) textParts.push(`## Imagens anexadas\n${imagens.map((img, i) => `${i + 1}. ${img.name}`).join("\n")}`)
   const userMessage = textParts.join("\n\n")
   const { provider, model, apiKey } = integracao
 
@@ -469,7 +509,7 @@ export async function POST(req: NextRequest) {
     case "openai":
       return streamOpenAI(userMessage, model, apiKey)
     case "anthropic":
-      return streamAnthropic(userMessage, apiKey)
+      return streamAnthropic(userMessage, imagens, apiKey)
     case "openrouter":
       return streamOpenRouter(userMessage, model, imagens, apiKey)
     default:

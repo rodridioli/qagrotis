@@ -140,7 +140,8 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
     setInativarIds([])
 
     startTransition(async () => {
-      await inativarQaUsers(inativarIds)
+      const result = await inativarQaUsers(inativarIds)
+      if (result.error) { toast.error(result.error); return }
       router.refresh()
       toast.success(
         count === 1

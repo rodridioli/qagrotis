@@ -524,14 +524,12 @@ export default function NovoCenarioClient({
                     id={id}
                     aria-checked={checked}
                     onClick={toggle}
-                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-1 ${
-                      checked ? "bg-brand-primary" : "bg-neutral-grey-400"
-                    }`}
+                    className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-1"
+                    style={{ background: checked ? "var(--brand-primary)" : "#94a3b8" }}
                   >
                     <span
-                      className={`inline-block size-4 shrink-0 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-transform duration-200 ${
-                        checked ? "translate-x-4" : "translate-x-0"
-                      }`}
+                      className={`inline-block size-4 shrink-0 rounded-full transition-transform duration-200 ${checked ? "translate-x-4" : "translate-x-0"}`}
+                      style={{ background: "#ffffff", boxShadow: "0 1px 4px rgba(0,0,0,0.35)" }}
                     />
                   </button>
                   <span className="text-sm text-text-primary">{label}</span>
