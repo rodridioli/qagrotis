@@ -89,7 +89,7 @@ function FilterSelect<T extends string>({
 }) {
   return (
     <Select value={value} onValueChange={(v) => { if (v) onChange(v as T) }}>
-      <SelectTrigger className="h-8 min-w-20 shrink-0 text-xs" aria-label={label ?? "Filtrar por período"}>
+      <SelectTrigger className="h-8 w-auto shrink-0 text-xs" aria-label={label ?? "Filtrar por período"}>
         <SelectValue />
       </SelectTrigger>
       <SelectPopup>
@@ -201,10 +201,11 @@ export function DashboardCharts({
 
         {/* Ranking */}
         <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
-          <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="mb-3 flex items-center gap-2">
             <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">
               Ranking de geração
             </h2>
+            <div className="flex-1" />
             <FilterSelect<RankingFilter>
               options={RANKING_OPTS}
               value={rankingFilter}
@@ -282,7 +283,7 @@ export function DashboardCharts({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <XAxis dataKey="label" tick={tickXAxis} axisLine={false} tickLine={false} interval="preserveStartEnd" />
               <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v, "Execuções"]} />
               <Area type="monotone" dataKey="value" stroke="var(--qagrotis-primary-500)" strokeWidth={2} fill="url(#testsGradient)" />
@@ -353,7 +354,7 @@ export function DashboardCharts({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--color-red-500)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <XAxis dataKey="label" tick={errosXAxisTick} axisLine={false} tickLine={false} interval="preserveStartEnd" />
               <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v, "Erros"]} />
               <Area type="monotone" dataKey="value" stroke="var(--color-red-500)" strokeWidth={2} fill="url(#errorsGradient)" />

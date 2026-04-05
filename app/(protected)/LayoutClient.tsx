@@ -266,9 +266,9 @@ function Topbar({
           }
         </button>
         <Select value={sistemaSelecionado} onValueChange={(v) => onSistemaChange(v ?? "")}>
-          <SelectTrigger className="h-auto w-auto gap-1.5 px-3 py-1.5 text-sm">
-            <span className="hidden text-text-secondary sm:inline">Sistema:{" "}</span>
-            <SelectValue className="font-medium" />
+          <SelectTrigger className="h-auto hidden w-[120px] gap-1.5 overflow-hidden px-3 py-1.5 text-sm sm:flex">
+            <span className="truncate text-text-secondary">Sistema:</span>
+            <SelectValue className="truncate font-medium" />
           </SelectTrigger>
           <SelectPopup>
             {sistemaNames.map((name) => (
@@ -279,7 +279,7 @@ function Topbar({
         <Link
           href={profileHref}
           title="Editar meu perfil"
-          className="flex size-8 items-center justify-center rounded-full bg-brand-primary text-xs font-semibold transition-opacity hover:opacity-80"
+          className="hidden size-8 items-center justify-center rounded-full bg-brand-primary text-xs font-semibold transition-opacity hover:opacity-80 sm:flex"
           style={{ color: "#ffffff" }}
         >
           {initials}

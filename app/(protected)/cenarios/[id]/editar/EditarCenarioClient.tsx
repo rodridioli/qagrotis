@@ -195,11 +195,11 @@ export default function EditarCenarioClient({
   }
 
   // ── Visible tabs ─────────────────────────────────────────────────────────────
-  const visibleTabs: { id: TabId; label: string; badge: number | null; disabled?: boolean }[] = [
-    { id: "cadastro",     label: "Cadastro",           badge: null },
-    { id: "manual",       label: "Teste Manual",       badge: null, disabled: !manual },
-    { id: "automatizado", label: "Teste Automatizado", badge: steps.length > 0 ? steps.length : null, disabled: !automatizado },
-    { id: "dependencias", label: "Dependências",       badge: deps.length > 0 ? deps.length : null, disabled: !(manual || automatizado) },
+  const visibleTabs: { id: TabId; label: string; labelMobile: string; badge: number | null; disabled?: boolean }[] = [
+    { id: "cadastro",     label: "Cadastro",           labelMobile: "Cadastro",  badge: null },
+    { id: "manual",       label: "Teste Manual",       labelMobile: "Manual",    badge: null, disabled: !manual },
+    { id: "automatizado", label: "Teste Automatizado", labelMobile: "Autom.",    badge: steps.length > 0 ? steps.length : null, disabled: !automatizado },
+    { id: "dependencias", label: "Dependências",       labelMobile: "Dep.",      badge: deps.length > 0 ? deps.length : null, disabled: !(manual || automatizado) },
   ]
 
   // ── Steps ────────────────────────────────────────────────────────────────────
@@ -426,7 +426,7 @@ export default function EditarCenarioClient({
                 type="button"
                 onClick={() => setActiveTab(id)}
                 disabled={disabled}
-                className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 -mb-px px-2 sm:px-4 py-3 text-sm font-medium transition-all ${
+                className={`flex flex-1 flex-col items-center justify-center gap-0.5 border-b-2 -mb-px px-2 py-2.5 text-xs font-medium transition-all sm:flex-row sm:text-sm sm:px-4 sm:py-3 sm:gap-1.5 ${
                   activeTab === id
                     ? "border-brand-primary text-brand-primary bg-brand-primary/5"
                     : disabled
@@ -435,7 +435,7 @@ export default function EditarCenarioClient({
                 }`}
               >
                 <Icon className="size-4 shrink-0" />
-                <span className={activeTab === id ? "" : "hidden sm:inline"}>{label}</span>
+                <span className="truncate">{label}</span>
                 {badge !== null && badge > 0 && (
                   <span className={`inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-xs font-semibold ${
                     activeTab === id
