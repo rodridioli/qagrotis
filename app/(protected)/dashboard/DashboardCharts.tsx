@@ -146,6 +146,8 @@ const TOOLTIP_STYLE = {
   color: "var(--text-primary)",
 }
 
+const TICK_X_AXIS = { fontSize: 11, fill: "var(--qagrotis-primary-600)" }
+
 function Avatar({
   displayName,
   photoPath,
@@ -283,7 +285,7 @@ export function DashboardCharts({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-              <XAxis dataKey="label" tick={tickXAxis} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <XAxis dataKey="label" tick={TICK_X_AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
               <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v, "Execuções"]} />
               <Area type="monotone" dataKey="value" stroke="var(--qagrotis-primary-500)" strokeWidth={2} fill="url(#testsGradient)" />
@@ -354,7 +356,7 @@ export function DashboardCharts({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-              <XAxis dataKey="label" tick={errosXAxisTick} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <XAxis dataKey="label" tick={TICK_X_AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
               <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v, "Erros"]} />
               <Area type="monotone" dataKey="value" stroke="var(--color-red-500)" strokeWidth={2} fill="url(#errorsGradient)" />
@@ -382,7 +384,7 @@ export function DashboardCharts({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--qagrotis-primary-600)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <XAxis dataKey="label" tick={TICK_X_AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
               <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v, "Sucessos"]} />
               <Area type="monotone" dataKey="value" stroke="var(--qagrotis-primary-500)" strokeWidth={2} fill="url(#successGradient)" />

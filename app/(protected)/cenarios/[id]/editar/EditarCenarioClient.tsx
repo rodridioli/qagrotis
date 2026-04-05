@@ -198,8 +198,8 @@ export default function EditarCenarioClient({
   const visibleTabs: { id: TabId; label: string; labelMobile: string; badge: number | null; disabled?: boolean }[] = [
     { id: "cadastro",     label: "Cadastro",           labelMobile: "Cadastro",  badge: null },
     { id: "manual",       label: "Teste Manual",       labelMobile: "Manual",    badge: null, disabled: !manual },
-    { id: "automatizado", label: "Teste Automatizado", labelMobile: "Autom.",    badge: steps.length > 0 ? steps.length : null, disabled: !automatizado },
-    { id: "dependencias", label: "Dependências",       labelMobile: "Dep.",      badge: deps.length > 0 ? deps.length : null, disabled: !(manual || automatizado) },
+    { id: "automatizado", label: "Teste Automatizado", labelMobile: "Automatizado", badge: steps.length > 0 ? steps.length : null, disabled: !automatizado },
+    { id: "dependencias", label: "Dependências",       labelMobile: "Dependências", badge: deps.length > 0 ? deps.length : null, disabled: !(manual || automatizado) },
   ]
 
   // ── Steps ────────────────────────────────────────────────────────────────────
@@ -418,7 +418,7 @@ export default function EditarCenarioClient({
 
         {/* Tab nav */}
         <div className="flex border-b border-border-default overflow-hidden rounded-t-xl">
-          {visibleTabs.map(({ id, label, badge, disabled }) => {
+          {visibleTabs.map(({ id, label, labelMobile, badge, disabled }) => {
             const Icon = TAB_ICONS[id]
             return (
               <button
@@ -426,7 +426,7 @@ export default function EditarCenarioClient({
                 type="button"
                 onClick={() => setActiveTab(id)}
                 disabled={disabled}
-                className={`flex flex-1 flex-col items-center justify-center gap-0.5 border-b-2 -mb-px px-2 py-2.5 text-xs font-medium transition-all sm:flex-row sm:text-sm sm:px-4 sm:py-3 sm:gap-1.5 ${
+                className={`flex flex-1 flex-col items-center justify-center gap-0.5 border-b-2 -mb-px px-1 py-2 font-medium transition-all sm:flex-row sm:px-4 sm:py-3 sm:gap-1.5 ${
                   activeTab === id
                     ? "border-brand-primary text-brand-primary bg-brand-primary/5"
                     : disabled
@@ -435,7 +435,10 @@ export default function EditarCenarioClient({
                 }`}
               >
                 <Icon className="size-4 shrink-0" />
-                <span className="truncate">{label}</span>
+                <span className="text-[11px] sm:text-sm leading-tight sm:leading-normal">
+                  <span className="sm:hidden">{labelMobile}</span>
+                  <span className="hidden sm:inline">{label}</span>
+                </span>
                 {badge !== null && badge > 0 && (
                   <span className={`inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-xs font-semibold ${
                     activeTab === id
@@ -827,7 +830,7 @@ export default function EditarCenarioClient({
 
         {/* ── Dependências tab ── */}
         {(manual || automatizado) && (
-          <div className={activeTab !== "dependencias" ? "hidden" : ""}>
+          <div className={activeTab !== "dependencias" ? "hidden" : "pb-5"}>
             <div className="flex justify-end px-5 pt-5 pb-3">
               <Button variant="outline" size="sm" onClick={() => setAddDepOpen(true)}>
                 <Plus className="size-4" />

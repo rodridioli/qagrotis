@@ -187,11 +187,11 @@ export default function NovoCenarioClient({
   }
 
   // ── Visible tabs ─────────────────────────────────────────────────────────────
-  const visibleTabs: { id: TabId; label: string; badge: number | null; disabled?: boolean }[] = [
-    { id: "cadastro",     label: "Cadastro",           badge: null },
-    { id: "manual",       label: "Teste Manual",       badge: null, disabled: !manual },
-    { id: "automatizado", label: "Teste Automatizado", badge: steps.length > 0 ? steps.length : null, disabled: !automatizado },
-    { id: "dependencias", label: "Dependências",       badge: deps.length > 0 ? deps.length : null, disabled: !(manual || automatizado) },
+  const visibleTabs: { id: TabId; label: string; shortLabel: string; badge: number | null; disabled?: boolean }[] = [
+    { id: "cadastro",     label: "Cadastro",           shortLabel: "Cadastro",      badge: null },
+    { id: "manual",       label: "Teste Manual",       shortLabel: "Manual",        badge: null, disabled: !manual },
+    { id: "automatizado", label: "Teste Automatizado", shortLabel: "Automatizado",  badge: steps.length > 0 ? steps.length : null, disabled: !automatizado },
+    { id: "dependencias", label: "Dependências",       shortLabel: "Dependências",  badge: deps.length > 0 ? deps.length : null, disabled: !(manual || automatizado) },
   ]
 
   // ── Steps ────────────────────────────────────────────────────────────────────
@@ -411,7 +411,7 @@ export default function NovoCenarioClient({
 
         {/* Tab nav */}
         <div className="flex border-b border-border-default overflow-hidden rounded-t-xl">
-          {visibleTabs.map(({ id, label, badge, disabled }) => {
+          {visibleTabs.map(({ id, label, shortLabel, badge, disabled }) => {
             const Icon = TAB_ICONS[id]
             return (
               <button
@@ -419,7 +419,7 @@ export default function NovoCenarioClient({
                 type="button"
                 onClick={() => setActiveTab(id)}
                 disabled={disabled}
-                className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 -mb-px px-2 sm:px-4 py-3 text-sm font-medium transition-all ${
+                className={`flex flex-1 flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 border-b-2 -mb-px px-1 sm:px-4 py-2 sm:py-3 font-medium transition-all ${
                   activeTab === id
                     ? "border-brand-primary text-brand-primary bg-brand-primary/5"
                     : disabled
@@ -428,7 +428,10 @@ export default function NovoCenarioClient({
                 }`}
               >
                 <Icon className="size-4 shrink-0" />
-                <span className={activeTab === id ? "" : "hidden sm:inline"}>{label}</span>
+                <span className="text-[11px] sm:text-sm leading-tight sm:leading-normal">
+                  <span className="sm:hidden">{shortLabel}</span>
+                  <span className="hidden sm:inline">{label}</span>
+                </span>
                 {badge !== null && badge > 0 && (
                   <span className={`inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-xs font-semibold ${
                     activeTab === id
@@ -821,7 +824,7 @@ export default function NovoCenarioClient({
 
         {/* ── Dependências tab ── */}
         {(manual || automatizado) && (
-          <div className={activeTab !== "dependencias" ? "hidden" : ""}>
+          <div className={activeTab !== "dependencias" ? "hidden" : "pb-5"}>
             <div className="flex justify-end px-5 pt-5 pb-3">
               <Button variant="outline" size="sm" onClick={() => setAddDepOpen(true)}>
                 <Plus className="size-4" />
