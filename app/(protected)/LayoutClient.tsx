@@ -27,6 +27,7 @@ import { QAgrotisIcon } from "@/components/qagrotis/QAgrotisIcon"
 import { signOut, useSession } from "next-auth/react"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { SistemaContext } from "@/lib/modulo-context"
+import { AssistenteDrawer } from "@/components/qagrotis/AssistenteDrawer"
 
 const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"
@@ -38,7 +39,7 @@ const NAV_ITEMS = [
   { href: "/cenarios",      icon: FileText,        label: "Cenários",           disabled: false },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",            disabled: false },
   { href: "/documentos",    icon: BookOpen,        label: "Documentos",         disabled: true  },
-  { href: "/assistente",    icon: Bot,             label: "Assistente de IA",   disabled: true  },
+  { href: "/assistente",    icon: Bot,             label: "Assistente de IA",   disabled: false },
   { href: "/configuracoes", icon: Settings,        label: "Configurações",      disabled: false },
   { href: "/atualizacoes",  icon: History,         label: "Atualizações",       disabled: false },
 ]
@@ -67,9 +68,11 @@ interface SidebarProps {
   mobileOpen: boolean
   onCloseMobile: () => void
   isDark: boolean
+  assistenteOpen: boolean
+  onAssistenteOpen: () => void
 }
 
-function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark }: SidebarProps) {
+function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen }: SidebarProps) {
   const pathname = usePathname()
   const expanded = !collapsed
 
@@ -109,7 +112,10 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark }: SidebarProps)
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3">
           <TooltipProvider>
             {NAV_ITEMS.map(({ href, icon: Icon, label, disabled }) => {
-              const isActive = !disabled && pathname.startsWith(href)
+              const isAssistente = href === "/assistente"
+              const isActive = isAssistente
+                ? assistenteOpen
+                : !disabled && pathname.startsWith(href)
               const showLabel = !collapsed
 
               if (disabled) {
@@ -127,35 +133,68 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark }: SidebarProps)
                 )
               }
 
-              const linkClassName = cn(
+              const itemClassName = cn(
                 "group flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium transition-all duration-150",
                 collapsed ? "lg:justify-center" : "",
                 isActive
                   ? "bg-brand-primary"
                   : "text-text-secondary hover:bg-neutral-grey-100 hover:text-text-primary hover:translate-x-0.5"
               )
-              // Inline style ensures white text+icon regardless of theme or inheritance
-              const linkStyle = isActive ? { color: "#ffffff" } : undefined
-              const linkChildren = (
+              const itemStyle = isActive ? { color: "#ffffff" } : undefined
+              const itemChildren = (
                 <>
                   <Icon className="size-4.5 shrink-0 transition-transform duration-150 group-hover:scale-110" />
                   {showLabel && <span className="truncate">{label}</span>}
                 </>
               )
 
+              // "Assistente de IA" is a drawer trigger, not a route link
+              if (isAssistente) {
+                if (!showLabel) {
+                  return (
+                    <Tooltip key={href}>
+                      <TooltipTrigger
+                        render={
+                          <button
+                            type="button"
+                            onClick={onAssistenteOpen}
+                            style={itemStyle}
+                            className={cn(itemClassName, "w-full")}
+                          />
+                        }
+                      >
+                        {itemChildren}
+                      </TooltipTrigger>
+                      <TooltipContent>{label}</TooltipContent>
+                    </Tooltip>
+                  )
+                }
+                return (
+                  <button
+                    key={href}
+                    type="button"
+                    onClick={onAssistenteOpen}
+                    style={itemStyle}
+                    className={cn(itemClassName, "w-full")}
+                  >
+                    {itemChildren}
+                  </button>
+                )
+              }
+
               if (!showLabel) {
                 return (
                   <Tooltip key={href}>
-                    <TooltipTrigger render={<Link href={href} style={linkStyle} className={linkClassName} />}>
-                      {linkChildren}
+                    <TooltipTrigger render={<Link href={href} style={itemStyle} className={itemClassName} />}>
+                      {itemChildren}
                     </TooltipTrigger>
                     <TooltipContent>{label}</TooltipContent>
                   </Tooltip>
                 )
               }
               return (
-                <Link key={href} href={href} style={linkStyle} className={linkClassName}>
-                  {linkChildren}
+                <Link key={href} href={href} style={itemStyle} className={itemClassName}>
+                  {itemChildren}
                 </Link>
               )
             })}
@@ -300,6 +339,7 @@ export default function LayoutClient({ children, sistemaNames }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [sistemaSelecionado, setSistemaSelecionado] = useState(DEFAULT_SISTEMA)
   const [isDark, setIsDark] = useState(false)
+  const [assistenteOpen, setAssistenteOpen] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
@@ -338,7 +378,10 @@ export default function LayoutClient({ children, sistemaNames }: Props) {
           mobileOpen={mobileOpen}
           onCloseMobile={() => setMobileOpen(false)}
           isDark={isDark}
+          assistenteOpen={assistenteOpen}
+          onAssistenteOpen={() => setAssistenteOpen(true)}
         />
+        <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Topbar
             collapsed={collapsed}
