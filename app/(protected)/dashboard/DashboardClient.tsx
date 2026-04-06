@@ -133,7 +133,7 @@ function MetricCard({
           )}
         </div>
         <div
-          className="flex size-10 shrink-0 items-center justify-center rounded-lg"
+          className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg"
           style={{ background: iconColor + "1a" }}
         >
           <Icon className="size-5" style={{ color: iconColor }} aria-hidden />
