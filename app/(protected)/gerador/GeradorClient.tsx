@@ -6,7 +6,8 @@ import remarkGfm from "remark-gfm"
 import { useRouter } from "next/navigation"
 import {
   Sparkles, Copy, RotateCcw,
-  Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2, ExternalLink
+  Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2, ExternalLink,
+  FileText, ListChecks
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -176,6 +177,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
   const [output, setOutput] = useState("")
   const [apiError, setApiError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<"contexto" | "cenarios">("contexto")
 
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -197,6 +199,10 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     [allModulos, sistemaSelecionado]
   )
 
+  const cenarioCount = useMemo(
+    () => (output ? (output.match(/^## CT-/gm) ?? []).length : 0),
+    [output]
+  )
 
   async function generate() {
     if (!contexto.trim() && anexoPreviews.length === 0) {
@@ -212,6 +218,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     setApiError(null)
     setIsEditing(false)
     setLoading(true)
+    setActiveTab("cenarios")
 
     try {
       const res = await fetch("/api/gerador", {
@@ -265,6 +272,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     setApiError(null)
     setIsEditing(false)
     setLoading(false)
+    setActiveTab("contexto")
   }
 
   // ── Import flow ──────────────────────────────────────────────────────────
@@ -405,89 +413,125 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
           </Button>
       </div>
 
-      {/* ── Body ── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Left — inputs */}
-        <div className="space-y-3">
-          {/* Inputs Block: Motor de IA, Contexto e Anexos */}
-          <div className="rounded-xl bg-surface-card p-5 shadow-card space-y-6">
-            {/* Modelo de IA */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                Modelo de IA <span className="text-destructive">*</span>
-              </label>
-              {activeIntegracoes.length === 0 ? (
-                <p className="text-sm text-text-secondary">
-                  Nenhuma integração cadastrada ou ativa.{" "}
-                  <a href="/configuracoes/integracoes/novo" className="text-brand-primary hover:underline">
-                    Adicionar integração
-                  </a>
-                </p>
-              ) : (
-                <Select value={aiProvider} onValueChange={(v) => setAiProvider(v ?? "")}>
-                  <SelectTrigger>
-                    <SelectValue>
-                      {(() => {
-                        const i = activeIntegracoes.find((it) => it.id === aiProvider)
-                        if (!i) return "Selecione um modelo"
-                        return (
-                          <span className="flex items-center gap-2">
-                            <span className="capitalize opacity-60">{i.provider}</span>
-                            <span className="font-medium">{i.model}</span>
-                          </span>
-                        )
-                      })()}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectPopup>
-                    {activeIntegracoes.map((i) => (
-                      <SelectItem key={i.id} value={i.id}>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[10px] uppercase tracking-wider text-text-secondary">{i.provider}</span>
-                          <span className="text-sm font-medium">{i.model}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectPopup>
-                </Select>
-              )}
-            </div>
+      {/* ── Body — tabbed card ── */}
+      <div className="overflow-hidden rounded-xl bg-surface-card shadow-card">
 
-
-            {/* Contexto */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Contexto</label>
-              <textarea
-                value={contexto}
-                onChange={(e) => setContexto(e.target.value)}
-                placeholder="Cole aqui o texto da tarefa do Jira ou especifique o contexto."
-                rows={8}
-                className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 transition-colors"
-              />
-            </div>
-
-            {/* Anexos */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary flex items-center justify-between">
-                <span>Anexos</span>
-                {anexoPreviews.length > 0 && (
-                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-brand-primary/15 px-2 py-0.5 text-xs font-semibold text-brand-primary">
-                    {anexoPreviews.length}
+        {/* Tab nav */}
+        <div className="flex border-b border-border-default overflow-hidden rounded-t-xl">
+          {(["contexto", "cenarios"] as const).map((tab) => {
+            const Icon = tab === "contexto" ? FileText : ListChecks
+            const label = tab === "contexto" ? "Contexto" : "Cenários"
+            const badge = tab === "cenarios" && cenarioCount > 0 ? cenarioCount : null
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 -mb-px px-4 py-3 text-sm font-medium transition-all ${
+                  activeTab === tab
+                    ? "border-brand-primary text-brand-primary bg-brand-primary/5"
+                    : "border-transparent text-text-secondary hover:text-text-primary hover:bg-neutral-grey-50"
+                }`}
+              >
+                <Icon className="size-4 shrink-0" />
+                <span>{label}</span>
+                {badge !== null && (
+                  <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold ${
+                    activeTab === tab
+                      ? "border border-brand-primary/30 bg-brand-primary/15 text-brand-primary"
+                      : "bg-neutral-grey-200 text-text-secondary"
+                  }`}>
+                    {badge}
                   </span>
                 )}
-              </label>
-              <ScreenshotUploader
-                previews={anexoPreviews}
-                onChangePreviews={setAnexoPreviews}
-              />
-            </div>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ── Aba: Contexto ── */}
+        <div className={activeTab !== "contexto" ? "hidden" : "p-5 space-y-6"}>
+          {/* Modelo de IA */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">
+              Modelo de IA <span className="text-destructive">*</span>
+            </label>
+            {activeIntegracoes.length === 0 ? (
+              <p className="text-sm text-text-secondary">
+                Nenhuma integração cadastrada ou ativa.{" "}
+                <a href="/configuracoes/integracoes/novo" className="text-brand-primary hover:underline">
+                  Adicionar integração
+                </a>
+              </p>
+            ) : (
+              <Select value={aiProvider} onValueChange={(v) => setAiProvider(v ?? "")}>
+                <SelectTrigger>
+                  <SelectValue>
+                    {(() => {
+                      const i = activeIntegracoes.find((it) => it.id === aiProvider)
+                      if (!i) return "Selecione um modelo"
+                      return (
+                        <span className="flex items-center gap-2">
+                          <span className="capitalize opacity-60">{i.provider}</span>
+                          <span className="font-medium">{i.model}</span>
+                        </span>
+                      )
+                    })()}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectPopup>
+                  {activeIntegracoes.map((i) => (
+                    <SelectItem key={i.id} value={i.id}>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] uppercase tracking-wider text-text-secondary">{i.provider}</span>
+                        <span className="text-sm font-medium">{i.model}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            )}
+          </div>
+
+          {/* Contexto */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">Contexto</label>
+            <textarea
+              value={contexto}
+              onChange={(e) => setContexto(e.target.value)}
+              placeholder="Cole aqui o texto da tarefa do Jira ou especifique o contexto."
+              rows={10}
+              className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 transition-colors"
+            />
+          </div>
+
+          {/* Anexos */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary flex items-center justify-between">
+              <span>Anexos</span>
+              {anexoPreviews.length > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center rounded-full bg-brand-primary/15 px-2 py-0.5 text-xs font-semibold text-brand-primary">
+                  {anexoPreviews.length}
+                </span>
+              )}
+            </label>
+            <ScreenshotUploader
+              previews={anexoPreviews}
+              onChangePreviews={setAnexoPreviews}
+            />
           </div>
         </div>
 
-        {/* Right — output */}
-        <div className="flex min-h-125 flex-col overflow-hidden rounded-xl bg-surface-card shadow-card">
-          <div className="border-b border-border-default px-5 py-4">
+        {/* ── Aba: Cenários ── */}
+        <div className={activeTab !== "cenarios" ? "hidden" : "flex min-h-125 flex-col"}>
+          {/* Cabeçalho do painel */}
+          <div className="border-b border-border-default px-5 py-3 flex items-center gap-2">
             <h2 className="text-sm font-semibold text-text-primary">Casos de teste gerados</h2>
+            {cenarioCount > 0 && (
+              <span className="inline-flex items-center justify-center rounded-full border border-brand-primary/30 bg-brand-primary/10 px-2 py-0.5 text-xs font-semibold text-brand-primary">
+                {cenarioCount}
+              </span>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-4">
@@ -513,9 +557,16 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                 <div className="flex size-12 items-center justify-center rounded-full bg-brand-primary/10">
                   <Sparkles className="size-6 text-brand-primary" />
                 </div>
-                <p className="text-sm text-text-secondary text-center">
-                  Preencha o contexto à esquerda e clique em{" "}
-                  <strong className="text-text-primary">Gerar CT</strong>.
+                <p className="text-sm text-text-secondary">
+                  Preencha o contexto na aba{" "}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("contexto")}
+                    className="font-medium text-brand-primary hover:underline"
+                  >
+                    Contexto
+                  </button>{" "}
+                  e clique em <strong className="text-text-primary">Gerar CT</strong>.
                 </p>
               </div>
             )}
@@ -573,6 +624,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             )}
           </div>
         </div>
+
       </div>
 
       {/* ── Import setup modal ── */}
