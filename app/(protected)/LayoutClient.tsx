@@ -267,7 +267,7 @@ function Topbar({
         </button>
         <Select value={sistemaSelecionado} onValueChange={(v) => onSistemaChange(v ?? "")}>
           <SelectTrigger className="h-auto flex w-20 max-w-20 gap-1 overflow-hidden px-2 py-1.5 text-xs sm:w-auto sm:min-w-32 sm:max-w-56 sm:gap-1.5 sm:px-3 sm:text-sm">
-            <span className="hidden sm:inline truncate text-text-secondary">Sistema:</span>
+            <span className="hidden sm:inline truncate text-text-secondary">Sistema: </span>
             <SelectValue className="truncate font-medium" />
           </SelectTrigger>
           <SelectPopup>

@@ -254,7 +254,11 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
                           </td>
                         )}
                         <td className="px-4 py-3 font-medium whitespace-nowrap">
-                          <Link href={`/configuracoes/clientes/${c.id}/editar`} className="text-brand-primary hover:underline">{c.id}</Link>
+                          {c.active ? (
+                            <Link href={`/configuracoes/clientes/${c.id}/editar`} className="text-brand-primary hover:underline">{c.id}</Link>
+                          ) : (
+                            <span>{c.id}</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 font-medium text-text-primary truncate">{c.nomeFantasia}</td>
                         <td className="px-4 py-3 text-text-secondary truncate">

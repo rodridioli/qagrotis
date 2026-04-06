@@ -266,7 +266,11 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                           </td>
                         )}
                         <td className="px-4 py-3 font-medium whitespace-nowrap">
-                          <Link href={`/configuracoes/usuarios/${u.id}/editar`} className="text-brand-primary hover:underline">{u.id}</Link>
+                          {u.active ? (
+                            <Link href={`/configuracoes/usuarios/${u.id}/editar`} className="text-brand-primary hover:underline">{u.id}</Link>
+                          ) : (
+                            <span>{u.id}</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 min-w-0">
                           <div className="flex min-w-0 items-center gap-2">

@@ -287,9 +287,13 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                         </td>
                       )}
                       <td className="px-4 py-3 font-medium whitespace-nowrap">
-                        <Link href={`/suites/${s.id}`} className="text-brand-primary hover:underline">
-                          {s.id}
-                        </Link>
+                        {s.active ? (
+                          <Link href={`/suites/${s.id}`} className="text-brand-primary hover:underline">
+                            {s.id}
+                          </Link>
+                        ) : (
+                          <span>{s.id}</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 truncate font-medium text-text-primary">{s.suiteName}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-text-secondary">{s.versao}</td>

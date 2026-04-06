@@ -842,18 +842,15 @@ export default function EditarCenarioClient({
                 Nenhuma dependência adicionada.
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div>
                 <table className="w-full table-fixed text-sm">
-                  <colgroup>
-                    <col className="w-24" /><col /><col className="w-44" /><col className="w-44" /><col className="w-10" />
-                  </colgroup>
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                      <th className="w-24 px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
-                      <th className="px-4 py-3" />
+                      <th className="w-36 px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
+                      <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
+                      <th className="w-10 px-4 py-3" />
                     </tr>
                   </thead>
                   <tbody>
@@ -862,7 +859,9 @@ export default function EditarCenarioClient({
                         <td className="px-4 py-3">
                           <Link href={`/cenarios/${d.id}`} className="font-medium text-brand-primary hover:underline">{d.id}</Link>
                         </td>
-                        <td className="px-4 py-3 truncate text-text-primary">{d.name}</td>
+                        <td className="px-4 py-3 min-w-0">
+                          <span className="block truncate text-text-primary">{d.name}</span>
+                        </td>
                         <td className="px-4 py-3 truncate text-text-secondary">{d.system}</td>
                         <td className="px-4 py-3 truncate text-text-secondary">{d.module}</td>
                         <td className="py-3 pl-2 pr-4">

@@ -174,12 +174,9 @@ export function SuiteForm({
       (c.id || "").toLowerCase().includes(searchLow) ||
       (c.scenarioName || "").toLowerCase().includes(searchLow)
     const sysSelected = (sistemaSelecionado || "").toLowerCase().trim()
-    const modSelected = (selectedModule || "").toLowerCase().trim()
     const cSys = (c.system || "").toLowerCase().trim()
-    const cMod = (c.module || "").toLowerCase().trim()
     const matchesSystem = !sysSelected || cSys === sysSelected
-    const matchesModule = !modSelected || cMod === modSelected
-    return matchesSearch && matchesSystem && matchesModule
+    return matchesSearch && matchesSystem
   }).slice(0, 100)
 
   // Stats computed from historico (execuções and erros per cenário)

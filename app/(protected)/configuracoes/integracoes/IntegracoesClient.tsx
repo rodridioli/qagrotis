@@ -246,9 +246,13 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                         </td>
                       )}
                       <td className="px-4 py-3 font-medium whitespace-nowrap">
-                        <Link href={`/configuracoes/integracoes/${item.id}/editar`} className="text-brand-primary hover:underline">
-                          {item.id}
-                        </Link>
+                        {item.active ? (
+                          <Link href={`/configuracoes/integracoes/${item.id}/editar`} className="text-brand-primary hover:underline">
+                            {item.id}
+                          </Link>
+                        ) : (
+                          <span>{item.id}</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 truncate capitalize text-text-primary">
                         {item.provider}
