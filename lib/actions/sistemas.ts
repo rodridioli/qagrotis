@@ -62,6 +62,12 @@ export async function criarSistema(data: {
 
   await prisma.sistema.create({ data: { id, ...parsed, active: true } })
   revalidatePath("/configuracoes/sistemas")
+  revalidatePath("/cenarios")
+  revalidatePath("/cenarios/novo")
+  revalidatePath("/suites")
+  revalidatePath("/suites/nova")
+  revalidatePath("/gerador")
+  revalidatePath("/(protected)", "layout")
 }
 
 export async function atualizarSistema(
@@ -94,9 +100,14 @@ export async function atualizarSistema(
   revalidatePath("/configuracoes/sistemas")
   revalidatePath(`/configuracoes/sistemas/${id}`)
   revalidatePath(`/configuracoes/sistemas/${id}/editar`)
+  revalidatePath("/cenarios")
+  revalidatePath("/cenarios/novo")
+  revalidatePath("/suites")
+  revalidatePath("/suites/nova")
+  revalidatePath("/gerador")
+  revalidatePath("/(protected)", "layout")
   if (oldName !== parsed.name) {
     revalidatePath("/configuracoes/modulos")
-    revalidatePath("/cenarios")
   }
 }
 
@@ -107,4 +118,10 @@ export async function inativarSistemas(ids: string[]): Promise<void> {
 
   await prisma.sistema.updateMany({ where: { id: { in: ids } }, data: { active: false } })
   revalidatePath("/configuracoes/sistemas")
+  revalidatePath("/cenarios")
+  revalidatePath("/cenarios/novo")
+  revalidatePath("/suites")
+  revalidatePath("/suites/nova")
+  revalidatePath("/gerador")
+  revalidatePath("/(protected)", "layout")
 }

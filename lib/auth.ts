@@ -70,6 +70,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers,
   session: { strategy: "jwt" },
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === "google") {
+        const email = user.email ?? ""
+        // Only allow @agrotis.com Google accounts
+        if (!email.toLowerCase().endsWith("@agrotis.com")) return false
+
+        // Auto-register in CreatedUser if not already present
+        const existing = await prisma.createdUser.findFirst({
+          where: { email: { equals: email, mode: "insensitive" } },
+        })
+        if (!existing) {
+          const allUsers = await prisma.createdUser.findMany({ select: { id: true } })
+          const { nextId } = await import("@/lib/db-utils")
+          const id = nextId(allUsers.map((u) => u.id), "USR")
+          await prisma.createdUser.create({
+            data: {
+              id,
+              email,
+              name: user.name ?? email,
+              type: "Padrão",
+              password: "", // Google users don't use password login
+            },
+          })
+        }
+        // Ensure the JWT will carry the right ID
+        user.id = existing?.id ?? user.id
+      }
+      return true
+    },
     jwt({ token, user }) {
       if (user) token.id = user.id
       return token

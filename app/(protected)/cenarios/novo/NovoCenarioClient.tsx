@@ -888,9 +888,9 @@ export default function NovoCenarioClient({
         }
         setAddDepOpen(open)
       }}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-2xl">
           <DialogHeader><DialogTitle>Adicionar Dependência</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-primary">Sistema</label>
@@ -948,7 +948,7 @@ export default function NovoCenarioClient({
                     </span>
                   )}
                 </div>
-                <div className="max-h-72 overflow-y-auto rounded-lg border border-border-default">
+                <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border-default">
                   {isDepSearchPending ? (
                     <p className="py-6 text-center text-sm text-text-secondary">Buscando...</p>
                   ) : filteredDepCenarios.items.length === 0 ? (

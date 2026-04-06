@@ -28,6 +28,7 @@ import { signOut, useSession } from "next-auth/react"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { SistemaContext } from "@/lib/modulo-context"
 import { AssistenteDrawer } from "@/components/qagrotis/AssistenteDrawer"
+import type { IntegracaoRecord } from "@/lib/actions/integracoes"
 
 const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"
@@ -159,7 +160,7 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen,
                             type="button"
                             onClick={onAssistenteOpen}
                             style={itemStyle}
-                            className={cn(itemClassName, "w-full")}
+                            className={cn(itemClassName, "w-full cursor-pointer")}
                           />
                         }
                       >
@@ -175,7 +176,7 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen,
                     type="button"
                     onClick={onAssistenteOpen}
                     style={itemStyle}
-                    className={cn(itemClassName, "w-full")}
+                    className={cn(itemClassName, "w-full cursor-pointer")}
                   >
                     {itemChildren}
                   </button>
@@ -332,9 +333,10 @@ function Topbar({
 interface Props {
   children: React.ReactNode
   sistemaNames: string[]
+  integracoes?: IntegracaoRecord[]
 }
 
-export default function LayoutClient({ children, sistemaNames }: Props) {
+export default function LayoutClient({ children, sistemaNames, integracoes = [] }: Props) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [sistemaSelecionado, setSistemaSelecionado] = useState(DEFAULT_SISTEMA)
@@ -381,7 +383,7 @@ export default function LayoutClient({ children, sistemaNames }: Props) {
           assistenteOpen={assistenteOpen}
           onAssistenteOpen={() => setAssistenteOpen(true)}
         />
-        <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} />
+        <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Topbar
             collapsed={collapsed}

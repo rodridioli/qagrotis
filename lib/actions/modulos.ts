@@ -61,6 +61,11 @@ export async function criarModulo(data: {
 
   const row = await prisma.modulo.create({ data: { id, ...parsed, active: true } })
   revalidatePath("/configuracoes/modulos")
+  revalidatePath("/cenarios")
+  revalidatePath("/cenarios/novo")
+  revalidatePath("/suites")
+  revalidatePath("/suites/nova")
+  revalidatePath("/gerador")
   return { ...row, createdAt: row.createdAt.getTime() }
 }
 
@@ -91,7 +96,11 @@ export async function atualizarModulo(
 
   revalidatePath("/configuracoes/modulos")
   revalidatePath(`/configuracoes/modulos/${id}/editar`)
-  if (oldName !== parsed.name) revalidatePath("/cenarios")
+  revalidatePath("/cenarios")
+  revalidatePath("/cenarios/novo")
+  revalidatePath("/suites")
+  revalidatePath("/suites/nova")
+  revalidatePath("/gerador")
 }
 
 export async function inativarModulos(ids: string[]): Promise<void> {
@@ -101,4 +110,9 @@ export async function inativarModulos(ids: string[]): Promise<void> {
 
   await prisma.modulo.updateMany({ where: { id: { in: ids } }, data: { active: false } })
   revalidatePath("/configuracoes/modulos")
+  revalidatePath("/cenarios")
+  revalidatePath("/cenarios/novo")
+  revalidatePath("/suites")
+  revalidatePath("/suites/nova")
+  revalidatePath("/gerador")
 }

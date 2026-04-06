@@ -176,7 +176,10 @@ export function SuiteForm({
     const sysSelected = (sistemaSelecionado || "").toLowerCase().trim()
     const cSys = (c.system || "").toLowerCase().trim()
     const matchesSystem = !sysSelected || cSys === sysSelected
-    return matchesSearch && matchesSystem
+    const modSelected = (selectedModule || "").toLowerCase().trim()
+    const cMod = (c.module || "").toLowerCase().trim()
+    const matchesModule = !modSelected || cMod === modSelected
+    return matchesSearch && matchesSystem && matchesModule
   }).slice(0, 100)
 
   // Stats computed from historico (execuções and erros per cenário)
@@ -641,21 +644,21 @@ export function SuiteForm({
 
       {/* Dialogs */}
       <Dialog open={addCenarioOpen} onOpenChange={setAddCenarioOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Adicionar Cenário</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 py-2">
             <Input
               placeholder="Buscar por código ou nome..."
               value={addSearch}
               onChange={(e) => setAddSearch(e.target.value)}
             />
-            <div className="max-h-72 overflow-y-auto border border-border-default rounded-lg">
+            <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border-default">
               {filteredAdd.length === 0 ? (
-                <p className="text-sm text-text-secondary text-center py-6">Nenhum cenário encontrado.</p>
+                <p className="py-6 text-center text-sm text-text-secondary">Nenhum cenário encontrado.</p>
               ) : filteredAdd.map((c) => (
-                <label key={c.id} className="flex items-center gap-3 px-3 py-2.5 border-b border-border-default last:border-0 hover:bg-neutral-grey-50 cursor-pointer">
+                <label key={c.id} className="flex cursor-pointer items-center gap-3 border-b border-border-default px-3 py-2.5 last:border-0 hover:bg-neutral-grey-50">
                   <Checkbox
                     checked={selectedAddIds.has(c.id)}
                     onChange={(e) => {
@@ -669,8 +672,8 @@ export function SuiteForm({
                     }}
                   />
                   <div className="min-w-0 flex-1">
-                    <span className="text-xs font-mono text-text-secondary">{c.id}</span>
-                    <p className="text-sm font-medium text-text-primary truncate">{c.scenarioName}</p>
+                    <span className="font-mono text-xs text-text-secondary">{c.id}</span>
+                    <p className="truncate text-sm font-medium text-text-primary">{c.scenarioName}</p>
                   </div>
                   <div className="shrink-0">
                     <CenarioTipoBadge tipo={c.tipo as CenarioTipo} />

@@ -9,9 +9,17 @@ import {
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
+import type { IntegracaoRecord } from "@/lib/actions/integracoes"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,6 +33,7 @@ interface Message {
 export interface AssistenteDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  integracoes?: IntegracaoRecord[]
 }
 
 // ── Suggested starter questions ───────────────────────────────────────────────
@@ -37,14 +46,22 @@ const SUGESTOES = [
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function AssistenteDrawer({ open, onOpenChange }: AssistenteDrawerProps) {
+export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: AssistenteDrawerProps) {
   const { sistemaSelecionado } = useSistemaSelecionado()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [integracaoId, setIntegracaoId] = useState<string>("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+
+  // Init selected integration when list loads
+  useEffect(() => {
+    if (integracoes.length > 0 && !integracaoId) {
+      setIntegracaoId(integracoes[0].id)
+    }
+  }, [integracoes, integracaoId])
 
   // Auto-scroll to the latest message
   useEffect(() => {
@@ -92,6 +109,7 @@ export function AssistenteDrawer({ open, onOpenChange }: AssistenteDrawerProps) 
         body: JSON.stringify({
           pergunta: trimmed,
           sistema: sistemaSelecionado,
+          integracaoId: integracaoId || undefined,
           historico,
         }),
         signal: abortRef.current.signal,
@@ -139,7 +157,7 @@ export function AssistenteDrawer({ open, onOpenChange }: AssistenteDrawerProps) 
       abortRef.current = null
       setTimeout(() => inputRef.current?.focus(), 50)
     }
-  }, [input, isLoading, messages, sistemaSelecionado])
+  }, [input, isLoading, messages, sistemaSelecionado, integracaoId])
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -156,6 +174,10 @@ export function AssistenteDrawer({ open, onOpenChange }: AssistenteDrawerProps) 
     setMessages([])
   }
 
+  const integracaoLabel = integracoes.find((i) => i.id === integracaoId)?.descricao
+    || integracoes.find((i) => i.id === integracaoId)?.model
+    || ""
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -170,7 +192,7 @@ export function AssistenteDrawer({ open, onOpenChange }: AssistenteDrawerProps) 
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-default px-4 py-3">
             <div className="flex items-center gap-2.5">
               <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-primary">
-                <Bot className="size-4 text-white" />
+                <Bot className="size-4" style={{ color: "#ffffff" }} />
               </div>
               <div>
                 <SheetTitle className="text-sm font-semibold leading-none text-text-primary">
@@ -200,6 +222,25 @@ export function AssistenteDrawer({ open, onOpenChange }: AssistenteDrawerProps) 
               </Button>
             </div>
           </div>
+
+          {/* ── Integration selector ── */}
+          {integracoes.length > 0 && (
+            <div className="shrink-0 border-b border-border-default px-4 py-2">
+              <Select value={integracaoId} onValueChange={(v) => setIntegracaoId(v ?? "")}>
+                <SelectTrigger className="h-7 text-xs">
+                  <span className="mr-1 text-text-secondary">Modelo:</span>
+                  <SelectValue placeholder="Selecionar modelo" />
+                </SelectTrigger>
+                <SelectPopup>
+                  {integracoes.map((i) => (
+                    <SelectItem key={i.id} value={i.id}>
+                      {i.descricao || i.model}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            </div>
+          )}
 
           {/* ── Messages ── */}
           <div className="flex-1 overflow-y-auto px-4 py-4">
@@ -246,7 +287,12 @@ export function AssistenteDrawer({ open, onOpenChange }: AssistenteDrawerProps) 
               </Button>
             </div>
             <p className="mt-1.5 text-center text-[11px] text-text-secondary">
-              Respostas baseadas na documentação oficial do Agrotis
+              Respostas baseadas na{" "}
+              <span className="font-medium text-text-primary">documentação oficial</span>{" "}
+              do Agrotis
+              {integracaoLabel && (
+                <> · <span className="font-medium text-text-primary">{integracaoLabel}</span></>
+              )}
             </p>
           </div>
 
@@ -284,7 +330,7 @@ function EmptyState({
             key={s}
             type="button"
             onClick={() => onSuggestion(s)}
-            className="rounded-lg border border-border-default bg-surface-card px-3 py-2 text-left text-xs text-text-secondary transition-colors hover:border-brand-primary hover:text-text-primary"
+            className="cursor-pointer rounded-lg border border-border-default bg-surface-card px-3 py-2 text-left text-xs text-text-secondary transition-colors hover:border-brand-primary hover:text-text-primary"
           >
             {s}
           </button>
@@ -301,18 +347,19 @@ function MessageBubble({ msg }: { msg: Message }) {
     <div className={cn("flex gap-2", isUser ? "justify-end" : "justify-start")}>
       {!isUser && (
         <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-primary">
-          <Bot className="size-3.5 text-white" />
+          <Bot className="size-3.5" style={{ color: "#ffffff" }} />
         </div>
       )}
       <div
         className={cn(
           "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm",
           isUser
-            ? "rounded-br-sm bg-brand-primary text-white"
+            ? "rounded-br-sm bg-brand-primary"
             : msg.error
               ? "rounded-bl-sm border border-destructive/20 bg-destructive/10 text-destructive"
               : "rounded-bl-sm border border-border-default bg-surface-card text-text-primary"
         )}
+        style={isUser ? { color: "#ffffff" } : undefined}
       >
         {/* Loading state (empty assistant message) */}
         {!isUser && !msg.content && !msg.error && (

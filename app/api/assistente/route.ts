@@ -246,6 +246,7 @@ export async function POST(req: NextRequest) {
   let body: {
     pergunta: string
     sistema: string
+    integracaoId?: string
     historico?: { role: "user" | "assistant"; content: string }[]
   }
   try {
@@ -254,7 +255,7 @@ export async function POST(req: NextRequest) {
     return new Response("JSON inválido.", { status: 400 })
   }
 
-  const { pergunta, sistema = "Geral", historico = [] } = body
+  const { pergunta, sistema = "Geral", integracaoId, historico = [] } = body
 
   if (!pergunta?.trim()) {
     return new Response("A pergunta não pode ser vazia.", { status: 400 })
@@ -263,11 +264,11 @@ export async function POST(req: NextRequest) {
     return new Response("Pergunta muito longa (máximo 600 caracteres).", { status: 400 })
   }
 
-  // Pick the first active integration — prefer Anthropic (same key as Gerador)
+  // Pick integration: prefer the one selected by user, then first Anthropic, then any active
   const integracoes = await getIntegracoes()
-  const integracao =
-    integracoes.find((i) => i.active && i.provider === "anthropic") ??
-    integracoes.find((i) => i.active)
+  const integracao = integracaoId
+    ? (integracoes.find((i) => i.active && i.id === integracaoId) ?? integracoes.find((i) => i.active))
+    : (integracoes.find((i) => i.active && i.provider === "anthropic") ?? integracoes.find((i) => i.active))
 
   if (!integracao) {
     return new Response(
