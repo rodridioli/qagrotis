@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useRef, useMemo } from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { useRouter } from "next/navigation"
 import {
-  Sparkles, Copy, RotateCcw, ChevronDown, ChevronUp,
-  Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2
+  Sparkles, Copy, RotateCcw,
+  Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2, ExternalLink
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -173,6 +175,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const [aiProvider, setAiProvider] = useState(() => activeIntegracoes[0]?.id ?? "")
 
   const [output, setOutput] = useState("")
+  const [apiError, setApiError] = useState<string | null>(null)
 
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -206,6 +209,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     abortRef.current = controller
 
     setOutput("")
+    setApiError(null)
     setIsEditing(false)
     setLoading(true)
 
@@ -223,7 +227,8 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
       if (!res.ok) {
         const msg = await res.text()
-        toast.error(msg || "Erro ao gerar casos de teste.")
+        setApiError(msg || "Erro ao gerar casos de teste.")
+        toast.error("Falha ao gerar. Veja o detalhe no painel de saída.")
         return
       }
 
@@ -257,6 +262,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     setContexto("")
     setAnexoPreviews([])
     setOutput("")
+    setApiError(null)
     setIsEditing(false)
     setLoading(false)
   }
@@ -485,7 +491,24 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-4">
-            {!output && !loading && (
+            {apiError && !loading && (
+              <div className="mb-4 flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/8 p-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+                  <p className="text-sm font-semibold text-destructive">Falha ao gerar casos de teste</p>
+                </div>
+                <p className="pl-6 text-sm text-text-primary">{apiError}</p>
+                <a
+                  href="/configuracoes/integracoes"
+                  className="ml-6 inline-flex w-fit items-center gap-1 text-xs text-brand-primary hover:underline"
+                >
+                  <ExternalLink className="size-3" />
+                  Verificar configurações de integração
+                </a>
+              </div>
+            )}
+
+            {!output && !loading && !apiError && (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
                 <div className="flex size-12 items-center justify-center rounded-full bg-brand-primary/10">
                   <Sparkles className="size-6 text-brand-primary" />
@@ -501,15 +524,44 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
               <div className="flex h-full items-center justify-center">
                 <div className="flex items-center gap-2 text-sm text-text-secondary">
                   <span className="size-4 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
-                  Gerando...
+                  Aguardando resposta do modelo de IA…
                 </div>
               </div>
             )}
 
             {output && !isEditing && (
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-text-primary">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h2: ({ children }) => (
+                    <h2 className="mb-1 mt-6 text-base font-bold text-text-primary first:mt-0">
+                      {children}
+                    </h2>
+                  ),
+                  p: ({ children }) => (
+                    <p className="text-sm leading-relaxed text-text-primary">{children}</p>
+                  ),
+                  strong: ({ children }) => (
+                    <strong className="font-semibold text-text-primary">{children}</strong>
+                  ),
+                  ul: ({ children }) => (
+                    <ul className="ml-4 space-y-0.5 list-disc text-sm text-text-primary">{children}</ul>
+                  ),
+                  li: ({ children }) => (
+                    <li className="text-sm leading-relaxed text-text-primary">{children}</li>
+                  ),
+                  hr: () => (
+                    <hr className="my-5 border-border-default" />
+                  ),
+                  code: ({ children }) => (
+                    <code className="rounded bg-neutral-grey-100 px-1 py-0.5 font-mono text-xs text-text-primary">
+                      {children}
+                    </code>
+                  ),
+                }}
+              >
                 {output}
-              </pre>
+              </ReactMarkdown>
             )}
 
             {output && isEditing && (

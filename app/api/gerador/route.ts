@@ -28,79 +28,59 @@ Gerar casos de teste estruturados no formato QA (CTs) com base nas informações
 - Erros relevantes
 - Edge cases com impacto real
 
-## FORMATO DE SAÍDA (OBRIGATÓRIO)
+## FORMATO DE SAÍDA (OBRIGATÓRIO — siga exatamente)
 
-Gere os casos neste formato:
+Gere cada caso de teste neste formato, separando-os com uma linha \`---\`:
 
-## CTXXX: <título do cenário>
+## CT-001 — <título do cenário>
 
-**Descrição:**
-<explicação clara do objetivo do teste>
+<descrição clara e objetiva do que este cenário valida>
 
-**Caminho da tela:**
-<ex: Sistema > Módulo > Tela>
+**Regra de negócio:**
+<descreva a regra de negócio envolvida, ou escreva exatamente "N/A." caso não haja>
 
 **Pré-condições:**
-- <lista objetiva>
+- <condição necessária para executar o teste>
 
-**Cenário:**
-**DADO** <contexto inicial>
-**E** <condições adicionais>
-**QUANDO** <ação do usuário>
-**ENTÃO** <resultado esperado>
-**E** <resultados adicionais>
+**BDD (Gherkin):**
 
-**Resultados esperados:**
-- <lista validável>
-- <comportamentos esperados do sistema>
+DADO <contexto inicial>
+E <condições adicionais, se houver>
+QUANDO <ação executada pelo usuário>
+ENTÃO <resultado esperado do sistema>
+E <resultados adicionais, se houver>
 
-**Evidências:**
-- <o que deve ser capturado: print, log, status, etc.>
+**Resultado esperado:**
+- <comportamento validável esperado do sistema>
 
 ---
 
 ## REGRAS DE GERAÇÃO
 
-- Criar múltiplos cenários (CT001, CT002, CT003…)
-- Focar nos mais importantes (evitar volume desnecessário)
-- Cenários independentes
-- Linguagem clara e testável
+- Numerar sequencialmente: CT-001, CT-002, CT-003…
+- Criar múltiplos cenários focando nos mais importantes
+- Cenários independentes entre si
+- Linguagem clara, objetiva e testável
 - Evitar termos vagos como "funcionar corretamente"
+- Separar OBRIGATORIAMENTE cada cenário com \`---\`
 
 ## COBERTURA MÍNIMA
 
 Garantir que existam cenários para:
-- Fluxo feliz
-- Validação de campos
+- Fluxo feliz (caminho principal)
+- Validação de campos obrigatórios
 - Regra de negócio crítica
 - Cenário de erro relevante
-- Comportamento alternativo
 - Edge case (se aplicável)
-
-## CLASSIFICAÇÃO (ADICIONAR AO FINAL DE CADA CT)
-
-Adicionar:
-- Prioridade: Alta / Média / Baixa
-- Tipo: Funcional / Validação / Erro / Edge Case
-
-## AMBIGUIDADES
-
-Ao final, incluir:
-
-### Suposições
-- <lista>
-
-### Pontos em aberto
-- <lista>
 
 ## CHECKLIST FINAL (OBRIGATÓRIO)
 
 Antes de finalizar, valide:
-- Existe cenário crítico do fluxo principal?
+- Existe cenário do fluxo principal?
 - Existe pelo menos 1 cenário de erro relevante?
 - As regras de negócio foram cobertas?
 - Os testes são executáveis manualmente?
-- Está claro para um QA sem contexto adicional?`
+- Cada cenário está separado por \`---\`?`
 
 // ── Provider routing ──────────────────────────────────────────────────────────
 
@@ -314,6 +294,16 @@ async function streamGemini(
   return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
 }
 
+// Common OpenRouter model ID aliases to correct typical mistakes
+const OPENROUTER_MODEL_ALIASES: Record<string, string> = {
+  "google/gemini-2.0-flash-lite:free": "google/gemini-2.0-flash-lite-preview-02-05:free",
+  "google/gemini-flash-lite:free": "google/gemini-2.0-flash-lite-preview-02-05:free",
+}
+
+function normalizeOpenRouterModel(model: string): string {
+  return OPENROUTER_MODEL_ALIASES[model.toLowerCase()] ?? model
+}
+
 async function streamOpenRouter(
   userMessage: string,
   model: string,
@@ -323,13 +313,14 @@ async function streamOpenRouter(
   const apiKey = keyOverride || process.env.OPENROUTER_API_KEY
   if (!apiKey) return new Response("Informe sua OPENROUTER_API_KEY no campo de API Key.", { status: 500 })
 
-  const contentParts: any[] = [{ type: "text", text: userMessage }]
+  const resolvedModel = normalizeOpenRouterModel(model)
+
+  const contentParts: { type: string; text?: string; image_url?: { url: string } }[] = [
+    { type: "text", text: userMessage },
+  ]
   if (images && images.length > 0) {
     for (const img of images) {
-      contentParts.push({
-        type: "image_url",
-        image_url: { url: img.dataUrl },
-      })
+      contentParts.push({ type: "image_url", image_url: { url: img.dataUrl } })
     }
   }
 
@@ -339,9 +330,10 @@ async function streamOpenRouter(
       "Content-Type": "application/json",
       "Authorization": `Bearer ${apiKey}`,
       "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+      "X-Title": "QAgrotis",
     },
     body: JSON.stringify({
-      model,
+      model: resolvedModel,
       max_tokens: 8192,
       stream: true,
       messages: [
@@ -355,10 +347,32 @@ async function streamOpenRouter(
     const err = await res.text()
     try {
       const errJson = JSON.parse(err)
+      const errMsg: string = errJson.error?.message ?? err
+
       if (errJson.error?.code === 429) {
-        return new Response("Cota excedida no modelo selecionado. Tente outro modelo gratuito do OpenRouter.", { status: 429 })
+        return new Response(
+          "Cota excedida no modelo selecionado. Aguarde alguns minutos ou selecione outro modelo nas Configurações.",
+          { status: 429 }
+        )
       }
-      return new Response(`Erro na API OpenRouter: ${errJson.error?.message || err}`, { status: res.status })
+
+      if (/no endpoints found/i.test(errMsg)) {
+        return new Response(
+          `O modelo "${resolvedModel}" está temporariamente sem endpoints disponíveis no OpenRouter (instabilidade no tier gratuito). ` +
+          `Tente outro modelo nas Configurações — sugestões estáveis: "meta-llama/llama-3.1-8b-instruct:free", "mistralai/mistral-7b-instruct:free".`,
+          { status: 503 }
+        )
+      }
+
+      if (/not a valid model/i.test(errMsg) || /invalid model/i.test(errMsg)) {
+        return new Response(
+          `ID de modelo inválido: "${model}". Verifique o Model ID nas Configurações — use o formato exato da lista do OpenRouter ` +
+          `(ex: "meta-llama/llama-3.1-8b-instruct:free" ou "mistralai/mistral-7b-instruct:free").`,
+          { status: 400 }
+        )
+      }
+
+      return new Response(`Erro na API OpenRouter: ${errMsg}`, { status: res.status })
     } catch {
       return new Response(`Erro na API OpenRouter: ${err}`, { status: res.status })
     }
@@ -453,15 +467,18 @@ async function streamGroq(userMessage: string, model: string, keyOverride?: stri
 const VISION_INSTRUCTION = `
 ## ANÁLISE DE INTERFACE (IMAGENS ANEXADAS)
 
-Analise cuidadosamente cada imagem fornecida como se fosse um QA Engineer inspecionando a tela:
+Você é um QA Engineer Sênior especializado em sistemas ERP agrícolas. Analise cuidadosamente cada print da interface do sistema Agrotis fornecido como se estivesse inspecionando a tela em um teste exploratório.
 
-1. **Mapeamento de elementos**: Identifique todos os elementos visíveis — campos de texto, selects, checkboxes, botões, links, mensagens de erro/sucesso, tabelas, modais, etc.
-2. **Fluxos de interação**: Trace os caminhos que o usuário pode percorrer a partir da tela.
-3. **Estados possíveis**: Para cada elemento interativo, considere os estados: vazio, preenchido, erro, desabilitado, carregando.
-4. **Validações implícitas**: Inferir regras de negócio a partir de labels, placeholders, asteriscos obrigatórios e estrutura visual.
-5. **Cobertura de testes**: Gere cenários específicos para os elementos que você ver, nomeando-os exatamente como aparecem na interface.
+**Siga este roteiro de análise:**
 
-Cruze a análise visual com o contexto/requisitos fornecidos para gerar cenários mais precisos e completos.
+1. **Mapeamento de elementos**: Identifique todos os elementos visíveis — campos de texto, selects, checkboxes, botões, links, mensagens de erro/sucesso, tabelas, modais, abas, filtros e painéis de navegação.
+2. **Fluxos de interação**: Trace os caminhos que o usuário pode percorrer a partir da tela — incluindo ações encadeadas (ex: preencher formulário → salvar → confirmação).
+3. **Estados possíveis**: Para cada elemento interativo, considere os estados: vazio, preenchido corretamente, preenchido com dado inválido, campo obrigatório em branco, desabilitado e carregando.
+4. **Validações implícitas**: Infira regras de negócio a partir de labels, placeholders, asteriscos obrigatórios, máscaras de input e estrutura visual (ex: campos numéricos, datas, CPF/CNPJ).
+5. **Integridade de dados agrícolas**: Dê atenção especial a campos como: safra, cultura, talhão, produtor, propriedade, insumo, dosagem, data de aplicação — estes são críticos para conformidade agronômica.
+6. **Cobertura de testes**: Gere cenários nomeando os elementos exatamente como aparecem na interface (ex: "campo Safra", "botão Salvar", "aba Histórico").
+
+Cruze a análise visual com o contexto/requisitos fornecidos para gerar cenários mais precisos e completos. Retorne apenas o Markdown dos cenários no formato especificado.
 `
 
 // ── Handler ───────────────────────────────────────────────────────────────────
