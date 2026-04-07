@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
         })
         if (res.ok || res.status === 429) return new Response("ok", { status: 200 })
         const errText = await res.text()
-        const errJson = JSON.parse(errText)
+        let errJson: { error?: { message?: string; status?: string } } = {}
+        try { errJson = JSON.parse(errText) } catch { /* non-JSON error body */ }
         if (res.status === 401 || isInvalidKeyError(errJson?.error?.message || "", errJson?.error?.status || "")) return new Response("Chave inválida.", { status: 401 })
       } catch { continue }
     }

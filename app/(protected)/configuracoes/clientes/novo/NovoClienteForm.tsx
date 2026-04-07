@@ -6,20 +6,16 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { atualizarCliente, type ClienteRecord } from "@/lib/actions/clientes"
+import { criarCliente } from "@/lib/actions/clientes"
 import { formatCpfCnpj, validateCpfCnpj } from "@/lib/utils"
 import { toast } from "sonner"
 
-interface Props {
-  cliente: ClienteRecord
-}
-
-export default function EditarClienteClient({ cliente }: Props) {
+export default function NovoClienteForm() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [nomeFantasia, setNomeFantasia] = useState(cliente.nomeFantasia)
-  const [razaoSocial, setRazaoSocial] = useState(cliente.razaoSocial ?? "")
-  const [cpfCnpj, setCpfCnpj] = useState(cliente.cpfCnpj ?? "")
+  const [nomeFantasia, setNomeFantasia] = useState("")
+  const [razaoSocial, setRazaoSocial] = useState("")
+  const [cpfCnpj, setCpfCnpj] = useState("")
 
   function handleSave() {
     if (!nomeFantasia.trim()) {
@@ -31,13 +27,13 @@ export default function EditarClienteClient({ cliente }: Props) {
       return
     }
     startTransition(async () => {
-      await atualizarCliente(cliente.id, {
+      await criarCliente({
         nomeFantasia,
         razaoSocial: razaoSocial || null,
         cpfCnpj: cpfCnpj || null,
       })
-      toast.success("Cliente atualizado com sucesso.")
-      router.refresh()
+      toast.success("Cliente criado com sucesso.")
+      router.push("/configuracoes/clientes")
     })
   }
 
@@ -61,7 +57,7 @@ export default function EditarClienteClient({ cliente }: Props) {
             Clientes
           </Link>
           <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">Editar — {cliente.id}</span>
+          <span className="font-medium text-text-primary">Novo Cliente</span>
         </div>
         <Button onClick={handleSave} disabled={isPending}>
           <Check className="size-4" />

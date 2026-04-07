@@ -25,6 +25,7 @@ import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { inativarIntegracoes, type IntegracaoRecord } from "@/lib/actions/integracoes"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 10
@@ -154,6 +155,7 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
           <Link
             href="/configuracoes"
             title="Voltar"
+            aria-label="Voltar"
             className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />
@@ -211,41 +213,47 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
-                  <col className="w-36" />
+                  <col className="w-40" />
                   <col />
                   <col className="w-16" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
                     {showBulkActions && (
-                      <th className="px-4 py-3 text-left">
+                      <th className="sticky left-0 z-20 bg-neutral-grey-50 px-4 py-3 text-left">
                         <Checkbox
                           checked={selectableIds.length > 0 && selectedIds.size === selectableIds.length}
                           onChange={toggleAll}
                         />
                       </th>
                     )}
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                    <th className={cn(
+                      "sticky z-20 bg-neutral-grey-50 px-4 py-3 text-left text-xs font-semibold text-text-secondary",
+                      showBulkActions ? "left-10" : "left-0"
+                    )}>Código</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Provedor</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Modelo</th>
-                    <th className="px-4 py-3" />
+                    <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
                 <tbody>
                   {pageItems.map((item) => (
                     <tr
                       key={item.id}
-                      className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                      className="group border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
                     >
                       {showBulkActions && (
-                        <td className="px-4 py-3">
+                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 group-hover:bg-neutral-grey-50">
                           <Checkbox
                             checked={selectedIds.has(item.id)}
                             onChange={() => toggleRow(item.id)}
                           />
                         </td>
                       )}
-                      <td className="px-4 py-3 font-medium whitespace-nowrap">
+                      <td className={cn(
+                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap group-hover:bg-neutral-grey-50",
+                        showBulkActions ? "left-10" : "left-0"
+                      )}>
                         {item.active && isAdmin ? (
                           <Link href={`/configuracoes/integracoes/${item.id}/editar`} className="text-brand-primary hover:underline">
                             {item.id}
@@ -254,19 +262,20 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                           <span>{item.id}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 truncate capitalize text-text-primary">
+                      <td className="px-4 py-3 truncate capitalize text-text-primary" title={item.provider}>
                         {item.provider}
                       </td>
-                      <td className="px-4 py-3 truncate text-text-secondary font-mono text-xs">
+                      <td className="px-4 py-3 truncate text-text-secondary font-mono text-xs" title={item.model}>
                         {item.model}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
                         {showBulkActions && item.active ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               render={
                                 <button
                                   type="button"
+                                  aria-label="Mais ações"
                                   className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                 />
                               }

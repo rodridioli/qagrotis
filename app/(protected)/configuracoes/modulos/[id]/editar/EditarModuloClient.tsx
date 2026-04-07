@@ -63,6 +63,7 @@ export default function EditarModuloClient({ modulo, sistemas }: Props) {
           <Link
             href="/configuracoes/modulos"
             title="Voltar"
+            aria-label="Voltar"
             className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />
@@ -92,6 +93,7 @@ export default function EditarModuloClient({ modulo, sistemas }: Props) {
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             placeholder="Nome do módulo"
+            disabled={isPending}
           />
         </div>
 
@@ -99,7 +101,7 @@ export default function EditarModuloClient({ modulo, sistemas }: Props) {
           <label className="text-sm font-medium text-text-primary">
             Sistema <span className="text-destructive">*</span>
           </label>
-          <Select value={sistemaNome} onValueChange={(v) => setSistemaNome(v ?? "")} disabled={sistemas.length === 0}>
+          <Select value={sistemaNome} onValueChange={(v) => setSistemaNome(v ?? "")} disabled={sistemas.length === 0 || isPending}>
             <SelectTrigger><SelectValue placeholder={sistemas.length === 0 ? "Nenhum sistema cadastrado" : "Selecionar sistema"} /></SelectTrigger>
             <SelectPopup>
               {sistemas.map((s) => (
@@ -110,13 +112,15 @@ export default function EditarModuloClient({ modulo, sistemas }: Props) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-text-primary">Descrição</label>
+          <label htmlFor="descricao" className="text-sm font-medium text-text-primary">Descrição</label>
           <textarea
+            id="descricao"
             rows={4}
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
             placeholder="Descreva o módulo..."
-            className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none"
+            disabled={isPending}
+            className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none disabled:opacity-50 disabled:pointer-events-none"
           />
         </div>
       </div>

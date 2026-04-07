@@ -139,6 +139,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Nome completo"
+              disabled={isPending}
             />
           </div>
 
@@ -151,13 +152,14 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@empresa.com"
+              disabled={isPending}
             />
           </div>
 
           {isAdmin && (
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Tipo</label>
-              <Select value={tipo} onValueChange={(v) => setTipo(v ?? initialProfile.type)}>
+              <Select value={tipo} onValueChange={(v) => setTipo(v ?? initialProfile.type)} disabled={isPending}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectPopup>
                   <SelectItem value="Padrão">Padrão</SelectItem>
@@ -183,10 +185,12 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     className="pr-10"
+                    disabled={isPending}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
                   >
                     {showPassword
@@ -205,10 +209,12 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
                     className="pr-10"
+                    disabled={isPending}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirm((v) => !v)}
+                    aria-label={showConfirm ? "Ocultar confirmação de senha" : "Exibir confirmação de senha"}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
                   >
                     {showConfirm

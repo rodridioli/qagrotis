@@ -108,6 +108,7 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
           <Link
             href="/configuracoes/integracoes"
             title="Voltar"
+            aria-label="Voltar"
             className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />
@@ -137,7 +138,7 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
             <label className="text-sm font-medium text-text-primary">
               Provedor <span className="text-destructive">*</span>
             </label>
-            <Select value={provider} onValueChange={handleProviderChange}>
+            <Select value={provider} onValueChange={handleProviderChange} disabled={isPending}>
               <SelectTrigger>
                 <SelectValue>
                   <span className="capitalize">{provider}</span>
@@ -162,6 +163,7 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
               value={model}
               onChange={(e) => setModel(e.target.value)}
               placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
+              disabled={isPending}
             />
             {provider === "openrouter" && (
               <p className="text-[10px] text-text-secondary">Modelos gratuitos: meta-llama/llama-3.1-8b-instruct:free · mistralai/mistral-7b-instruct:free · google/gemma-2-9b-it:free · microsoft/phi-3-mini-128k-instruct:free</p>
@@ -189,6 +191,7 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
                 onChange={(e) => handleApiKeyChange(e.target.value)}
                 placeholder="Cole aqui a sua API Key..."
                 className="pr-16"
+                disabled={isPending}
               />
               <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-3">
                 {statusIcon[keyStatus]}
@@ -207,8 +210,9 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
             <button
               type="button"
               onClick={validateKey}
-              disabled={keyStatus === "validating" || !apiKey.trim()}
+              disabled={keyStatus === "validating" || !apiKey.trim() || isPending}
               title="Verificar conexão com a API"
+              aria-label="Verificar conexão com a API"
               className="flex size-10 shrink-0 items-center justify-center rounded-custom border border-border-default bg-surface-input text-text-secondary transition-colors hover:border-brand-primary hover:text-brand-primary disabled:pointer-events-none disabled:opacity-40"
             >
               <ShieldCheck className="size-4" />

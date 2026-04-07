@@ -34,6 +34,7 @@ export default function NovoSistemaForm() {
           <Link
             href="/configuracoes/sistemas"
             title="Voltar"
+            aria-label="Voltar"
             className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />
@@ -63,17 +64,20 @@ export default function NovoSistemaForm() {
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             placeholder="Nome do sistema"
+            disabled={isPending}
           />
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-text-primary">Descrição</label>
+          <label htmlFor="descricao" className="text-sm font-medium text-text-primary">Descrição</label>
           <textarea
+            id="descricao"
             rows={4}
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
             placeholder="Descreva o sistema..."
-            className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+            disabled={isPending}
+            className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 disabled:pointer-events-none"
           />
         </div>
       </div>

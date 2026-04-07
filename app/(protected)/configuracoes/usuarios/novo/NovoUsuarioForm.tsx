@@ -149,6 +149,7 @@ export default function NovoUsuarioForm() {
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Nome completo"
+              disabled={isPending}
             />
           </div>
 
@@ -161,6 +162,7 @@ export default function NovoUsuarioForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@empresa.com"
+              disabled={isPending}
             />
           </div>
 
@@ -168,7 +170,7 @@ export default function NovoUsuarioForm() {
             <label className="text-sm font-medium text-text-primary">
               Tipo <span className="text-destructive">*</span>
             </label>
-            <Select value={tipo} onValueChange={(v) => setTipo(v ?? "Padrão")}>
+            <Select value={tipo} onValueChange={(v) => setTipo(v ?? "Padrão")} disabled={isPending}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectPopup>
                 <SelectItem value="Padrão">Padrão</SelectItem>
@@ -204,10 +206,12 @@ export default function NovoUsuarioForm() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     className="pr-10"
+                    disabled={isPending}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
                   >
                     {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -223,10 +227,12 @@ export default function NovoUsuarioForm() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
                     className="pr-10"
+                    disabled={isPending}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirm((v) => !v)}
+                    aria-label={showConfirm ? "Ocultar confirmação de senha" : "Exibir confirmação de senha"}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
                   >
                     {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}

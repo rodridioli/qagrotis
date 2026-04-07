@@ -25,6 +25,7 @@ import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { inativarSistemas, type SistemaRecord } from "@/lib/actions/sistemas"
 import { type ModuloRecord } from "@/lib/actions/modulos"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 10
@@ -155,7 +156,9 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
         <div className="flex items-center gap-1.5 text-sm">
           <Link
             href="/configuracoes"
-            title="Voltar" className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+            title="Voltar"
+            aria-label="Voltar"
+            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />
           </Link>
@@ -220,18 +223,21 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
                     {showBulkActions && (
-                      <th className="px-4 py-3 text-left">
+                      <th className="sticky left-0 z-20 bg-neutral-grey-50 px-4 py-3 text-left">
                         <Checkbox
                           checked={selectableIds.length > 0 && selectedIds.size === selectableIds.length}
                           onChange={toggleAll}
                         />
                       </th>
                     )}
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                    <th className={cn(
+                      "sticky z-20 bg-neutral-grey-50 px-4 py-3 text-left text-xs font-semibold text-text-secondary",
+                      showBulkActions ? "left-10" : "left-0"
+                    )}>Código</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Nome</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Módulos</th>
-                    <th className="px-4 py-3" />
+                    <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
                 <tbody>
@@ -240,25 +246,28 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                     return (
                       <tr
                         key={s.id}
-                        className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                        className="group border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
                       >
                         {showBulkActions && (
-                          <td className="px-4 py-3">
+                          <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 group-hover:bg-neutral-grey-50">
                             <Checkbox
                               checked={selectedIds.has(s.id)}
                               onChange={() => toggleRow(s.id)}
                             />
                           </td>
                         )}
-                        <td className="px-4 py-3 font-medium whitespace-nowrap">
+                        <td className={cn(
+                          "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap group-hover:bg-neutral-grey-50",
+                          showBulkActions ? "left-10" : "left-0"
+                        )}>
                           {s.active && isAdmin ? (
                             <Link href={`/configuracoes/sistemas/${s.id}/editar`} className="text-brand-primary hover:underline">{s.id}</Link>
                           ) : (
                             <span>{s.id}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-medium text-text-primary truncate">{s.name}</td>
-                        <td className="px-4 py-3 text-text-secondary truncate">
+                        <td className="px-4 py-3 font-medium text-text-primary truncate" title={s.name}>{s.name}</td>
+                        <td className="px-4 py-3 text-text-secondary truncate" title={s.description ?? undefined}>
                           {s.description ?? <span className="italic text-text-secondary/60">—</span>}
                         </td>
                         <td className="px-4 py-3 text-center tabular-nums">
@@ -267,6 +276,8 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                               type="button"
                               onClick={() => setModulosModalSistema(s)}
                               className="text-brand-primary hover:underline text-sm font-medium"
+                              title={`Ver ${modulosDoSistema.length} módulo${modulosDoSistema.length !== 1 ? "s" : ""}`}
+                              aria-label={`Ver ${modulosDoSistema.length} módulo${modulosDoSistema.length !== 1 ? "s" : ""} de ${s.name}`}
                             >
                               {modulosDoSistema.length}
                             </button>
@@ -274,13 +285,14 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                             <span className="text-text-secondary/60 italic text-sm">0</span>
                           )}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
                           {showBulkActions && s.active ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger
                                 render={
                                   <button
                                     type="button"
+                                    aria-label="Mais ações"
                                     className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                   />
                                 }

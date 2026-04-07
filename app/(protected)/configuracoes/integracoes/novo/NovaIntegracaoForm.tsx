@@ -104,6 +104,7 @@ export default function NovaIntegracaoForm() {
           <Link
             href="/configuracoes/integracoes"
             title="Voltar"
+            aria-label="Voltar"
             className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
           >
             <ArrowLeft className="size-4" />
@@ -133,7 +134,7 @@ export default function NovaIntegracaoForm() {
             <label className="text-sm font-medium text-text-primary">
               Provedor <span className="text-destructive">*</span>
             </label>
-            <Select value={provider} onValueChange={handleProviderChange}>
+            <Select value={provider} onValueChange={handleProviderChange} disabled={isPending}>
               <SelectTrigger>
                 <SelectValue>
                   <span className="capitalize">{provider}</span>
@@ -158,6 +159,7 @@ export default function NovaIntegracaoForm() {
               value={model}
               onChange={(e) => setModel(e.target.value)}
               placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
+              disabled={isPending}
             />
             {provider === "openrouter" && (
               <p className="text-[10px] text-text-secondary">
@@ -188,6 +190,7 @@ export default function NovaIntegracaoForm() {
                 onChange={(e) => handleApiKeyChange(e.target.value)}
                 placeholder="Cole aqui a sua API Key..."
                 className="pr-16"
+                disabled={isPending}
               />
               <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-3">
                 {statusIcon[keyStatus]}
@@ -206,8 +209,9 @@ export default function NovaIntegracaoForm() {
             <button
               type="button"
               onClick={validateKey}
-              disabled={keyStatus === "validating" || !apiKey.trim()}
+              disabled={keyStatus === "validating" || !apiKey.trim() || isPending}
               title="Verificar conexão com a API"
+              aria-label="Verificar conexão com a API"
               className="flex size-10 shrink-0 items-center justify-center rounded-custom border border-border-default bg-surface-input text-text-secondary transition-colors hover:border-brand-primary hover:text-brand-primary disabled:pointer-events-none disabled:opacity-40"
             >
               <ShieldCheck className="size-4" />
