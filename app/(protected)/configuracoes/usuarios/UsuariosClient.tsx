@@ -95,13 +95,24 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
   const hasOtherActiveUsers = initialUsers.some((u) => u.id !== currentUserId && u.active)
   const showBulkActions = isAdmin && !filters.apenasInativos && hasOtherActiveUsers
 
-  // Selectable = current page items excluding own account
+  // Protect the last active admin from being inactivated
+  const activeAdminCount = useMemo(
+    () => initialUsers.filter((u) => u.active && u.type === "Administrador").length,
+    [initialUsers]
+  )
+  function isLastActiveAdmin(u: QaUserRecord) {
+    return u.active && u.type === "Administrador" && activeAdminCount === 1
+  }
+
+  // Selectable = current page items excluding own account and the last active admin
   const selectableIds = pageItems
-    .filter((u) => u.id !== currentUserId)
+    .filter((u) => u.id !== currentUserId && !isLastActiveAdmin(u))
     .map((u) => u.id)
 
   function toggleRow(id: string) {
     if (id === currentUserId) return
+    const u = initialUsers.find((u) => u.id === id)
+    if (u && isLastActiveAdmin(u)) return
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -125,6 +136,8 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
   }
 
   function handleInativarSingle(id: string) {
+    const u = initialUsers.find((u) => u.id === id)
+    if (u && isLastActiveAdmin(u)) return
     setInativarIds([id])
     setInativarOpen(true)
   }
@@ -261,12 +274,12 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                             <Checkbox
                               checked={selectedIds.has(u.id)}
                               onChange={() => toggleRow(u.id)}
-                              disabled={isSelf}
+                              disabled={isSelf || isLastActiveAdmin(u)}
                             />
                           </td>
                         )}
                         <td className="px-4 py-3 font-medium whitespace-nowrap">
-                          {u.active ? (
+                          {u.active && (isAdmin || isSelf) ? (
                             <Link href={`/configuracoes/usuarios/${u.id}/editar`} className="text-brand-primary hover:underline">{u.id}</Link>
                           ) : (
                             <span>{u.id}</span>
@@ -319,6 +332,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   variant="destructive"
+                                  disabled={isLastActiveAdmin(u)}
                                   onClick={() => handleInativarSingle(u.id)}
                                 >
                                   Inativar

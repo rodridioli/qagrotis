@@ -72,30 +72,43 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google") {
-        const email = user.email ?? ""
-        // Only allow @agrotis.com Google accounts
-        if (!email.toLowerCase().endsWith("@agrotis.com")) return false
+        const email = (user.email ?? "").trim().toLowerCase()
+        const isAgroTis = email.endsWith("@agrotis.com")
 
-        // Auto-register in CreatedUser if not already present
-        const existing = await prisma.createdUser.findFirst({
-          where: { email: { equals: email, mode: "insensitive" } },
-        })
-        if (!existing) {
-          const allUsers = await prisma.createdUser.findMany({ select: { id: true } })
-          const { nextId } = await import("@/lib/db-utils")
-          const id = nextId(allUsers.map((u) => u.id), "USR")
-          await prisma.createdUser.create({
-            data: {
-              id,
-              email,
-              name: user.name ?? email,
-              type: "Padrão",
-              password: "", // Google users don't use password login
-            },
-          })
+        const [existingCreated, inactiveRecords] = await Promise.all([
+          prisma.createdUser.findFirst({
+            where: { email: { equals: email, mode: "insensitive" } },
+            select: { id: true },
+          }),
+          prisma.inactiveUser.findMany({ select: { userId: true } }),
+        ])
+
+        const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
+
+        // If found but inactive → block
+        if (existingCreated && inactiveIds.has(existingCreated.id)) {
+          return "/login?error=GoogleInactive"
         }
-        // Ensure the JWT will carry the right ID
-        user.id = existing?.id ?? user.id
+
+        // If not registered and not @agrotis.com → block
+        if (!existingCreated && !isAgroTis) {
+          return "/login?error=UnauthorizedDomain"
+        }
+
+        // Auto-register @agrotis.com user not yet in CreatedUser
+        if (!existingCreated) {
+          const allIds = await prisma.createdUser.findMany({ select: { id: true } })
+          const { nextId } = await import("@/lib/db-utils")
+          const allExistingIds = [...MOCK_USERS.map((u) => u.id), ...allIds.map((u) => u.id)]
+          const id = nextId(allExistingIds, "U")
+          await prisma.createdUser.create({
+            data: { id, email, name: user.name ?? email, type: "Padrão", password: "" },
+          })
+          user.id = id
+        } else {
+          // Ensure the JWT will carry the right internal ID
+          user.id = existingCreated.id
+        }
       }
       return true
     },

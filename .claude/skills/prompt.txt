@@ -1,0 +1,85 @@
+
+
+#SOLICITAÇÃO
+Você deve seguir obrigatoriamente o fluxo definido em C:\claude-agro\.claude\skills\orchestrator.md. Use os arquivos da pasta C:\claude-agro\.claude\skills como única fonte de verdade.
+
+Diretrizes Críticas:
+Pipeline Obrigatório: UX → QA (pré) → FRONT → BACK → QA (pós) → REVIEW.
+Zero Hardcode: Use 100% dos tokens do Design System.
+Documentação: Todo componente novo deve ser criado no Storybook.
+Segurança e QA: Não gere código antes de definir os cenários BDD e os critérios de aceite.
+
+# SOLICITAÇÃO:
+[DESCREVA AQUI O QUE VOCÊ QUER - EX: "Crie uma tela de login integrada com a API de autenticação"]
+
+Requisitos Específicos:
+[REQUISITO 1 - EX: Validação de email e senha]
+[REQUISITO 2 - EX: Estado de carregamento e erro]
+[REQUISITO 3 - EX: Responsividade mobile-first]
+
+Formato de Saída:
+Sempre responda estruturando a saída pelas etapas do pipeline. Se qualquer etapa falhar nos critérios de aceitação das skills, pare, corrija e reexecute antes de prosseguir.
+
+
+
+# AUDITORIA
+Use as skills em C:\claude-agro\.claude\skills para realizar uma AUDITORIA TÉCNICA nas funcionalidades de:
+- Configurações/Usuários
+- Configurações/Sistemas
+- Configurações/Módulos
+- Configurações/Clientes
+- Configurações/Integrações
+
+Objetivo: Identificar códigos, componentes e endpoints que NÃO seguem os padrões definidos (Design System, Clean Architecture, Acessibilidade e Storybook).
+
+Ação:
+Analise as pastas de componentes e backend.
+Liste os arquivos que possuem "hardcode" ou ignoram os tokens do DS.
+Identifique onde faltam testes BDD e documentação no Storybook.
+Gere um relatório de "Dívida Técnica" priorizado por criticidade (UX e Segurança primeiro).
+Não altere nenhum arquivo ainda. Apenas reporte os problemas seguindo a lógica das Skills.
+
+
+
+#REFATORAR
+Agora, vamos refatorar a funcionalidade **Configurações/Usuários** seguindo rigorosamente o Orquestrador Fullstack.
+
+Você deve executar o pipeline completo:
+1. UX-SENIOR: Revise a experiência atual e defina estados de erro/loading/vazio conforme a skill.
+2. QA-SENIOR (pré): Escreva os cenários Given/When/Then para este item.
+3. FRONT-SENIOR: Refatore o código removendo hardcode, aplicando tokens do DS e garantindo acessibilidade.
+4. BACK-SENIOR: Se houver API, valide a arquitetura, segurança e idempotência.
+5. QA-SENIOR (pós): Valide a implementação final e crie os testes unitários/E2E.
+6. CODE REVIEWER: Faça o gate final e garanta que tudo está no Storybook.
+
+Siga todas as etapas. Se encontrar um bloqueio, pare e me avise antes de continuar.
+
+
+
+#AJUSTE DE LAYOUT
+Contexto: Analisando visualmente o layout gerado para [NOME DA TELA - ex: Configurações/Usuários], percebo que os [ELEMENTOS ESPECÍFICOS - ex: campos de input e botões] ficaram visualmente inconsistentes ou com layout ruim (mencione o erro ex: espaçamento muito grande, cores erradas, falta de responsividade).
+
+Ação Obrigatória (Seguindo Skills):
+NÃO faça uma correção local na página.
+Use a skill FRONT-SENIOR para identificar o componente base (Átomo/Molécula) que está gerando o layout ruim.
+Refatore o código desse componente base para corrigir o visual, garantindo que ele use os tokens corretos do Design System.
+Atualize imediatamente o arquivo .stories deste componente no Storybook para refletir a nova aparência.
+Verifique a tela de [NOME DA TELA] e garanta que ela absorveu a alteração e que o layout agora está correto.
+Peça para a skill CODE REVIEWER verificar se a alteração é segura e não quebrou outras telas que usam o mesmo componente.
+
+
+
+#REPORTAR_ERRO
+Contexto: Identifiquei um comportamento inesperado na funcionalidade [NOME DA TELA/FUNÇÃO].
+O que está acontecendo: [DESCREVA O ERRO - EX: O botão de salvar não responde quando o campo email está vazio].
+O que deveria acontecer: [DESCREVA O COMPORTAMENTO CORRETO].
+
+Ação Obrigatória (Seguindo Skills):
+QA-SENIOR (pré): Analise a causa raiz. O erro é de validação no Front, falta de sanitização no Back ou falha de lógica no UX?
+QA-SENIOR (pré): Crie um novo cenário de teste (BDD) que reproduza este erro especificamente.
+ORQUESTRADOR: Execute o pipeline de correção:
+FRONT/BACK: Aplique a correção seguindo Clean Architecture e Design System.
+QA-SENIOR (pós): Rode o novo teste BDD para garantir que o erro foi extinto e não gerou regressão.
+STORYBOOK: Se o erro for visual, atualize o componente no Storybook.
+CODE REVIEWER: Valide se a correção segue os padrões de segurança e performance.
+Não apenas corrija o código; garanta que o novo cenário de teste impeça que este erro volte a acontecer.

@@ -1,23 +1,42 @@
-# Skill: Code Reviewer
+# 🔍 Skill: Code Reviewer (Gate Final)
 
 ## Objetivo
-Revisar e garantir qualidade máxima do código.
+Bloquear qualquer código ruim antes de produção
 
 ## Avaliar
 - Clareza
-- Performance
 - Segurança
-- Aderência ao design system
+- Performance
 - Acessibilidade
+- Design System
 
-## Ações
-- Sugerir melhorias
-- Corrigir problemas
-- Validar checklist das outras skills
+## Ações obrigatórias
+- Validar TODAS as outras skills
+- Garantir que:
+  - UX foi respeitado
+  - QA foi coberto
+  - Design System foi seguido
+  - Código está desacoplado
+  - Não há duplicação
+  - Não há anti-patterns
 
-## Checklist
-- [ ] Código limpo?
-- [ ] Segue padrões?
-- [ ] Seguro?
-- [ ] Acessível?
-- [ ] Performático?
+## Bloqueios
+❌ Reprovar se:
+- Existe hardcode
+- Não está no Storybook
+- Não tem testes
+- Não é acessível
+- Não está performático
+- Não segue arquitetura
+
+## Extra
+- Sugerir refatorações
+- Melhorar legibilidade
+- Reduzir complexidade
+
+## Regra final
+❌ Se algo estiver fora do padrão → NÃO APROVAR
+
+## Saída
+- Código final aprovado
+- Melhorias aplicadas

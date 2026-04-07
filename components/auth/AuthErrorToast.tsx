@@ -11,6 +11,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   OAuthAccountNotLinked: "Este e-mail já está cadastrado com outro método de login.",
   AccessDenied: "Acesso negado.",
   Configuration: "Erro de configuração do servidor.",
+  UnauthorizedDomain: "Acesso não permitido. Apenas usuários cadastrados ou com e-mail @agrotis.com podem entrar com o Google.",
+  GoogleInactive: "Usuário inativo. Entre em contato com o administrador do sistema.",
   Default: "Ocorreu um erro ao autenticar. Tente novamente.",
 }
 

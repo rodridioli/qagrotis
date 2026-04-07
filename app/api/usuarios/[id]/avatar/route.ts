@@ -50,12 +50,17 @@ export async function PUT(
     return NextResponse.json({ error: "Formato não permitido. Use JPG, PNG, WebP ou GIF." }, { status: 415 })
   }
 
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "avatars")
-  await fs.mkdir(uploadDir, { recursive: true })
+  try {
+    const uploadDir = path.join(process.cwd(), "public", "uploads", "avatars")
+    await fs.mkdir(uploadDir, { recursive: true })
 
-  const buffer = Buffer.from(await photo.arrayBuffer())
-  const filename = `${id}.${ext}`
-  await fs.writeFile(path.join(uploadDir, filename), buffer)
+    const buffer = Buffer.from(await photo.arrayBuffer())
+    const filename = `${id}.${ext}`
+    await fs.writeFile(path.join(uploadDir, filename), buffer)
 
-  return NextResponse.json({ photoPath: `/uploads/avatars/${filename}` })
+    return NextResponse.json({ photoPath: `/uploads/avatars/${filename}` })
+  } catch (e) {
+    console.error("[avatar upload] Erro ao salvar arquivo:", e)
+    return NextResponse.json({ error: "Erro ao salvar o arquivo no servidor." }, { status: 500 })
+  }
 }

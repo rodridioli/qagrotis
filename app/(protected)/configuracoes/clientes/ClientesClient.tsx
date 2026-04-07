@@ -3,9 +3,10 @@
 import React, { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Plus, MoreVertical, X, Filter, Power } from "lucide-react"
+import { ArrowLeft, Plus, MoreVertical, X, Filter, Power, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogClose,
@@ -23,8 +24,9 @@ import {
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { inativarClientes, type ClienteRecord } from "@/lib/actions/clientes"
+import { inativarClientes, criarCliente, type ClienteRecord } from "@/lib/actions/clientes"
 import { type CenarioRecord } from "@/lib/actions/cenarios"
+import { formatCpfCnpj } from "@/lib/utils"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 10
@@ -47,6 +49,41 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
   const [inativarIds, setInativarIds] = useState<string[]>([])
   const [apenasInativos, setApenasInativos] = useState(false)
   const [pendingInativos, setPendingInativos] = useState(false)
+
+  // ── Add cliente modal ──────────────────────────────────────────────────────
+  const [addOpen, setAddOpen] = useState(false)
+  const [addNomeFantasia, setAddNomeFantasia] = useState("")
+  const [addRazaoSocial, setAddRazaoSocial] = useState("")
+  const [addCpfCnpj, setAddCpfCnpj] = useState("")
+  const [isAddPending, startAddTransition] = useTransition()
+
+  function resetAddForm() {
+    setAddNomeFantasia("")
+    setAddRazaoSocial("")
+    setAddCpfCnpj("")
+  }
+
+  function handleAdicionarCliente() {
+    if (!addNomeFantasia.trim()) {
+      toast.error("O Nome Fantasia é obrigatório.")
+      return
+    }
+    startAddTransition(async () => {
+      try {
+        await criarCliente({
+          nomeFantasia: addNomeFantasia,
+          razaoSocial: addRazaoSocial || null,
+          cpfCnpj: addCpfCnpj || null,
+        })
+        setAddOpen(false)
+        resetAddForm()
+        router.refresh()
+        toast.success("Cliente criado com sucesso.")
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Erro ao criar cliente. Tente novamente.")
+      }
+    })
+  }
 
   const filtered = useMemo(() => {
     const result = initialClientes.filter((c) => {
@@ -179,12 +216,10 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
                 Inativar
               </Button>
             )}
-            <Link href="/configuracoes/clientes/novo">
-              <Button>
-                <Plus className="size-4" />
-                Adicionar Cliente
-              </Button>
-            </Link>
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus className="size-4" />
+              Adicionar Cliente
+            </Button>
           </div>
         )}
       </div>
@@ -365,6 +400,56 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
         confirmLabel="Inativar"
         onConfirm={confirmInativar}
       />
+
+      {/* ── Adicionar cliente modal ── */}
+      <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) resetAddForm() }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Nome Fantasia <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={addNomeFantasia}
+                onChange={(e) => setAddNomeFantasia(e.target.value)}
+                placeholder="Nome Fantasia"
+                disabled={isAddPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Razão Social</label>
+              <Input
+                value={addRazaoSocial}
+                onChange={(e) => setAddRazaoSocial(e.target.value)}
+                placeholder="Razão Social"
+                disabled={isAddPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">CPF / CNPJ</label>
+              <Input
+                value={addCpfCnpj}
+                onChange={(e) => setAddCpfCnpj(formatCpfCnpj(e.target.value))}
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                disabled={isAddPending}
+              />
+            </div>
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <DialogClose render={<Button variant="outline" disabled={isAddPending} />}>
+              <X className="size-4" />
+              Cancelar
+            </DialogClose>
+            <Button onClick={handleAdicionarCliente} disabled={isAddPending}>
+              <Check className="size-4" />
+              {isAddPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,6 +1,5 @@
 "use server"
 
-import path from "path"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
@@ -38,20 +37,21 @@ const userInputSchema = z.object({
 const idSchema = z.string().regex(/^U-\d+$/, "ID inválido")
 const idsArraySchema = z.array(idSchema).max(1000)
 
-// Allowed uploads directory — photoPath must resolve inside it
-const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads")
-
 /**
- * Validate that a photo path is inside the allowed uploads directory.
+ * Validate that a photo path is a safe URL path within /uploads/.
  * Prevents path traversal attacks where a caller could store "../../../etc/passwd".
+ * Accepts URL paths like /uploads/avatars/U-01.jpg returned by the avatar API.
  */
 function validatePhotoPath(photoPath: string | null | undefined): string | null {
   if (!photoPath) return null
-  const resolved = path.resolve(photoPath)
-  if (!resolved.startsWith(UPLOADS_DIR + path.sep) && resolved !== UPLOADS_DIR) {
+  if (
+    !photoPath.startsWith("/uploads/") ||
+    photoPath.includes("..") ||
+    !/^\/uploads\/[-A-Za-z0-9/_. ]+$/.test(photoPath)
+  ) {
     throw new Error("Caminho de foto inválido.")
   }
-  return resolved
+  return photoPath
 }
 
 // ── Public actions ─────────────────────────────────────────────────────────
@@ -127,6 +127,15 @@ export async function inativarQaUsers(ids: string[]): Promise<{ error?: string }
   if (!result.success) return { error: "IDs inválidos." }
 
   try {
+    // Protect against removing the last active admin
+    const allUsers = await getQaUsers()
+    const idsSet = new Set(ids)
+    const activeAdmins = allUsers.filter((u) => u.active && u.type === "Administrador")
+    const remainingActiveAdmins = activeAdmins.filter((u) => !idsSet.has(u.id))
+    if (activeAdmins.length > 0 && remainingActiveAdmins.length === 0) {
+      return { error: "É necessário manter pelo menos um administrador ativo no sistema." }
+    }
+
     await prisma.inactiveUser.createMany({
       data: ids.map((userId) => ({ userId })),
       skipDuplicates: true,
