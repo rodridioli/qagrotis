@@ -114,15 +114,18 @@ describe("resolveGoogleAccess", () => {
   })
 
   // ── BUG 2 REGRESSÃO: @agrotis.com com registro inativo no banco ──────────
+  // Nota de integração: quando autoRegister=true E existingCreated!=null,
+  // o signIn callback em auth.ts REATIVA (deleteMany InactiveUser + update name)
+  // em vez de CREATE, evitando P2002 (unique constraint em CreatedUser.email).
   describe(
-    "Cenário: @agrotis.com com createdUser inativo — deve criar nova conta ativa (BUG 2)",
+    "Cenário: @agrotis.com com createdUser inativo — deve sinalizar autoRegister (BUG 2)",
     () => {
       const inactiveAgrotis = new Set(["U-DB-OLD"])
 
       it("DADO que o email é @agrotis.com " +
          "E existe um createdUser com ID 'U-DB-OLD' marcado como inativo " +
          "QUANDO faz login com Google " +
-         "ENTÃO deve permitir acesso com autoRegister=true (nova conta)", () => {
+         "ENTÃO deve retornar allow=true e autoRegister=true (reativação no signIn)", () => {
         const result = resolveGoogleAccess(
           "reativado@agrotis.com",
           { id: "U-DB-OLD" },

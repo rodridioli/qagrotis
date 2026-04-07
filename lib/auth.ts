@@ -88,14 +88,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!decision.allow) return decision.redirect
 
-        // Auto-register @agrotis.com user not yet in any user store
         if (decision.autoRegister) {
-          const allIds = await prisma.createdUser.findMany({ select: { id: true } })
-          const allExistingIds = [...MOCK_USERS.map((u) => u.id), ...allIds.map((u) => u.id)]
-          const id = nextId(allExistingIds, "U")
-          await prisma.createdUser.create({
-            data: { id, email, name: user.name ?? email, type: "Padrão", password: "" },
-          })
+          if (existingCreated) {
+            // @agrotis.com with an existing INACTIVE record: reactivate in a single transaction.
+            // Cannot CREATE (email has @unique) — remove from InactiveUser and refresh name.
+            await prisma.$transaction([
+              prisma.inactiveUser.deleteMany({ where: { userId: existingCreated.id } }),
+              prisma.createdUser.update({
+                where: { id: existingCreated.id },
+                data: { name: user.name ?? email },
+              }),
+            ])
+          } else {
+            // @agrotis.com first-time login — no existing record, safe to create.
+            const allIds = await prisma.createdUser.findMany({ select: { id: true } })
+            const allExistingIds = [...MOCK_USERS.map((u) => u.id), ...allIds.map((u) => u.id)]
+            const id = nextId(allExistingIds, "U")
+            await prisma.createdUser.create({
+              data: { id, email, name: user.name ?? email, type: "Padrão", password: "" },
+            })
+          }
         }
       }
       return true
