@@ -22,7 +22,7 @@ function CenarioTipoBadge({ tipo }: { tipo: CenarioTipo }) {
     "Manual":       "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
     "Man./Auto.":   "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
   }
-  return badge(styles[tipo], tipo)
+  return badge(styles[tipo] ?? "border-border-default bg-neutral-grey-50 text-text-secondary", tipo)
 }
 
 function SuiteTipoBadge({ tipo }: { tipo: SuiteTipo }) {
@@ -31,7 +31,7 @@ function SuiteTipoBadge({ tipo }: { tipo: SuiteTipo }) {
     "Kanban": "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
     "Outro":  "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
   }
-  return badge(styles[tipo], tipo)
+  return badge(styles[tipo] ?? "border-border-default bg-neutral-grey-50 text-text-secondary", tipo)
 }
 
 function AutomacaoBadge({ pct }: { pct: number }) {

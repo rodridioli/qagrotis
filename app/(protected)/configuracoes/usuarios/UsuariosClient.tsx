@@ -238,13 +238,13 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-125 table-fixed text-sm">
+              <table className="w-full min-w-150 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
                   <col />
-                  <col className="w-56" />
-                  <col className="w-28" />
+                  <col className="w-40" />
+                  <col className="w-36" />
                   <col className="w-16" />
                 </colgroup>
                 <thead>

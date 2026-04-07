@@ -47,6 +47,9 @@ export const CenarioTipos: Story = {
 | Automatizado | Verde (brand-primary) | \`border-brand-primary/30 bg-brand-primary/10 text-brand-primary\` |
 | Manual | Cinza-azulado (secondary) | \`border-secondary-500/30 bg-secondary-500/10 text-secondary-600\` |
 | Man./Auto. | Âmbar | \`border-amber-500/30 bg-amber-500/10 text-amber-600\` |
+| *(valor inesperado)* | Neutro (fallback) | \`border-border-default bg-neutral-grey-50 text-text-secondary\` |
+
+> **Fallback**: valores fora do enum exibem chip neutro em vez de chip sem estilo visual.
         `,
       },
     },
@@ -56,6 +59,7 @@ export const CenarioTipos: Story = {
       <CenarioTipoBadge tipo="Automatizado" />
       <CenarioTipoBadge tipo="Manual" />
       <CenarioTipoBadge tipo="Man./Auto." />
+      <CenarioTipoBadge tipo={"Outro" as never} />
     </div>
   ),
 }
@@ -70,9 +74,12 @@ export const SuiteTipos: Story = {
         story: `
 | Valor | Cor |
 |-------|-----|
-| Sprint | Verde (\`green-600\`) |
+| Sprint | Verde (\`brand-primary\`) |
 | Kanban | Cinza-azulado (\`secondary-500\`) |
 | Outro | Âmbar (\`amber-500\`) |
+| *(valor inesperado)* | Neutro (fallback) |
+
+> **Fallback**: valores fora do enum exibem chip neutro em vez de chip sem estilo visual.
         `,
       },
     },
@@ -82,6 +89,7 @@ export const SuiteTipos: Story = {
       <SuiteTipoBadge tipo="Sprint" />
       <SuiteTipoBadge tipo="Kanban" />
       <SuiteTipoBadge tipo="Outro" />
+      <SuiteTipoBadge tipo={"Legado" as never} />
     </div>
   ),
 }

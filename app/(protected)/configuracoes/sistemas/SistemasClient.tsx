@@ -211,12 +211,12 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-125 table-fixed text-sm">
+              <table className="w-full min-w-130 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
                   <col />
-                  <col className="w-52" />
+                  <col className="w-44" />
                   <col className="w-20" />
                   <col className="w-16" />
                 </colgroup>

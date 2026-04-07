@@ -35,6 +35,7 @@ import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import { inativarSuites, type SuiteListRecord } from "@/lib/actions/suites"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 10
@@ -245,26 +246,29 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
                   <col />
-                  <col className="w-14" />
-                  <col className="w-28" />
                   <col className="w-16" />
+                  <col className="w-28" />
+                  <col className="w-20" />
                   <col className="w-32" />
-                  <col className="w-12" />
-                  <col className="w-14" />
+                  <col className="w-16" />
+                  <col className="w-16" />
                   <col className="w-24" />
-                  {showBulkActions && <col className="w-16" />}
+                  <col className="w-16" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
                     {showBulkActions && (
-                      <th className="px-4 py-3 text-left">
+                      <th className="sticky left-0 z-20 bg-neutral-grey-50 px-4 py-3 text-left">
                         <Checkbox
                           checked={selectableIds.length > 0 && selectedIds.size === selectableIds.length}
                           onChange={toggleAll}
                         />
                       </th>
                     )}
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                    <th className={cn(
+                      "sticky z-20 bg-neutral-grey-50 px-4 py-3 text-left text-xs font-semibold text-text-secondary",
+                      showBulkActions ? "left-10" : "left-0"
+                    )}>Código</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Suíte</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Versão</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
@@ -273,21 +277,24 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Erros</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Cenários</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                    {showBulkActions && <th className="px-4 py-3" />}
+                    <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
                 <tbody>
                   {pageItems.map((s) => (
                     <tr
                       key={s.id}
-                      className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                      className="group border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
                     >
                       {showBulkActions && (
-                        <td className="px-4 py-3">
+                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 group-hover:bg-neutral-grey-50">
                           <Checkbox checked={selectedIds.has(s.id)} onChange={() => toggleRow(s.id)} />
                         </td>
                       )}
-                      <td className="px-4 py-3 font-medium whitespace-nowrap">
+                      <td className={cn(
+                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap group-hover:bg-neutral-grey-50",
+                        showBulkActions ? "left-10" : "left-0"
+                      )}>
                         {s.active ? (
                           <Link href={`/suites/${s.id}`} className="text-brand-primary hover:underline">
                             {s.id}
@@ -296,9 +303,9 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                           <span>{s.id}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 truncate font-medium text-text-primary">{s.suiteName}</td>
+                      <td className="px-4 py-3 truncate font-medium text-text-primary" title={s.suiteName}>{s.suiteName}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-text-secondary">{s.versao}</td>
-                      <td className="px-4 py-3 text-text-secondary truncate">{s.modulo}</td>
+                      <td className="px-4 py-3 text-text-secondary truncate" title={s.modulo}>{s.modulo}</td>
                       <td className="px-4 py-3 text-center tabular-nums text-text-secondary">
                         {s.historicoCount}
                       </td>
@@ -312,13 +319,14 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                       <td className="px-4 py-3">
                         <SuiteTipoBadge tipo={s.tipo as SuiteTipo} />
                       </td>
-                      {showBulkActions && (
-                        <td className="px-4 py-3">
+                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
+                        {showBulkActions && (
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               render={
                                 <button
                                   type="button"
+                                  aria-label="Mais ações"
                                   className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                 />
                               }
@@ -334,8 +342,8 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        </td>
-                      )}
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
