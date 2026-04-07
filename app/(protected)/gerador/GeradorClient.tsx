@@ -525,14 +525,13 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         {/* ── Aba: Cenários ── */}
         <div className={activeTab !== "cenarios" ? "hidden" : "flex min-h-125 flex-col"}>
           {/* Cabeçalho do painel */}
-          <div className="border-b border-border-default px-5 py-3 flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-text-primary">Casos de teste gerados</h2>
-            {cenarioCount > 0 && (
+          {cenarioCount > 0 && (
+            <div className="border-b border-border-default px-5 py-3 flex items-center gap-2">
               <span className="inline-flex items-center justify-center rounded-full border border-brand-primary/30 bg-brand-primary/10 px-2 py-0.5 text-xs font-semibold text-brand-primary">
                 {cenarioCount}
               </span>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="flex-1 overflow-y-auto px-5 py-4">
             {apiError && !loading && (

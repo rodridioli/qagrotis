@@ -850,7 +850,7 @@ export default function EditarCenarioClient({
                       <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
                       <th className="w-36 px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
                       <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
-                      <th className="w-10 px-4 py-3" />
+                      <th className="w-16 px-4 py-3" />
                     </tr>
                   </thead>
                   <tbody>

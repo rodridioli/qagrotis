@@ -103,7 +103,8 @@ export default function SuitesClient({ allModulos, suites }: Props) {
 
   const filtered = useMemo(() => {
     return suites.filter((s) => {
-      if (inativadosIds.has(s.id)) return false
+      // Optimistic hide only when viewing actives — don't suppress items from inactive view
+      if (!filters.apenasInativos && inativadosIds.has(s.id)) return false
       const matchSistema = modulosDosistema.length === 0 || modulosDosistemaSet.has(s.modulo)
       const matchSearch =
         !search ||
