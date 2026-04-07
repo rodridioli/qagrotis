@@ -4,8 +4,9 @@ import Credentials from "next-auth/providers/credentials"
 import { authConfig } from "@/lib/auth.config"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { PROTOTYPE_USERS } from "@/lib/prototype-users"
-import { verifyPassword } from "@/lib/db-utils"
+import { verifyPassword, nextId } from "@/lib/db-utils"
 import { prisma } from "@/lib/prisma"
+import { resolveGoogleAccess, resolveGoogleInternalId } from "@/lib/auth-google"
 
 // Inline credential validation (can't import "use server" actions here)
 async function checkCredentials(email: string, password: string) {
@@ -73,7 +74,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         const email = (user.email ?? "").trim().toLowerCase()
-        const isAgroTis = email.endsWith("@agrotis.com")
 
         const [existingCreated, inactiveRecords] = await Promise.all([
           prisma.createdUser.findFirst({
@@ -84,36 +84,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         ])
 
         const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
+        const decision = resolveGoogleAccess(email, existingCreated, inactiveIds)
 
-        // If found but inactive → block
-        if (existingCreated && inactiveIds.has(existingCreated.id)) {
-          return "/login?error=GoogleInactive"
-        }
+        if (!decision.allow) return decision.redirect
 
-        // If not registered and not @agrotis.com → block
-        if (!existingCreated && !isAgroTis) {
-          return "/login?error=UnauthorizedDomain"
-        }
-
-        // Auto-register @agrotis.com user not yet in CreatedUser
-        if (!existingCreated) {
+        // Auto-register @agrotis.com user not yet in any user store
+        if (decision.autoRegister) {
           const allIds = await prisma.createdUser.findMany({ select: { id: true } })
-          const { nextId } = await import("@/lib/db-utils")
           const allExistingIds = [...MOCK_USERS.map((u) => u.id), ...allIds.map((u) => u.id)]
           const id = nextId(allExistingIds, "U")
           await prisma.createdUser.create({
             data: { id, email, name: user.name ?? email, type: "Padrão", password: "" },
           })
-          user.id = id
-        } else {
-          // Ensure the JWT will carry the right internal ID
-          user.id = existingCreated.id
         }
       }
       return true
     },
-    jwt({ token, user }) {
-      if (user) token.id = user.id
+    async jwt({ token, user, account }) {
+      if (account?.provider === "google" && user?.email) {
+        // First Google sign-in: resolve internal CreatedUser ID (never trust user.id from OAuth).
+        // Use findMany + filter to skip inactive records — an @agrotis.com user may have both
+        // an old inactive record and a freshly auto-registered active one for the same email.
+        const email = user.email.trim().toLowerCase()
+        const [inactiveRecords, createdUsers] = await Promise.all([
+          prisma.inactiveUser.findMany({ select: { userId: true } }),
+          prisma.createdUser.findMany({
+            where: { email: { equals: email, mode: "insensitive" } },
+            select: { id: true },
+          }),
+        ])
+        const jwtInactiveIds = new Set(inactiveRecords.map((r) => r.userId))
+        const activeCreated = createdUsers.find((u) => !jwtInactiveIds.has(u.id))
+        token.id = resolveGoogleInternalId(email, activeCreated?.id ?? null, user.id ?? "")
+      } else if (user) {
+        token.id = user.id
+      }
       return token
     },
     session({ session, token }) {
