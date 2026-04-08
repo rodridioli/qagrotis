@@ -4,6 +4,7 @@ import React, { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Plus, MoreVertical, X, Filter, Power, Check } from "lucide-react"
+import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -44,6 +45,7 @@ interface Props {
 export default function SistemasClient({ initialSistemas, initialModulos, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [isInativando, setIsInativando] = useState(false)
 
   const [search, setSearch] = useState("")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -152,18 +154,20 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
   }
 
   function confirmInativar() {
-    const count = inativarIds.length
+    const ids = [...inativarIds]
+    const count = ids.length
     setInativarOpen(false)
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      inativarIds.forEach((id) => next.delete(id))
+      ids.forEach((id) => next.delete(id))
       return next
     })
     setInativarIds([])
+    setIsInativando(true)
 
     startTransition(async () => {
       try {
-        await inativarSistemas(inativarIds)
+        await inativarSistemas(ids)
         router.refresh()
         toast.success(
           count === 1
@@ -173,6 +177,8 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
       } catch {
         router.refresh()
         toast.error("Erro ao inativar. Tente novamente.")
+      } finally {
+        setIsInativando(false)
       }
     })
   }
@@ -196,6 +202,7 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
 
   return (
     <div className="space-y-4">
+      <LoadingOverlay visible={isInativando} label="Inativando sistemas..." />
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-sm">

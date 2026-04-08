@@ -4,6 +4,7 @@ import { useState, useMemo, useTransition, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AlertCircle, ArrowRightLeft, FileText, Filter, MoreVertical, Plus, Power, Upload, X } from "lucide-react"
+import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -59,6 +60,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isImporting, setIsImporting] = useState(false)
+  const [isInativando, setIsInativando] = useState(false)
   const { sistemaSelecionado } = useSistemaSelecionado()
   const setupFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -158,18 +160,20 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
   }
 
   function confirmInativar() {
-    const count = inativarIds.length
+    const ids = [...inativarIds]
+    const count = ids.length
     setInativarOpen(false)
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      inativarIds.forEach((id) => next.delete(id))
+      ids.forEach((id) => next.delete(id))
       return next
     })
     setInativarIds([])
+    setIsInativando(true)
 
     startTransition(async () => {
       try {
-        await inativarCenarios(inativarIds)
+        await inativarCenarios(ids)
         router.refresh()
         toast.success(
           count === 1
@@ -179,6 +183,8 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
       } catch {
         router.refresh()
         toast.error("Erro ao inativar. Tente novamente.")
+      } finally {
+        setIsInativando(false)
       }
     })
   }
@@ -285,6 +291,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
 
   return (
     <div className="space-y-4">
+      <LoadingOverlay visible={isInativando} label="Inativando cenários..." />
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-end gap-3">
         {showBulkActions && (

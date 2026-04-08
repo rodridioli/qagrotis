@@ -1025,12 +1025,16 @@ export default function EditarCenarioClient({
               onClick={() => {
                 if (!newClienteName.trim()) return
                 startClienteTransition(async () => {
-                  const novo = await criarCliente({ nomeFantasia: newClienteName, razaoSocial: null, cpfCnpj: newClienteCpf || null })
-                  setClientes((prev) => [...prev, novo])
-                  setClienteSelecionado(novo.nomeFantasia)
-                  setNewClienteName("")
-                  setNewClienteCpf("")
-                  setAddClienteOpen(false)
+                  try {
+                    const novo = await criarCliente({ nomeFantasia: newClienteName, razaoSocial: null, cpfCnpj: newClienteCpf || null })
+                    setClientes((prev) => [...prev, novo])
+                    setClienteSelecionado(novo.nomeFantasia)
+                    setNewClienteName("")
+                    setNewClienteCpf("")
+                    setAddClienteOpen(false)
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Erro ao adicionar cliente.")
+                  }
                 })
               }}
             >

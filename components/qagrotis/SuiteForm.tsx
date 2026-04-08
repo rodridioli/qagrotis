@@ -612,10 +612,14 @@ export function SuiteForm({
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <Link
-                          href={suite?.id ? `/suites/${suite.id}/${h.id}` : `/cenarios/${h.id}`}
-                          className="font-medium text-brand-primary hover:underline"
-                        >{h.id}</Link>
+                        {existingIds.has(h.id) ? (
+                          <Link
+                            href={suite?.id ? `/suites/${suite.id}/${h.id}` : `/cenarios/${h.id}`}
+                            className="font-medium text-brand-primary hover:underline"
+                          >{h.id}</Link>
+                        ) : (
+                          <span className="font-medium text-text-secondary">{h.id}</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-text-primary">{h.cenario}</td>
                       <td className="px-4 py-3 text-text-secondary max-w-0">

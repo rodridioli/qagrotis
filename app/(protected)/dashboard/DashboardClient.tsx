@@ -167,10 +167,14 @@ export function DashboardClient({
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   // ── Filter states ──────────────────────────────────────────────────────────
-  const [rankingFilter, setRankingFilter] = useState<RankingFilter>("hoje")
-  const [testesFilter,  setTestesFilter]  = useState<TestesFilter>("hoje")
-  const [errosFilter,   setErrosFilter]   = useState<ChartFilter>("hoje")
-  const [sucessoFilter, setSucessoFilter] = useState<ChartFilter>("hoje")
+  const [rankingFilter,       setRankingFilter]       = useState<RankingFilter>("hoje")
+  const [rankingModulo,       setRankingModulo]       = useState("")
+  const [testesFilter,        setTestesFilter]        = useState<TestesFilter>("hoje")
+  const [testesModulo,        setTestesModulo]        = useState("")
+  const [errosFilter,         setErrosFilter]         = useState<ChartFilter>("hoje")
+  const [errosModulo,         setErrosModulo]         = useState("")
+  const [sucessoFilter,       setSucessoFilter]       = useState<ChartFilter>("hoje")
+  const [sucessoModulo,       setSucessoModulo]       = useState("")
 
   // ── User map ───────────────────────────────────────────────────────────────
   const userMap = useMemo(() => {
@@ -249,12 +253,18 @@ export function DashboardClient({
     [allSuites, sistemaSelecionado]
   )
 
+  // ── Lista de módulos do sistema selecionado (para filtros) ─────────────────
+  const moduloNames = useMemo(() => {
+    const mods = allModulos.filter(m => !sistemaSelecionado || m.sistemaName === sistemaSelecionado)
+    return mods.map(m => m.name)
+  }, [allModulos, sistemaSelecionado])
+
   // ── Historico entries (flat) ───────────────────────────────────────────────
   const historicoEntries = useMemo(() => {
-    const entries: { timestamp: number; resultado: string }[] = []
+    const entries: { timestamp: number; resultado: string; module: string }[] = []
     for (const suite of suitesFiltradas) {
       for (const h of suite.historico ?? []) {
-        if (h.timestamp) entries.push({ timestamp: h.timestamp, resultado: h.resultado })
+        if (h.timestamp) entries.push({ timestamp: h.timestamp, resultado: h.resultado, module: h.module ?? "" })
       }
     }
     return entries
@@ -265,6 +275,7 @@ export function DashboardClient({
     const { start, end } = getDateRange(rankingFilter)
     const countByUser = new Map<string, number>()
     for (const c of cenariosFiltrados) {
+      if (rankingModulo && c.module !== rankingModulo) continue
       const ts = c.createdAt ?? 0
       if (ts >= start && ts <= end) {
         const key = c.createdBy ?? "Desconhecido"
@@ -275,38 +286,47 @@ export function DashboardClient({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([createdBy, count]) => ({ createdBy, count }))
-  }, [cenariosFiltrados, rankingFilter])
+  }, [cenariosFiltrados, rankingFilter, rankingModulo])
 
   // ── Testes chart ───────────────────────────────────────────────────────────
   const testesData = useMemo((): DataPoint[] => {
     const buckets = makeBuckets(testesFilter)
+    const entries = testesModulo
+      ? historicoEntries.filter(e => e.module === testesModulo)
+      : historicoEntries
     return buckets.map(b => ({
       label: b.label,
-      value: historicoEntries.filter(e => e.timestamp >= b.start && e.timestamp <= b.end).length,
+      value: entries.filter(e => e.timestamp >= b.start && e.timestamp <= b.end).length,
     }))
-  }, [historicoEntries, testesFilter])
+  }, [historicoEntries, testesFilter, testesModulo])
 
   // ── Erros chart ────────────────────────────────────────────────────────────
   const errosData = useMemo((): DataPoint[] => {
     const buckets = makeBuckets(errosFilter)
+    const entries = errosModulo
+      ? historicoEntries.filter(e => e.module === errosModulo)
+      : historicoEntries
     return buckets.map(b => ({
       label: b.label,
-      value: historicoEntries.filter(
+      value: entries.filter(
         e => e.timestamp >= b.start && e.timestamp <= b.end && e.resultado === "Erro"
       ).length,
     }))
-  }, [historicoEntries, errosFilter])
+  }, [historicoEntries, errosFilter, errosModulo])
 
   // ── Sucesso chart ──────────────────────────────────────────────────────────
   const sucessoData = useMemo((): DataPoint[] => {
     const buckets = makeBuckets(sucessoFilter)
+    const entries = sucessoModulo
+      ? historicoEntries.filter(e => e.module === sucessoModulo)
+      : historicoEntries
     return buckets.map(b => ({
       label: b.label,
-      value: historicoEntries.filter(
+      value: entries.filter(
         e => e.timestamp >= b.start && e.timestamp <= b.end && e.resultado === "Sucesso"
       ).length,
     }))
-  }, [historicoEntries, sucessoFilter])
+  }, [historicoEntries, sucessoFilter, sucessoModulo])
 
   return (
     <div className="space-y-6">
@@ -319,18 +339,27 @@ export function DashboardClient({
 
       <DashboardCharts
         automationData={automationData}
+        moduloNames={moduloNames}
         rankingData={rankingData}
         rankingFilter={rankingFilter}
         onRankingFilterChange={setRankingFilter}
+        rankingModulo={rankingModulo}
+        onRankingModuloChange={setRankingModulo}
         testesData={testesData}
         testesFilter={testesFilter}
         onTestesFilterChange={setTestesFilter}
+        testesModulo={testesModulo}
+        onTestesModuloChange={setTestesModulo}
         errosData={errosData}
         errosFilter={errosFilter}
         onErrosFilterChange={setErrosFilter}
+        errosModulo={errosModulo}
+        onErrosModuloChange={setErrosModulo}
         sucessoData={sucessoData}
         sucessoFilter={sucessoFilter}
         onSucessoFilterChange={setSucessoFilter}
+        sucessoModulo={sucessoModulo}
+        onSucessoModuloChange={setSucessoModulo}
         ultimasAutomacoes={ultimasAutomacoes}
         resolveUser={resolveUser}
       />

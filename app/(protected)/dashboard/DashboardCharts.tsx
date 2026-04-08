@@ -32,18 +32,27 @@ interface UltimaAutomacao {
 
 interface Props {
   automationData:    AutomationDataPoint[]
+  moduloNames:       string[]
   rankingData:       RankingItem[]
   rankingFilter:     RankingFilter
   onRankingFilterChange: (v: RankingFilter) => void
+  rankingModulo:     string
+  onRankingModuloChange: (v: string) => void
   testesData:        DataPoint[]
   testesFilter:      TestesFilter
   onTestesFilterChange: (v: TestesFilter) => void
+  testesModulo:      string
+  onTestesModuloChange: (v: string) => void
   errosData:         DataPoint[]
   errosFilter:       ChartFilter
   onErrosFilterChange: (v: ChartFilter) => void
+  errosModulo:       string
+  onErrosModuloChange: (v: string) => void
   sucessoData:       DataPoint[]
   sucessoFilter:     ChartFilter
   onSucessoFilterChange: (v: ChartFilter) => void
+  sucessoModulo:     string
+  onSucessoModuloChange: (v: string) => void
   ultimasAutomacoes: UltimaAutomacao[]
   resolveUser: (createdBy: string | undefined) => { displayName: string; photoPath: string | null }
 }
@@ -185,14 +194,42 @@ function Avatar({
   )
 }
 
+// ── ModuloSelect ──────────────────────────────────────────────────────────────
+
+function ModuloSelect({
+  modulos,
+  value,
+  onChange,
+}: {
+  modulos: string[]
+  value: string
+  onChange: (v: string) => void
+}) {
+  if (modulos.length === 0) return null
+  return (
+    <Select value={value || "__todos__"} onValueChange={(v) => onChange(v === "__todos__" ? "" : v)}>
+      <SelectTrigger className="h-8 w-auto shrink-0 text-xs" aria-label="Filtrar por módulo">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectPopup>
+        <SelectItem value="__todos__">Todos</SelectItem>
+        {modulos.map(m => (
+          <SelectItem key={m} value={m}>{m}</SelectItem>
+        ))}
+      </SelectPopup>
+    </Select>
+  )
+}
+
 // ── Main export ────────────────────────────────────────────────────────────────
 
 export function DashboardCharts({
   automationData,
-  rankingData, rankingFilter, onRankingFilterChange,
-  testesData,  testesFilter,  onTestesFilterChange,
-  errosData,   errosFilter,   onErrosFilterChange,
-  sucessoData, sucessoFilter, onSucessoFilterChange,
+  moduloNames,
+  rankingData,   rankingFilter,  onRankingFilterChange,  rankingModulo,  onRankingModuloChange,
+  testesData,    testesFilter,   onTestesFilterChange,   testesModulo,   onTestesModuloChange,
+  errosData,     errosFilter,    onErrosFilterChange,    errosModulo,    onErrosModuloChange,
+  sucessoData,   sucessoFilter,  onSucessoFilterChange,  sucessoModulo,  onSucessoModuloChange,
   ultimasAutomacoes, resolveUser,
 }: Props) {
   return (
@@ -201,18 +238,19 @@ export function DashboardCharts({
       {/* Row 1 — Ranking + Cobertura de automação */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 
-        {/* Ranking */}
+        {/* Cenários gerados */}
         <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">
-              Ranking de geração
+              Cenários gerados
             </h2>
             <div className="flex-1" />
+            <ModuloSelect modulos={moduloNames} value={rankingModulo} onChange={onRankingModuloChange} />
             <FilterSelect<RankingFilter>
               options={RANKING_OPTS}
               value={rankingFilter}
               onChange={onRankingFilterChange}
-              label="Filtro ranking"
+              label="Filtro período ranking"
             />
           </div>
 
@@ -267,13 +305,15 @@ export function DashboardCharts({
 
         {/* Testes executados */}
         <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
-          <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">Testes executados</h2>
+            <div className="flex-1" />
+            <ModuloSelect modulos={moduloNames} value={testesModulo} onChange={onTestesModuloChange} />
             <FilterSelect<TestesFilter>
               options={TESTES_OPTS}
               value={testesFilter}
               onChange={onTestesFilterChange}
-              label="Filtro testes"
+              label="Filtro período testes"
             />
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -338,13 +378,15 @@ export function DashboardCharts({
 
         {/* Erros encontrados */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">Erros encontrados</h2>
+            <div className="flex-1" />
+            <ModuloSelect modulos={moduloNames} value={errosModulo} onChange={onErrosModuloChange} />
             <FilterSelect<ChartFilter>
               options={CHART_OPTS}
               value={errosFilter}
               onChange={onErrosFilterChange}
-              label="Filtro erros"
+              label="Filtro período erros"
             />
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -366,13 +408,15 @@ export function DashboardCharts({
 
         {/* Testes de sucesso */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">Testes de sucesso</h2>
+            <div className="flex-1" />
+            <ModuloSelect modulos={moduloNames} value={sucessoModulo} onChange={onSucessoModuloChange} />
             <FilterSelect<ChartFilter>
               options={CHART_OPTS}
               value={sucessoFilter}
               onChange={onSucessoFilterChange}
-              label="Filtro sucesso"
+              label="Filtro período sucesso"
             />
           </div>
           <ResponsiveContainer width="100%" height={200}>

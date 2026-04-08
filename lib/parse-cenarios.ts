@@ -153,7 +153,15 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
     // ── Field helpers ────────────────────────────────────────────────────────
 
     function isHeader(line: string): boolean {
-      return /^\s*\*\*[^*\n]+\*\*\s*:?\s*$/.test(line) || /^#{1,4}\s/.test(line)
+      // Standalone bold header: **Field:** or **Field**: or **Field**
+      if (/^\s*\*\*[^*\n]+\*\*\s*:?\s*$/.test(line)) return true
+      // H1-H4 headings
+      if (/^#{1,4}\s/.test(line)) return true
+      // Inline bold label on same line: **Field:** value or **Field**: value
+      // (used in the new format for Cenário, Descrição, Regra de negócio)
+      if (/^\s*\*\*(?:cenário|título|titulo|descri[çc][aã]o|descricao|regra\s+de\s+neg[oó]cio|m[oó]dulo|cliente|risco|tipo)[:\s]+\*\*\s*\S/.test(line)) return true
+      if (/^\s*\*\*(?:cenário|título|titulo|descri[çc][aã]o|descricao|regra\s+de\s+neg[oó]cio|m[oó]dulo|cliente|risco|tipo)\*\*[:\s]+\S/.test(line)) return true
+      return false
     }
 
     // Find the first field header line after the title line
@@ -175,16 +183,21 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
     function getField(keys: string[]): string {
       const esc = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
       const kp = esc.join("|")
+      // **Field:** value  — colon inside bold, value inline
       const reSameLine  = new RegExp(`^\\s*\\*\\*(${kp})[:\\s]+\\*\\*\\s*(\\S.*)$`, "i")
+      // **Field**: value  — colon outside bold, value inline
       const reSameLine2 = new RegExp(`^\\s*\\*\\*(${kp})\\*\\*[:\\s]+(\\S.*)$`, "i")
+      // **Field:**  alone — colon inside bold, block below
       const reHeader    = new RegExp(`^\\s*\\*\\*(${kp})[:\\s]*\\*\\*\\s*$`, "i")
+      // **Field**:  alone — colon outside bold, block below
+      const reHeaderExt = new RegExp(`^\\s*\\*\\*(${kp})\\*\\*\\s*:\\s*$`, "i")
       const reHeading   = new RegExp(`^#{2,4}\\s+(${kp})\\s*$`, "i")
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i]
         const m = line.match(reSameLine) ?? line.match(reSameLine2)
         if (m) return (m[2] ?? "").trim()
-        if (reHeader.test(line) || reHeading.test(line)) {
+        if (reHeader.test(line) || reHeaderExt.test(line) || reHeading.test(line)) {
           const buf: string[] = []
           for (let j = i + 1; j < lines.length; j++) {
             if (isHeader(lines[j])) break

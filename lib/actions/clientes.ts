@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { nextId } from "@/lib/db-utils"
-import { requireAdmin } from "@/lib/session"
+import { requireAdmin, requireSession } from "@/lib/session"
 import { prisma } from "@/lib/prisma"
 
 export interface ClienteRecord {
@@ -61,7 +61,7 @@ export async function criarCliente(data: {
   razaoSocial: string | null
   cpfCnpj: string | null
 }): Promise<ClienteRecord> {
-  await requireAdmin()
+  await requireSession()
   const parsed = clienteInputSchema.parse({
     nomeFantasia: data.nomeFantasia.trim(),
     razaoSocial: data.razaoSocial?.trim() || null,
@@ -88,9 +88,22 @@ export async function atualizarCliente(
     cpfCnpj: data.cpfCnpj?.trim() || null,
   })
 
-  await prisma.cliente.update({ where: { id }, data: parsed })
+  const existing = await prisma.cliente.findUnique({ where: { id }, select: { nomeFantasia: true } })
+  const oldName = existing?.nomeFantasia
+
+  await prisma.$transaction([
+    prisma.cliente.update({ where: { id }, data: parsed }),
+    ...(oldName && oldName !== parsed.nomeFantasia
+      ? [prisma.cenario.updateMany({ where: { client: oldName }, data: { client: parsed.nomeFantasia } })]
+      : []),
+  ])
+
   revalidatePath("/configuracoes/clientes")
   revalidatePath(`/configuracoes/clientes/${id}/editar`)
+  revalidatePath("/cenarios")
+  revalidatePath("/cenarios/novo")
+  revalidatePath("/suites")
+  revalidatePath("/gerador")
 }
 
 export async function inativarClientes(ids: string[]): Promise<void> {

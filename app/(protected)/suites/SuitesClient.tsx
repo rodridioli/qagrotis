@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Filter, Plus, Power, X, MoreVertical } from "lucide-react"
+import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -91,6 +92,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
   const [inativadosIds, setInativadosIds] = useState<Set<string>>(new Set())
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [pendingFilters, setPendingFilters] = useState<FilterState>(EMPTY_FILTERS)
+  const [isInativando, setIsInativando] = useState(false)
 
   useEffect(() => {
     setCurrentPage(1)
@@ -159,7 +161,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
   }
 
   function confirmInativar() {
-    const ids = inativarIds
+    const ids = [...inativarIds]
     const count = ids.length
     // Optimistic update
     setInativadosIds((prev) => new Set([...prev, ...ids]))
@@ -170,6 +172,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
     })
     setInativarIds([])
     setInativarOpen(false)
+    setIsInativando(true)
     startTransition(async () => {
       try {
         await inativarSuites(ids)
@@ -184,6 +187,8 @@ export default function SuitesClient({ allModulos, suites }: Props) {
         })
         router.refresh()
         toast.error("Erro ao inativar. Tente novamente.")
+      } finally {
+        setIsInativando(false)
       }
     })
   }
@@ -203,6 +208,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
 
   return (
     <div className="space-y-4">
+      <LoadingOverlay visible={isInativando} label="Inativando suítes..." />
       <div className="flex flex-wrap items-center justify-end gap-3">
         {showBulkActions && (
           <Button
