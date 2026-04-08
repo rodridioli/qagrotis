@@ -52,19 +52,32 @@ const FIELD_SECTION_RE =
   /^#{1,4}\s+(pré-?condi[çc][oõ]es|pre-?condi[çc][oõ]es|bdd(\s*\(gherkin\))?|gherkin|resultados?\s+esperados?|regra\s+de\s+neg[oó]cio|caminho(\s+da\s+tela)?|descri[çc][aã]o|objetivo|tipo|risco|m[oó]dulo|cliente|steps?|passos?)\s*$/i
 
 /**
+ * Matches a bold-label title line used as a scenario boundary.
+ * Supports:
+ *   **Cenário:** Title        (colon inside bold, title after)
+ *   **Cenário: Title**        (everything inside bold)
+ *   **CT-001 — Title**        (numbered, everything inside bold)
+ */
+const BOLD_TITLE_RE =
+  /^\*\*(cenário|título|titulo|ct-?\d*|nome)\s*[:\-–—]\s*\*\*\s*\S|\*\*(cenário|título|titulo|ct-?\d*|nome)\*\*\s*[:\-–—]\s*\S|\*\*(cenário|título|titulo|ct-?\d*|nome)[:\s-–—]+[^*]+\*\*\s*$/i
+
+/**
  * Parses a markdown string and returns only real scenario blocks.
  *
  * Split strategy:
- *   1. Split on --- separators (primary boundary between scenarios).
- *   2. Within each --- block, split again at H1/H2 headings that are NOT known
- *      field sections (Pré-condições, BDD, Resultado esperado, etc.).
- *      This supports files where multiple scenarios share a block without ---.
- *   3. Headings like ## Pré-condições, ## BDD (Gherkin) stay inside their
+ *   1. Normalize line endings (\r\n → \n).
+ *   2. Split on --- separators (primary boundary between scenarios).
+ *   3. Within each --- block, split again at H1/H2 headings that are NOT known
+ *      field sections, OR at bold-label title lines (**Cenário:** Title).
+ *   4. Headings like ## Pré-condições, ## BDD (Gherkin) stay inside their
  *      scenario block and are handled by getField() as normal field markers.
  */
 export function parseMarkdownCenarios(text: string): ParsedCenario[] {
-  // Normalize escaped markdown characters
-  const normalized = text.replace(/\\([*#\-`![\](){}|>])/g, "$1")
+  // Normalize line endings and escaped markdown characters
+  const normalized = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\\([*#\-`![\](){}|>])/g, "$1")
 
   // Primary split on --- separators
   const rawBlocks = normalized.split(/\n---+\n?/)
@@ -72,17 +85,15 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
   const blocks: string[] = []
 
   for (const raw of rawBlocks) {
-    // Within each --- block, split only at H1/H2 that are NOT field sections.
-    // This allows multi-scenario blocks while keeping section headers in-place.
-    const lines = raw.trim().split(/\r?\n/)
+    const lines = raw.trim().split(/\n/)
     let current = ""
 
     for (const line of lines) {
       const isH12 = /^#{1,2}\s/.test(line)
+      const isBoldTitle = BOLD_TITLE_RE.test(line)
       const isFieldSection = FIELD_SECTION_RE.test(line)
 
-      if (isH12 && !isFieldSection) {
-        // Start of a new scenario block
+      if ((isH12 || isBoldTitle) && !isFieldSection) {
         if (current.trim()) blocks.push(current.trim())
         current = line
       } else {
@@ -98,26 +109,68 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
   for (const block of blocks) {
     const trimmed = block.trim()
     if (!trimmed) continue
-    const lines = trimmed.split(/\r?\n/)
+    const lines = trimmed.split(/\n/)
 
-    // Name from first H1/H2 heading — strip CT-NNN prefix
+    // ── Name extraction ──────────────────────────────────────────────────────
+
     let name = ""
-    for (const line of lines) {
-      const m = line.match(/^#{1,2}\s+(.+)/)
+    let nameLineIdx = -1
+
+    // 1. First H1/H2 heading — strip CT-NNN prefix (supports -, –, — dashes)
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(/^#{1,2}\s+(.+)/)
       if (m) {
         name = m[1]
-          .replace(/^cenário:\s*/i, "")
-          .replace(/^ct-?\d+\s*[-–:]\s*/i, "")
+          .replace(/^cenário[:\s]+/i, "")
+          .replace(/^ct-?\d+\s*[-–—:]\s*/i, "")
           .trim()
+        nameLineIdx = i
         break
       }
     }
+
+    // 2. Fallback: bold label title, e.g. **Cenário:** Title or **Cenário: Title**
+    if (!name) {
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        // Pattern A: **Label:** Title  (colon inside bold, title after closing **)
+        const mA = line.match(/^\*\*(cenário|título|titulo|ct-?\d*|nome)\s*[:\-–—]\s*\*\*\s*(.+)/i)
+        // Pattern B: **Label** : Title  (colon/dash outside bold)
+        const mB = line.match(/^\*\*(cenário|título|titulo|ct-?\d*|nome)\*\*\s*[:\-–—]\s*(.+)/i)
+        // Pattern C: **Label: Title**   (everything inside bold)
+        const mC = line.match(/^\*\*(cenário|título|titulo|ct-?\d*|nome)[:\s-–—]+([^*]+)\*\*\s*$/i)
+        const m = mA ?? mB ?? mC
+        if (m) {
+          name = m[2].replace(/^ct-?\d+\s*[-–—:]\s*/i, "").trim()
+          nameLineIdx = i
+          break
+        }
+      }
+    }
+
     if (!name) continue
 
-    // A standalone **Label:** line ends right after the closing **
+    // ── Field helpers ────────────────────────────────────────────────────────
+
     function isHeader(line: string): boolean {
       return /^\s*\*\*[^*\n]+\*\*\s*:?\s*$/.test(line) || /^#{1,4}\s/.test(line)
     }
+
+    // Find the first field header line after the title line
+    let firstHeaderIdx = lines.length
+    for (let i = nameLineIdx + 1; i < lines.length; i++) {
+      if (isHeader(lines[i])) {
+        firstHeaderIdx = i
+        break
+      }
+    }
+
+    // Plain paragraph(s) between title and first field header → description fallback
+    const descriptionFallback = lines
+      .slice(nameLineIdx + 1, firstHeaderIdx)
+      .filter(l => l.trim())
+      .join("\n")
+      .trim()
 
     function getField(keys: string[]): string {
       const esc = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
@@ -137,7 +190,8 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
             if (isHeader(lines[j])) break
             buf.push(lines[j])
           }
-          return buf.filter((l) => l.trim()).join(" ").trim()
+          // Preserve multi-line content (BDD, lists, etc.)
+          return buf.join("\n").trim()
         }
       }
       return ""
@@ -159,11 +213,13 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
       client:            getField(["cliente", "client"]),
       risco,
       tipo,
-      descricao:         getField(["descrição", "descricao", "description", "objetivo"]),
+      // Use labeled **Descrição:** if present; otherwise first plain paragraph after title
+      descricao:         getField(["descrição", "descricao", "description", "objetivo"]) || descriptionFallback,
       caminhoTela:       getField(["caminho da tela", "caminho", "screen path", "path"]),
       regraDeNegocio:    getField(["regra de negócio", "regra de negocio", "regra", "business rule"]),
       preCondicoes:      getField(["pré-condições", "pré condições", "pre-condições", "pre-condicoes", "preconditions"]),
-      bdd:               getField(["cenário", "cenario", "bdd (gherkin)", "bdd", "gherkin", "scenario"]),
+      // Removed "cenário"/"cenario"/"scenario" to avoid collision with title labels
+      bdd:               getField(["bdd (gherkin)", "bdd", "gherkin"]),
       resultadoEsperado: getField(["resultados esperados", "resultado esperado", "resultado", "resultados", "expected result"]),
     })
   }
@@ -190,8 +246,9 @@ export function buildImportItems(
       ) ?? null
 
     let error: string | undefined
-    if (!pFinal.descricao && !pFinal.bdd && !pFinal.regraDeNegocio) {
-      error = "Nenhum conteúdo descritivo encontrado no arquivo"
+    // Required: scenarioName (already checked), descricao, resultadoEsperado
+    if (!pFinal.descricao || !pFinal.resultadoEsperado) {
+      error = "Campos obrigatórios ausentes: Descrição e/ou Resultado esperado"
     }
 
     return {
