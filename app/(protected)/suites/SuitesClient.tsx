@@ -272,10 +272,10 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Suíte</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Versão</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Execuções</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Testes</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Automação</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Erros</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Cenários</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">CT</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
                     <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
                   </tr>
@@ -335,7 +335,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" side="bottom">
                               <DropdownMenuItem>
-                                <Link href={`/suites/${s.id}`} className="w-full">Visualizar</Link>
+                                <Link href={`/suites/${s.id}`} className="w-full">Editar</Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem variant="destructive" onClick={() => handleInativarSingle(s.id)}>
                                 Inativar

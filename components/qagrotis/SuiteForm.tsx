@@ -440,10 +440,7 @@ export function SuiteForm({
 
         {/* ── Cenários ── */}
         <div className={`p-5 space-y-3${activeTab !== "cenarios" ? " hidden" : ""}`}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold text-text-primary">
-              Cenários: {cenarios.length}
-            </h2>
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setAddCenarioOpen(true)}>
               <Plus className="size-4" />
               Adicionar Cenário
@@ -455,7 +452,7 @@ export function SuiteForm({
               Nenhum cenário adicionado à suíte.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div>
               <table className="w-full table-fixed text-sm">
                 <colgroup>
                   <col className="w-24" />
@@ -471,7 +468,7 @@ export function SuiteForm({
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Execuções</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Testes</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Erros</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
                     <th className="py-3 pl-2 pr-4" />
@@ -486,7 +483,7 @@ export function SuiteForm({
                           className="font-medium text-brand-primary hover:underline"
                         >{c.id}</Link>
                       </td>
-                      <td className="px-4 py-3 truncate font-medium text-text-primary">{c.name}</td>
+                      <td className="px-4 py-3 truncate text-text-primary">{c.name}</td>
                       <td className="px-4 py-3 text-text-secondary truncate">{c.module}</td>
                       <td className="px-4 py-3 text-text-secondary">{historicoStats[c.id]?.execucoes ?? 0}</td>
                       <td className="px-4 py-3 text-text-secondary">{historicoStats[c.id]?.erros ?? 0}</td>
@@ -517,7 +514,7 @@ export function SuiteForm({
                                   href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
                                   className="w-full"
                                 >
-                                  Executar
+                                  Testar
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
@@ -537,8 +534,7 @@ export function SuiteForm({
 
         {/* ── Histórico ── */}
         <div className={`p-5 space-y-3${activeTab !== "historico" ? " hidden" : ""}`}>
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold text-text-primary">Histórico de Testes</h2>
+          <div className="flex items-center justify-end gap-2">
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -566,7 +562,7 @@ export function SuiteForm({
               Nenhuma execução registrada. O histórico será preenchido após a execução dos cenários.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div>
               <table className="w-full table-fixed text-sm">
                 <colgroup>
                   <col className="w-10" />

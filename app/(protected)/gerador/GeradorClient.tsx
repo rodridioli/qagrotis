@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useMemo } from "react"
+import { useState, useRef, useMemo, useEffect } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { useRouter } from "next/navigation"
@@ -51,7 +51,16 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
   const [contexto, setContexto] = useState("")
   const activeIntegracoes = useMemo(() => integracoes.filter(i => i.active !== false), [integracoes])
-  const [aiProvider, setAiProvider] = useState(() => activeIntegracoes[0]?.id ?? "")
+  const [aiProvider, setAiProvider] = useState<string>(() => {
+    const fallback = activeIntegracoes[0]?.id ?? ""
+    if (typeof window === "undefined") return fallback
+    const saved = localStorage.getItem("gerador-ai-provider")
+    return (saved && activeIntegracoes.some((i) => i.id === saved)) ? saved : fallback
+  })
+
+  useEffect(() => {
+    if (aiProvider) localStorage.setItem("gerador-ai-provider", aiProvider)
+  }, [aiProvider])
 
   const [output, setOutput] = useState("")
   const [apiError, setApiError] = useState<string | null>(null)
@@ -253,7 +262,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
               </Button>
               <Button variant="outline" onClick={handleCopyMarkdown} className="gap-2">
                 <Copy className="size-4" />
-                Copiar para Jira (Markdown)
+                Copiar Markdown
               </Button>
               <Button
                 variant="outline"
@@ -262,7 +271,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                 className="gap-2"
               >
                 <Upload className="size-4" />
-                {isImporting ? "Importando…" : "Importar Cenários"}
+                {isImporting ? "Importando…" : "Importar"}
               </Button>
             </>
           )}
@@ -391,15 +400,6 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
         {/* ── Aba: Cenários ── */}
         <div className={activeTab !== "cenarios" ? "hidden" : "flex min-h-125 flex-col"}>
-          {/* Cabeçalho do painel */}
-          {cenarioCount > 0 && (
-            <div className="border-b border-border-default px-5 py-3 flex items-center gap-2">
-              <span className="inline-flex items-center justify-center rounded-full border border-brand-primary/30 bg-brand-primary/10 px-2 py-0.5 text-xs font-semibold text-brand-primary">
-                {cenarioCount}
-              </span>
-            </div>
-          )}
-
           <div className="flex-1 overflow-y-auto px-5 py-4">
             {apiError && !loading && (
               <div className="mb-4 flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/8 p-4">

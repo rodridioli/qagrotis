@@ -313,7 +313,7 @@ export function DashboardCharts({
                     </div>
                     <div>
                       <Link
-                        href={`/cenarios/${item.id}`}
+                        href={`/cenarios/${item.id}/editar`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-mono text-xs font-semibold text-brand-primary hover:underline"

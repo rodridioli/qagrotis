@@ -857,7 +857,7 @@ export default function EditarCenarioClient({
                     {deps.map((d) => (
                       <tr key={d.id} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
                         <td className="px-4 py-3">
-                          <Link href={`/cenarios/${d.id}`} className="font-medium text-brand-primary hover:underline">{d.id}</Link>
+                          <Link href={`/cenarios/${d.id}/editar`} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-primary hover:underline">{d.id}</Link>
                         </td>
                         <td className="px-4 py-3 min-w-0">
                           <span className="block truncate text-text-primary">{d.name}</span>

@@ -836,10 +836,10 @@ export default function NovoCenarioClient({
                 Nenhuma dependência adicionada.
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div>
                 <table className="w-full table-fixed text-sm">
                   <colgroup>
-                    <col className="w-24" /><col /><col className="w-28" /><col className="w-40" /><col className="w-40" /><col className="w-10" />
+                    <col className="w-24" /><col /><col className="w-24" /><col className="w-28" /><col className="w-28" /><col className="w-10" />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -855,7 +855,7 @@ export default function NovoCenarioClient({
                     {deps.map((d) => (
                       <tr key={d.id} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
                         <td className="px-4 py-3">
-                          <Link href={`/cenarios/${d.id}`} className="font-medium text-brand-primary hover:underline">{d.id}</Link>
+                          <Link href={`/cenarios/${d.id}/editar`} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-primary hover:underline">{d.id}</Link>
                         </td>
                         <td className="px-4 py-3 text-text-primary truncate">{d.name}</td>
                         <td className="px-4 py-3"><CenarioTipoBadge tipo={d.tipo as CenarioTipo} /></td>
