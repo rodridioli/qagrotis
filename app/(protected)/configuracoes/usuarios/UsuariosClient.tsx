@@ -238,13 +238,13 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-150 table-fixed text-sm">
+              <table className="w-full min-w-160 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
+                  <col className="w-44" />
                   <col />
-                  <col className="w-40" />
-                  <col className="w-36" />
+                  <col className="w-44" />
                   <col className="w-16" />
                 </colgroup>
                 <thead>
@@ -273,10 +273,10 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                     return (
                       <tr
                         key={u.id}
-                        className="group border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                        className="group border-b border-border-default last:border-0"
                       >
                         {showBulkActions && (
-                          <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 group-hover:bg-neutral-grey-50">
+                          <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
                             <Checkbox
                               checked={selectedIds.has(u.id)}
                               onChange={() => toggleRow(u.id)}
@@ -285,7 +285,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                           </td>
                         )}
                         <td className={cn(
-                          "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap group-hover:bg-neutral-grey-50",
+                          "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap transition-colors group-hover:bg-neutral-grey-50",
                           showBulkActions ? "left-10" : "left-0"
                         )}>
                           {u.active && (isAdmin || isSelf) ? (
@@ -294,7 +294,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                             <span>{u.id}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 min-w-0">
+                        <td className="px-4 py-3 min-w-0 transition-colors group-hover:bg-neutral-grey-50">
                           <div className="flex min-w-0 items-center gap-2">
                             {u.photoPath ? (
                               <img
@@ -310,9 +310,9 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                             <span className="truncate font-medium text-text-primary" title={u.name}>{u.name}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-text-secondary truncate" title={u.email}>{u.email}</td>
-                        <td className="px-4 py-3"><UserTipoBadge tipo={u.type} /></td>
-                        <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
+                        <td className="px-4 py-3 text-text-secondary truncate transition-colors group-hover:bg-neutral-grey-50" title={u.email}>{u.email}</td>
+                        <td className="px-4 py-3 transition-colors group-hover:bg-neutral-grey-50"><UserTipoBadge tipo={u.type} /></td>
+                        <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
                           {isSelf ? (
                             <Link
                               href={`/configuracoes/usuarios/${u.id}/editar`}

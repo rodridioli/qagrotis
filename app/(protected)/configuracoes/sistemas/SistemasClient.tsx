@@ -1,11 +1,12 @@
-﻿"use client"
+"use client"
 
 import React, { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Plus, MoreVertical, X, Filter, Power } from "lucide-react"
+import { ArrowLeft, Plus, MoreVertical, X, Filter, Power, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogClose,
@@ -23,7 +24,7 @@ import {
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { inativarSistemas, type SistemaRecord } from "@/lib/actions/sistemas"
+import { inativarSistemas, criarSistema, atualizarSistema, type SistemaRecord } from "@/lib/actions/sistemas"
 import { type ModuloRecord } from "@/lib/actions/modulos"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -53,6 +54,50 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
   const [filters, setFilters] = useState<FilterState>({ apenasInativos: false })
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
   const [modulosModalSistema, setModulosModalSistema] = useState<SistemaRecord | null>(null)
+
+  // ── Sistema modal (criar / editar) ─────────────────────────────────────────
+  const [sistemaModalOpen, setSistemaModalOpen] = useState(false)
+  const [sistemaEditando, setSistemaEditando] = useState<SistemaRecord | null>(null)
+  const [sistemaModalNome, setSistemaModalNome] = useState("")
+  const [sistemaModalDescricao, setSistemaModalDescricao] = useState("")
+  const [isSistemaModalPending, startSistemaModalTransition] = useTransition()
+
+  function openAdicionarSistema() {
+    setSistemaEditando(null)
+    setSistemaModalNome("")
+    setSistemaModalDescricao("")
+    setSistemaModalOpen(true)
+  }
+
+  function openEditarSistema(s: SistemaRecord) {
+    setSistemaEditando(s)
+    setSistemaModalNome(s.name)
+    setSistemaModalDescricao(s.description ?? "")
+    setSistemaModalOpen(true)
+  }
+
+  function handleSalvarSistema() {
+    if (!sistemaModalNome.trim()) { toast.error("O nome é obrigatório."); return }
+    startSistemaModalTransition(async () => {
+      try {
+        if (sistemaEditando) {
+          await atualizarSistema(sistemaEditando.id, { name: sistemaModalNome, description: sistemaModalDescricao || null })
+          toast.success("Sistema atualizado com sucesso.")
+        } else {
+          await criarSistema({ name: sistemaModalNome, description: sistemaModalDescricao || null })
+          toast.success("Sistema criado com sucesso.")
+        }
+        setSistemaModalOpen(false)
+        setSistemaEditando(null)
+        setSistemaModalNome("")
+        setSistemaModalDescricao("")
+        router.refresh()
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Erro ao salvar. Tente novamente.")
+      }
+    })
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
     const result = initialSistemas.filter((s) => {
@@ -181,12 +226,10 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                 Inativar
               </Button>
             )}
-            <Link href="/configuracoes/sistemas/novo">
-              <Button>
-                <Plus className="size-4" />
-                Adicionar Sistema
-              </Button>
-            </Link>
+            <Button onClick={openAdicionarSistema}>
+              <Plus className="size-4" />
+              Adicionar Sistema
+            </Button>
           </div>
         )}
       </div>
@@ -211,13 +254,13 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-130 table-fixed text-sm">
+              <table className="w-full min-w-160 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
+                  <col className="w-52" />
                   <col />
-                  <col className="w-44" />
-                  <col className="w-20" />
+                  <col className="w-24" />
                   <col className="w-16" />
                 </colgroup>
                 <thead>
@@ -246,10 +289,10 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                     return (
                       <tr
                         key={s.id}
-                        className="group border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                        className="group border-b border-border-default last:border-0"
                       >
                         {showBulkActions && (
-                          <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 group-hover:bg-neutral-grey-50">
+                          <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
                             <Checkbox
                               checked={selectedIds.has(s.id)}
                               onChange={() => toggleRow(s.id)}
@@ -257,20 +300,20 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                           </td>
                         )}
                         <td className={cn(
-                          "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap group-hover:bg-neutral-grey-50",
+                          "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap transition-colors group-hover:bg-neutral-grey-50",
                           showBulkActions ? "left-10" : "left-0"
                         )}>
                           {s.active && isAdmin ? (
-                            <Link href={`/configuracoes/sistemas/${s.id}/editar`} className="text-brand-primary hover:underline">{s.id}</Link>
+                            <button type="button" onClick={() => openEditarSistema(s)} className="text-brand-primary hover:underline">{s.id}</button>
                           ) : (
                             <span>{s.id}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-medium text-text-primary truncate" title={s.name}>{s.name}</td>
-                        <td className="px-4 py-3 text-text-secondary truncate" title={s.description ?? undefined}>
+                        <td className="px-4 py-3 font-medium text-text-primary truncate transition-colors group-hover:bg-neutral-grey-50" title={s.name}>{s.name}</td>
+                        <td className="px-4 py-3 text-text-secondary truncate transition-colors group-hover:bg-neutral-grey-50" title={s.description ?? undefined}>
                           {s.description ?? <span className="italic text-text-secondary/60">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-center tabular-nums">
+                        <td className="px-4 py-3 text-center tabular-nums transition-colors group-hover:bg-neutral-grey-50">
                           {modulosDoSistema.length > 0 ? (
                             <button
                               type="button"
@@ -285,7 +328,7 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                             <span className="text-text-secondary/60 italic text-sm">0</span>
                           )}
                         </td>
-                        <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
+                        <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
                           {showBulkActions && s.active ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger
@@ -300,10 +343,8 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
                                 <MoreVertical className="size-4" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" side="bottom">
-                                <DropdownMenuItem>
-                                  <Link href={`/configuracoes/sistemas/${s.id}/editar`} className="w-full">
-                                    Editar
-                                  </Link>
+                                <DropdownMenuItem onClick={() => openEditarSistema(s)}>
+                                  Editar
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   variant="destructive"
@@ -397,6 +438,49 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal criar / editar sistema ── */}
+      <Dialog open={sistemaModalOpen} onOpenChange={(open) => { if (!open) { setSistemaModalOpen(false); setSistemaEditando(null) } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{sistemaEditando ? `Editar — ${sistemaEditando.id}` : "Adicionar Sistema"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Nome <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={sistemaModalNome}
+                onChange={(e) => setSistemaModalNome(e.target.value)}
+                placeholder="Nome do sistema"
+                disabled={isSistemaModalPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Descrição</label>
+              <textarea
+                rows={4}
+                value={sistemaModalDescricao}
+                onChange={(e) => setSistemaModalDescricao(e.target.value)}
+                placeholder="Descreva o sistema..."
+                disabled={isSistemaModalPending}
+                className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 disabled:pointer-events-none"
+              />
+            </div>
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <DialogClose render={<Button variant="outline" disabled={isSistemaModalPending} />}>
+              <X className="size-4" />
+              Cancelar
+            </DialogClose>
+            <Button onClick={handleSalvarSistema} disabled={isSistemaModalPending}>
+              <Check className="size-4" />
+              {isSistemaModalPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

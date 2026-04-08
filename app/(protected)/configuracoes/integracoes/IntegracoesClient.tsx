@@ -1,12 +1,13 @@
 "use client"
 
-import React, { useState, useMemo, useTransition } from "react"
+import React, { useState, useMemo, useTransition, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Plus, MoreVertical, X, Filter, Power } from "lucide-react"
+import { AlertCircle, ArrowLeft, Check, Eye, EyeOff, Filter, Loader2, MoreVertical, Plus, Power, ShieldCheck, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogClose,
@@ -16,6 +17,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "@/components/ui/select"
+import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -24,11 +32,13 @@ import {
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { inativarIntegracoes, type IntegracaoRecord } from "@/lib/actions/integracoes"
+import { inativarIntegracoes, criarIntegracao, atualizarIntegracao, type IntegracaoRecord } from "@/lib/actions/integracoes"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 10
+
+type KeyStatus = "idle" | "validating" | "valid" | "invalid" | "uncertain"
 
 interface FilterState {
   apenasInativos: boolean
@@ -38,8 +48,6 @@ interface Props {
   initialIntegracoes: IntegracaoRecord[]
   isAdmin: boolean
 }
-
-
 
 export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props) {
   const router = useRouter()
@@ -54,6 +62,102 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
   const [filters, setFilters] = useState<FilterState>({ apenasInativos: false })
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
 
+  // ── Integração modal (criar / editar) ─────────────────────────────────────
+  const [integracaoModalOpen, setIntegracaoModalOpen] = useState(false)
+  const [integracaoEditando, setIntegracaoEditando] = useState<IntegracaoRecord | null>(null)
+  const [intProvider, setIntProvider] = useState<"google" | "openai" | "anthropic" | "groq" | "openrouter">("openrouter")
+  const [intModel, setIntModel] = useState("google/gemini-2.0-flash-exp:free")
+  const [intApiKey, setIntApiKey] = useState("")
+  const [intShowKey, setIntShowKey] = useState(false)
+  const [intKeyStatus, setIntKeyStatus] = useState<KeyStatus>("idle")
+  const [isIntegracaoModalPending, startIntegracaoModalTransition] = useTransition()
+
+  function openAdicionarIntegracao() {
+    setIntegracaoEditando(null)
+    setIntProvider("openrouter")
+    setIntModel("google/gemini-2.0-flash-exp:free")
+    setIntApiKey("")
+    setIntShowKey(false)
+    setIntKeyStatus("idle")
+    setIntegracaoModalOpen(true)
+  }
+
+  function openEditarIntegracao(item: IntegracaoRecord) {
+    setIntegracaoEditando(item)
+    setIntProvider((item.provider ?? "openrouter") as any)
+    setIntModel(item.model ?? "")
+    setIntApiKey(item.apiKey ?? "")
+    setIntShowKey(false)
+    setIntKeyStatus("idle")
+    setIntegracaoModalOpen(true)
+  }
+
+  const handleIntProviderChange = (p: string | null) => {
+    if (!p) return
+    const prov = p as any
+    setIntProvider(prov)
+    if (prov === "openrouter") setIntModel("google/gemini-2.0-flash-exp:free")
+    else if (prov === "google") setIntModel("gemini-2.0-flash-exp")
+    else if (prov === "groq") setIntModel("llama-3.1-70b-versatile")
+    else if (prov === "openai") setIntModel("gpt-4o-mini")
+    else if (prov === "anthropic") setIntModel("claude-opus-4-6")
+    setIntKeyStatus("idle")
+  }
+
+  const handleIntValidateKey = useCallback(async () => {
+    if (!intApiKey.trim()) { toast.error("Digite a API Key antes de verificar."); return }
+    setIntKeyStatus("validating")
+    try {
+      const res = await fetch("/api/integracoes/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: intApiKey.trim(), provider: intProvider }),
+      })
+      if (res.ok) setIntKeyStatus("valid")
+      else if (res.status === 401) setIntKeyStatus("invalid")
+      else setIntKeyStatus("uncertain")
+    } catch {
+      setIntKeyStatus("uncertain")
+    }
+  }, [intApiKey, intProvider])
+
+  function handleSalvarIntegracao() {
+    if (!intApiKey.trim()) { toast.error("A API Key é obrigatória."); return }
+    if (intKeyStatus === "validating") { toast.error("Aguarde a validação da API Key."); return }
+    startIntegracaoModalTransition(async () => {
+      try {
+        if (integracaoEditando) {
+          await atualizarIntegracao(integracaoEditando.id, {
+            provider: intProvider,
+            model: intModel.trim(),
+            apiKey: intApiKey.trim(),
+          })
+          toast.success("Integração atualizada com sucesso.")
+        } else {
+          await criarIntegracao({
+            provider: intProvider,
+            model: intModel.trim(),
+            apiKey: intApiKey.trim(),
+          })
+          toast.success("Integração criada com sucesso.")
+        }
+        setIntegracaoModalOpen(false)
+        setIntegracaoEditando(null)
+        router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar. Tente novamente.")
+      }
+    })
+  }
+
+  const intStatusIcon: Record<KeyStatus, React.ReactNode> = {
+    idle:       null,
+    validating: <Loader2 className="size-4 animate-spin text-text-secondary" />,
+    valid:      <Check className="size-4 text-green-600" />,
+    invalid:    <AlertCircle className="size-4 text-destructive" />,
+    uncertain:  <AlertCircle className="size-4 text-amber-500" />,
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
     const result = initialIntegracoes.filter((i) => {
@@ -62,7 +166,6 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
         i.id.toLowerCase().includes(search.toLowerCase()) ||
         i.provider.toLowerCase().includes(search.toLowerCase()) ||
         i.model.toLowerCase().includes(search.toLowerCase())
-
       const matchAtivo = filters.apenasInativos ? !i.active : i.active
       return matchSearch && matchAtivo
     })
@@ -96,8 +199,6 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
       setSelectedIds(new Set(selectableIds))
     }
   }
-
-
 
   function handleInativarSelection() {
     if (selectedIds.size === 0) return
@@ -179,12 +280,10 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                 Inativar
               </Button>
             )}
-            <Link href="/configuracoes/integracoes/novo">
-              <Button>
-                <Plus className="size-4" />
-                Adicionar Integração
-              </Button>
-            </Link>
+            <Button onClick={openAdicionarIntegracao}>
+              <Plus className="size-4" />
+              Adicionar Integração
+            </Button>
           </div>
         )}
       </div>
@@ -240,10 +339,10 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                   {pageItems.map((item) => (
                     <tr
                       key={item.id}
-                      className="group border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                      className="group border-b border-border-default last:border-0"
                     >
                       {showBulkActions && (
-                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 group-hover:bg-neutral-grey-50">
+                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
                           <Checkbox
                             checked={selectedIds.has(item.id)}
                             onChange={() => toggleRow(item.id)}
@@ -251,24 +350,24 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                         </td>
                       )}
                       <td className={cn(
-                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap group-hover:bg-neutral-grey-50",
+                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap transition-colors group-hover:bg-neutral-grey-50",
                         showBulkActions ? "left-10" : "left-0"
                       )}>
                         {item.active && isAdmin ? (
-                          <Link href={`/configuracoes/integracoes/${item.id}/editar`} className="text-brand-primary hover:underline">
+                          <button type="button" onClick={() => openEditarIntegracao(item)} className="text-brand-primary hover:underline">
                             {item.id}
-                          </Link>
+                          </button>
                         ) : (
                           <span>{item.id}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 truncate capitalize text-text-primary" title={item.provider}>
+                      <td className="px-4 py-3 truncate capitalize text-text-primary transition-colors group-hover:bg-neutral-grey-50" title={item.provider}>
                         {item.provider}
                       </td>
-                      <td className="px-4 py-3 truncate text-text-secondary font-mono text-xs" title={item.model}>
+                      <td className="px-4 py-3 truncate text-text-secondary font-mono text-xs transition-colors group-hover:bg-neutral-grey-50" title={item.model}>
                         {item.model}
                       </td>
-                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
+                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
                         {showBulkActions && item.active ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger
@@ -283,10 +382,8 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                               <MoreVertical className="size-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" side="bottom">
-                              <DropdownMenuItem>
-                                <Link href={`/configuracoes/integracoes/${item.id}/editar`} className="w-full">
-                                  Editar
-                                </Link>
+                              <DropdownMenuItem onClick={() => openEditarIntegracao(item)}>
+                                Editar
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="destructive"
@@ -360,6 +457,119 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
         confirmLabel="Inativar"
         onConfirm={confirmInativar}
       />
+
+      {/* ── Modal criar / editar integração ── */}
+      <Dialog open={integracaoModalOpen} onOpenChange={(open) => { if (!open) { setIntegracaoModalOpen(false); setIntegracaoEditando(null) } }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{integracaoEditando ? `Editar — ${integracaoEditando.id}` : "Adicionar Integração"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* Provedor */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">
+                  Provedor <span className="text-destructive">*</span>
+                </label>
+                <Select value={intProvider} onValueChange={handleIntProviderChange} disabled={isIntegracaoModalPending}>
+                  <SelectTrigger>
+                    <SelectValue>
+                      <span className="capitalize">{intProvider}</span>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectPopup>
+                    <SelectItem value="openrouter">OpenRouter (Gratuito)</SelectItem>
+                    <SelectItem value="groq">Groq (Llama, Mixtral)</SelectItem>
+                    <SelectItem value="google">Google Gemini</SelectItem>
+                    <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                    <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+                  </SelectPopup>
+                </Select>
+              </div>
+
+              {/* Modelo */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">
+                  Modelo <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  value={intModel}
+                  onChange={(e) => setIntModel(e.target.value)}
+                  placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
+                  disabled={isIntegracaoModalPending}
+                />
+                {intProvider === "openrouter" && (
+                  <p className="text-[10px] text-text-secondary">
+                    Com visão: <span className="font-medium">google/gemini-2.0-flash-exp:free</span> · meta-llama/llama-3.2-11b-vision-instruct:free
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* API Key */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                API Key <span className="text-destructive">*</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type={intShowKey ? "text" : "password"}
+                    value={intApiKey}
+                    onChange={(e) => { setIntApiKey(e.target.value); setIntKeyStatus("idle") }}
+                    placeholder="Cole aqui a sua API Key..."
+                    className="pr-16"
+                    disabled={isIntegracaoModalPending}
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-3">
+                    {intStatusIcon[intKeyStatus]}
+                    <button
+                      type="button"
+                      onClick={() => setIntShowKey((v) => !v)}
+                      className="text-text-secondary hover:text-text-primary transition-colors"
+                      aria-label={intShowKey ? "Ocultar chave" : "Exibir chave"}
+                    >
+                      {intShowKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleIntValidateKey}
+                  disabled={intKeyStatus === "validating" || !intApiKey.trim() || isIntegracaoModalPending}
+                  title="Verificar conexão com a API"
+                  aria-label="Verificar conexão com a API"
+                  className="flex size-10 shrink-0 items-center justify-center rounded-custom border border-border-default bg-surface-input text-text-secondary transition-colors hover:border-brand-primary hover:text-brand-primary disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <ShieldCheck className="size-4" />
+                </button>
+              </div>
+              <p className={`text-xs ${
+                intKeyStatus === "valid"     ? "text-green-600" :
+                intKeyStatus === "invalid"   ? "text-destructive" :
+                intKeyStatus === "uncertain" ? "text-amber-600" :
+                "text-text-secondary"
+              }`}>
+                {intKeyStatus === "idle"       && "Clique no ícone de escudo para verificar a conexão."}
+                {intKeyStatus === "validating" && "Verificando conexão com a API…"}
+                {intKeyStatus === "valid"      && "Chave válida — conexão com a API confirmada."}
+                {intKeyStatus === "invalid"    && "Chave inválida — verifique se copiou corretamente."}
+                {intKeyStatus === "uncertain"  && "Não foi possível confirmar agora. Você pode salvar assim mesmo."}
+              </p>
+            </div>
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <DialogClose render={<Button variant="outline" disabled={isIntegracaoModalPending} />}>
+              <X className="size-4" />
+              Cancelar
+            </DialogClose>
+            <Button onClick={handleSalvarIntegracao} disabled={isIntegracaoModalPending || intKeyStatus === "validating"}>
+              <Check className="size-4" />
+              {isIntegracaoModalPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

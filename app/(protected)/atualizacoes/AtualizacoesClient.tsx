@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import { ChevronDown, ChevronUp, Filter, X } from "lucide-react"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ChangelogTagBadge } from "@/components/qagrotis/StatusBadge"
@@ -146,9 +146,9 @@ export function AtualizacoesClient({ entries }: Props) {
                     return (
                       <tr
                         key={entry.version}
-                        className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                        className="group border-b border-border-default last:border-0"
                       >
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap transition-colors group-hover:bg-neutral-grey-50">
                           <span className="font-mono text-sm font-semibold text-text-primary">
                             v{entry.version}
                           </span>
@@ -158,11 +158,11 @@ export function AtualizacoesClient({ entries }: Props) {
                             </p>
                           )}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-text-secondary">{formatDate(entry.date)}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 whitespace-nowrap text-text-secondary transition-colors group-hover:bg-neutral-grey-50">{formatDate(entry.date)}</td>
+                        <td className="px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
                           <ChangelogTagBadge tag={entry.tag} />
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
                           {isExpanded ? (
                             <ul className="space-y-1.5">
                               {entry.changes.map((c, i) => (
@@ -183,7 +183,7 @@ export function AtualizacoesClient({ entries }: Props) {
                             </p>
                           )}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
                           {hasMore && (
                             <button
                               type="button"
@@ -243,7 +243,11 @@ export function AtualizacoesClient({ entries }: Props) {
               <input
                 type="date"
                 value={pendingDateFrom}
-                onChange={(e) => setPendingDateFrom(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setPendingDateFrom(val)
+                  if (pendingDateTo && val > pendingDateTo) setPendingDateTo("")
+                }}
                 className="h-9 w-full rounded-custom border border-border-default bg-surface-input px-3 text-sm text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
               />
             </div>
@@ -252,22 +256,19 @@ export function AtualizacoesClient({ entries }: Props) {
               <input
                 type="date"
                 value={pendingDateTo}
+                min={pendingDateFrom || undefined}
                 onChange={(e) => setPendingDateTo(e.target.value)}
                 className="h-9 w-full rounded-custom border border-border-default bg-surface-input px-3 text-sm text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" size="sm" />} onClick={clearFilters}>
-              Limpar filtros
-            </DialogClose>
-            <DialogClose render={<Button variant="outline" size="sm" />}>
-              Cancelar
-            </DialogClose>
-            <Button size="sm" onClick={applyFilters}>
-              Aplicar
-            </Button>
+          <DialogFooter showCloseButton={false}>
+            <DialogClose render={<Button variant="ghost" onClick={clearFilters} />}>Limpar filtros</DialogClose>
+            <div className="flex gap-2">
+              <DialogClose render={<Button variant="outline" />}><X className="size-4" />Cancelar</DialogClose>
+              <Button onClick={applyFilters}><Filter className="size-4" />Filtrar</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,11 +1,12 @@
-﻿"use client"
+"use client"
 
 import React, { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Plus, MoreVertical, X, Filter, Power } from "lucide-react"
+import { ArrowLeft, Plus, MoreVertical, X, Filter, Power, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogClose,
@@ -15,6 +16,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "@/components/ui/select"
+import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -23,7 +31,8 @@ import {
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { inativarModulos, type ModuloRecord } from "@/lib/actions/modulos"
+import { inativarModulos, criarModulo, atualizarModulo, type ModuloRecord } from "@/lib/actions/modulos"
+import { type SistemaRecord } from "@/lib/actions/sistemas"
 import { type CenarioRecord } from "@/lib/actions/cenarios"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -33,10 +42,11 @@ const ITEMS_PER_PAGE = 10
 interface Props {
   initialModulos: ModuloRecord[]
   initialCenarios: CenarioRecord[]
+  initialSistemas: SistemaRecord[]
   isAdmin: boolean
 }
 
-export default function ModulosClient({ initialModulos, initialCenarios, isAdmin }: Props) {
+export default function ModulosClient({ initialModulos, initialCenarios, initialSistemas, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -48,6 +58,69 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
   const [inativarIds, setInativarIds] = useState<string[]>([])
   const [apenasInativos, setApenasInativos] = useState(false)
   const [pendingInativos, setPendingInativos] = useState(false)
+
+  // ── Módulo modal (criar / editar) ──────────────────────────────────────────
+  const [moduloModalOpen, setModuloModalOpen] = useState(false)
+  const [moduloEditando, setModuloEditando] = useState<ModuloRecord | null>(null)
+  const [moduloModalNome, setModuloModalNome] = useState("")
+  const [moduloModalSistemaNome, setModuloModalSistemaNome] = useState("")
+  const [moduloModalDescricao, setModuloModalDescricao] = useState("")
+  const [isModuloModalPending, startModuloModalTransition] = useTransition()
+
+  const sistemasAtivos = useMemo(() => initialSistemas.filter((s) => s.active), [initialSistemas])
+
+  function openAdicionarModulo() {
+    setModuloEditando(null)
+    setModuloModalNome("")
+    setModuloModalSistemaNome("")
+    setModuloModalDescricao("")
+    setModuloModalOpen(true)
+  }
+
+  function openEditarModulo(m: ModuloRecord) {
+    setModuloEditando(m)
+    setModuloModalNome(m.name)
+    setModuloModalSistemaNome(m.sistemaName)
+    setModuloModalDescricao(m.description ?? "")
+    setModuloModalOpen(true)
+  }
+
+  function handleSalvarModulo() {
+    if (!moduloModalNome.trim()) { toast.error("O nome do módulo é obrigatório."); return }
+    if (!moduloModalSistemaNome) { toast.error("Selecione um sistema."); return }
+    const sistema = sistemasAtivos.find((s) => s.name === moduloModalSistemaNome)
+    startModuloModalTransition(async () => {
+      try {
+        if (moduloEditando) {
+          await atualizarModulo(moduloEditando.id, {
+            name: moduloModalNome,
+            description: moduloModalDescricao || null,
+            sistemaId: sistema?.id ?? moduloEditando.sistemaId,
+            sistemaName: moduloModalSistemaNome,
+          })
+          toast.success("Módulo atualizado com sucesso.")
+        } else {
+          if (!sistema) { toast.error("Sistema não encontrado."); return }
+          await criarModulo({
+            name: moduloModalNome,
+            description: moduloModalDescricao || null,
+            sistemaId: sistema.id,
+            sistemaName: sistema.name,
+          })
+          toast.success("Módulo criado com sucesso.")
+        }
+        setModuloModalOpen(false)
+        setModuloEditando(null)
+        setModuloModalNome("")
+        setModuloModalSistemaNome("")
+        setModuloModalDescricao("")
+        router.refresh()
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Erro ao salvar. Tente novamente.")
+      }
+    })
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
     const result = initialModulos.filter((m) => {
@@ -172,12 +245,10 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
                 Inativar
               </Button>
             )}
-            <Link href="/configuracoes/modulos/novo">
-              <Button>
-                <Plus className="size-4" />
-                Adicionar Módulo
-              </Button>
-            </Link>
+            <Button onClick={openAdicionarModulo}>
+              <Plus className="size-4" />
+              Adicionar Módulo
+            </Button>
           </div>
         )}
       </div>
@@ -202,12 +273,12 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-160 table-fixed text-sm">
+              <table className="w-full min-w-180 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
-                  <col className="w-36" />
-                  <col className="w-32" />
+                  <col className="w-48" />
+                  <col className="w-44" />
                   <col />
                   <col className="w-20" />
                   <col className="w-16" />
@@ -237,10 +308,10 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
                   {pageItems.map((m) => (
                     <tr
                       key={m.id}
-                      className="group border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                      className="group border-b border-border-default last:border-0"
                     >
                       {showBulkActions && (
-                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 group-hover:bg-neutral-grey-50">
+                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
                           <Checkbox
                             checked={selectedIds.has(m.id)}
                             onChange={() => toggleRow(m.id)}
@@ -248,24 +319,24 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
                         </td>
                       )}
                       <td className={cn(
-                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap group-hover:bg-neutral-grey-50",
+                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap transition-colors group-hover:bg-neutral-grey-50",
                         showBulkActions ? "left-10" : "left-0"
                       )}>
                         {m.active && isAdmin ? (
-                          <Link href={`/configuracoes/modulos/${m.id}/editar`} className="text-brand-primary hover:underline">{m.id}</Link>
+                          <button type="button" onClick={() => openEditarModulo(m)} className="text-brand-primary hover:underline">{m.id}</button>
                         ) : (
                           <span>{m.id}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 font-medium text-text-primary truncate" title={m.name}>{m.name}</td>
-                      <td className="px-4 py-3 text-text-secondary truncate" title={m.sistemaName}>{m.sistemaName}</td>
-                      <td className="px-4 py-3 text-text-secondary truncate" title={m.description ?? undefined}>
+                      <td className="px-4 py-3 font-medium text-text-primary truncate transition-colors group-hover:bg-neutral-grey-50" title={m.name}>{m.name}</td>
+                      <td className="px-4 py-3 text-text-secondary truncate transition-colors group-hover:bg-neutral-grey-50" title={m.sistemaName}>{m.sistemaName}</td>
+                      <td className="px-4 py-3 text-text-secondary truncate transition-colors group-hover:bg-neutral-grey-50" title={m.description ?? undefined}>
                         {m.description ?? <span className="italic text-text-secondary/60">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary text-sm">
+                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary text-sm transition-colors group-hover:bg-neutral-grey-50">
                         {initialCenarios.filter((c) => c.module === m.name && c.active).length || <span className="italic text-text-secondary/60">0</span>}
                       </td>
-                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
+                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
                         {showBulkActions && m.active ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger
@@ -280,10 +351,8 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
                               <MoreVertical className="size-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" side="bottom">
-                              <DropdownMenuItem>
-                                <Link href={`/configuracoes/modulos/${m.id}/editar`} className="w-full">
-                                  Editar
-                                </Link>
+                              <DropdownMenuItem onClick={() => openEditarModulo(m)}>
+                                Editar
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="destructive"
@@ -350,6 +419,68 @@ export default function ModulosClient({ initialModulos, initialCenarios, isAdmin
         confirmLabel="Inativar"
         onConfirm={confirmInativar}
       />
+
+      {/* ── Modal criar / editar módulo ── */}
+      <Dialog open={moduloModalOpen} onOpenChange={(open) => { if (!open) { setModuloModalOpen(false); setModuloEditando(null) } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{moduloEditando ? `Editar — ${moduloEditando.id}` : "Adicionar Módulo"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Nome <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={moduloModalNome}
+                onChange={(e) => setModuloModalNome(e.target.value)}
+                placeholder="Nome do módulo"
+                disabled={isModuloModalPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Sistema <span className="text-destructive">*</span>
+              </label>
+              <Select
+                value={moduloModalSistemaNome}
+                onValueChange={(v) => setModuloModalSistemaNome(v ?? "")}
+                disabled={sistemasAtivos.length === 0 || isModuloModalPending}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={sistemasAtivos.length === 0 ? "Nenhum sistema cadastrado" : "Selecionar sistema"} />
+                </SelectTrigger>
+                <SelectPopup>
+                  {sistemasAtivos.map((s) => (
+                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Descrição</label>
+              <textarea
+                rows={4}
+                value={moduloModalDescricao}
+                onChange={(e) => setModuloModalDescricao(e.target.value)}
+                placeholder="Descreva o módulo..."
+                disabled={isModuloModalPending}
+                className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 disabled:pointer-events-none"
+              />
+            </div>
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <DialogClose render={<Button variant="outline" disabled={isModuloModalPending} />}>
+              <X className="size-4" />
+              Cancelar
+            </DialogClose>
+            <Button onClick={handleSalvarModulo} disabled={isModuloModalPending}>
+              <Check className="size-4" />
+              {isModuloModalPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

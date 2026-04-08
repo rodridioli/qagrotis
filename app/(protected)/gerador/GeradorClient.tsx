@@ -28,133 +28,11 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { criarCenario, atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
+import { parseMarkdownCenarios, buildImportItems, type ParsedCenario, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
 import type { IntegracaoRecord } from "@/lib/actions/integracoes"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 
-// ── Import types (same as CenariosClient) ────────────────────────────────────
-
-interface ParsedCenario {
-  scenarioName: string
-  module: string
-  client: string
-  risco: string
-  tipo: "Manual" | "Automatizado" | "Man./Auto."
-  descricao: string
-  caminhoTela: string
-  regraDeNegocio: string
-  preCondicoes: string
-  bdd: string
-  resultadoEsperado: string
-}
-
-interface ImportItem {
-  key: string
-  parsed: ParsedCenario
-  existing: CenarioRecord | null
-  include: boolean
-  replace: boolean
-  error?: string
-}
-
-const COMPARE_FIELDS: Array<{ label: string; pKey: keyof ParsedCenario; eKey: keyof CenarioRecord }> = [
-  { label: "Módulo",             pKey: "module",            eKey: "module" },
-  { label: "Cliente",            pKey: "client",            eKey: "client" },
-  { label: "Risco",              pKey: "risco",             eKey: "risco" },
-  { label: "Tipo",               pKey: "tipo",              eKey: "tipo" },
-  { label: "Descrição",          pKey: "descricao",         eKey: "descricao" },
-  { label: "Caminho da Tela",    pKey: "caminhoTela",       eKey: "caminhoTela" },
-  { label: "Regra de Negócio",   pKey: "regraDeNegocio",    eKey: "regraDeNegocio" },
-  { label: "Pré-condições",      pKey: "preCondicoes",      eKey: "preCondicoes" },
-  { label: "BDD (Gherkin)",      pKey: "bdd",               eKey: "bdd" },
-  { label: "Resultado Esperado", pKey: "resultadoEsperado", eKey: "resultadoEsperado" },
-]
-
-// ── Markdown parser (same logic as CenariosClient) ───────────────────────────
-
-function parseMarkdownCenarios(text: string): ParsedCenario[] {
-  const normalized = text.replace(/\\([*#\-`![\](){}|>])/g, "$1")
-  const rawBlocks = normalized.split(/\n---+\n?/)
-  const blocks: string[] = []
-  for (const raw of rawBlocks) {
-    const parts = raw.trim().split(/\n(?=#{1,2}\s)/)
-    blocks.push(...parts)
-  }
-
-  const results: ParsedCenario[] = []
-
-  for (const block of blocks) {
-    const trimmed = block.trim()
-    if (!trimmed) continue
-    const lines = trimmed.split(/\r?\n/)
-
-    let name = ""
-    for (const line of lines) {
-      const m = line.match(/^#{1,2}\s+(.+)/)
-      if (m) {
-        name = m[1]
-          .replace(/^cenário:\s*/i, "")
-          .replace(/^ct-?\d+\s*[-–:]\s*/i, "")
-          .trim()
-        break
-      }
-    }
-    if (!name) continue
-
-    function isHeader(line: string): boolean {
-      return /^\s*\*\*[^*\n]+\*\*\s*:?\s*$/.test(line) || /^#{1,4}\s/.test(line)
-    }
-
-    function getField(keys: string[]): string {
-      const esc = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-      const kp = esc.join("|")
-      const reSameLine  = new RegExp(`^\\s*\\*\\*(${kp})[:\\s]+\\*\\*\\s*(\\S.*)$`, "i")
-      const reSameLine2 = new RegExp(`^\\s*\\*\\*(${kp})\\*\\*[:\\s]+(\\S.*)$`, "i")
-      const reHeader    = new RegExp(`^\\s*\\*\\*(${kp})[:\\s]*\\*\\*\\s*$`, "i")
-      const reHeading   = new RegExp(`^#{2,4}\\s+(${kp})\\s*$`, "i")
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i]
-        const m = line.match(reSameLine) ?? line.match(reSameLine2)
-        if (m) return (m[2] ?? "").trim()
-        if (reHeader.test(line) || reHeading.test(line)) {
-          const buf: string[] = []
-          for (let j = i + 1; j < lines.length; j++) {
-            if (isHeader(lines[j])) break
-            buf.push(lines[j])
-          }
-          return buf.filter((l) => l.trim()).join(" ").trim()
-        }
-      }
-      return ""
-    }
-
-    const tipoRaw = getField(["tipo", "type"])
-    const tipo: "Manual" | "Automatizado" | "Man./Auto." =
-      /man.*auto|auto.*man/i.test(tipoRaw) ? "Man./Auto." :
-      /auto/i.test(tipoRaw) ? "Automatizado" : "Manual"
-
-    const riscoRaw = getField(["risco", "risk", "prioridade", "priority"])
-    const risco =
-      /alto|high/i.test(riscoRaw) ? "Alto" :
-      /baixo|low/i.test(riscoRaw) ? "Baixo" : "Médio"
-
-    results.push({
-      scenarioName:      name,
-      module:            getField(["módulo", "modulo", "module"]),
-      client:            getField(["cliente", "client"]),
-      risco,
-      tipo,
-      descricao:         getField(["descrição", "descricao", "description", "objetivo"]),
-      caminhoTela:       getField(["caminho da tela", "caminho", "screen path", "path"]),
-      regraDeNegocio:    getField(["regra de negócio", "regra de negocio", "regra", "business rule"]),
-      preCondicoes:      getField(["pré-condições", "pré condições", "pre-condições", "pre-condicoes", "preconditions"]),
-      bdd:               getField(["cenário", "cenario", "bdd (gherkin)", "bdd", "gherkin", "scenario"]),
-      resultadoEsperado: getField(["resultados esperados", "resultado esperado", "resultado", "resultados", "expected result"]),
-    })
-  }
-  return results
-}
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -295,18 +173,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       return
     }
 
-    const norm = (s: string) => s.toLowerCase().trim()
-    const items: ImportItem[] = parsed.map((p, idx) => {
-      const pFinal: ParsedCenario = { ...p, module: importModule }
-      const existing = initialCenarios.find(
-        (c) => c.active && norm(c.scenarioName) === norm(p.scenarioName)
-      ) ?? null
-      let error: string | undefined
-      if (!pFinal.descricao && !pFinal.bdd && !pFinal.regraDeNegocio) {
-        error = "Nenhum conteúdo descritivo encontrado"
-      }
-      return { key: `${idx}-${p.scenarioName}`, parsed: pFinal, existing, include: !error, replace: false, error }
-    })
+    const items = buildImportItems(parsed, importModule, initialCenarios)
     setImportItems(items)
     setImportSetupOpen(false)
     setImportModalOpen(true)
@@ -552,20 +419,13 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             )}
 
             {!output && !loading && !apiError && (
-              <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+              <div className="flex h-full flex-col items-center justify-center gap-3 pt-8 text-center">
                 <div className="flex size-12 items-center justify-center rounded-full bg-brand-primary/10">
                   <Sparkles className="size-6 text-brand-primary" />
                 </div>
                 <p className="text-sm text-text-secondary">
-                  Preencha o contexto na aba{" "}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("contexto")}
-                    className="font-medium text-brand-primary hover:underline"
-                  >
-                    Contexto
-                  </button>{" "}
-                  e clique em <strong className="text-text-primary">Gerar CT</strong>.
+                  Preencha a aba contexto e depois clique no botão{" "}
+                  <strong className="text-text-primary">Gerar CT</strong>.
                 </p>
               </div>
             )}
@@ -895,8 +755,10 @@ function ScreenshotUploader({ previews, onChangePreviews }: ScreenshotUploaderPr
 
   function handleFiles(files: FileList | null) {
     if (!files) return
-    const allowed = Array.from(files).filter((f) => f.type.startsWith("image/"))
-    if (allowed.length === 0) { toast.error("Selecione arquivos de imagem (PNG, JPG, etc.)"); return }
+    const allowed = Array.from(files).filter(
+      (f) => f.type.startsWith("image/") || f.type === "application/pdf"
+    )
+    if (allowed.length === 0) { toast.error("Selecione arquivos de imagem (PNG, JPG, etc.) ou PDF."); return }
 
     const readers = allowed.map(
       (file) =>
@@ -926,18 +788,18 @@ function ScreenshotUploader({ previews, onChangePreviews }: ScreenshotUploaderPr
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
-        aria-label="Clique ou arraste imagens para anexar"
+        aria-label="Clique ou arraste imagens ou PDFs para anexar"
       >
         <CloudUpload className="size-8" />
         <div className="text-center">
-          <p className="text-sm font-medium text-text-primary">Upload de imagem</p>
-          <p className="text-xs text-text-secondary">PNG, JPG, GIF, WebP — múltiplos arquivos</p>
+          <p className="text-sm font-medium text-text-primary">Upload de imagem ou PDF</p>
+          <p className="text-xs text-text-secondary">PNG, JPG, WebP, PDF — múltiplos arquivos</p>
         </div>
       </div>
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,application/pdf"
         multiple
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
@@ -946,11 +808,17 @@ function ScreenshotUploader({ previews, onChangePreviews }: ScreenshotUploaderPr
         <div className="flex flex-wrap gap-4">
           {previews.map((p, i) => (
             <div key={i} className="group relative">
-              <img
-                src={p.dataUrl}
-                alt={p.name}
-                className="h-20 w-20 rounded-md border border-border-default object-cover"
-              />
+              {p.dataUrl.startsWith("data:application/pdf") ? (
+                <div className="flex h-20 w-20 items-center justify-center rounded-md border border-border-default bg-neutral-grey-100">
+                  <FileText className="size-8 text-text-secondary" />
+                </div>
+              ) : (
+                <img
+                  src={p.dataUrl}
+                  alt={p.name}
+                  className="h-20 w-20 rounded-md border border-border-default object-cover"
+                />
+              )}
               <button
                 type="button"
                 onClick={() => removePreview(i)}

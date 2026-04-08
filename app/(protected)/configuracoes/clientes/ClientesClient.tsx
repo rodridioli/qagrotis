@@ -251,14 +251,14 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-175 table-fixed text-sm">
+              <table className="w-full min-w-190 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
                   <col />
+                  <col className="w-44" />
                   <col className="w-36" />
-                  <col className="w-28" />
-                  <col className="w-36" />
+                  <col className="w-40" />
                   <col className="w-16" />
                 </colgroup>
                 <thead>
@@ -288,10 +288,10 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
                     return (
                       <tr
                         key={c.id}
-                        className="group border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                        className="group border-b border-border-default last:border-0"
                       >
                         {showBulkActions && (
-                          <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 group-hover:bg-neutral-grey-50">
+                          <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
                             <Checkbox
                               checked={selectedIds.has(c.id)}
                               onChange={() => toggleRow(c.id)}
@@ -299,7 +299,7 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
                           </td>
                         )}
                         <td className={cn(
-                          "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap group-hover:bg-neutral-grey-50",
+                          "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap transition-colors group-hover:bg-neutral-grey-50",
                           showBulkActions ? "left-10" : "left-0"
                         )}>
                           {c.active ? (
@@ -308,14 +308,14 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
                             <span>{c.id}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-medium text-text-primary truncate" title={c.nomeFantasia}>{c.nomeFantasia}</td>
-                        <td className="px-4 py-3 text-text-secondary truncate" title={c.razaoSocial ?? undefined}>
+                        <td className="px-4 py-3 font-medium text-text-primary truncate transition-colors group-hover:bg-neutral-grey-50" title={c.nomeFantasia}>{c.nomeFantasia}</td>
+                        <td className="px-4 py-3 text-text-secondary truncate transition-colors group-hover:bg-neutral-grey-50" title={c.razaoSocial ?? undefined}>
                           {c.razaoSocial ?? <span className="italic text-text-secondary/60">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-text-secondary truncate" title={c.cpfCnpj ?? undefined}>
+                        <td className="px-4 py-3 text-text-secondary truncate transition-colors group-hover:bg-neutral-grey-50" title={c.cpfCnpj ?? undefined}>
                           {c.cpfCnpj ?? <span className="italic text-text-secondary/60">—</span>}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
                           {sistemas.length === 0 ? (
                             <span className="italic text-text-secondary/60 text-sm">—</span>
                           ) : (
@@ -326,7 +326,7 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
                             </div>
                           )}
                         </td>
-                        <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
+                        <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
                           {showBulkActions && c.active ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger

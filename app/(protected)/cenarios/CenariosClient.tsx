@@ -33,6 +33,7 @@ import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { criarCenario, atualizarCenario, inativarCenarios, type CenarioRecord } from "@/lib/actions/cenarios"
+import { parseMarkdownCenarios, buildImportItems, type ParsedCenario, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
 import { cn } from "@/lib/utils"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
@@ -40,144 +41,6 @@ import type { ClienteRecord } from "@/lib/actions/clientes"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 10
-
-// ─── Import types ─────────────────────────────────────────────────────────────
-
-interface ParsedCenario {
-  scenarioName: string
-  module: string
-  client: string
-  risco: string
-  tipo: "Manual" | "Automatizado" | "Man./Auto."
-  descricao: string
-  caminhoTela: string
-  regraDeNegocio: string
-  preCondicoes: string
-  bdd: string
-  resultadoEsperado: string
-}
-
-interface ImportItem {
-  key: string
-  parsed: ParsedCenario
-  existing: CenarioRecord | null
-  include: boolean
-  replace: boolean
-  error?: string
-}
-
-const COMPARE_FIELDS: Array<{ label: string; pKey: keyof ParsedCenario; eKey: keyof CenarioRecord }> = [
-  { label: "Módulo",            pKey: "module",            eKey: "module" },
-  { label: "Cliente",           pKey: "client",            eKey: "client" },
-  { label: "Risco",             pKey: "risco",             eKey: "risco" },
-  { label: "Tipo",              pKey: "tipo",              eKey: "tipo" },
-  { label: "Descrição",         pKey: "descricao",         eKey: "descricao" },
-  { label: "Caminho da Tela",   pKey: "caminhoTela",       eKey: "caminhoTela" },
-  { label: "Regra de Negócio",  pKey: "regraDeNegocio",    eKey: "regraDeNegocio" },
-  { label: "Pré-condições",     pKey: "preCondicoes",      eKey: "preCondicoes" },
-  { label: "BDD (Gherkin)",     pKey: "bdd",               eKey: "bdd" },
-  { label: "Resultado Esperado",pKey: "resultadoEsperado", eKey: "resultadoEsperado" },
-]
-
-// ─── Markdown parser ──────────────────────────────────────────────────────────
-
-function parseMarkdownCenarios(text: string): ParsedCenario[] {
-  // Normalize escaped markdown characters (\*\* → **, \## → ##, \--- → ---, \- → -)
-  // Some markdown exporters escape special chars with backslashes
-  const normalized = text.replace(/\\([*#\-`![\](){}|>])/g, "$1")
-
-  // Split on --- separators, then split each block on sub-headings
-  const rawBlocks = normalized.split(/\n---+\n?/)
-  const blocks: string[] = []
-  for (const raw of rawBlocks) {
-    const parts = raw.trim().split(/\n(?=#{1,2}\s)/)
-    blocks.push(...parts)
-  }
-
-  const results: ParsedCenario[] = []
-
-  for (const block of blocks) {
-    const trimmed = block.trim()
-    if (!trimmed) continue
-    const lines = trimmed.split(/\r?\n/)
-
-    // Name from first H1/H2 heading
-    let name = ""
-    for (const line of lines) {
-      const m = line.match(/^#{1,2}\s+(.+)/)
-      if (m) {
-        name = m[1]
-          .replace(/^cenário:\s*/i, "")
-          .replace(/^ct-?\d+\s*[-–:]\s*/i, "")
-          .trim()
-        break
-      }
-    }
-    if (!name) continue
-
-    // A "field header" line is a standalone **Label:** — ends right after the closing **.
-    // Lines like "**DADO** que o vendedor..." have trailing text so they are NOT headers.
-    function isHeader(line: string): boolean {
-      return /^\s*\*\*[^*\n]+\*\*\s*:?\s*$/.test(line) || /^#{1,4}\s/.test(line)
-    }
-
-    function getField(keys: string[]): string {
-      const esc = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-      const kp = esc.join("|")
-      // **Field:** Value   (colon inside bold, value on same line)
-      const reSameLine  = new RegExp(`^\\s*\\*\\*(${kp})[:\\s]+\\*\\*\\s*(\\S.*)$`, "i")
-      // **Field** Value:   (colon outside bold, value on same line)
-      const reSameLine2 = new RegExp(`^\\s*\\*\\*(${kp})\\*\\*[:\\s]+(\\S.*)$`, "i")
-      // **Field:**         (nothing after — value on next lines)
-      const reHeader    = new RegExp(`^\\s*\\*\\*(${kp})[:\\s]*\\*\\*\\s*$`, "i")
-      // ## Field heading
-      const reHeading   = new RegExp(`^#{2,4}\\s+(${kp})\\s*$`, "i")
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i]
-
-        const m = line.match(reSameLine) ?? line.match(reSameLine2)
-        if (m) return (m[2] ?? "").trim()
-
-        if (reHeader.test(line) || reHeading.test(line)) {
-          const buf: string[] = []
-          for (let j = i + 1; j < lines.length; j++) {
-            if (isHeader(lines[j])) break
-            buf.push(lines[j])
-          }
-          return buf.filter((l) => l.trim()).join(" ").trim()
-        }
-      }
-      return ""
-    }
-
-    const tipoRaw = getField(["tipo", "type"])
-    const tipo: "Manual" | "Automatizado" | "Man./Auto." =
-      /man.*auto|auto.*man/i.test(tipoRaw) ? "Man./Auto." :
-      /auto/i.test(tipoRaw) ? "Automatizado" : "Manual"
-
-    const riscoRaw = getField(["risco", "risk", "prioridade", "priority"])
-    const risco =
-      /alto|high/i.test(riscoRaw) ? "Alto" :
-      /baixo|low/i.test(riscoRaw) ? "Baixo" : "Médio"
-
-    results.push({
-      scenarioName:      name,
-      module:            getField(["módulo", "modulo", "module"]),
-      client:            getField(["cliente", "client"]),
-      risco,
-      tipo,
-      descricao:         getField(["descrição", "descricao", "description", "objetivo"]),
-      caminhoTela:       getField(["caminho da tela", "caminho", "screen path", "path"]),
-      regraDeNegocio:    getField(["regra de negócio", "regra de negocio", "regra", "business rule"]),
-      preCondicoes:      getField(["pré-condições", "pré condições", "pre-condições", "pre-condicoes", "preconditions"]),
-      bdd:               getField(["cenário", "cenario", "bdd (gherkin)", "bdd", "gherkin", "scenario"]),
-      resultadoEsperado: getField(["resultados esperados", "resultado esperado", "resultado", "resultados", "expected result"]),
-    })
-  }
-
-  return results
-}
 
 interface FilterState {
   modulo: string
@@ -349,22 +212,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
       const parsed = parseMarkdownCenarios(text)
       if (parsed.length === 0) { toast.error("Nenhum cenário encontrado no arquivo."); return }
 
-      const norm = (s: string) => s.toLowerCase().trim()
-      const items: ImportItem[] = parsed.map((p, idx) => {
-        // Module is always from user selection — override what markdown says
-        const pFinal: ParsedCenario = { ...p, module: importSetupModule }
-
-        const existing = initialCenarios.find(
-          (c) => c.active && norm(c.scenarioName) === norm(p.scenarioName)
-        ) ?? null
-
-        let error: string | undefined
-        if (!pFinal.descricao && !pFinal.bdd && !pFinal.regraDeNegocio) {
-          error = "Nenhum conteúdo descritivo encontrado no arquivo"
-        }
-
-        return { key: `${idx}-${p.scenarioName}`, parsed: pFinal, existing, include: !error, replace: false, error }
-      })
+      const items = buildImportItems(parsed, importSetupModule, initialCenarios)
       setImportItems(items)
       setImportSetupOpen(false)
       setImportModalOpen(true)

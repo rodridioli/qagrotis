@@ -174,10 +174,6 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
     setMessages([])
   }
 
-  const integracaoLabel = integracoes.find((i) => i.id === integracaoId)?.descricao
-    || integracoes.find((i) => i.id === integracaoId)?.model
-    || ""
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -229,7 +225,9 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
               <Select value={integracaoId} onValueChange={(v) => setIntegracaoId(v ?? "")}>
                 <SelectTrigger className="h-7 text-xs">
                   <span className="mr-1 text-text-secondary">Modelo:</span>
-                  <SelectValue placeholder="Selecionar modelo" />
+                  <SelectValue placeholder="Selecionar modelo">
+                    {integracoes.find((i) => i.id === integracaoId)?.descricao || integracoes.find((i) => i.id === integracaoId)?.model || "Selecionar modelo"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectPopup>
                   {integracoes.map((i) => (
@@ -245,10 +243,7 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
           {/* ── Messages ── */}
           <div className="flex-1 overflow-y-auto px-4 py-4">
             {messages.length === 0 ? (
-              <EmptyState
-                sistema={sistemaSelecionado}
-                onSuggestion={(s) => sendMessage(s)}
-              />
+              <EmptyState onSuggestion={(s) => sendMessage(s)} />
             ) : (
               <div className="flex flex-col gap-4">
                 {messages.map((msg) => (
@@ -286,14 +281,6 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
                 }
               </Button>
             </div>
-            <p className="mt-1.5 text-center text-[11px] text-text-secondary">
-              Respostas baseadas na{" "}
-              <span className="font-medium text-text-primary">documentação oficial</span>{" "}
-              do Agrotis
-              {integracaoLabel && (
-                <> · <span className="font-medium text-text-primary">{integracaoLabel}</span></>
-              )}
-            </p>
           </div>
 
         </div>
@@ -304,13 +291,7 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function EmptyState({
-  sistema,
-  onSuggestion,
-}: {
-  sistema: string
-  onSuggestion: (s: string) => void
-}) {
+function EmptyState({ onSuggestion }: { onSuggestion: (s: string) => void }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-5 py-8 text-center">
       <div className="flex size-14 items-center justify-center rounded-full bg-brand-primary/10">
@@ -318,12 +299,7 @@ function EmptyState({
       </div>
       <div>
         <p className="text-sm font-medium text-text-primary">Como posso ajudar?</p>
-        <p className="mt-1 text-xs text-text-secondary">
-          Pergunte qualquer coisa sobre o módulo{" "}
-          <span className="font-medium text-text-primary">{sistema}</span>{" "}
-          com base na documentação.
-        </p>
-      </div>
+        </div>
       <div className="flex w-full max-w-xs flex-col gap-1.5">
         {SUGESTOES.map((s) => (
           <button
