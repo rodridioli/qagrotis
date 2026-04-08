@@ -7,7 +7,7 @@ import { DashboardCharts } from "./DashboardCharts"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { QaUserRecord } from "@/lib/actions/usuarios"
-import type { SuiteRecord } from "@/lib/actions/suites"
+import type { SuiteDashboardRecord } from "@/lib/actions/suites"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -149,7 +149,7 @@ interface Props {
   allCenarios: CenarioRecord[]
   allModulos: ModuloRecord[]
   allUsers: QaUserRecord[]
-  allSuites: SuiteRecord[]
+  allSuites: SuiteDashboardRecord[]
   currentUser: string | null
   currentUserPhotoPath: string | null
 }

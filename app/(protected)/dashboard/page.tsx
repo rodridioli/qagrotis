@@ -1,7 +1,7 @@
 import { getModulos } from "@/lib/actions/modulos"
 import { getCenarios } from "@/lib/actions/cenarios"
 import { getQaUsers } from "@/lib/actions/usuarios"
-import { getSuites } from "@/lib/actions/suites"
+import { getSuitesParaDashboard } from "@/lib/actions/suites"
 import { auth } from "@/lib/auth"
 import { DashboardClient } from "./DashboardClient"
 
@@ -10,7 +10,7 @@ export default async function DashboardPage() {
     getModulos(),
     getCenarios(),
     getQaUsers(),
-    getSuites(),
+    getSuitesParaDashboard(),
     auth(),
   ])
   const currentUser = session?.user?.name ?? session?.user?.email ?? null

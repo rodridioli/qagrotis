@@ -196,6 +196,25 @@ export async function registrarResultadoSuite(suiteId: string, cenarioId: string
   revalidatePath(`/suites/${suiteId}`)
 }
 
+// ── Dashboard-specific: minimal record with full historico ──────────────────
+
+export interface SuiteDashboardRecord {
+  id: string
+  sistema: string
+  historico: NonNullable<SuiteRecord["historico"]>
+}
+
+export async function getSuitesParaDashboard(): Promise<SuiteDashboardRecord[]> {
+  const rows = await prisma.suite.findMany({
+    select: { id: true, sistema: true, historico: true },
+  })
+  return rows.map((row) => ({
+    id:       row.id,
+    sistema:  row.sistema,
+    historico: (row.historico as unknown as NonNullable<SuiteRecord["historico"]>) ?? [],
+  }))
+}
+
 export async function inativarSuites(ids: string[]): Promise<void> {
   await requireSession()
   if (!Array.isArray(ids) || ids.length === 0) return
