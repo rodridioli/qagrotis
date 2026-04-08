@@ -134,11 +134,13 @@ export const ResultadoTipos: Story = {
     docs: {
       description: {
         story: `
-| Valor | Cor |
-|-------|-----|
-| Sucesso | Verde (\`green-600\`) |
-| Erro | Vermelho (\`red-500\`) |
-| Pendente | Âmbar (\`amber-500\`) |
+| Valor | Cor | Tokens |
+|-------|-----|--------|
+| Sucesso | Verde | \`border-green-600/30 bg-green-600/10 text-green-700\` |
+| Erro | Vermelho | \`border-red-500/30 bg-red-500/10 text-red-600\` |
+| Pendente | Âmbar | \`border-amber-500/30 bg-amber-500/10 text-amber-600\` |
+
+> Todos os badges usam o padrão de opacidade \`/30\` na borda e \`/10\` no fundo para consistência com o Design System.
         `,
       },
     },

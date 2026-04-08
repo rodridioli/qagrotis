@@ -439,8 +439,8 @@ export function SuiteForm({
         </div>
 
         {/* ── Cenários ── */}
-        <div className={`p-5 space-y-3${activeTab !== "cenarios" ? " hidden" : ""}`}>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className={activeTab !== "cenarios" ? "hidden" : ""}>
+          <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border-default px-5 py-3">
             <Button variant="outline" size="sm" onClick={() => setAddCenarioOpen(true)}>
               <Plus className="size-4" />
               Adicionar Cenário
@@ -448,11 +448,11 @@ export function SuiteForm({
           </div>
 
           {cenarios.length === 0 ? (
-            <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
+            <div className="mx-5 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
               Nenhum cenário adicionado à suíte.
             </div>
           ) : (
-            <div>
+            <div className="overflow-x-auto">
               <table className="w-full table-fixed text-sm">
                 <colgroup>
                   <col className="w-24" />
@@ -533,36 +533,34 @@ export function SuiteForm({
         </div>
 
         {/* ── Histórico ── */}
-        <div className={`p-5 space-y-3${activeTab !== "historico" ? " hidden" : ""}`}>
-          <div className="flex items-center justify-end gap-2">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={selectedHistorico.size === 0}
-                onClick={() => setRemoverHistoricoOpen(true)}
-              >
-                <Trash2 className="size-4" />
-                Remover
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={selectedHistorico.size === 0}
-                onClick={handleExportarJira}
-              >
-                <ExternalLink className="size-4" />
-                Exportar para o Jira
-              </Button>
-            </div>
+        <div className={activeTab !== "historico" ? "hidden" : ""}>
+          <div className="flex items-center justify-end gap-2 border-b border-border-default px-5 py-3">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={selectedHistorico.size === 0}
+              onClick={() => setRemoverHistoricoOpen(true)}
+            >
+              <Trash2 className="size-4" />
+              Remover
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={selectedHistorico.size === 0}
+              onClick={handleExportarJira}
+            >
+              <ExternalLink className="size-4" />
+              Exportar para o Jira
+            </Button>
           </div>
 
           {historico.length === 0 ? (
-            <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
+            <div className="mx-5 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
               Nenhuma execução registrada. O histórico será preenchido após a execução dos cenários.
             </div>
           ) : (
-            <div>
+            <div className="overflow-x-auto">
               <table className="w-full table-fixed text-sm">
                 <colgroup>
                   <col className="w-10" />
