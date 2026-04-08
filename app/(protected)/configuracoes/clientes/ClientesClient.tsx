@@ -24,7 +24,7 @@ import {
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { inativarClientes, criarCliente, type ClienteRecord } from "@/lib/actions/clientes"
+import { inativarClientes, criarCliente, atualizarCliente, type ClienteRecord } from "@/lib/actions/clientes"
 import { type CenarioRecord } from "@/lib/actions/cenarios"
 import { cn, formatCpfCnpj, validateCpfCnpj } from "@/lib/utils"
 import { StatusBadge } from "@/components/qagrotis/StatusBadge"
@@ -50,6 +50,48 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
   const [inativarIds, setInativarIds] = useState<string[]>([])
   const [apenasInativos, setApenasInativos] = useState(false)
   const [pendingInativos, setPendingInativos] = useState(false)
+
+  // ── Edit cliente modal ─────────────────────────────────────────────────────
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingCliente, setEditingCliente] = useState<ClienteRecord | null>(null)
+  const [editNomeFantasia, setEditNomeFantasia] = useState("")
+  const [editRazaoSocial, setEditRazaoSocial] = useState("")
+  const [editCpfCnpj, setEditCpfCnpj] = useState("")
+  const [isEditPending, startEditTransition] = useTransition()
+
+  function openEditarCliente(c: ClienteRecord) {
+    setEditingCliente(c)
+    setEditNomeFantasia(c.nomeFantasia)
+    setEditRazaoSocial(c.razaoSocial ?? "")
+    setEditCpfCnpj(c.cpfCnpj ?? "")
+    setEditOpen(true)
+  }
+
+  function handleSalvarCliente() {
+    if (!editingCliente) return
+    if (!editNomeFantasia.trim()) {
+      toast.error("O Nome Fantasia é obrigatório.")
+      return
+    }
+    if (editCpfCnpj.trim() && !validateCpfCnpj(editCpfCnpj)) {
+      toast.error("CPF ou CNPJ inválido.")
+      return
+    }
+    startEditTransition(async () => {
+      try {
+        await atualizarCliente(editingCliente.id, {
+          nomeFantasia: editNomeFantasia,
+          razaoSocial: editRazaoSocial || null,
+          cpfCnpj: editCpfCnpj || null,
+        })
+        setEditOpen(false)
+        router.refresh()
+        toast.success("Cliente atualizado com sucesso.")
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Erro ao atualizar cliente. Tente novamente.")
+      }
+    })
+  }
 
   // ── Add cliente modal ──────────────────────────────────────────────────────
   const [addOpen, setAddOpen] = useState(false)
@@ -303,7 +345,7 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
                           showBulkActions ? "left-10" : "left-0"
                         )}>
                           {c.active ? (
-                            <Link href={`/configuracoes/clientes/${c.id}/editar`} className="text-brand-primary hover:underline">{c.id}</Link>
+                            <button type="button" onClick={() => openEditarCliente(c)} className="text-brand-primary hover:underline">{c.id}</button>
                           ) : (
                             <span>{c.id}</span>
                           )}
@@ -341,10 +383,8 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
                                 <MoreVertical className="size-4" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" side="bottom">
-                                <DropdownMenuItem>
-                                  <Link href={`/configuracoes/clientes/${c.id}/editar`} className="w-full">
-                                    Editar
-                                  </Link>
+                                <DropdownMenuItem onClick={() => openEditarCliente(c)}>
+                                  Editar
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   variant="destructive"
@@ -412,6 +452,56 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
         confirmLabel="Inativar"
         onConfirm={confirmInativar}
       />
+
+      {/* ── Editar cliente modal ── */}
+      <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Nome Fantasia <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={editNomeFantasia}
+                onChange={(e) => setEditNomeFantasia(e.target.value)}
+                placeholder="Nome Fantasia"
+                disabled={isEditPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Razão Social</label>
+              <Input
+                value={editRazaoSocial}
+                onChange={(e) => setEditRazaoSocial(e.target.value)}
+                placeholder="Razão Social"
+                disabled={isEditPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">CPF / CNPJ</label>
+              <Input
+                value={editCpfCnpj}
+                onChange={(e) => setEditCpfCnpj(formatCpfCnpj(e.target.value))}
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                disabled={isEditPending}
+              />
+            </div>
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <DialogClose render={<Button variant="outline" disabled={isEditPending} />}>
+              <X className="size-4" />
+              Cancelar
+            </DialogClose>
+            <Button onClick={handleSalvarCliente} disabled={isEditPending}>
+              <Check className="size-4" />
+              {isEditPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Adicionar cliente modal ── */}
       <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) resetAddForm() }}>

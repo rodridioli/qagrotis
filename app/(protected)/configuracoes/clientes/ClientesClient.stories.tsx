@@ -23,7 +23,7 @@ const meta: Meta<typeof ClientesClient> = {
     nextjs: { appDirectory: true },
     docs: {
       description: {
-        component: "Tabela de clientes com sistemas associados, modal de adição rápida, busca, filtro e inativação em lote. CPF/CNPJ é validado por dígito verificador antes de salvar.",
+        component: "Tabela de clientes com sistemas associados. Criação e edição via modal inline (sem navegação de página). CPF/CNPJ é validado por dígito verificador antes de salvar. Suporta busca, filtro e inativação em lote.",
       },
     },
   },
@@ -64,6 +64,24 @@ export const SemSistemas: Story = {
   args: {
     initialClientes: [
       { id: "C-01", nomeFantasia: "Novo Cliente", razaoSocial: null, cpfCnpj: null, active: true, createdAt: Date.now() },
+    ],
+    initialCenarios: [],
+    isAdmin: true,
+  },
+}
+
+export const EdicaoModal: Story = {
+  name: "Modal de edição — abre ao clicar no Código ou em Editar",
+  parameters: {
+    docs: {
+      description: {
+        story: "Clicar no código do cliente (CLI-xx) ou em Editar no dropdown abre a modal de edição inline com os dados pré-preenchidos. Não há navegação para outra página.",
+      },
+    },
+  },
+  args: {
+    initialClientes: [
+      { id: "CLI-01", nomeFantasia: "Acme Corp", razaoSocial: "Acme Comércio Ltda", cpfCnpj: "11.222.333/0001-81", active: true, createdAt: Date.now() },
     ],
     initialCenarios: [],
     isAdmin: true,
