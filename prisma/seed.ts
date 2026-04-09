@@ -39,43 +39,53 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
 
 async function main() {
   // ── Sistemas ────────────────────────────────────────────────────────────────
+  // Use upsert so that placeholder sistemas marked active:false in the JSON
+  // are correctly inactivated even if they were previously seeded as active:true.
   const sistemas = await readJson<Array<{
     id: string; name: string; description: string | null; active: boolean; createdAt?: number
   }>>("sistemas.json", [])
 
   if (sistemas.length) {
-    await prisma.sistema.createMany({
-      data: sistemas.map((s) => ({
-        id:          s.id,
-        name:        s.name,
-        description: s.description ?? null,
-        active:      s.active ?? true,
-        createdAt:   s.createdAt ? new Date(s.createdAt) : new Date(),
-      })),
-      skipDuplicates: true,
-    })
+    for (const s of sistemas) {
+      await prisma.sistema.upsert({
+        where: { id: s.id },
+        // Only enforce inactivation — never force-activate seed placeholders
+        update: s.active ? {} : { active: false },
+        create: {
+          id:          s.id,
+          name:        s.name,
+          description: s.description ?? null,
+          active:      s.active ?? true,
+          createdAt:   s.createdAt ? new Date(s.createdAt) : new Date(),
+        },
+      })
+    }
     console.log(`✓ sistemas      (${sistemas.length})`)
   }
 
   // ── Módulos ─────────────────────────────────────────────────────────────────
+  // Same upsert strategy: inactivate placeholder modulos if the JSON says active:false.
   const modulos = await readJson<Array<{
     id: string; name: string; description: string | null;
     sistemaId: string; sistemaName: string; active: boolean; createdAt?: number
   }>>("modulos.json", [])
 
   if (modulos.length) {
-    await prisma.modulo.createMany({
-      data: modulos.map((m) => ({
-        id:          m.id,
-        name:        m.name,
-        description: m.description ?? null,
-        sistemaId:   m.sistemaId,
-        sistemaName: m.sistemaName,
-        active:      m.active ?? true,
-        createdAt:   m.createdAt ? new Date(m.createdAt) : new Date(),
-      })),
-      skipDuplicates: true,
-    })
+    for (const m of modulos) {
+      await prisma.modulo.upsert({
+        where: { id: m.id },
+        update: m.active ? {} : { active: false },
+        create: {
+          id:          m.id,
+          name:        m.name,
+          description: m.description ?? null,
+          sistemaId:   m.sistemaId,
+          sistemaName: m.sistemaName,
+          active:      m.active ?? true,
+          createdAt:   m.createdAt ? new Date(m.createdAt) : new Date(),
+        },
+      })
+    }
     console.log(`✓ modulos        (${modulos.length})`)
   }
 

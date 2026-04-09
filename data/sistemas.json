@@ -33,30 +33,30 @@
     "id": "SIS-06",
     "name": "Gerencial",
     "description": "ERP (Enterprise Resource Planning) com módulos específicos do agronegócio.",
-    "active": true
+    "active": false
   },
   {
     "id": "SIS-07",
     "name": "SAP",
     "description": "ERP (Enterprise Resource Planning) para clientes de médio e grande porte com integrações e add-ons específicas para o agronegócio.",
-    "active": true
+    "active": false
   },
   {
     "id": "SIS-08",
     "name": "Plataforma AGRO",
     "description": "Plataforma web com módulos específicos do agronegócio.",
-    "active": true
+    "active": false
   },
   {
     "id": "SIS-09",
     "name": "Plataforma ERP",
     "description": "ERP (Enterprise Resource Planning) com módulos específicos integrados ao Gerencial e SAP-B1.",
-    "active": true
+    "active": false
   },
   {
     "id": "SIS-10",
     "name": "Next",
     "description": "ERP (Enterprise Resource Planning).",
-    "active": true
+    "active": false
   }
 ]

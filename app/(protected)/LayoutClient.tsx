@@ -384,6 +384,7 @@ export default function LayoutClient({
   useEffect(() => {
     if (sistemaNames.length === 0) {
       setSistemaSelecionado("")
+      localStorage.removeItem(STORAGE_KEY)
       return
     }
     const saved = localStorage.getItem(STORAGE_KEY)
@@ -448,7 +449,7 @@ export default function LayoutClient({
             onToggleTheme={handleToggleTheme}
           />
           <main className="flex-1 overflow-auto bg-surface-default p-4 lg:p-6">
-            {children}
+            {(hasActiveSistema || pathname.startsWith("/configuracoes")) ? children : null}
           </main>
         </div>
       </div>

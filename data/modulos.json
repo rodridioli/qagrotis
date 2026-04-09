@@ -13,7 +13,7 @@
     "description": null,
     "sistemaId": "SIS-08",
     "sistemaName": "Plataforma AGRO",
-    "active": true
+    "active": false
   },
   {
     "id": "MOD-03",
@@ -21,7 +21,7 @@
     "description": null,
     "sistemaId": "SIS-08",
     "sistemaName": "Plataforma AGRO",
-    "active": true
+    "active": false
   },
   {
     "id": "MOD-04",
@@ -29,7 +29,7 @@
     "description": null,
     "sistemaId": "SIS-08",
     "sistemaName": "Plataforma AGRO",
-    "active": true
+    "active": false
   },
   {
     "id": "MOD-05",
@@ -37,7 +37,7 @@
     "description": null,
     "sistemaId": "SIS-08",
     "sistemaName": "Plataforma AGRO",
-    "active": true
+    "active": false
   },
   {
     "id": "MOD-06",
@@ -45,7 +45,7 @@
     "description": null,
     "sistemaId": "SIS-08",
     "sistemaName": "Plataforma AGRO",
-    "active": true
+    "active": false
   },
   {
     "id": "MOD-07",
@@ -53,7 +53,7 @@
     "description": null,
     "sistemaId": "SIS-08",
     "sistemaName": "Plataforma AGRO",
-    "active": true
+    "active": false
   },
   {
     "id": "MOD-08",
@@ -61,7 +61,7 @@
     "description": null,
     "sistemaId": "SIS-08",
     "sistemaName": "Plataforma AGRO",
-    "active": true
+    "active": false
   },
   {
     "id": "MOD-09",
@@ -69,7 +69,7 @@
     "description": null,
     "sistemaId": "SIS-08",
     "sistemaName": "Plataforma AGRO",
-    "active": true
+    "active": false
   },
   {
     "id": "MOD-10",
@@ -77,7 +77,7 @@
     "description": null,
     "sistemaId": "SIS-08",
     "sistemaName": "Plataforma AGRO",
-    "active": true
+    "active": false
   },
   {
     "id": "MOD-11",
@@ -85,7 +85,7 @@
     "description": null,
     "sistemaId": "SIS-06",
     "sistemaName": "Gerencial",
-    "active": true
+    "active": false
   },
   {
     "id": "MOD-12",
@@ -101,7 +101,7 @@
     "description": null,
     "sistemaId": "SIS-10",
     "sistemaName": "ERP - Next",
-    "active": true
+    "active": false
   },
   {
     "id": "MOD-14",
@@ -109,7 +109,7 @@
     "description": null,
     "sistemaId": "SIS-07",
     "sistemaName": "SAP",
-    "active": true,
+    "active": false,
     "createdAt": 1774577733916
   },
   {
@@ -118,7 +118,7 @@
     "description": null,
     "sistemaId": "SIS-07",
     "sistemaName": "SAP",
-    "active": true,
+    "active": false,
     "createdAt": 1774664984848
   },
   {
@@ -127,7 +127,7 @@
     "description": null,
     "sistemaId": "SIS-06",
     "sistemaName": "Gerencial",
-    "active": true,
+    "active": false,
     "createdAt": 1774665029786
   },
   {
@@ -136,7 +136,7 @@
     "description": null,
     "sistemaId": "SIS-06",
     "sistemaName": "Gerencial",
-    "active": true,
+    "active": false,
     "createdAt": 1774665114448
   },
   {
@@ -145,7 +145,7 @@
     "description": null,
     "sistemaId": "SIS-06",
     "sistemaName": "Gerencial",
-    "active": true,
+    "active": false,
     "createdAt": 1774665134348
   },
   {
@@ -154,7 +154,7 @@
     "description": null,
     "sistemaId": "SIS-06",
     "sistemaName": "Gerencial",
-    "active": true,
+    "active": false,
     "createdAt": 1774665156626
   },
   {
@@ -163,7 +163,7 @@
     "description": null,
     "sistemaId": "SIS-09",
     "sistemaName": "Plataforma ERP",
-    "active": true,
+    "active": false,
     "createdAt": 1774665835847
   },
   {
@@ -172,7 +172,7 @@
     "description": null,
     "sistemaId": "SIS-09",
     "sistemaName": "Plataforma ERP",
-    "active": true,
+    "active": false,
     "createdAt": 1774665849038
   },
   {
@@ -181,7 +181,7 @@
     "description": null,
     "sistemaId": "SIS-10",
     "sistemaName": "Next",
-    "active": true,
+    "active": false,
     "createdAt": 1774666643300
   }
 ]
