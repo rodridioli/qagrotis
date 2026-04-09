@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Filter, Plus, Power, X, MoreVertical } from "lucide-react"
+import { ChevronDown, ChevronUp, Filter, Plus, Power, X, MoreVertical } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -39,7 +39,12 @@ import { inativarSuites, type SuiteListRecord } from "@/lib/actions/suites"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
-const ITEMS_PER_PAGE = 10
+const ITEMS_PER_PAGE = 20
+
+function numericId(id: string): number {
+  const m = id.match(/\d+$/)
+  return m ? parseInt(m[0], 10) : 0
+}
 
 interface FilterState {
   modulo: string
@@ -93,6 +98,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [pendingFilters, setPendingFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [isInativando, setIsInativando] = useState(false)
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
 
   useEffect(() => {
     setCurrentPage(1)
@@ -105,7 +111,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
   )
 
   const filtered = useMemo(() => {
-    return suites.filter((s) => {
+    const result = suites.filter((s) => {
       // Optimistic hide only when viewing actives — don't suppress items from inactive view
       if (!filters.apenasInativos && inativadosIds.has(s.id)) return false
       const matchSistema = modulosDosistema.length === 0 || modulosDosistemaSet.has(s.modulo)
@@ -118,7 +124,11 @@ export default function SuitesClient({ allModulos, suites }: Props) {
       const matchAtivo = filters.apenasInativos ? !s.active : s.active
       return matchSistema && matchSearch && matchModulo && matchTipo && matchAtivo
     })
-  }, [suites, search, filters, modulosDosistema, modulosDosistemaSet, inativadosIds])
+    return [...result].sort((a, b) => {
+      const diff = numericId(a.id) - numericId(b.id)
+      return sortOrder === "desc" ? -diff : diff
+    })
+  }, [suites, search, filters, modulosDosistema, modulosDosistemaSet, inativadosIds, sortOrder])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -272,9 +282,18 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                       </th>
                     )}
                     <th className={cn(
-                      "sticky z-20 bg-neutral-grey-50 px-4 py-3 text-left text-xs font-semibold text-text-secondary",
+                      "sticky z-20 bg-neutral-grey-50 px-4 py-3 text-left text-xs font-semibold",
                       showBulkActions ? "left-10" : "left-0"
-                    )}>Código</th>
+                    )}>
+                      <button
+                        type="button"
+                        onClick={() => setSortOrder((prev) => prev === "desc" ? "asc" : "desc")}
+                        className="flex items-center gap-1 text-text-secondary transition-colors hover:text-text-primary"
+                      >
+                        Código
+                        {sortOrder === "desc" ? <ChevronDown className="size-3" /> : <ChevronUp className="size-3" />}
+                      </button>
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Suíte</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Versão</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>

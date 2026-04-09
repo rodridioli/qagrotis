@@ -3,7 +3,8 @@
 import React, { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Plus, MoreVertical, Pencil, X, Filter, Power } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, X, Filter, Power } from "lucide-react"
+import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -35,7 +36,12 @@ import { inativarQaUsers, type QaUserRecord } from "@/lib/actions/usuarios"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
-const ITEMS_PER_PAGE = 10
+const ITEMS_PER_PAGE = 20
+
+function numericId(id: string): number {
+  const m = id.match(/\d+$/)
+  return m ? parseInt(m[0], 10) : 0
+}
 
 
 function getInitials(name: string): string {
@@ -61,6 +67,8 @@ interface Props {
 export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [isInativando, setIsInativando] = useState(false)
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
 
   const [search, setSearch] = useState("")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -82,8 +90,11 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
       const matchAtivo = filters.apenasInativos ? !u.active : u.active
       return matchSearch && matchTipo && matchAtivo
     })
-    return [...result].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-  }, [search, filters, initialUsers])
+    return [...result].sort((a, b) => {
+      const diff = numericId(a.id) - numericId(b.id)
+      return sortOrder === "desc" ? -diff : diff
+    })
+  }, [search, filters, initialUsers, sortOrder])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -144,24 +155,33 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
   }
 
   function confirmInativar() {
-    const count = inativarIds.length
+    const ids = [...inativarIds]
+    const count = ids.length
     setInativarOpen(false)
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      inativarIds.forEach((id) => next.delete(id))
+      ids.forEach((id) => next.delete(id))
       return next
     })
     setInativarIds([])
+    setIsInativando(true)
 
     startTransition(async () => {
-      const result = await inativarQaUsers(inativarIds)
-      if (result.error) { toast.error(result.error); return }
-      router.refresh()
-      toast.success(
-        count === 1
-          ? "Usuário inativado com sucesso."
-          : `${count} usuários inativados com sucesso.`
-      )
+      try {
+        const result = await inativarQaUsers(ids)
+        if (result.error) { toast.error(result.error); return }
+        router.refresh()
+        toast.success(
+          count === 1
+            ? "Usuário inativado com sucesso."
+            : `${count} usuários inativados com sucesso.`
+        )
+      } catch {
+        router.refresh()
+        toast.error("Erro ao inativar. Tente novamente.")
+      } finally {
+        setIsInativando(false)
+      }
     })
   }
 
@@ -178,6 +198,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
 
   return (
     <div className="space-y-4">
+      <LoadingOverlay visible={isInativando} label="Inativando usuários..." />
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-sm">
@@ -258,9 +279,18 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                       </th>
                     )}
                     <th className={cn(
-                      "sticky z-20 bg-neutral-grey-50 px-4 py-3 text-left text-xs font-semibold text-text-secondary",
+                      "sticky z-20 bg-neutral-grey-50 px-4 py-3 text-left text-xs font-semibold",
                       showBulkActions ? "left-10" : "left-0"
-                    )}>Código</th>
+                    )}>
+                      <button
+                        type="button"
+                        onClick={() => setSortOrder((prev) => prev === "desc" ? "asc" : "desc")}
+                        className="flex items-center gap-1 text-text-secondary transition-colors hover:text-text-primary"
+                      >
+                        Código
+                        {sortOrder === "desc" ? <ChevronDown className="size-3" /> : <ChevronUp className="size-3" />}
+                      </button>
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">E-mail</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>

@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertCircle, ArrowRightLeft, FileText, Filter, MoreVertical, Plus, Power, Upload, X } from "lucide-react"
+import { AlertCircle, ArrowRightLeft, ChevronDown, ChevronUp, FileText, Filter, MoreVertical, Plus, Power, Upload, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -41,7 +41,12 @@ import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { ClienteRecord } from "@/lib/actions/clientes"
 import { toast } from "sonner"
 
-const ITEMS_PER_PAGE = 10
+const ITEMS_PER_PAGE = 20
+
+function numericId(id: string): number {
+  const m = id.match(/\d+$/)
+  return m ? parseInt(m[0], 10) : 0
+}
 
 interface FilterState {
   modulo: string
@@ -61,6 +66,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
   const [isPending, startTransition] = useTransition()
   const [isImporting, setIsImporting] = useState(false)
   const [isInativando, setIsInativando] = useState(false)
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
   const { sistemaSelecionado } = useSistemaSelecionado()
   const setupFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -114,8 +120,11 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
       const matchAtivo = filters.apenasInativos ? !c.active : c.active
       return matchSearch && matchSistema && matchModulo && matchCliente && matchTipo && matchAtivo
     })
-    return [...result].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-  }, [search, filters, sistemaSelecionado, initialCenarios])
+    return [...result].sort((a, b) => {
+      const diff = numericId(a.id) - numericId(b.id)
+      return sortOrder === "desc" ? -diff : diff
+    })
+  }, [search, filters, sistemaSelecionado, initialCenarios, sortOrder])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -368,9 +377,18 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
                       </th>
                     )}
                     <th className={cn(
-                      "sticky z-20 bg-neutral-grey-50 px-4 py-3 text-left text-xs font-semibold text-text-secondary",
+                      "sticky z-20 bg-neutral-grey-50 px-4 py-3 text-left text-xs font-semibold",
                       showBulkActions ? "left-10" : "left-0"
-                    )}>Código</th>
+                    )}>
+                      <button
+                        type="button"
+                        onClick={() => setSortOrder((prev) => prev === "desc" ? "asc" : "desc")}
+                        className="flex items-center gap-1 text-text-secondary transition-colors hover:text-text-primary"
+                      >
+                        Código
+                        {sortOrder === "desc" ? <ChevronDown className="size-3" /> : <ChevronUp className="size-3" />}
+                      </button>
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cliente</th>

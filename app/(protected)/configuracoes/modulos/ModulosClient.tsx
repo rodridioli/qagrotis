@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Plus, MoreVertical, X, Filter, Power, Check } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, X, Filter, Power, Check } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -38,7 +38,12 @@ import { type CenarioRecord } from "@/lib/actions/cenarios"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
-const ITEMS_PER_PAGE = 10
+const ITEMS_PER_PAGE = 20
+
+function numericId(id: string): number {
+  const m = id.match(/\d+$/)
+  return m ? parseInt(m[0], 10) : 0
+}
 
 interface Props {
   initialModulos: ModuloRecord[]
@@ -51,6 +56,7 @@ export default function ModulosClient({ initialModulos, initialCenarios, initial
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isInativando, setIsInativando] = useState(false)
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
 
   const [search, setSearch] = useState("")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -135,8 +141,11 @@ export default function ModulosClient({ initialModulos, initialCenarios, initial
       const matchAtivo = apenasInativos ? !m.active : m.active
       return matchSearch && matchAtivo
     })
-    return [...result].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-  }, [search, apenasInativos, initialModulos])
+    return [...result].sort((a, b) => {
+      const diff = numericId(a.id) - numericId(b.id)
+      return sortOrder === "desc" ? -diff : diff
+    })
+  }, [search, apenasInativos, initialModulos, sortOrder])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -301,9 +310,18 @@ export default function ModulosClient({ initialModulos, initialCenarios, initial
                       </th>
                     )}
                     <th className={cn(
-                      "sticky z-20 bg-neutral-grey-50 px-4 py-3 text-left text-xs font-semibold text-text-secondary",
+                      "sticky z-20 bg-neutral-grey-50 px-4 py-3 text-left text-xs font-semibold",
                       showBulkActions ? "left-10" : "left-0"
-                    )}>Código</th>
+                    )}>
+                      <button
+                        type="button"
+                        onClick={() => setSortOrder((prev) => prev === "desc" ? "asc" : "desc")}
+                        className="flex items-center gap-1 text-text-secondary transition-colors hover:text-text-primary"
+                      >
+                        Código
+                        {sortOrder === "desc" ? <ChevronDown className="size-3" /> : <ChevronUp className="size-3" />}
+                      </button>
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Nome</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
