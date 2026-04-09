@@ -326,7 +326,7 @@ function Topbar({
             : <Moon className="size-4" />
           }
         </button>
-        {sistemaNames.length > 0 && (
+        {sistemaNames.length > 0 ? (
           <Select value={sistemaSelecionado} onValueChange={(v) => onSistemaChange(v ?? "")}>
             <SelectTrigger className="h-auto flex w-20 max-w-20 gap-1 overflow-hidden px-2 py-1.5 text-xs sm:w-auto sm:min-w-32 sm:max-w-56 sm:gap-1.5 sm:px-3 sm:text-sm">
               <span className="hidden sm:inline truncate text-text-secondary">Sistema: </span>
@@ -338,6 +338,11 @@ function Topbar({
               ))}
             </SelectPopup>
           </Select>
+        ) : (
+          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-custom border border-border-default bg-surface-input px-3 py-1.5 text-sm text-text-secondary/60">
+            <span className="text-text-secondary">Sistema:</span>
+            <span className="font-medium">Não cadastrado</span>
+          </span>
         )}
         <Link
           href={profileHref}
@@ -395,10 +400,10 @@ export default function LayoutClient({
     }
   }, [sistemaNames])
 
-  // Redirect to /configuracoes when there are no active systems
+  // Redirect to /configuracoes/sistemas when there are no active systems
   useEffect(() => {
-    if (!hasActiveSistema && !pathname.startsWith("/configuracoes")) {
-      router.push("/configuracoes")
+    if (!hasActiveSistema && !pathname.startsWith("/configuracoes/sistemas")) {
+      router.push("/configuracoes/sistemas")
     }
   }, [hasActiveSistema, pathname, router])
 
@@ -449,7 +454,7 @@ export default function LayoutClient({
             onToggleTheme={handleToggleTheme}
           />
           <main className="flex-1 overflow-auto bg-surface-default p-4 lg:p-6">
-            {(hasActiveSistema || pathname.startsWith("/configuracoes")) ? children : null}
+            {(hasActiveSistema || pathname.startsWith("/configuracoes/sistemas")) ? children : null}
           </main>
         </div>
       </div>

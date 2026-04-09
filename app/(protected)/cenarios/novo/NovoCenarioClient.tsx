@@ -138,6 +138,7 @@ export default function NovoCenarioClient({
   const [addDepOpen, setAddDepOpen] = useState(false)
   const [addClienteOpen, setAddClienteOpen] = useState(false)
   const [newClienteName, setNewClienteName] = useState("")
+  const [newClienteRazaoSocial, setNewClienteRazaoSocial] = useState("")
   const [newClienteCpf, setNewClienteCpf] = useState("")
 
   // ── Dep search state ─────────────────────────────────────────────────────────
@@ -190,7 +191,7 @@ export default function NovoCenarioClient({
   const visibleTabs: { id: TabId; label: string; shortLabel: string; badge: number | null; disabled?: boolean }[] = [
     { id: "cadastro",     label: "Cadastro",           shortLabel: "Cadastro",      badge: null },
     { id: "manual",       label: "Teste Manual",       shortLabel: "Manual",        badge: null, disabled: !manual },
-    { id: "automatizado", label: "Teste Automatizado", shortLabel: "Automatizado",  badge: steps.length > 0 ? steps.length : null, disabled: !automatizado },
+    { id: "automatizado", label: "Teste Automatizado", shortLabel: "Automatizado",  badge: null, disabled: !automatizado },
     { id: "dependencias", label: "Dependências",       shortLabel: "Dependências",  badge: deps.length > 0 ? deps.length : null, disabled: !(manual || automatizado) },
   ]
 
@@ -996,44 +997,57 @@ export default function NovoCenarioClient({
       </Dialog>
 
       {/* ── Dialog: Adicionar Cliente ── */}
-      <Dialog open={addClienteOpen} onOpenChange={setAddClienteOpen}>
+      <Dialog open={addClienteOpen} onOpenChange={(open) => { setAddClienteOpen(open); if (!open) { setNewClienteName(""); setNewClienteRazaoSocial(""); setNewClienteCpf("") } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Adicionar Cliente</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
-                Cliente <span className="text-destructive">*</span>
+                Nome Fantasia <span className="text-destructive">*</span>
               </label>
-              <Input placeholder="Nome do cliente" value={newClienteName} onChange={(e) => setNewClienteName(e.target.value)} />
+              <Input
+                placeholder="Nome Fantasia"
+                value={newClienteName}
+                onChange={(e) => setNewClienteName(e.target.value)}
+                disabled={isClientePending}
+              />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">CPF/CNPJ</label>
+              <label className="text-sm font-medium text-text-primary">Razão Social</label>
               <Input
-                placeholder="000.000.000-00"
+                placeholder="Razão Social"
+                value={newClienteRazaoSocial}
+                onChange={(e) => setNewClienteRazaoSocial(e.target.value)}
+                disabled={isClientePending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">CPF / CNPJ</label>
+              <Input
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
                 value={newClienteCpf}
                 onChange={(e) => setNewClienteCpf(formatCpfCnpj(e.target.value))}
+                disabled={isClientePending}
               />
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setAddClienteOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setAddClienteOpen(false)} disabled={isClientePending}>Cancelar</Button>
             <Button
               disabled={isClientePending}
               onClick={() => {
-                if (!newClienteName.trim()) return
+                if (!newClienteName.trim()) { toast.error("O Nome Fantasia é obrigatório."); return }
                 const duplicate = clientes.some(
                   (c) => c.nomeFantasia.trim().toLowerCase() === newClienteName.trim().toLowerCase()
                 )
-                if (duplicate) {
-                  toast.error("Cliente já cadastrado.")
-                  return
-                }
+                if (duplicate) { toast.error("Cliente já cadastrado."); return }
                 startClienteTransition(async () => {
                   try {
-                    const novo = await criarCliente({ nomeFantasia: newClienteName, razaoSocial: null, cpfCnpj: newClienteCpf || null })
+                    const novo = await criarCliente({ nomeFantasia: newClienteName.trim(), razaoSocial: newClienteRazaoSocial.trim() || null, cpfCnpj: newClienteCpf || null })
                     setClientes((prev) => [...prev, novo])
                     setClienteSelecionado(novo.nomeFantasia)
                     setNewClienteName("")
+                    setNewClienteRazaoSocial("")
                     setNewClienteCpf("")
                     setAddClienteOpen(false)
                   } catch (e) {
@@ -1042,7 +1056,7 @@ export default function NovoCenarioClient({
                 })
               }}
             >
-              Adicionar
+              {isClientePending ? "Salvando…" : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>
