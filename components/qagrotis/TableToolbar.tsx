@@ -30,7 +30,7 @@ export function TableToolbar({
   const showControls = baseCount > 0
 
   return (
-    <div className="flex min-h-15 items-center justify-between gap-3 border-b border-border-default px-5 py-4">
+    <div className="flex h-16 items-center justify-between gap-3 border-b border-border-default px-5">
       <span className="text-sm font-medium text-text-primary">
         {totalLabel}:{" "}
         <span className="font-bold">{totalCount.toLocaleString("pt-BR")}</span>

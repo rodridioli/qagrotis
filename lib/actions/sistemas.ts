@@ -86,13 +86,14 @@ export async function atualizarSistema(
 
   const oldName = existing.name
 
-  // Update sistema + propagate rename atomically
+  // Update sistema + propagate rename atomically to modulos, cenarios and suites
   await prisma.$transaction([
     prisma.sistema.update({ where: { id }, data: parsed }),
     ...(oldName !== parsed.name
       ? [
           prisma.modulo.updateMany({ where: { sistemaId: id }, data: { sistemaName: parsed.name } }),
           prisma.cenario.updateMany({ where: { system: oldName }, data: { system: parsed.name } }),
+          prisma.suite.updateMany({ where: { sistema: oldName }, data: { sistema: parsed.name } }),
         ]
       : []),
   ])
@@ -116,8 +117,22 @@ export async function inativarSistemas(ids: string[]): Promise<void> {
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 
-  await prisma.sistema.updateMany({ where: { id: { in: ids } }, data: { active: false } })
+  // Busca sistemas para propagar inativação em cascata
+  const sistemas = await prisma.sistema.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true },
+  })
+  const sistemaIds = sistemas.map((s) => s.id)
+  const sistemaNames = sistemas.map((s) => s.name)
+
+  await prisma.$transaction([
+    prisma.sistema.updateMany({ where: { id: { in: ids } }, data: { active: false } }),
+    prisma.modulo.updateMany({ where: { sistemaId: { in: sistemaIds } }, data: { active: false } }),
+    prisma.cenario.updateMany({ where: { system: { in: sistemaNames } }, data: { active: false } }),
+  ])
+
   revalidatePath("/configuracoes/sistemas")
+  revalidatePath("/configuracoes/modulos")
   revalidatePath("/cenarios")
   revalidatePath("/cenarios/novo")
   revalidatePath("/suites")

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, FileText, Rocket, BookOpen,
   Settings, Bot, LogOut, ChevronLeft,
@@ -34,15 +34,20 @@ const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"
 const DEFAULT_SISTEMA = "Gerencial"
 
+// Rotas que requerem sistema ativo + módulo ativo para serem acessíveis
+const REQUIRES_SISTEMA_MODULO = new Set(["/dashboard", "/cenarios", "/gerador", "/assistente", "/atualizacoes"])
+// Suítes requer também pelo menos 1 cenário no sistema selecionado
+const REQUIRES_CENARIO = new Set(["/suites"])
+
 const NAV_ITEMS = [
-  { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",             disabled: false },
-  { href: "/suites",        icon: Rocket,          label: "Suítes",             disabled: false },
-  { href: "/cenarios",      icon: FileText,        label: "Cenários",           disabled: false },
-  { href: "/gerador",       icon: Sparkles,        label: "Gerador",            disabled: false },
-  { href: "/documentos",    icon: BookOpen,        label: "Documentos",         disabled: true  },
-  { href: "/assistente",    icon: Bot,             label: "Assistente de IA",   disabled: false },
-  { href: "/configuracoes", icon: Settings,        label: "Configurações",      disabled: false },
-  { href: "/atualizacoes",  icon: History,         label: "Atualizações",       disabled: false },
+  { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false },
+  { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false },
+  { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false },
+  { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false },
+  { href: "/documentos",    icon: BookOpen,        label: "Documentos",       alwaysEnabled: false },
+  { href: "/assistente",    icon: Bot,             label: "Assistente de IA", alwaysEnabled: false },
+  { href: "/configuracoes", icon: Settings,        label: "Configurações",    alwaysEnabled: true  },
+  { href: "/atualizacoes",  icon: History,         label: "Atualizações",     alwaysEnabled: false },
 ]
 
 const TITLE_MAP: Record<string, string> = {
@@ -71,9 +76,12 @@ interface SidebarProps {
   isDark: boolean
   assistenteOpen: boolean
   onAssistenteOpen: () => void
+  hasActiveSistema: boolean
+  hasSistemaModulo: boolean
+  hasSistemaCenario: boolean
 }
 
-function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen }: SidebarProps) {
+function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasActiveSistema, hasSistemaModulo, hasSistemaCenario }: SidebarProps) {
   const pathname = usePathname()
   const expanded = !collapsed
 
@@ -112,7 +120,21 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen,
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3">
           <TooltipProvider>
-            {NAV_ITEMS.map(({ href, icon: Icon, label, disabled }) => {
+            {NAV_ITEMS.map(({ href, icon: Icon, label, alwaysEnabled }) => {
+              // Compute disabled state dynamically based on system/module/cenario availability
+              let disabled = false
+              if (!alwaysEnabled) {
+                if (!hasActiveSistema) {
+                  disabled = true
+                } else if (REQUIRES_CENARIO.has(href)) {
+                  disabled = !hasSistemaCenario
+                } else if (REQUIRES_SISTEMA_MODULO.has(href)) {
+                  disabled = !hasSistemaModulo
+                } else if (href === "/documentos") {
+                  disabled = true // always disabled
+                }
+              }
+
               const isAssistente = href === "/assistente"
               const isActive = isAssistente
                 ? assistenteOpen
@@ -334,14 +356,29 @@ interface Props {
   children: React.ReactNode
   sistemaNames: string[]
   integracoes?: IntegracaoRecord[]
+  sistemaComModulo?: string[]
+  sistemaComCenario?: string[]
 }
 
-export default function LayoutClient({ children, sistemaNames, integracoes = [] }: Props) {
+export default function LayoutClient({
+  children,
+  sistemaNames,
+  integracoes = [],
+  sistemaComModulo = [],
+  sistemaComCenario = [],
+}: Props) {
+  const router = useRouter()
+  const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [sistemaSelecionado, setSistemaSelecionado] = useState(DEFAULT_SISTEMA)
   const [isDark, setIsDark] = useState(false)
   const [assistenteOpen, setAssistenteOpen] = useState(false)
+
+  // Computed flags based on selected sistema
+  const hasActiveSistema = sistemaNames.length > 0
+  const hasSistemaModulo = hasActiveSistema && sistemaComModulo.includes(sistemaSelecionado)
+  const hasSistemaCenario = hasActiveSistema && sistemaComCenario.includes(sistemaSelecionado)
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
@@ -351,6 +388,13 @@ export default function LayoutClient({ children, sistemaNames, integracoes = [] 
       setSistemaSelecionado(sistemaNames[0])
     }
   }, [sistemaNames])
+
+  // Redirect to /configuracoes when there are no active systems
+  useEffect(() => {
+    if (!hasActiveSistema && !pathname.startsWith("/configuracoes")) {
+      router.push("/configuracoes")
+    }
+  }, [hasActiveSistema, pathname, router])
 
   useEffect(() => {
     const savedTheme = localStorage.getItem(THEME_KEY)
@@ -382,6 +426,9 @@ export default function LayoutClient({ children, sistemaNames, integracoes = [] 
           isDark={isDark}
           assistenteOpen={assistenteOpen}
           onAssistenteOpen={() => setAssistenteOpen(true)}
+          hasActiveSistema={hasActiveSistema}
+          hasSistemaModulo={hasSistemaModulo}
+          hasSistemaCenario={hasSistemaCenario}
         />
         <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />
         <div className="flex flex-1 flex-col overflow-hidden">

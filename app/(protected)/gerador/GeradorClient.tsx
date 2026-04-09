@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import {
   Sparkles, Copy, RotateCcw,
   Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2, ExternalLink,
-  FileText, ListChecks
+  FileText, ListChecks, Plus
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -333,12 +333,17 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
               Modelo de IA <span className="text-destructive">*</span>
             </label>
             {activeIntegracoes.length === 0 ? (
-              <p className="text-sm text-text-secondary">
-                Nenhuma integração cadastrada ou ativa.{" "}
-                <a href="/configuracoes/integracoes/novo" className="text-brand-primary hover:underline">
-                  Adicionar integração
-                </a>
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm text-text-secondary">Nenhuma integração cadastrada ou ativa.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push("/configuracoes/integracoes/novo")}
+                >
+                  <Plus className="size-4" />
+                  Adicionar Integração
+                </Button>
+              </div>
             ) : (
               <Select value={aiProvider} onValueChange={(v) => setAiProvider(v ?? "")}>
                 <SelectTrigger>

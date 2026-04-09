@@ -26,7 +26,7 @@ export default async function EditarCenarioPage({ params }: Props) {
       cenario={cenario}
       initialModulos={modulos.filter((m) => m.active)}
       allSistemas={sistemas.filter((s) => s.active)}
-      initialClientes={clientes.filter((c) => c.active)}
+      initialClientes={clientes}
       allCenarios={cenarios.filter((c) => c.active && c.id !== id)}
     />
   )

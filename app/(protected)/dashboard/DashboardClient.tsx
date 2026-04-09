@@ -206,7 +206,7 @@ export function DashboardClient({
     pctManuais, pctAuto, automationData, ultimasAutomacoes, cenariosFiltrados,
   } = useMemo(() => {
     const modsFiltrados = allModulos.filter(
-      m => !sistemaSelecionado || m.sistemaName === sistemaSelecionado
+      m => m.active && (!sistemaSelecionado || m.sistemaName === sistemaSelecionado)
     )
     const totalModulos = modsFiltrados.length
 

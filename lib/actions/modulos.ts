@@ -87,10 +87,14 @@ export async function atualizarModulo(
 
   const oldName = existing.name
 
+  // Propagate rename to cenarios and suites atomically
   await prisma.$transaction([
     prisma.modulo.update({ where: { id }, data: parsed }),
     ...(oldName !== parsed.name
-      ? [prisma.cenario.updateMany({ where: { module: oldName }, data: { module: parsed.name } })]
+      ? [
+          prisma.cenario.updateMany({ where: { module: oldName }, data: { module: parsed.name } }),
+          prisma.suite.updateMany({ where: { modulo: oldName }, data: { modulo: parsed.name } }),
+        ]
       : []),
   ])
 
@@ -108,7 +112,22 @@ export async function inativarModulos(ids: string[]): Promise<void> {
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 
-  await prisma.modulo.updateMany({ where: { id: { in: ids } }, data: { active: false } })
+  // Busca os módulos para propagar inativação aos cenários vinculados
+  const modulos = await prisma.modulo.findMany({
+    where: { id: { in: ids } },
+    select: { name: true, sistemaName: true },
+  })
+
+  await prisma.$transaction([
+    prisma.modulo.updateMany({ where: { id: { in: ids } }, data: { active: false } }),
+    ...modulos.map((m) =>
+      prisma.cenario.updateMany({
+        where: { module: m.name, system: m.sistemaName },
+        data: { active: false },
+      })
+    ),
+  ])
+
   revalidatePath("/configuracoes/modulos")
   revalidatePath("/cenarios")
   revalidatePath("/cenarios/novo")

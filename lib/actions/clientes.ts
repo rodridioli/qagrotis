@@ -91,10 +91,14 @@ export async function atualizarCliente(
   const existing = await prisma.cliente.findUnique({ where: { id }, select: { nomeFantasia: true } })
   const oldName = existing?.nomeFantasia
 
+  // Propagate rename to cenarios and suites atomically
   await prisma.$transaction([
     prisma.cliente.update({ where: { id }, data: parsed }),
     ...(oldName && oldName !== parsed.nomeFantasia
-      ? [prisma.cenario.updateMany({ where: { client: oldName }, data: { client: parsed.nomeFantasia } })]
+      ? [
+          prisma.cenario.updateMany({ where: { client: oldName }, data: { client: parsed.nomeFantasia } }),
+          prisma.suite.updateMany({ where: { cliente: oldName }, data: { cliente: parsed.nomeFantasia } }),
+        ]
       : []),
   ])
 

@@ -11,7 +11,7 @@ const meta: Meta<typeof TableToolbar> = {
     docs: {
       description: {
         component:
-          "Barra de ferramentas de tabela com busca e botão de filtro com contador de filtros ativos. Aceita `extra` para botões adicionais.",
+          "Barra de ferramentas de tabela com altura fixa `h-16` (64px) para espaçamento consistente. Exibe busca e filtro apenas quando `baseCount > 0`. Aceita `extra` para botões adicionais.",
       },
     },
   },
@@ -41,6 +41,24 @@ export const Default: Story = {
     }
     return <Demo />
   },
+}
+
+export const SemRegistros: Story = {
+  name: "Sem registros (baseCount=0 — altura consistente)",
+  render: () => (
+    <div className="rounded-xl border border-border-default bg-surface-card">
+      <TableToolbar
+        search=""
+        onSearchChange={() => {}}
+        searchPlaceholder="Buscar..."
+        activeFilterCount={0}
+        onFilterOpen={() => {}}
+        totalLabel="Suítes de teste"
+        totalCount={0}
+        baseCount={0}
+      />
+    </div>
+  ),
 }
 
 export const WithActiveFilters: Story = {

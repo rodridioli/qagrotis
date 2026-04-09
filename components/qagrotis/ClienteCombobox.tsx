@@ -14,9 +14,10 @@ interface Props {
   value: string
   onChange: (value: string) => void
   onAddCliente: () => void
+  disabled?: boolean
 }
 
-export function ClienteCombobox({ clientes, value, onChange, onAddCliente }: Props) {
+export function ClienteCombobox({ clientes, value, onChange, onAddCliente, disabled = false }: Props) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -59,11 +60,14 @@ export function ClienteCombobox({ clientes, value, onChange, onAddCliente }: Pro
       {/* Trigger */}
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        disabled={disabled}
+        onClick={() => !disabled && setOpen((o) => !o)}
         className={cn(
           "flex h-9 w-full items-center justify-between gap-2 rounded-custom border px-3 py-1 text-sm outline-none transition-colors",
           "border-border-default bg-surface-input",
-          open
+          disabled
+            ? "cursor-not-allowed opacity-60"
+            : open
             ? "border-brand-primary ring-2 ring-brand-primary/20"
             : "hover:border-brand-primary/50",
           hasValue ? "text-text-primary" : "text-text-secondary"

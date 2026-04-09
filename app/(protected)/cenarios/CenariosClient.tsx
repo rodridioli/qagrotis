@@ -96,7 +96,7 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
 
   const modulosDosistema = useMemo(
-    () => allModulos.filter((m) => m.sistemaName === sistemaSelecionado).map((m) => m.name),
+    () => allModulos.filter((m) => m.active && m.sistemaName === sistemaSelecionado).map((m) => m.name),
     [allModulos, sistemaSelecionado]
   )
 

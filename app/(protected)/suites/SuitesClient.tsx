@@ -84,7 +84,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   const modulosDosistema = useMemo(
-    () => allModulos.filter((m) => m.sistemaName === sistemaSelecionado).map((m) => m.name),
+    () => allModulos.filter((m) => m.active && m.sistemaName === sistemaSelecionado).map((m) => m.name),
     [allModulos, sistemaSelecionado]
   )
 
@@ -223,7 +223,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
         {showBulkActions && (
           <Button
             variant="outline"
-            disabled={selectedIds.size === 0}
+            disabled={selectedIds.size === 0 || isPending}
             onClick={handleInativarSelection}
           >
             <Power className="size-4" />

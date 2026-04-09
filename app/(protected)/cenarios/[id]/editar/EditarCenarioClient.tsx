@@ -91,8 +91,13 @@ export default function EditarCenarioClient({
   const [moduloSelectOpen, setModuloSelectOpen] = useState(false)
   const [risco, setRisco] = useState(cenario.risco ?? "")
   const riscoSelecionado = RISCO_OPTIONS.find((r) => r.value === risco)
-  const [clientes, setClientes] = useState<ClienteRecord[]>(initialClientes)
+  const activeClientes = initialClientes.filter((c) => c.active)
+  const [clientes, setClientes] = useState<ClienteRecord[]>(activeClientes)
   const [clienteSelecionado, setClienteSelecionado] = useState(cenario.client ?? "")
+  // Se o cliente vinculado ao cenário estiver inativo, bloqueia edição do campo
+  const clienteAtualInativo =
+    !!cenario.client &&
+    initialClientes.some((c) => c.nomeFantasia === cenario.client && !c.active)
   const [scenarioName, setScenarioName] = useState(cenario.scenarioName)
 
   // ── Switches ─────────────────────────────────────────────────────────────────
@@ -495,11 +500,15 @@ export default function EditarCenarioClient({
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Cliente</label>
               <ClienteCombobox
-                clientes={clientes}
+                clientes={clienteAtualInativo ? [{ id: "", nomeFantasia: clienteSelecionado }] : clientes}
                 value={clienteSelecionado}
                 onChange={setClienteSelecionado}
                 onAddCliente={() => setAddClienteOpen(true)}
+                disabled={clienteAtualInativo}
               />
+              {clienteAtualInativo && (
+                <p className="text-xs text-text-secondary">Cliente inativo — campo somente leitura.</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
