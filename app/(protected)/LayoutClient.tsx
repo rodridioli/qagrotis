@@ -32,7 +32,6 @@ import type { IntegracaoRecord } from "@/lib/actions/integracoes"
 
 const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"
-const DEFAULT_SISTEMA = "Gerencial"
 
 // Rotas que requerem sistema ativo + módulo ativo para serem acessíveis
 const REQUIRES_SISTEMA_MODULO = new Set(["/dashboard", "/cenarios", "/gerador", "/assistente", "/atualizacoes"])
@@ -327,17 +326,19 @@ function Topbar({
             : <Moon className="size-4" />
           }
         </button>
-        <Select value={sistemaSelecionado} onValueChange={(v) => onSistemaChange(v ?? "")}>
-          <SelectTrigger className="h-auto flex w-20 max-w-20 gap-1 overflow-hidden px-2 py-1.5 text-xs sm:w-auto sm:min-w-32 sm:max-w-56 sm:gap-1.5 sm:px-3 sm:text-sm">
-            <span className="hidden sm:inline truncate text-text-secondary">Sistema: </span>
-            <SelectValue className="truncate font-medium" />
-          </SelectTrigger>
-          <SelectPopup>
-            {sistemaNames.map((name) => (
-              <SelectItem key={name} value={name}>{name}</SelectItem>
-            ))}
-          </SelectPopup>
-        </Select>
+        {sistemaNames.length > 0 && (
+          <Select value={sistemaSelecionado} onValueChange={(v) => onSistemaChange(v ?? "")}>
+            <SelectTrigger className="h-auto flex w-20 max-w-20 gap-1 overflow-hidden px-2 py-1.5 text-xs sm:w-auto sm:min-w-32 sm:max-w-56 sm:gap-1.5 sm:px-3 sm:text-sm">
+              <span className="hidden sm:inline truncate text-text-secondary">Sistema: </span>
+              <SelectValue className="truncate font-medium" />
+            </SelectTrigger>
+            <SelectPopup>
+              {sistemaNames.map((name) => (
+                <SelectItem key={name} value={name}>{name}</SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        )}
         <Link
           href={profileHref}
           title="Editar meu perfil"
@@ -371,7 +372,7 @@ export default function LayoutClient({
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [sistemaSelecionado, setSistemaSelecionado] = useState(DEFAULT_SISTEMA)
+  const [sistemaSelecionado, setSistemaSelecionado] = useState("")
   const [isDark, setIsDark] = useState(false)
   const [assistenteOpen, setAssistenteOpen] = useState(false)
 
@@ -381,10 +382,14 @@ export default function LayoutClient({
   const hasSistemaCenario = hasActiveSistema && sistemaComCenario.includes(sistemaSelecionado)
 
   useEffect(() => {
+    if (sistemaNames.length === 0) {
+      setSistemaSelecionado("")
+      return
+    }
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved && sistemaNames.includes(saved)) {
       setSistemaSelecionado(saved)
-    } else if (sistemaNames.length > 0 && !sistemaNames.includes(DEFAULT_SISTEMA)) {
+    } else {
       setSistemaSelecionado(sistemaNames[0])
     }
   }, [sistemaNames])
