@@ -130,6 +130,10 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen,
                   disabled = !hasSistemaCenario
                 } else if (REQUIRES_SISTEMA_MODULO.has(href)) {
                   disabled = !hasSistemaModulo
+                  // Gerador also requires at least one integration
+                  if (href === "/gerador" && !hasIntegracoes) {
+                    disabled = true
+                  }
                 } else if (href === "/documentos") {
                   disabled = true // always disabled
                 }
