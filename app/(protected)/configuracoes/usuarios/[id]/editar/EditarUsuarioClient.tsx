@@ -205,7 +205,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label htmlFor="confirmPassword" name="confirmPassword" className="text-sm font-medium text-text-primary">Confirmar nova senha</label>
+                <label htmlFor="confirmPassword" className="text-sm font-medium text-text-primary">Confirmar nova senha</label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"

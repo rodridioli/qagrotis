@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext } from "react"
+import React, { createContext, useContext } from "react"
 
 interface SistemaContextValue {
   sistemaSelecionado: string
@@ -14,4 +14,13 @@ export const SistemaContext = createContext<SistemaContextValue>({
 
 export function useSistemaSelecionado() {
   return useContext(SistemaContext)
+}
+
+export function SistemaSelecionadoProvider({ children, value }: { children: React.ReactNode; value?: SistemaContextValue }) {
+  const [sistema, setSistema] = React.useState(value?.sistemaSelecionado ?? "")
+  return (
+    <SistemaContext.Provider value={value ?? { sistemaSelecionado: sistema, setSistemaSelecionado: setSistema }}>
+      {children}
+    </SistemaContext.Provider>
+  )
 }

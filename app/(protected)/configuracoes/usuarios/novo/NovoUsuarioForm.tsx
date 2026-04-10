@@ -14,7 +14,7 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 import { PhotoUpload } from "@/components/qagrotis/PhotoUpload"
-import { criarQaUser } from "@/lib/actions/usuarios"
+import { criarQaUser, atualizarQaUser } from "@/lib/actions/usuarios"
 import { toast } from "sonner"
 
 function generateSecurePassword(): string {
@@ -55,6 +55,7 @@ export default function NovoUsuarioForm() {
   const [nome, setNome] = useState("")
   const [email, setEmail] = useState("")
   const [tipo, setTipo] = useState<string>("Padrão")
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
   const [initialPassword] = useState(() => generateSecurePassword())

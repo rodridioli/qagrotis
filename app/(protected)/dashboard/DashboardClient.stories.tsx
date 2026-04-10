@@ -39,8 +39,8 @@ export const Default: Story = {
   args: {
     allSistemas: ["Plataforma AGRO", "ERP Agro"],
     allModulos: [
-      { id: "M-01", name: "PRO - Produtor Rural", sistemaName: "Plataforma AGRO", active: true },
-      { id: "M-02", name: "REC - Receituário", sistemaName: "Plataforma AGRO", active: true },
+      { id: "M-01", name: "PRO - Produtor Rural", sistemaName: "Plataforma AGRO", active: true, description: null, sistemaId: "S-1" },
+      { id: "M-02", name: "REC - Receituário", sistemaName: "Plataforma AGRO", active: true, description: null, sistemaId: "S-1" },
     ],
     // @ts-ignore - mock simplicity
     allCenarios: MOCK_SCENARIOS,

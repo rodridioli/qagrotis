@@ -217,16 +217,18 @@ export async function registrarResultadoSuite(suiteId: string, cenarioId: string
 export interface SuiteDashboardRecord {
   id: string
   sistema: string
+  modulo: string
   historico: NonNullable<SuiteRecord["historico"]>
 }
 
 export async function getSuitesParaDashboard(): Promise<SuiteDashboardRecord[]> {
   const rows = await prisma.suite.findMany({
-    select: { id: true, sistema: true, historico: true },
+    select: { id: true, sistema: true, modulo: true, historico: true },
   })
   return rows.map((row) => ({
     id:       row.id,
     sistema:  row.sistema,
+    modulo:   row.modulo,
     historico: (row.historico as unknown as NonNullable<SuiteRecord["historico"]>) ?? [],
   }))
 }

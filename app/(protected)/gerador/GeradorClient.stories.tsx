@@ -25,7 +25,7 @@ export const NoIntegrations: Story = {
   args: {
     initialCenarios: [],
     allModulos: [
-        { id: "M-01", name: "PRO - Produtor Rural", sistemaName: "Plataforma AGRO", active: true },
+        { id: "M-01", name: "PRO - Produtor Rural", sistemaName: "Plataforma AGRO", active: true, description: null, sistemaId: "S-1" },
     ],
     integracoes: []
   }
@@ -35,10 +35,10 @@ export const ReadyToGenerate: Story = {
   args: {
     initialCenarios: [],
     allModulos: [
-        { id: "M-01", name: "PRO - Produtor Rural", sistemaName: "Plataforma AGRO", active: true },
+        { id: "M-01", name: "PRO - Produtor Rural", sistemaName: "Plataforma AGRO", active: true, description: null, sistemaId: "S-1" },
     ],
     integracoes: [
-        { id: "1", provider: "OpenRouter", model: "google/gemini-2.0-flash-exp:free", descricao: "IA Gratuita", active: true, createdAt: new Date() }
+        { id: "1", provider: "OpenRouter", model: "google/gemini-2.0-flash-exp:free", descricao: "IA Gratuita", active: true, createdAt: Date.now(), apiKey: "sk-mock" }
     ]
   }
 }
