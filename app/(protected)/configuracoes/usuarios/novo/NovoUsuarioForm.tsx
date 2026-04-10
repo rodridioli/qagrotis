@@ -70,6 +70,7 @@ export default function NovoUsuarioForm() {
   }
 
   function handlePhotoSelect(file: File) {
+    setPhotoFile(file)
     const reader = new FileReader()
     reader.onload = (ev) => setPhotoPreview(ev.target?.result as string)
     reader.readAsDataURL(file)
@@ -98,11 +99,42 @@ export default function NovoUsuarioForm() {
     }
 
     startTransition(async () => {
+      let photoPath: string | null = null
+
+      // 1. Create user first to get ID
       const result = await criarQaUser({ name: nome, email, type: tipo, password })
-      if (result.error) {
-        toast.error(result.error)
+      if (result.error || !result.id) {
+        toast.error(result.error ?? "Erro ao criar usuário.")
         return
       }
+
+      const newId = result.id
+
+      // 2. Upload photo if selected
+      if (photoFile) {
+        const fd = new FormData()
+        fd.set("photo", photoFile)
+        const res = await fetch(`/api/usuarios/${newId}/avatar`, {
+          method: "PUT",
+          body: fd,
+        })
+        if (res.ok) {
+          const json = await res.json() as { photoPath: string }
+          photoPath = json.photoPath
+          
+          // 3. Update user with the photo path
+          await atualizarQaUser(newId, {
+            name: nome,
+            email,
+            type: tipo,
+            photoPath,
+          })
+        } else {
+          const errorJson = await res.json().catch(() => ({})) as { error?: string }
+          toast.warning(`Usuário criado, mas houve erro na foto: ${errorJson.error ?? "Erro desconhecido"}`)
+        }
+      }
+
       if (result.emailEnviado) {
         toast.success("Usuário criado. E-mail com senha enviado.")
       } else {
@@ -142,10 +174,11 @@ export default function NovoUsuarioForm() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-2">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">
+            <label htmlFor="nome" className="text-sm font-medium text-text-primary">
               Nome <span className="text-destructive">*</span>
             </label>
             <Input
+              id="nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Nome completo"
@@ -154,10 +187,11 @@ export default function NovoUsuarioForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">
+            <label htmlFor="email" className="text-sm font-medium text-text-primary">
               E-mail <span className="text-destructive">*</span>
             </label>
             <Input
+              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -167,11 +201,11 @@ export default function NovoUsuarioForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">
+            <label htmlFor="tipo" className="text-sm font-medium text-text-primary">
               Tipo <span className="text-destructive">*</span>
             </label>
             <Select value={tipo} onValueChange={(v) => setTipo(v ?? "Padrão")} disabled={isPending}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger id="tipo"><SelectValue /></SelectTrigger>
               <SelectPopup>
                 <SelectItem value="Padrão">Padrão</SelectItem>
                 <SelectItem value="Administrador">Administrador</SelectItem>
@@ -198,9 +232,10 @@ export default function NovoUsuarioForm() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-primary">Senha</label>
+                <label htmlFor="password" className="text-sm font-medium text-text-primary">Senha</label>
                 <div className="relative">
                   <Input
+                    id="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -219,9 +254,10 @@ export default function NovoUsuarioForm() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-primary">Confirmar senha</label>
+                <label htmlFor="confirmPassword" className="text-sm font-medium text-text-primary">Confirmar senha</label>
                 <div className="relative">
                   <Input
+                    id="confirmPassword"
                     type={showConfirm ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -251,7 +287,7 @@ export default function NovoUsuarioForm() {
           <PhotoUpload
             preview={photoPreview}
             onFileSelect={handlePhotoSelect}
-            onRemove={() => setPhotoPreview(null)}
+            onRemove={() => { setPhotoFile(null); setPhotoPreview(null) }}
           />
         </div>
       </div>

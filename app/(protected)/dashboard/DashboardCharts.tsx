@@ -7,6 +7,7 @@ import {
   BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
+import { cn } from "@/lib/utils"
 import {
   Select,
   SelectTrigger,
@@ -100,7 +101,7 @@ function FilterSelect<T extends string>({
 }) {
   return (
     <Select value={value} onValueChange={(v) => { if (v) onChange(v as T) }}>
-      <SelectTrigger className="h-8 w-auto shrink-0 text-xs" aria-label={label ?? "Filtrar por período"}>
+      <SelectTrigger className="h-8 max-w-[110px] shrink-0 text-xs" aria-label={label ?? "Filtrar por período"}>
         <SelectValue>{options.find(o => o.value === value)?.label ?? "Hoje"}</SelectValue>
       </SelectTrigger>
       <SelectPopup>
@@ -142,11 +143,11 @@ function formatDateTime(ts: number | null): string {
 }
 
 const AVATAR_COLORS = [
-  "bg-blue-100 text-blue-700",
-  "bg-purple-100 text-purple-700",
-  "bg-amber-100 text-amber-700",
-  "bg-green-100 text-green-700",
-  "bg-rose-100 text-rose-700",
+  "bg-blue-100 text-blue-700 font-bold",
+  "bg-purple-100 text-purple-700 font-bold",
+  "bg-amber-100 text-amber-700 font-bold",
+  "bg-green-100 text-green-700 font-bold",
+  "bg-rose-100 text-rose-700 font-bold",
 ]
 
 const TOOLTIP_STYLE = {
@@ -173,7 +174,7 @@ function Avatar({
   const sz = size === "sm" ? "size-6" : "size-8"
   const textSz = size === "sm" ? "text-[10px]" : "text-xs"
   return (
-    <div className="relative shrink-0">
+    <div className="relative shrink-0 flex items-center justify-center">
       {photoPath ? (
         <img
           src={photoPath}
@@ -187,7 +188,7 @@ function Avatar({
         />
       ) : null}
       <div
-        className={`${sz} ${textSz} font-semibold rounded-full items-center justify-center ${AVATAR_COLORS[colorIndex % AVATAR_COLORS.length]}`}
+        className={`${sz} ${textSz} rounded-full items-center justify-center ${AVATAR_COLORS[colorIndex % AVATAR_COLORS.length]}`}
         style={{ display: photoPath ? "none" : "flex" }}
       >
         {getInitials(displayName)}
@@ -210,7 +211,7 @@ function ModuloSelect({
   if (modulos.length === 0) return null
   return (
     <Select value={value || "__todos__"} onValueChange={(v) => { if (v) onChange(v === "__todos__" ? "" : v) }}>
-      <SelectTrigger className="h-8 w-auto shrink-0 text-xs" aria-label="Filtrar por módulo">
+      <SelectTrigger className="h-8 max-w-[130px] shrink-0 text-xs" aria-label="Filtrar por módulo">
         <SelectValue>{value ? value : "Todos"}</SelectValue>
       </SelectTrigger>
       <SelectPopup>
@@ -246,8 +247,8 @@ export function DashboardCharts({
 
         {/* Cenários gerados */}
         <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">
+          <div className="mb-4 flex flex-nowrap items-center gap-2">
+            <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Cenários gerados
             </h2>
             <div className="flex-1" />
@@ -261,28 +262,51 @@ export function DashboardCharts({
           </div>
 
           {rankingData.length === 0 ? (
-            <p className="text-xs text-text-secondary">Nenhum cenário gerado no período.</p>
+            <p className="py-4 text-center text-xs text-text-secondary">Nenhum cenário gerado no período.</p>
           ) : (
-            <div className="space-y-2.5">
-              {rankingData.map((item, i) => {
-                const { displayName, photoPath } = resolveUser(item.createdBy)
-                const posLabel = i === 0 ? "1°" : i === 1 ? "2°" : i === 2 ? "3°" : `${i + 1}°`
-                const posColor = i === 0
-                  ? "text-brand-primary font-bold"
-                  : i === 1
-                  ? "text-text-secondary font-semibold"
-                  : "text-text-secondary"
-                return (
-                  <div key={item.createdBy} className="flex items-center gap-3">
-                    <span className={`w-5 shrink-0 text-center text-xs ${posColor}`}>{posLabel}</span>
-                    <Avatar displayName={displayName} photoPath={photoPath} colorIndex={i} size="sm" />
-                    <p className="min-w-0 flex-1 truncate text-sm text-text-primary">{displayName}</p>
-                    <span className="shrink-0 rounded-full bg-brand-primary/10 px-2 py-0.5 text-xs font-semibold text-brand-primary">
-                      {item.count}
-                    </span>
-                  </div>
-                )
-              })}
+            <div className="mt-1 overflow-hidden">
+               <table className="w-full text-left">
+                 <thead>
+                   <tr className="border-b border-border-default/50 text-[10px] font-bold uppercase tracking-wider text-text-secondary/70">
+                     <th className="pb-2 pr-2 font-bold">Pos</th>
+                     <th className="pb-2 font-bold px-2">Usuário</th>
+                     <th className="pb-2 text-right font-bold">Total</th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-border-default/30">
+                   {rankingData.map((item, i) => {
+                     const { displayName, photoPath } = resolveUser(item.createdBy)
+                     const isTop1 = i === 0
+                     const posLabel = isTop1 ? "1°" : i === 1 ? "2°" : i === 2 ? "3°" : `${i + 1}°`
+                     
+                     return (
+                       <tr key={item.createdBy} className="group transition-colors hover:bg-neutral-grey-50/50">
+                         <td className="py-2.5 pr-2">
+                           <span className={cn(
+                             "inline-flex size-6 items-center justify-center rounded-md text-[10px] font-bold",
+                             isTop1 ? "bg-brand-primary text-white" : "bg-neutral-grey-100 text-text-secondary"
+                           )}>
+                             {posLabel}
+                           </span>
+                         </td>
+                         <td className="py-2.5 px-2">
+                           <div className="flex items-center gap-2.5 min-w-0">
+                             <Avatar displayName={displayName} photoPath={photoPath} colorIndex={i} size="sm" />
+                             <span className="truncate text-xs font-medium text-text-primary group-hover:text-brand-primary transition-colors">
+                               {displayName}
+                             </span>
+                           </div>
+                         </td>
+                         <td className="py-2.5 text-right">
+                           <span className="text-xs font-bold text-text-primary">
+                             {item.count}
+                           </span>
+                         </td>
+                       </tr>
+                     )
+                   })}
+                 </tbody>
+               </table>
             </div>
           )}
         </div>
@@ -311,8 +335,8 @@ export function DashboardCharts({
 
         {/* Testes executados */}
         <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">
+          <div className="mb-4 flex flex-nowrap items-center gap-2">
+            <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Testes executados: <span className="text-brand-primary">{totalExecucoes.toLocaleString("pt-BR")}</span>
             </h2>
             <div className="flex-1" />
@@ -357,8 +381,8 @@ export function DashboardCharts({
 
         {/* Erros encontrados */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">
+          <div className="mb-4 flex flex-nowrap items-center gap-2">
+            <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Erros encontrados: <span className="text-destructive">{totalErros.toLocaleString("pt-BR")}</span>
             </h2>
             <div className="flex-1" />
@@ -389,8 +413,8 @@ export function DashboardCharts({
 
         {/* Testes de sucesso */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">
+          <div className="mb-4 flex flex-nowrap items-center gap-2">
+            <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Testes de sucesso: <span className="text-qagrotis-primary-500">{totalSucesso.toLocaleString("pt-BR")}</span>
             </h2>
             <div className="flex-1" />

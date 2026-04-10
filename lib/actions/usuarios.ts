@@ -153,7 +153,8 @@ export async function criarQaUser(data: {
   email: string
   type: string
   password: string
-}): Promise<{ error?: string; emailEnviado?: boolean }> {
+  photoPath?: string | null
+}): Promise<{ id?: string; error?: string; emailEnviado?: boolean }> {
   // Auth — return error instead of throwing so Next.js error boundary isn't triggered
   try {
     await requireAdmin()
@@ -201,38 +202,45 @@ export async function criarQaUser(data: {
 
     const hashedPassword = hashPassword(data.password)
 
+    let createdId = ""
     if (existingCreated && inactiveIds.has(existingCreated.id)) {
-      // Reactivate existing inactive user — avoids unique-email constraint violation
+      // Reactivate existing inactive user
       await prisma.$transaction([
         prisma.createdUser.update({
           where: { id: existingCreated.id },
-          data: { name: parsed.name, type: parsed.type, password: hashedPassword },
+          data: { name: parsed.name, type: parsed.type, password: hashedPassword, photoPath: data.photoPath ?? null },
         }),
         prisma.inactiveUser.delete({ where: { userId: existingCreated.id } }),
       ])
+      createdId = existingCreated.id
     } else {
       const createdIds = await prisma.createdUser.findMany({ select: { id: true } })
       const allIds = [...MOCK_USERS.map((u) => u.id), ...createdIds.map((u) => u.id)]
       const id = nextId(allIds, "U")
       await prisma.createdUser.create({
-        data: { id, name: parsed.name, email: parsed.email, type: parsed.type, photoPath: null, password: hashedPassword },
+        data: { id, name: parsed.name, email: parsed.email, type: parsed.type, photoPath: data.photoPath ?? null, password: hashedPassword },
       })
-    }
-
-    // Send welcome email with temporary password
-    let emailEnviado = false
-    try {
-      await sendWelcomeEmail({ to: parsed.email, name: parsed.name, password: data.password })
-      emailEnviado = true
-    } catch {
-      console.warn(`[welcome] E-mail não enviado para ${parsed.email}.`)
+      createdId = id
     }
 
     revalidatePath("/configuracoes/usuarios")
-    return { emailEnviado }
+    return { 
+      id: createdId, 
+      emailEnviado: await sendAndGetStatus(parsed.email, parsed.name, data.password) 
+    }
   } catch (e) {
     console.error("[criarQaUser]", e)
     return { error: "Erro ao criar usuário. Tente novamente." }
+  }
+}
+
+async function sendAndGetStatus(email: string, name: string, pass: string): Promise<boolean> {
+  try {
+    await sendWelcomeEmail({ to: email, name, password: pass })
+    return true
+  } catch {
+    console.warn(`[welcome] E-mail não enviado para ${email}.`)
+    return false
   }
 }
 

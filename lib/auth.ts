@@ -7,6 +7,7 @@ import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 import { verifyPassword, nextId } from "@/lib/db-utils"
 import { prisma } from "@/lib/prisma"
 import { resolveGoogleAccess, resolveGoogleInternalId } from "@/lib/auth-google"
+import { revalidatePath } from "next/cache"
 
 // Inline credential validation (can't import "use server" actions here)
 async function checkCredentials(email: string, password: string) {
@@ -108,6 +109,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               data: { id, email, name: user.name ?? email, type: "Padrão", password: "" },
             })
           }
+          // Invalidate cache for user list immediately after registration/reactivation
+          revalidatePath("/configuracoes/usuarios")
         }
       }
       return true
@@ -118,15 +121,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Use findMany + filter to skip inactive records — an @agrotis.com user may have both
         // an old inactive record and a freshly auto-registered active one for the same email.
         const email = user.email.trim().toLowerCase()
-        const [inactiveRecords, createdUsers] = await Promise.all([
-          prisma.inactiveUser.findMany({ select: { userId: true } }),
-          prisma.createdUser.findMany({
-            where: { email: { equals: email, mode: "insensitive" } },
-            select: { id: true },
-          }),
-        ])
-        const jwtInactiveIds = new Set(inactiveRecords.map((r) => r.userId))
-        const activeCreated = createdUsers.find((u) => !jwtInactiveIds.has(u.id))
+        
+        // Retry logic for DB consistency on first sign-in (give time for commit to be visible)
+        let activeCreated = null
+        for (let i = 0; i < 3; i++) {
+          const [inactiveRecords, createdUsers] = await Promise.all([
+            prisma.inactiveUser.findMany({ select: { userId: true } }),
+            prisma.createdUser.findMany({
+              where: { email: { equals: email, mode: "insensitive" } },
+              select: { id: true },
+            }),
+          ])
+          const jwtInactiveIds = new Set(inactiveRecords.map((r) => r.userId))
+          activeCreated = createdUsers.find((u) => !jwtInactiveIds.has(u.id))
+          
+          if (activeCreated) break
+          if (i < 2) await new Promise(r => setTimeout(r, 100 * (i + 1))) // Backoff
+        }
+
         token.id = resolveGoogleInternalId(email, activeCreated?.id ?? null, user.id ?? "")
       } else if (user) {
         token.id = user.id
@@ -141,3 +153,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 })
+

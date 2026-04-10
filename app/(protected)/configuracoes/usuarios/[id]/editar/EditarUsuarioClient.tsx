@@ -75,7 +75,8 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
           const json = await res.json() as { photoPath: string }
           resolvedPhotoPath = json.photoPath
         } else {
-          toast.error("Erro ao enviar a foto. Tente novamente.")
+          const errorJson = await res.json().catch(() => ({})) as { error?: string }
+          toast.error(errorJson.error ?? "Erro ao enviar a foto. Tente novamente.")
           return
         }
       } else if (photoPreview === null && initialProfile.photoPath) {
@@ -132,10 +133,11 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
         {/* ── Main form ── */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card space-y-4 lg:col-span-2">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">
+            <label htmlFor="nome" className="text-sm font-medium text-text-primary">
               Nome <span className="text-destructive">*</span>
             </label>
             <Input
+              id="nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Nome completo"
@@ -144,10 +146,11 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">
+            <label htmlFor="email" className="text-sm font-medium text-text-primary">
               E-mail <span className="text-destructive">*</span>
             </label>
             <Input
+              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -158,9 +161,9 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
 
           {isAdmin && (
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Tipo</label>
+              <label htmlFor="tipo" className="text-sm font-medium text-text-primary">Tipo</label>
               <Select value={tipo} onValueChange={(v) => setTipo(v ?? initialProfile.type)} disabled={isPending}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="tipo"><SelectValue /></SelectTrigger>
                 <SelectPopup>
                   <SelectItem value="Padrão">Padrão</SelectItem>
                   <SelectItem value="Administrador">Administrador</SelectItem>
@@ -177,9 +180,10 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
             </p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-primary">Nova senha</label>
+                <label htmlFor="password" className="text-sm font-medium text-text-primary">Nova senha</label>
                 <div className="relative">
                   <Input
+                    id="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -201,9 +205,10 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-primary">Confirmar nova senha</label>
+                <label htmlFor="confirmPassword" name="confirmPassword" className="text-sm font-medium text-text-primary">Confirmar nova senha</label>
                 <div className="relative">
                   <Input
+                    id="confirmPassword"
                     type={showConfirm ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}

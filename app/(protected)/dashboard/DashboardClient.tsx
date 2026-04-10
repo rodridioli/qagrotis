@@ -203,15 +203,18 @@ export function DashboardClient({
   // ── Cenários filtrados ─────────────────────────────────────────────────────
   const {
     totalModulos, totalCenarios, totalManuais, totalAutomatizados,
-    pctManuais, pctAuto, automationData, ultimasAutomacoes, cenariosFiltrados,
+    pctManuais, pctAuto, automationData, ultimasAutomacoes, cenariosFiltrados, activeModuleNames,
   } = useMemo(() => {
     const modsFiltrados = allModulos.filter(
       m => m.active && (!sistemaSelecionado || m.sistemaName === sistemaSelecionado)
     )
+    const activeModuleNames = new Set(modsFiltrados.map(m => m.name))
     const totalModulos = modsFiltrados.length
 
     const cenariosFiltrados = allCenarios.filter(
-      c => c.active && (!sistemaSelecionado || c.system === sistemaSelecionado)
+      c => c.active && 
+           activeModuleNames.has(c.module) &&
+           (!sistemaSelecionado || c.system === sistemaSelecionado)
     )
     const totalCenarios = cenariosFiltrados.length
     const totalManuais = cenariosFiltrados.filter(c => c.tipo === "Manual").length
@@ -243,19 +246,22 @@ export function DashboardClient({
 
     return {
       totalModulos, totalCenarios, totalManuais, totalAutomatizados,
-      pctManuais, pctAuto, automationData, ultimasAutomacoes, cenariosFiltrados,
+      pctManuais, pctAuto, automationData, ultimasAutomacoes, cenariosFiltrados, activeModuleNames,
     }
   }, [allCenarios, allModulos, sistemaSelecionado])
 
   // ── Suites filtradas ───────────────────────────────────────────────────────
   const suitesFiltradas = useMemo(() =>
-    allSuites.filter(s => !sistemaSelecionado || s.sistema === sistemaSelecionado),
-    [allSuites, sistemaSelecionado]
+    allSuites.filter(s => 
+      (!sistemaSelecionado || s.sistema === sistemaSelecionado) &&
+      activeModuleNames.has(s.modulo)
+    ),
+    [allSuites, sistemaSelecionado, activeModuleNames]
   )
 
   // ── Lista de módulos do sistema selecionado (para filtros) ─────────────────
   const moduloNames = useMemo(() => {
-    const mods = allModulos.filter(m => !sistemaSelecionado || m.sistemaName === sistemaSelecionado)
+    const mods = allModulos.filter(m => m.active && (!sistemaSelecionado || m.sistemaName === sistemaSelecionado))
     return mods.map(m => m.name)
   }, [allModulos, sistemaSelecionado])
 
