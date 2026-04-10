@@ -115,6 +115,27 @@ export async function inativarClientes(ids: string[]): Promise<void> {
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 
-  await prisma.cliente.updateMany({ where: { id: { in: ids } }, data: { active: false } })
+  // Busca clientes para propagar a limpeza dos vínculos
+  const clients = await prisma.cliente.findMany({
+    where: { id: { in: ids } },
+    select: { nomeFantasia: true },
+  })
+  const clientNames = clients.map((c) => c.nomeFantasia)
+
+  await prisma.$transaction([
+    prisma.cliente.updateMany({ where: { id: { in: ids } }, data: { active: false } }),
+    // Limpa o campo cliente dos cenários e suites vinculados
+    ...(clientNames.length > 0
+      ? [
+          prisma.cenario.updateMany({ where: { client: { in: clientNames } }, data: { client: "" } }),
+          prisma.suite.updateMany({ where: { cliente: { in: clientNames } }, data: { cliente: "" } }),
+        ]
+      : []),
+  ])
+
   revalidatePath("/configuracoes/clientes")
+  revalidatePath("/cenarios")
+  revalidatePath("/cenarios/novo")
+  revalidatePath("/suites")
+  revalidatePath("/gerador")
 }

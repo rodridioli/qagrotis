@@ -1,6 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import {
   BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -207,7 +209,7 @@ function ModuloSelect({
 }) {
   if (modulos.length === 0) return null
   return (
-    <Select value={value || "__todos__"} onValueChange={(v) => onChange(v === "__todos__" ? "" : v)}>
+    <Select value={value || "__todos__"} onValueChange={(v) => { if (v) onChange(v === "__todos__" ? "" : v) }}>
       <SelectTrigger className="h-8 w-auto shrink-0 text-xs" aria-label="Filtrar por módulo">
         <SelectValue />
       </SelectTrigger>
@@ -339,36 +341,7 @@ export function DashboardCharts({
           {ultimasAutomacoes.length === 0 ? (
             <p className="text-xs text-text-secondary">Nenhum cenário automatizado cadastrado.</p>
           ) : (
-            <div className="space-y-3">
-              {ultimasAutomacoes.slice(0, 2).map((item, i) => {
-                const { displayName, photoPath } = resolveUser(item.createdBy)
-                return (
-                  <div key={item.id} className="rounded-lg border border-border-default p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Avatar displayName={displayName} photoPath={photoPath} colorIndex={i} size="sm" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium text-text-primary">{displayName}</p>
-                        <p className="text-xs text-text-secondary/70">{formatDateTime(item.createdAt)}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <Link
-                        href={`/cenarios/${item.id}/editar`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-mono text-xs font-semibold text-brand-primary hover:underline"
-                      >
-                        {item.id}
-                      </Link>
-                      <p className="mt-0.5 truncate text-xs text-text-primary">{item.scenarioName}</p>
-                      {item.descricao && (
-                        <p className="mt-0.5 line-clamp-2 text-xs text-text-secondary">{item.descricao}</p>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <UltimasAutomacoesPaginado items={ultimasAutomacoes} resolveUser={resolveUser} />
           )}
         </div>
       </div>
@@ -437,6 +410,85 @@ export function DashboardCharts({
         </div>
       </div>
 
+    </div>
+  )
+}
+
+// ── Últimas automações com paginação ─────────────────────────────────────────
+
+const ITEMS_PER_PAGE = 2
+
+function UltimasAutomacoesPaginado({
+  items,
+  resolveUser,
+}: {
+  items: UltimaAutomacao[]
+  resolveUser: (createdBy: string | undefined) => { displayName: string; photoPath: string | null }
+}) {
+  const [page, setPage] = useState(0)
+  const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE)
+  const pageItems = items.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE)
+
+  return (
+    <div className="space-y-3">
+      {pageItems.map((item, i) => {
+        const globalIndex = page * ITEMS_PER_PAGE + i
+        const { displayName, photoPath } = resolveUser(item.createdBy)
+        return (
+          <div key={item.id} className="rounded-lg border border-border-default p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Avatar displayName={displayName} photoPath={photoPath} colorIndex={globalIndex} size="sm" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-text-primary">{displayName}</p>
+                <p className="text-xs text-text-secondary/70">{formatDateTime(item.createdAt)}</p>
+              </div>
+            </div>
+            <div>
+              <Link
+                href={`/cenarios/${item.id}/editar`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-xs font-semibold text-brand-primary hover:underline"
+              >
+                {item.id}
+              </Link>
+              <p className="mt-0.5 truncate text-xs text-text-primary">{item.scenarioName}</p>
+              {item.descricao && (
+                <p className="mt-0.5 line-clamp-2 text-xs text-text-secondary">{item.descricao}</p>
+              )}
+            </div>
+          </div>
+        )
+      })}
+
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-1">
+          <p className="text-[10px] text-text-secondary">
+            {page + 1} de {totalPages}
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="flex size-7 items-center justify-center rounded-md border border-border-default text-text-secondary transition-colors hover:bg-neutral-grey-100 disabled:pointer-events-none disabled:opacity-40"
+              aria-label="Página anterior"
+            >
+              <ChevronLeft className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={page === totalPages - 1}
+              className="flex size-7 items-center justify-center rounded-md border border-border-default text-text-secondary transition-colors hover:bg-neutral-grey-100 disabled:pointer-events-none disabled:opacity-40"
+              aria-label="Próxima página"
+            >
+              <ChevronRight className="size-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

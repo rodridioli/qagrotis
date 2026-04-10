@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useRef, useMemo, useEffect } from "react"
+import { useState, useRef, useMemo, useEffect, useTransition, useCallback } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { useRouter } from "next/navigation"
 import {
   Sparkles, Copy, RotateCcw,
   Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2, ExternalLink,
-  FileText, ListChecks, Plus
+  FileText, ListChecks, Plus, Eye, EyeOff, ShieldCheck, Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,7 +29,7 @@ import {
 import { toast } from "sonner"
 import { criarCenario, atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
 import { parseMarkdownCenarios, buildImportItems, type ParsedCenario, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
-import type { IntegracaoRecord } from "@/lib/actions/integracoes"
+import { criarIntegracao, type IntegracaoRecord } from "@/lib/actions/integracoes"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 
@@ -80,6 +80,81 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
   const [importProgressOpen, setImportProgressOpen] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+
+  // ── Inline integration modal state ─────────────────────────────────────────
+  type KeyStatus = "idle" | "validating" | "valid" | "invalid" | "uncertain"
+  const [intModalOpen, setIntModalOpen] = useState(false)
+  const [intProvider, setIntProvider] = useState<"google" | "openai" | "anthropic" | "groq" | "openrouter">("openrouter")
+  const [intModel, setIntModel] = useState("google/gemini-2.0-flash-exp:free")
+  const [intApiKey, setIntApiKey] = useState("")
+  const [intShowKey, setIntShowKey] = useState(false)
+  const [intKeyStatus, setIntKeyStatus] = useState<KeyStatus>("idle")
+  const [isIntModalPending, startIntModalTransition] = useTransition()
+
+  function openIntModal() {
+    setIntProvider("openrouter")
+    setIntModel("google/gemini-2.0-flash-exp:free")
+    setIntApiKey("")
+    setIntShowKey(false)
+    setIntKeyStatus("idle")
+    setIntModalOpen(true)
+  }
+
+  const handleIntProviderChange = (p: string | null) => {
+    if (!p) return
+    const prov = p as typeof intProvider
+    setIntProvider(prov)
+    if (prov === "openrouter") setIntModel("google/gemini-2.0-flash-exp:free")
+    else if (prov === "google") setIntModel("gemini-2.0-flash-exp")
+    else if (prov === "groq") setIntModel("llama-3.1-70b-versatile")
+    else if (prov === "openai") setIntModel("gpt-4o-mini")
+    else if (prov === "anthropic") setIntModel("claude-opus-4-6")
+    setIntKeyStatus("idle")
+  }
+
+  const handleIntValidateKey = useCallback(async () => {
+    if (!intApiKey.trim()) { toast.error("Digite a API Key antes de verificar."); return }
+    setIntKeyStatus("validating")
+    try {
+      const res = await fetch("/api/integracoes/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: intApiKey.trim(), provider: intProvider }),
+      })
+      if (res.ok) setIntKeyStatus("valid")
+      else if (res.status === 401) setIntKeyStatus("invalid")
+      else setIntKeyStatus("uncertain")
+    } catch {
+      setIntKeyStatus("uncertain")
+    }
+  }, [intApiKey, intProvider])
+
+  function handleSalvarIntegracao() {
+    if (!intApiKey.trim()) { toast.error("A API Key é obrigatória."); return }
+    if (intKeyStatus === "validating") { toast.error("Aguarde a validação da API Key."); return }
+    startIntModalTransition(async () => {
+      try {
+        await criarIntegracao({
+          provider: intProvider,
+          model: intModel.trim(),
+          apiKey: intApiKey.trim(),
+        })
+        toast.success("Integração criada com sucesso.")
+        setIntModalOpen(false)
+        router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar. Tente novamente.")
+      }
+    })
+  }
+
+  const intStatusIcon: Record<KeyStatus, React.ReactNode> = {
+    idle:       null,
+    validating: <Loader2 className="size-4 animate-spin text-text-secondary" />,
+    valid:      <Check className="size-4 text-green-600" />,
+    invalid:    <AlertCircle className="size-4 text-destructive" />,
+    uncertain:  <AlertCircle className="size-4 text-amber-500" />,
+  }
 
   const systemModuleNames = useMemo(
     () => allModulos.filter((m) => m.active && m.sistemaName === sistemaSelecionado).map((m) => m.name),
@@ -182,7 +257,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       return
     }
 
-    const items = buildImportItems(parsed, importModule, initialCenarios)
+    const items = buildImportItems(parsed, importModule, initialCenarios, systemModuleNames)
     setImportItems(items)
     setImportSetupOpen(false)
     setImportModalOpen(true)
@@ -338,7 +413,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => router.push("/configuracoes/integracoes/novo")}
+                  onClick={openIntModal}
                 >
                   <Plus className="size-4" />
                   Adicionar Integração
@@ -742,6 +817,119 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal criar integração inline ── */}
+      <Dialog open={intModalOpen} onOpenChange={(open) => { if (!open) setIntModalOpen(false) }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Adicionar Integração</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* Provedor */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">
+                  Provedor <span className="text-destructive">*</span>
+                </label>
+                <Select value={intProvider} onValueChange={handleIntProviderChange} disabled={isIntModalPending}>
+                  <SelectTrigger>
+                    <SelectValue>
+                      <span className="capitalize">{intProvider}</span>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectPopup>
+                    <SelectItem value="openrouter">OpenRouter (Gratuito)</SelectItem>
+                    <SelectItem value="groq">Groq (Llama, Mixtral)</SelectItem>
+                    <SelectItem value="google">Google Gemini</SelectItem>
+                    <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                    <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+                  </SelectPopup>
+                </Select>
+              </div>
+
+              {/* Modelo */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">
+                  Modelo <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  value={intModel}
+                  onChange={(e) => setIntModel(e.target.value)}
+                  placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
+                  disabled={isIntModalPending}
+                />
+                {intProvider === "openrouter" && (
+                  <p className="text-[10px] text-text-secondary">
+                    Com visão: <span className="font-medium">google/gemini-2.0-flash-exp:free</span> · meta-llama/llama-3.2-11b-vision-instruct:free
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* API Key */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                API Key <span className="text-destructive">*</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type={intShowKey ? "text" : "password"}
+                    value={intApiKey}
+                    onChange={(e) => { setIntApiKey(e.target.value); setIntKeyStatus("idle") }}
+                    placeholder="Cole aqui a sua API Key..."
+                    className="pr-16"
+                    disabled={isIntModalPending}
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-3">
+                    {intStatusIcon[intKeyStatus]}
+                    <button
+                      type="button"
+                      onClick={() => setIntShowKey((v) => !v)}
+                      className="text-text-secondary hover:text-text-primary transition-colors"
+                      aria-label={intShowKey ? "Ocultar chave" : "Exibir chave"}
+                    >
+                      {intShowKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleIntValidateKey}
+                  disabled={intKeyStatus === "validating" || !intApiKey.trim() || isIntModalPending}
+                  title="Verificar conexão com a API"
+                  aria-label="Verificar conexão com a API"
+                  className="flex size-10 shrink-0 items-center justify-center rounded-custom border border-border-default bg-surface-input text-text-secondary transition-colors hover:border-brand-primary hover:text-brand-primary disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <ShieldCheck className="size-4" />
+                </button>
+              </div>
+              <p className={`text-xs ${
+                intKeyStatus === "valid"     ? "text-green-600" :
+                intKeyStatus === "invalid"   ? "text-destructive" :
+                intKeyStatus === "uncertain" ? "text-amber-600" :
+                "text-text-secondary"
+              }`}>
+                {intKeyStatus === "idle"       && "Clique no ícone de escudo para verificar a conexão."}
+                {intKeyStatus === "validating" && "Verificando conexão com a API…"}
+                {intKeyStatus === "valid"      && "Chave válida — conexão com a API confirmada."}
+                {intKeyStatus === "invalid"    && "Chave inválida — verifique se copiou corretamente."}
+                {intKeyStatus === "uncertain"  && "Não foi possível confirmar agora. Você pode salvar assim mesmo."}
+              </p>
+            </div>
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <DialogClose render={<Button variant="outline" disabled={isIntModalPending} />}>
+              <X className="size-4" />
+              Cancelar
+            </DialogClose>
+            <Button onClick={handleSalvarIntegracao} disabled={isIntModalPending || intKeyStatus === "validating"}>
+              <Check className="size-4" />
+              {isIntModalPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

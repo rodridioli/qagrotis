@@ -245,14 +245,32 @@ export function normalizeName(s: string): string {
   return s.toLowerCase().trim()
 }
 
-/** Build ImportItems from parsed cenarios + existing records */
+/** Build ImportItems from parsed cenarios + existing records.
+ *  If the AI-generated cenário already has a `module` that matches one of the
+ *  system's valid module names (case-insensitive), it is preserved.
+ *  Otherwise the user-selected `defaultModule` is used.
+ */
 export function buildImportItems(
   parsed: ParsedCenario[],
-  module: string,
-  existingCenarios: CenarioRecord[]
+  defaultModule: string,
+  existingCenarios: CenarioRecord[],
+  validModuleNames: string[] = [],
 ): ImportItem[] {
+  const normalizedValid = validModuleNames.map((m) => m.toLowerCase().trim())
+
   return parsed.map((p, idx) => {
-    const pFinal: ParsedCenario = { ...p, module }
+    // Determine the best module: AI-detected (if valid) → user-selected default
+    let resolvedModule = defaultModule
+    if (p.module && p.module !== "Não informado") {
+      const aiModuleLower = p.module.toLowerCase().trim()
+      const matchIdx = normalizedValid.findIndex((m) => m === aiModuleLower)
+      if (matchIdx >= 0) {
+        // Use the original casing from validModuleNames
+        resolvedModule = validModuleNames[matchIdx]
+      }
+    }
+
+    const pFinal: ParsedCenario = { ...p, module: resolvedModule }
     const existing =
       existingCenarios.find(
         (c) => c.active && normalizeName(c.scenarioName) === normalizeName(p.scenarioName)

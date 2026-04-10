@@ -231,7 +231,7 @@ export function DashboardClient({
     const ultimasAutomacoes: UltimaAutomacao[] = cenariosFiltrados
       .filter(c => c.tipo === "Automatizado" || c.tipo === "Man./Auto.")
       .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-      .slice(0, 4)
+      .slice(0, 20)
       .map(c => ({
         id: c.id,
         scenarioName: c.scenarioName,

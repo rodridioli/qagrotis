@@ -80,7 +80,8 @@ export function SuiteForm({
   const router = useRouter()
   const searchParams = useSearchParams()
   const { sistemaSelecionado } = useSistemaSelecionado()
-  const initialTab = searchParams.get("tab") === "historico" ? "historico" : "cadastro"
+  const tabParam = searchParams.get("tab")
+  const initialTab = (tabParam === "cenarios" || tabParam === "historico") ? tabParam : "cadastro"
   const [activeTab, setActiveTab] = useState<"cadastro" | "cenarios" | "historico">(initialTab)
   const [cenarios, setCenarios] = useState<SuiteCenario[]>(suite?.cenarios ?? [])
   const [historico, setHistorico] = useState<HistoricoItem[]>((suite?.historico ?? []) as HistoricoItem[])
@@ -257,6 +258,8 @@ export function SuiteForm({
       } else if (suite?.id) {
         await atualizarSuite(suite.id, payload)
         toast.success("Suíte atualizada!")
+        // Preserve active tab after save by navigating with tab query param
+        router.replace(`/suites/${suite.id}?tab=${activeTab}`)
         router.refresh()
       }
     } catch (error: unknown) {
