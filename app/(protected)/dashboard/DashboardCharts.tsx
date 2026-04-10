@@ -66,7 +66,7 @@ const RANKING_OPTS: { value: RankingFilter; label: string }[] = [
   { value: "semana",       label: "Última semana" },
   { value: "mes-atual",    label: "Mês atual" },
   { value: "mes-anterior", label: "Mês anterior" },
-  { value: "ano-atual",    label: "Ano atual" },
+  { value: "ano-atual",    label: "Ano" },
 ]
 
 const TESTES_OPTS: { value: TestesFilter; label: string }[] = [
@@ -74,7 +74,7 @@ const TESTES_OPTS: { value: TestesFilter; label: string }[] = [
   { value: "semana",       label: "Última semana" },
   { value: "mes-atual",    label: "Mês atual" },
   { value: "mes-anterior", label: "Mês anterior" },
-  { value: "ano-atual",    label: "Ano atual" },
+  { value: "ano-atual",    label: "Ano" },
 ]
 
 const CHART_OPTS: { value: ChartFilter; label: string }[] = [
@@ -82,7 +82,7 @@ const CHART_OPTS: { value: ChartFilter; label: string }[] = [
   { value: "semana",       label: "Última semana" },
   { value: "mes-atual",    label: "Mês atual" },
   { value: "mes-anterior", label: "Mês anterior" },
-  { value: "ano-atual",    label: "Ano atual" },
+  { value: "ano-atual",    label: "Ano" },
 ]
 
 // ── FilterSelect ───────────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ function FilterSelect<T extends string>({
   return (
     <Select value={value} onValueChange={(v) => { if (v) onChange(v as T) }}>
       <SelectTrigger className="h-8 w-auto shrink-0 text-xs" aria-label={label ?? "Filtrar por período"}>
-        <SelectValue />
+        <SelectValue>{options.find(o => o.value === value)?.label ?? "Hoje"}</SelectValue>
       </SelectTrigger>
       <SelectPopup>
         {options.map(o => (
@@ -211,7 +211,7 @@ function ModuloSelect({
   return (
     <Select value={value || "__todos__"} onValueChange={(v) => { if (v) onChange(v === "__todos__" ? "" : v) }}>
       <SelectTrigger className="h-8 w-auto shrink-0 text-xs" aria-label="Filtrar por módulo">
-        <SelectValue />
+        <SelectValue>{value ? value : "Todos"}</SelectValue>
       </SelectTrigger>
       <SelectPopup>
         <SelectItem value="__todos__">Todos</SelectItem>

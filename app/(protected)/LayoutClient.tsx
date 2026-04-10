@@ -78,9 +78,10 @@ interface SidebarProps {
   hasActiveSistema: boolean
   hasSistemaModulo: boolean
   hasSistemaCenario: boolean
+  hasIntegracoes: boolean
 }
 
-function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasActiveSistema, hasSistemaModulo, hasSistemaCenario }: SidebarProps) {
+function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasActiveSistema, hasSistemaModulo, hasSistemaCenario, hasIntegracoes }: SidebarProps) {
   const pathname = usePathname()
   const expanded = !collapsed
 
@@ -172,6 +173,8 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen,
 
               // "Assistente de IA" is a drawer trigger, not a route link
               if (isAssistente) {
+                if (!hasIntegracoes) return null
+
                 if (!showLabel) {
                   return (
                     <Tooltip key={href}>
@@ -440,6 +443,7 @@ export default function LayoutClient({
           hasActiveSistema={hasActiveSistema}
           hasSistemaModulo={hasSistemaModulo}
           hasSistemaCenario={hasSistemaCenario}
+          hasIntegracoes={integracoes.length > 0}
         />
         <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />
         <div className="flex flex-1 flex-col overflow-hidden">

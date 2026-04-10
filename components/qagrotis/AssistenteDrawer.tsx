@@ -220,15 +220,24 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
           </div>
 
           {/* ── Integration selector ── */}
-          {integracoes.length > 0 && (
-            <div className="shrink-0 border-b border-border-default px-4 py-2">
-              <Select value={integracaoId} onValueChange={(v) => setIntegracaoId(v ?? "")}>
-                <SelectTrigger className="h-7 text-xs">
-                  <span className="mr-1 text-text-secondary">Modelo:</span>
-                  <SelectValue placeholder="Selecionar modelo">
-                    {integracoes.find((i) => i.id === integracaoId)?.descricao || integracoes.find((i) => i.id === integracaoId)?.model || "Selecionar modelo"}
-                  </SelectValue>
-                </SelectTrigger>
+          <div className="shrink-0 border-b border-border-default px-4 py-2">
+            <Select 
+              value={integracoes.length > 0 ? integracaoId : ""} 
+              onValueChange={(v) => setIntegracaoId(v ?? "")}
+              disabled={integracoes.length === 0}
+            >
+              <SelectTrigger className="h-7 text-xs">
+                <span className="mr-1 text-text-secondary">Modelo:</span>
+                <SelectValue placeholder={integracoes.length > 0 ? "Selecionar modelo" : "Não cadastrado"}>
+                  {integracoes.length > 0 
+                    ? (integracoes.find((i) => i.id === integracaoId)?.descricao || 
+                       integracoes.find((i) => i.id === integracaoId)?.model || 
+                       "Selecionar modelo")
+                    : "Não cadastrado"
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              {integracoes.length > 0 && (
                 <SelectPopup>
                   {integracoes.map((i) => (
                     <SelectItem key={i.id} value={i.id}>
@@ -236,9 +245,9 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
                     </SelectItem>
                   ))}
                 </SelectPopup>
-              </Select>
-            </div>
-          )}
+              )}
+            </Select>
+          </div>
 
           {/* ── Messages ── */}
           <div className="flex-1 overflow-y-auto px-4 py-4">
