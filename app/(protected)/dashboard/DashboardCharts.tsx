@@ -234,6 +234,10 @@ export function DashboardCharts({
   sucessoData,   sucessoFilter,  onSucessoFilterChange,  sucessoModulo,  onSucessoModuloChange,
   ultimasAutomacoes, resolveUser,
 }: Props) {
+  const totalExecucoes = testesData.reduce((acc, d) => acc + d.value, 0)
+  const totalErros = errosData.reduce((acc, d) => acc + d.value, 0)
+  const totalSucesso = sucessoData.reduce((acc, d) => acc + d.value, 0)
+
   return (
     <div className="space-y-4">
 
@@ -308,7 +312,9 @@ export function DashboardCharts({
         {/* Testes executados */}
         <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">Testes executados</h2>
+            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">
+              Testes executados: <span className="text-brand-primary">{totalExecucoes.toLocaleString("pt-BR")}</span>
+            </h2>
             <div className="flex-1" />
             <ModuloSelect modulos={moduloNames} value={testesModulo} onChange={onTestesModuloChange} />
             <FilterSelect<TestesFilter>
@@ -352,7 +358,9 @@ export function DashboardCharts({
         {/* Erros encontrados */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">Erros encontrados</h2>
+            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">
+              Erros encontrados: <span className="text-destructive">{totalErros.toLocaleString("pt-BR")}</span>
+            </h2>
             <div className="flex-1" />
             <ModuloSelect modulos={moduloNames} value={errosModulo} onChange={onErrosModuloChange} />
             <FilterSelect<ChartFilter>
@@ -382,7 +390,9 @@ export function DashboardCharts({
         {/* Testes de sucesso */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">Testes de sucesso</h2>
+            <h2 className="whitespace-nowrap text-sm font-semibold text-text-primary">
+              Testes de sucesso: <span className="text-qagrotis-primary-500">{totalSucesso.toLocaleString("pt-BR")}</span>
+            </h2>
             <div className="flex-1" />
             <ModuloSelect modulos={moduloNames} value={sucessoModulo} onChange={onSucessoModuloChange} />
             <FilterSelect<ChartFilter>
