@@ -106,6 +106,8 @@ model Sistema {
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   modulos     Modulo[]
+  cenarios    Cenario[]
+  suites      Suite[]
 }
 
 model Modulo {
@@ -117,6 +119,8 @@ model Modulo {
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   sistema     Sistema  @relation(fields: [sistemaId], references: [id])
+  cenarios    Cenario[]
+  suites      Suite[]
 }
 
 model Cenario {
@@ -147,6 +151,12 @@ model Cenario {
   senhaFalsa        String?
   steps             Json      @default("[]")
   deps              String[]  @default([])
+
+  // Relationships
+  systemId          String?
+  moduleId          String?
+  sistema           Sistema? @relation(fields: [systemId], references: [id])
+  modulo            Modulo?  @relation(fields: [moduleId], references: [id])
 }
 
 // Suite stores cenarios and historico as embedded JSON arrays (denormalized)
@@ -163,6 +173,12 @@ model Suite {
   createdAt DateTime @default(now())
   cenarios  Json     @default("[]")
   historico Json     @default("[]")
+
+  // Relationships
+  sistemaId String?
+  moduloId  String?
+  sistemaRef Sistema? @relation(fields: [sistemaId], references: [id])
+  moduloRef  Modulo?  @relation(fields: [moduloId], references: [id])
 }
 
 // ── Auth / user management ────────────────────────────────────────────────────

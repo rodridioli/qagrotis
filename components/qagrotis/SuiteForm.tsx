@@ -84,7 +84,11 @@ export function SuiteForm({
   const initialTab = (tabParam === "cenarios" || tabParam === "historico") ? tabParam : "cadastro"
   const [activeTab, setActiveTab] = useState<"cadastro" | "cenarios" | "historico">(initialTab)
   const [cenarios, setCenarios] = useState<SuiteCenario[]>(suite?.cenarios ?? [])
-  const [historico, setHistorico] = useState<HistoricoItem[]>((suite?.historico ?? []) as HistoricoItem[])
+  const [historico, setHistorico] = useState<HistoricoItem[]>(() => {
+    const raw = (suite?.historico ?? []) as HistoricoItem[]
+    // Sort by timestamp descending (newest first)
+    return [...raw].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
+  })
 
   useEffect(() => {
     if (systemList.length === 0)

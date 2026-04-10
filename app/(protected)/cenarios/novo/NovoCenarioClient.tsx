@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { ArrowDown, ArrowLeft, ArrowUp, Bot, Check, Circle, ClipboardList, FileDown, GripVertical, LayoutList, Network, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 import { toast } from "sonner"
 import {
   Select,
@@ -68,9 +69,6 @@ interface Dep {
   system: string
   tipo: string
 }
-
-const TEXTAREA_CLASS =
-  "w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none overflow-hidden"
 
 export default function NovoCenarioClient({
   initialModulos = [],
@@ -577,49 +575,37 @@ export default function NovoCenarioClient({
               <label className="text-sm font-medium text-text-primary">
                 Descrição <span className="text-destructive">*</span>
               </label>
-              <textarea
-                rows={2}
+              <AutoResizeTextarea
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
                 placeholder="Descrição do cenário de teste..."
-                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-                className={TEXTAREA_CLASS}
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Regra de Negócio</label>
-              <textarea
-                rows={2}
+              <AutoResizeTextarea
                 value={regraDeNegocio}
                 onChange={(e) => setRegraDeNegocio(e.target.value)}
                 placeholder="Descreva a regra de negócio..."
-                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-                className={TEXTAREA_CLASS}
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Pré-condições</label>
-              <textarea
-                rows={2}
+              <AutoResizeTextarea
                 value={preCondicoes}
                 onChange={(e) => setPreCondicoes(e.target.value)}
                 placeholder="Pré-condições necessárias..."
-                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-                className={TEXTAREA_CLASS}
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">BDD (Gherkin)</label>
-              <textarea
-                rows={4}
+              <AutoResizeTextarea
                 value={bdd}
                 onChange={(e) => setBdd(e.target.value)}
                 placeholder={`Dado que o usuário está na tela de...\nQuando ele realiza a ação...\nEntão o sistema deve...`}
-                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-                className={TEXTAREA_CLASS}
               />
             </div>
 
@@ -627,13 +613,10 @@ export default function NovoCenarioClient({
               <label className="text-sm font-medium text-text-primary">
                 Resultado Esperado <span className="text-destructive">*</span>
               </label>
-              <textarea
-                rows={2}
+              <AutoResizeTextarea
                 value={resultadoEsperado}
                 onChange={(e) => setResultadoEsperado(e.target.value)}
                 placeholder="Descreva o resultado esperado..."
-                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-                className={TEXTAREA_CLASS}
               />
             </div>
           </div>
@@ -699,26 +682,20 @@ export default function NovoCenarioClient({
             {/* Objetivo */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Objetivo</label>
-              <textarea
-                rows={2}
+              <AutoResizeTextarea
                 value={objetivo}
                 onChange={(e) => { setObjetivo(e.target.value); setHasSaved(false) }}
                 placeholder="Descreva o objetivo do teste..."
-                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-                className={TEXTAREA_CLASS}
               />
             </div>
 
             {/* Pré-condições */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Pré-condições</label>
-              <textarea
-                rows={2}
+              <AutoResizeTextarea
                 value={preCondicoes}
                 onChange={(e) => { setPreCondicoes(e.target.value); setHasSaved(false) }}
                 placeholder="Pré-condições necessárias..."
-                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-                className={TEXTAREA_CLASS}
               />
             </div>
 

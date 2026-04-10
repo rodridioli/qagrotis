@@ -374,8 +374,8 @@ function Topbar({
         <Link
           href={profileHref}
           title="Editar meu perfil"
-          className="hidden size-8 items-center justify-center rounded-full bg-brand-primary text-xs font-semibold transition-opacity hover:opacity-80 sm:flex"
-          style={{ color: "#ffffff" }}
+          aria-label="Meu Perfil"
+          className="hidden size-8 items-center justify-center rounded-full bg-brand-primary text-xs font-semibold text-white transition-opacity hover:opacity-80 sm:flex"
         >
           {initials}
         </Link>

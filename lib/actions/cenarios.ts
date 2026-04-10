@@ -167,12 +167,20 @@ export async function criarCenario(data: {
   const existing = await prisma.cenario.findMany({ select: { id: true } })
   const id = nextId(existing.map((c) => c.id), "CT", 3)
 
+  // Lookup IDs by name for data integrity
+  const [sysRow, modRow] = await Promise.all([
+    prisma.sistema.findFirst({ where: { name: parsed.system, active: true }, select: { id: true } }),
+    prisma.modulo.findFirst({ where: { name: parsed.module, sistemaName: parsed.system, active: true }, select: { id: true } })
+  ])
+
   const row = await prisma.cenario.create({
     data: {
       id,
       scenarioName:      parsed.scenarioName,
       system:            parsed.system,
       module:            parsed.module,
+      systemId:          sysRow?.id,
+      moduleId:          modRow?.id,
       client:            parsed.client,
       execucoes:         0,
       erros:             0,
@@ -252,12 +260,20 @@ export async function atualizarCenario(id: string, data: {
   const existing = await prisma.cenario.findUnique({ where: { id }, select: { createdBy: true } })
   if (!existing) throw new Error("Cenário não encontrado")
 
+  // Lookup IDs by name for data integrity update
+  const [sysRow, modRow] = await Promise.all([
+    prisma.sistema.findFirst({ where: { name: parsed.system, active: true }, select: { id: true } }),
+    prisma.modulo.findFirst({ where: { name: parsed.module, sistemaName: parsed.system, active: true }, select: { id: true } })
+  ])
+
   const row = await prisma.cenario.update({
     where: { id },
     data: {
       scenarioName:      parsed.scenarioName,
       system:            parsed.system,
       module:            parsed.module,
+      systemId:          sysRow?.id,
+      moduleId:          modRow?.id,
       client:            parsed.client,
       tipo:              parsed.tipo,
       risco:             parsed.risco,

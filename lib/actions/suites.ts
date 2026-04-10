@@ -117,6 +117,12 @@ export async function criarSuite(data: unknown): Promise<SuiteRecord> {
   const existing = await prisma.suite.findMany({ select: { id: true } })
   const id = nextId(existing.map((s) => s.id), "S", 4)
 
+  // Lookup IDs by name for data integrity
+  const [sysRow, modRow] = await Promise.all([
+    prisma.sistema.findFirst({ where: { name: parsed.sistema, active: true }, select: { id: true } }),
+    prisma.modulo.findFirst({ where: { name: parsed.modulo, sistemaName: parsed.sistema, active: true }, select: { id: true } })
+  ])
+
   const row = await prisma.suite.create({
     data: {
       id,
@@ -124,6 +130,8 @@ export async function criarSuite(data: unknown): Promise<SuiteRecord> {
       versao:    parsed.versao,
       sistema:   parsed.sistema,
       modulo:    parsed.modulo,
+      sistemaId: sysRow?.id,
+      moduloId:  modRow?.id,
       tipo:      parsed.tipo,
       cliente:   parsed.cliente,
       objetivo:  parsed.objetivo,
@@ -145,6 +153,12 @@ export async function atualizarSuite(id: string, data: unknown): Promise<SuiteRe
   const existing = await prisma.suite.findUnique({ where: { id }, select: { historico: true } })
   if (!existing) throw new Error("Suíte não encontrada")
 
+  // Lookup IDs by name for data integrity update
+  const [sysRow, modRow] = await Promise.all([
+    prisma.sistema.findFirst({ where: { name: parsed.sistema, active: true }, select: { id: true } }),
+    prisma.modulo.findFirst({ where: { name: parsed.modulo, sistemaName: parsed.sistema, active: true }, select: { id: true } })
+  ])
+
   const row = await prisma.suite.update({
     where: { id },
     data: {
@@ -152,6 +166,8 @@ export async function atualizarSuite(id: string, data: unknown): Promise<SuiteRe
       versao:    parsed.versao,
       sistema:   parsed.sistema,
       modulo:    parsed.modulo,
+      sistemaId: sysRow?.id,
+      moduloId:  modRow?.id,
       tipo:      parsed.tipo,
       cliente:   parsed.cliente,
       objetivo:  parsed.objetivo,

@@ -188,7 +188,7 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-default px-4 py-3">
             <div className="flex items-center gap-2.5">
               <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-primary">
-                <Bot className="size-4" style={{ color: "#ffffff" }} />
+                <Bot className="size-4 text-white" />
               </div>
               <div>
                 <SheetTitle className="text-sm font-semibold leading-none text-text-primary">
@@ -204,6 +204,7 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
                   size="icon-sm"
                   onClick={clearHistory}
                   title="Limpar conversa"
+                  aria-label="Limpar histórico da conversa"
                 >
                   <RotateCcw className="size-3.5" />
                 </Button>
@@ -332,7 +333,7 @@ function MessageBubble({ msg }: { msg: Message }) {
     <div className={cn("flex gap-2", isUser ? "justify-end" : "justify-start")}>
       {!isUser && (
         <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-primary">
-          <Bot className="size-3.5" style={{ color: "#ffffff" }} />
+          <Bot className="size-3.5 text-white" />
         </div>
       )}
       <div
@@ -344,7 +345,6 @@ function MessageBubble({ msg }: { msg: Message }) {
               ? "rounded-bl-sm border border-destructive/20 bg-destructive/10 text-destructive"
               : "rounded-bl-sm border border-border-default bg-surface-card text-text-primary"
         )}
-        style={isUser ? { color: "#ffffff" } : undefined}
       >
         {/* Loading state (empty assistant message) */}
         {!isUser && !msg.content && !msg.error && (
