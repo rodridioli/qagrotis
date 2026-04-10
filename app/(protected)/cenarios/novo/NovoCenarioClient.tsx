@@ -778,13 +778,10 @@ export default function NovoCenarioClient({
               <label className="text-sm font-medium text-text-primary">
                 Resultado Esperado <span className="text-destructive">*</span>
               </label>
-              <textarea
-                rows={2}
+              <AutoResizeTextarea
                 value={resultadoEsperado}
                 onChange={(e) => { setResultadoEsperado(e.target.value); setHasSaved(false) }}
                 placeholder="Descreva o resultado esperado do teste automatizado..."
-                onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px` }}
-                className={TEXTAREA_CLASS}
               />
             </div>
 
