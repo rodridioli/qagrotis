@@ -22,13 +22,13 @@ export default meta
 type Story = StoryObj<typeof SuiteForm>
 
 const MOCK_MODULOS = [
-  { id: "M-01", name: "PRO - Produtor Rural", sistemaName: "Plataforma AGRO", active: true },
-  { id: "M-02", name: "REC - Receituário", sistemaName: "Plataforma AGRO", active: true },
+  { id: "M-01", name: "PRO - Produtor Rural", sistemaName: "Plataforma AGRO", active: true, description: null, sistemaId: "S-1" },
+  { id: "M-02", name: "REC - Receituário", sistemaName: "Plataforma AGRO", active: true, description: null, sistemaId: "S-1" },
 ]
 
 const MOCK_CENARIOS = [
-  { id: "CT-001", scenarioName: "Login básico", system: "Plataforma AGRO", module: "PRO - Produtor Rural", tipo: "Manual", active: true },
-  { id: "CT-002", scenarioName: "Cadastro de cliente", system: "Plataforma AGRO", module: "REC - Receituário", tipo: "Automatizado", active: true },
+  { id: "CT-001", scenarioName: "Login básico", system: "Plataforma AGRO", module: "PRO - Produtor Rural", tipo: "Manual", active: true, description: null, moduleId: "M-01", client: "Agrotis", execucoes: 0, erros: 0, suites: 0 },
+  { id: "CT-002", scenarioName: "Cadastro de cliente", system: "Plataforma AGRO", module: "REC - Receituário", tipo: "Automatizado", active: true, description: null, moduleId: "M-02", client: "Agrotis", execucoes: 0, erros: 0, suites: 0 },
 ]
 
 export const CreateMode: Story = {
@@ -50,8 +50,10 @@ export const EditMode: Story = {
       sistema: "Plataforma AGRO",
       modulo: "PRO - Produtor Rural",
       tipo: "Manual",
+      cliente: "Agrotis",
+      objetivo: "Validar regressão geral",
       active: true,
-      createdAt: new Date(),
+      createdAt: Date.now(),
       cenarios: [
         { id: "CT-001", name: "Login básico", module: "PRO - Produtor Rural", tipo: "Manual", execucoes: 10, erros: 2, deps: 1 }
       ],

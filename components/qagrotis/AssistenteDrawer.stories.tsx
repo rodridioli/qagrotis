@@ -26,8 +26,8 @@ export const Default: Story = {
             open={open} 
             onOpenChange={setOpen} 
             integracoes={[
-                { id: "1", provider: "Google", model: "gemini-1.5-pro", descricao: "Gemini Pro (Legacy)", active: true, createdAt: new Date() },
-                { id: "2", provider: "OpenAI", model: "gpt-4o", descricao: "GPT-4o Premium", active: true, createdAt: new Date() }
+                { id: "1", provider: "Google", model: "gemini-1.5-pro", descricao: "Gemini Pro (Legacy)", active: true, createdAt: Date.now(), apiKey: "sk-google" },
+                { id: "2", provider: "OpenAI", model: "gpt-4o", descricao: "GPT-4o Premium", active: true, createdAt: Date.now(), apiKey: "sk-openai" }
             ]}
         />
       </div>
