@@ -73,7 +73,7 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
   // ── Integração modal (criar / editar) ─────────────────────────────────────
   const [integracaoModalOpen, setIntegracaoModalOpen] = useState(false)
   const [integracaoEditando, setIntegracaoEditando] = useState<IntegracaoRecord | null>(null)
-  const [intProvider, setIntProvider] = useState<"google" | "openai" | "anthropic" | "groq" | "openrouter">("openrouter")
+  const [intProvider, setIntProvider] = useState("OpenRouter")
   const [intModel, setIntModel] = useState("google/gemini-2.0-flash-exp:free")
   const [intApiKey, setIntApiKey] = useState("")
   const [intShowKey, setIntShowKey] = useState(false)
@@ -82,7 +82,7 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
 
   function openAdicionarIntegracao() {
     setIntegracaoEditando(null)
-    setIntProvider("openrouter")
+    setIntProvider("OpenRouter")
     setIntModel("google/gemini-2.0-flash-exp:free")
     setIntApiKey("")
     setIntShowKey(false)
@@ -92,7 +92,7 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
 
   function openEditarIntegracao(item: IntegracaoRecord) {
     setIntegracaoEditando(item)
-    setIntProvider((item.provider ?? "openrouter") as any)
+    setIntProvider(item.provider || "OpenRouter")
     setIntModel(item.model ?? "")
     setIntApiKey(item.apiKey ?? "")
     setIntShowKey(false)
@@ -100,15 +100,8 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
     setIntegracaoModalOpen(true)
   }
 
-  const handleIntProviderChange = (p: string | null) => {
-    if (!p) return
-    const prov = p as any
-    setIntProvider(prov)
-    if (prov === "openrouter") setIntModel("google/gemini-2.0-flash-exp:free")
-    else if (prov === "google") setIntModel("gemini-2.0-flash-exp")
-    else if (prov === "groq") setIntModel("llama-3.1-70b-versatile")
-    else if (prov === "openai") setIntModel("gpt-4o-mini")
-    else if (prov === "anthropic") setIntModel("claude-opus-4-6")
+  const handleIntProviderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIntProvider(e.target.value)
     setIntKeyStatus("idle")
   }
 
@@ -501,20 +494,12 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                 <label className="text-sm font-medium text-text-primary">
                   Provedor <span className="text-destructive">*</span>
                 </label>
-                <Select value={intProvider} onValueChange={handleIntProviderChange} disabled={isIntegracaoModalPending}>
-                  <SelectTrigger>
-                    <SelectValue>
-                      <span className="capitalize">{intProvider}</span>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectPopup>
-                    <SelectItem value="openrouter">OpenRouter (Gratuito)</SelectItem>
-                    <SelectItem value="groq">Groq (Llama, Mixtral)</SelectItem>
-                    <SelectItem value="google">Google Gemini</SelectItem>
-                    <SelectItem value="openai">OpenAI (GPT)</SelectItem>
-                    <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
-                  </SelectPopup>
-                </Select>
+                <Input
+                  value={intProvider}
+                  onChange={handleIntProviderChange}
+                  placeholder="Ex.: OpenRouter, OpenAI, Groq..."
+                  disabled={isIntegracaoModalPending}
+                />
               </div>
 
               {/* Modelo */}
@@ -528,7 +513,7 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
                   placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
                   disabled={isIntegracaoModalPending}
                 />
-                {intProvider === "openrouter" && (
+                {intProvider.toLowerCase().includes("openrouter") && (
                   <p className="text-[10px] text-text-secondary">
                     Com visão: <span className="font-medium">google/gemini-2.0-flash-exp:free</span> · meta-llama/llama-3.2-11b-vision-instruct:free
                   </p>
