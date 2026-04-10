@@ -30,7 +30,7 @@ export function AutoResizeTextarea({ className, ...props }: AutoResizeTextareaPr
         resize()
         props.onInput?.(e)
       }}
-      className={cn("min-h-[100px] resize-none overflow-hidden transition-[height] duration-200", className)}
+      className={cn("resize-none overflow-hidden transition-[height] duration-200", className)}
     />
   )
 }

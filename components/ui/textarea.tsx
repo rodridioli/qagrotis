@@ -15,7 +15,7 @@ function Textarea({ className, error, ...props }: TextareaProps) {
         data-slot="textarea"
         aria-invalid={!!error}
         className={cn(
-          "flex min-h-20 w-full rounded-custom border px-3 py-2 text-sm outline-none transition-colors",
+          "flex min-h-9 w-full rounded-custom border px-3 py-2 text-sm outline-none transition-colors",
           "border-border-default bg-surface-input text-text-primary",
           "placeholder:text-text-secondary",
           "focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/20",

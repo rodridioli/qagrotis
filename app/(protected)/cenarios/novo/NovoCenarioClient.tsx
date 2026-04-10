@@ -579,6 +579,7 @@ export default function NovoCenarioClient({
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
                 placeholder="Descrição do cenário de teste..."
+                className="min-h-[100px]"
               />
             </div>
 
@@ -588,6 +589,7 @@ export default function NovoCenarioClient({
                 value={regraDeNegocio}
                 onChange={(e) => setRegraDeNegocio(e.target.value)}
                 placeholder="Descreva a regra de negócio..."
+                className="min-h-[100px]"
               />
             </div>
 
@@ -597,6 +599,7 @@ export default function NovoCenarioClient({
                 value={preCondicoes}
                 onChange={(e) => setPreCondicoes(e.target.value)}
                 placeholder="Pré-condições necessárias..."
+                className="min-h-[100px]"
               />
             </div>
 
@@ -606,6 +609,7 @@ export default function NovoCenarioClient({
                 value={bdd}
                 onChange={(e) => setBdd(e.target.value)}
                 placeholder={`Dado que o usuário está na tela de...\nQuando ele realiza a ação...\nEntão o sistema deve...`}
+                className="min-h-[100px]"
               />
             </div>
 
@@ -617,6 +621,7 @@ export default function NovoCenarioClient({
                 value={resultadoEsperado}
                 onChange={(e) => setResultadoEsperado(e.target.value)}
                 placeholder="Descreva o resultado esperado..."
+                className="min-h-[100px]"
               />
             </div>
           </div>
@@ -686,6 +691,7 @@ export default function NovoCenarioClient({
                 value={objetivo}
                 onChange={(e) => { setObjetivo(e.target.value); setHasSaved(false) }}
                 placeholder="Descreva o objetivo do teste..."
+                className="min-h-[100px]"
               />
             </div>
 
@@ -696,6 +702,7 @@ export default function NovoCenarioClient({
                 value={preCondicoes}
                 onChange={(e) => { setPreCondicoes(e.target.value); setHasSaved(false) }}
                 placeholder="Pré-condições necessárias..."
+                className="min-h-[100px]"
               />
             </div>
 
@@ -741,19 +748,19 @@ export default function NovoCenarioClient({
                           </td>
                           <td className="w-8 py-1.5 text-xs font-medium text-text-secondary">{idx + 1}</td>
                           <td className="px-2 py-1.5">
-                            <input
+                            <AutoResizeTextarea
                               value={s.acao}
                               onChange={(e) => updateStep(s.id, "acao", e.target.value)}
                               placeholder="Descreva a ação..."
-                              className="w-full rounded-custom border border-border-default bg-surface-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                              className="py-1.5 min-h-9"
                             />
                           </td>
                           <td className="px-2 py-1.5">
-                            <input
+                            <AutoResizeTextarea
                               value={s.resultado}
                               onChange={(e) => updateStep(s.id, "resultado", e.target.value)}
                               placeholder="Resultado esperado..."
-                              className="w-full rounded-custom border border-border-default bg-surface-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                              className="py-1.5 min-h-9"
                             />
                           </td>
                           <td className="py-1.5 pl-1">
@@ -782,6 +789,7 @@ export default function NovoCenarioClient({
                 value={resultadoEsperado}
                 onChange={(e) => { setResultadoEsperado(e.target.value); setHasSaved(false) }}
                 placeholder="Descreva o resultado esperado do teste automatizado..."
+                className="min-h-[100px]"
               />
             </div>
 
