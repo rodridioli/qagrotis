@@ -129,6 +129,7 @@ export async function inativarSistemas(ids: string[]): Promise<void> {
     prisma.sistema.updateMany({ where: { id: { in: ids } }, data: { active: false } }),
     prisma.modulo.updateMany({ where: { sistemaId: { in: sistemaIds } }, data: { active: false } }),
     prisma.cenario.updateMany({ where: { system: { in: sistemaNames } }, data: { active: false } }),
+    prisma.suite.updateMany({ where: { sistema: { in: sistemaNames } }, data: { active: false } }),
   ])
 
   revalidatePath("/configuracoes/sistemas")

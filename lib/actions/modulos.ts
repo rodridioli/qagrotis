@@ -126,6 +126,12 @@ export async function inativarModulos(ids: string[]): Promise<void> {
         data: { active: false },
       })
     ),
+    ...modulos.map((m) =>
+      prisma.suite.updateMany({
+        where: { modulo: m.name, sistema: m.sistemaName },
+        data: { active: false },
+      })
+    ),
   ])
 
   revalidatePath("/configuracoes/modulos")
