@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma"
 export interface IntegracaoRecord {
   id: string
   descricao: string
-  provider: "google" | "openai" | "anthropic" | "groq" | "openrouter"
+  provider: string
   model: string
   apiKey: string
   active: boolean
@@ -18,7 +18,7 @@ export interface IntegracaoRecord {
 
 const integracaoSchema = z.object({
   descricao: z.string().max(200, "Máximo de 200 caracteres").optional().default(""),
-  provider:  z.enum(["google", "openai", "anthropic", "groq", "openrouter"]),
+  provider:  z.string().min(1, "Provedor é obrigatório"),
   model:     z.string().min(1, "Modelo é obrigatório"),
   apiKey:    z.string().min(1, "API Key é obrigatória"),
 })
@@ -32,7 +32,7 @@ export async function getIntegracoes(): Promise<IntegracaoRecord[]> {
   const rows = await prisma.integracao.findMany({ orderBy: { createdAt: "asc" } })
   return rows.map((r) => ({
     ...r,
-    provider: r.provider as IntegracaoRecord["provider"],
+    provider: r.provider,
     createdAt: r.createdAt.getTime(),
   }))
 }
@@ -42,7 +42,7 @@ export async function getIntegracao(id: string): Promise<IntegracaoRecord | null
   if (!result.success) return null
   const row = await prisma.integracao.findUnique({ where: { id } })
   if (!row) return null
-  return { ...row, provider: row.provider as IntegracaoRecord["provider"], createdAt: row.createdAt.getTime() }
+  return { ...row, provider: row.provider, createdAt: row.createdAt.getTime() }
 }
 
 export async function criarIntegracao(data: unknown): Promise<void> {

@@ -18,7 +18,7 @@ import type { ChangelogEntry } from "@/lib/actions/changelog"
 
 const ITEMS_PER_PAGE = 10
 
-const ALL_TAGS = ["Novidade", "Melhoria", "Correção"]
+const ALL_TAGS = ["Novidade", "Melhoria"]
 
 function formatDate(iso: string) {
   const [y, m, d] = iso.split("-")
@@ -47,6 +47,9 @@ export function AtualizacoesClient({ entries }: Props) {
 
   const filtered = useMemo(() => {
     return entries.filter((e) => {
+      // Force hide anything that is not officially Novelty or Improvement
+      if (e.tag !== "Novidade" && e.tag !== "Melhoria") return false
+      
       if (search) {
         const q = search.toLowerCase()
         if (!e.version.toLowerCase().includes(q) && !e.changes.some((c) => c.toLowerCase().includes(q))) return false

@@ -28,7 +28,7 @@ interface Props {
 export default function EditarIntegracaoClient({ integracao }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [provider, setProvider] = useState<"google" | "openai" | "anthropic" | "groq" | "openrouter">(integracao.provider ?? "openrouter")
+  const [provider, setProvider] = useState(integracao.provider || "OpenRouter")
 
   const [model, setModel] = useState(integracao.model ?? "gemini-2.0-flash")
   const [apiKey, setApiKey] = useState(integracao.apiKey)
@@ -78,16 +78,8 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
     })
   }
 
-  const handleProviderChange = (p: string | null) => {
-    if (!p) return
-    const prov = p as any
-    setProvider(prov)
-    // Defaults for each provider if changing
-    if (prov === "openrouter") setModel("meta-llama/llama-3.1-8b-instruct:free")
-    else if (prov === "google") setModel("gemini-2.0-flash")
-    else if (prov === "groq") setModel("llama-3.1-70b-versatile")
-    else if (prov === "openai") setModel("gpt-4o-mini")
-    else if (prov === "anthropic") setModel("claude-3-5-sonnet-latest")
+  const handleProviderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setProvider(e.target.value)
   }
 
 
@@ -138,20 +130,12 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
             <label className="text-sm font-medium text-text-primary">
               Provedor <span className="text-destructive">*</span>
             </label>
-            <Select value={provider} onValueChange={handleProviderChange} disabled={isPending}>
-              <SelectTrigger>
-                <SelectValue>
-                  <span className="capitalize">{provider}</span>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectPopup>
-                <SelectItem value="openrouter">OpenRouter (Gratuito)</SelectItem>
-                <SelectItem value="groq">Groq (Llama, Mixtral)</SelectItem>
-                <SelectItem value="google">Google Gemini</SelectItem>
-                <SelectItem value="openai">OpenAI (GPT)</SelectItem>
-                <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
-              </SelectPopup>
-            </Select>
+            <Input
+              value={provider}
+              onChange={handleProviderChange}
+              placeholder="Ex.: OpenRouter, OpenAI, Groq..."
+              disabled={isPending}
+            />
           </div>
 
           {/* Modelo */}
@@ -165,13 +149,13 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
               placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
               disabled={isPending}
             />
-            {provider === "openrouter" && (
+            {provider.toLowerCase().includes("openrouter") && (
               <p className="text-[10px] text-text-secondary">Modelos gratuitos: meta-llama/llama-3.1-8b-instruct:free · mistralai/mistral-7b-instruct:free · google/gemma-2-9b-it:free · microsoft/phi-3-mini-128k-instruct:free</p>
             )}
-            {provider === "groq" && (
+            {provider.toLowerCase().includes("groq") && (
               <p className="text-[10px] text-text-secondary">Sugestão: llama-3.1-70b-versatile, llama-3.1-8b-instant</p>
             )}
-            {provider === "google" && (
+            {provider.toLowerCase().includes("google") && (
               <p className="text-[10px] text-text-secondary">Sugestão: gemini-2.0-flash-exp, gemini-1.5-flash</p>
             )}
           </div>

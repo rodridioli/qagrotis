@@ -173,7 +173,27 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen,
 
               // "Assistente de IA" is a drawer trigger, not a route link
               if (isAssistente) {
-                if (!hasIntegracoes) return null
+                if (!hasIntegracoes) {
+                  const disabledClassName = cn(
+                    "flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-text-secondary opacity-50 cursor-not-allowed",
+                    collapsed ? "lg:justify-center" : ""
+                  )
+                  if (!showLabel) {
+                    return (
+                      <Tooltip key={href}>
+                        <TooltipTrigger render={<span className={cn(disabledClassName, "w-full")} />}>
+                          {itemChildren}
+                        </TooltipTrigger>
+                        <TooltipContent>{label} (Desabilitado)</TooltipContent>
+                      </Tooltip>
+                    )
+                  }
+                  return (
+                    <span key={href} className={cn(disabledClassName, "w-full")}>
+                      {itemChildren}
+                    </span>
+                  )
+                }
 
                 if (!showLabel) {
                   return (
