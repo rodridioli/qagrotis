@@ -402,9 +402,16 @@ export default function LayoutClient({
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
+  const { data: session, status } = useSession()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [sistemaSelecionado, setSistemaSelecionado] = useState("")
+  const [sistemaSelecionado, setSistemaSelecionado] = useState<string>(() => {
+    // Initialize synchronously from localStorage to avoid disabled-menu flash
+    if (typeof window === "undefined" || sistemaNames.length === 0) return ""
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved && sistemaNames.includes(saved)) return saved
+    return sistemaNames[0] ?? ""
+  })
   const [isDark, setIsDark] = useState(false)
   const [assistenteOpen, setAssistenteOpen] = useState(false)
 
@@ -413,18 +420,29 @@ export default function LayoutClient({
   const hasSistemaModulo = hasActiveSistema && sistemaComModulo.includes(sistemaSelecionado)
   const hasSistemaCenario = hasActiveSistema && sistemaComCenario.includes(sistemaSelecionado)
 
+  // After a fresh login (e.g. Google OAuth), force the server layout to re-fetch
+  // so the new user and any updated data appear immediately without a manual reload.
+  const prevStatusRef = React.useRef(status)
+  useEffect(() => {
+    if (prevStatusRef.current === "loading" && status === "authenticated") {
+      router.refresh()
+    }
+    prevStatusRef.current = status
+  }, [status, router])
+
+  // Keep sistemaSelecionado in sync if sistemaNames changes (e.g. after adding a new system)
   useEffect(() => {
     if (sistemaNames.length === 0) {
       setSistemaSelecionado("")
       localStorage.removeItem(STORAGE_KEY)
       return
     }
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved && sistemaNames.includes(saved)) {
-      setSistemaSelecionado(saved)
-    } else {
-      setSistemaSelecionado(sistemaNames[0])
-    }
+    setSistemaSelecionado((prev) => {
+      if (prev && sistemaNames.includes(prev)) return prev
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved && sistemaNames.includes(saved)) return saved
+      return sistemaNames[0] ?? ""
+    })
   }, [sistemaNames])
 
   // Redirect to /configuracoes/sistemas when there are no active systems

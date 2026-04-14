@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import React, { useState, useMemo, useTransition } from "react"
+import React, { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, X, Filter, Power } from "lucide-react"
@@ -67,6 +67,14 @@ interface Props {
 export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+
+  // If the currently logged-in user is not yet in the list (e.g. just registered via Google OAuth),
+  // force a fresh fetch so the new record appears without requiring a manual reload.
+  useEffect(() => {
+    if (currentUserId && !initialUsers.some((u) => u.id === currentUserId)) {
+      router.refresh()
+    }
+  }, [currentUserId, initialUsers, router])
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
 
