@@ -403,10 +403,9 @@ export default function LayoutClient({
   const router = useRouter()
   const pathname = usePathname()
   const { data: session, status } = useSession()
+  const [hydrated, setHydrated] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  // Default to the first system so the menu is never incorrectly disabled on first render.
-  // localStorage preference is applied after hydration via the useEffect below.
   const [sistemaSelecionado, setSistemaSelecionado] = useState<string>(
     sistemaNames[0] ?? ""
   )
@@ -428,12 +427,13 @@ export default function LayoutClient({
     prevStatusRef.current = status
   }, [status, router])
 
-  // On mount and whenever sistemaNames changes: apply localStorage preference.
+  // On mount: apply localStorage preference and mark UI as ready.
   // We do this in useEffect (client-only) to avoid SSR/hydration mismatch.
   useEffect(() => {
     if (sistemaNames.length === 0) {
       setSistemaSelecionado("")
       localStorage.removeItem(STORAGE_KEY)
+      setHydrated(true)
       return
     }
     const saved = localStorage.getItem(STORAGE_KEY)
@@ -442,6 +442,7 @@ export default function LayoutClient({
     } else {
       setSistemaSelecionado(sistemaNames[0] ?? "")
     }
+    setHydrated(true)
   }, [sistemaNames])
 
   // Redirect to /configuracoes/sistemas when there are no active systems
@@ -469,6 +470,17 @@ export default function LayoutClient({
     document.documentElement.classList.toggle("dark", next)
     setIsDark(next)
     localStorage.setItem(THEME_KEY, next ? "dark" : "light")
+  }
+
+  if (!hydrated) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-surface-default">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
+          <span className="text-sm text-text-secondary">Carregando...</span>
+        </div>
+      </div>
+    )
   }
 
   return (
