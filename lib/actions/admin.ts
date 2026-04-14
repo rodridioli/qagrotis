@@ -1,6 +1,7 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
+import { LAYOUT_CACHE_TAG } from "@/lib/layout-cache"
 import { requireAdmin } from "@/lib/session"
 import { prisma } from "@/lib/prisma"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"

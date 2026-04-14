@@ -1,6 +1,7 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
+import { LAYOUT_CACHE_TAG } from "@/lib/layout-cache"
 import { z } from "zod"
 import { nextId } from "@/lib/db-utils"
 import { requireAdmin } from "@/lib/session"
@@ -105,6 +106,7 @@ export async function atualizarModulo(
   revalidatePath("/suites")
   revalidatePath("/suites/nova")
   revalidatePath("/gerador")
+  revalidateTag(LAYOUT_CACHE_TAG)
 }
 
 export async function inativarModulos(ids: string[]): Promise<void> {
@@ -141,4 +143,5 @@ export async function inativarModulos(ids: string[]): Promise<void> {
   revalidatePath("/suites")
   revalidatePath("/suites/nova")
   revalidatePath("/gerador")
+  revalidateTag(LAYOUT_CACHE_TAG)
 }
