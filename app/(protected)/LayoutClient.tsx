@@ -416,8 +416,10 @@ export default function LayoutClient({
   const [stableIntegracoes, setStableIntegracoes] = useState(integracoesProp)
 
   useEffect(() => {
+    // sistemaNames: only update with non-empty to avoid blank menu flash during refresh
     if (sistemaNamesProp.length > 0) setStableNames(sistemaNamesProp)
-    if (integracoesProp.length > 0) setStableIntegracoes(integracoesProp)
+    // integracoes: always update — user may have inactivated all, menu must reflect it
+    setStableIntegracoes(integracoesProp)
   }, [sistemaNamesProp, integracoesProp])
 
   const sistemaNames = stableNames
