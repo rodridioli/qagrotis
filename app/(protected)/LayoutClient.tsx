@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useTransition } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
@@ -79,10 +79,12 @@ interface SidebarProps {
   hasSistemaModulo: boolean
   hasSistemaCenario: boolean
   hasIntegracoes: boolean
+  onNavigate?: () => void
 }
 
-function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasActiveSistema, hasSistemaModulo, hasSistemaCenario, hasIntegracoes }: SidebarProps) {
+function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasActiveSistema, hasSistemaModulo, hasSistemaCenario, hasIntegracoes, onNavigate }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const expanded = !collapsed
 
   return (
@@ -234,7 +236,10 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen,
               if (!showLabel) {
                 return (
                   <Tooltip key={href}>
-                    <TooltipTrigger render={<Link href={href} style={itemStyle} className={itemClassName} />}>
+                    <TooltipTrigger render={
+                      <button type="button" style={itemStyle} className={itemClassName}
+                        onClick={() => { onNavigate?.(); router.push(href) }} />
+                    }>
                       {itemChildren}
                     </TooltipTrigger>
                     <TooltipContent>{label}</TooltipContent>
@@ -242,9 +247,10 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen,
                 )
               }
               return (
-                <Link key={href} href={href} style={itemStyle} className={itemClassName}>
+                <button key={href} type="button" style={itemStyle} className={itemClassName}
+                  onClick={() => { onNavigate?.(); router.push(href) }}>
                   {itemChildren}
-                </Link>
+                </button>
               )
             })}
           </TooltipProvider>
@@ -395,44 +401,71 @@ interface Props {
 
 export default function LayoutClient({
   children,
-  sistemaNames,
-  integracoes = [],
-  sistemaComModulo = [],
-  sistemaComCenario = [],
+  sistemaNames: sistemaNamesProp,
+  integracoes: integracoesProp = [],
+  sistemaComModulo: sistemaComModuloProp = [],
+  sistemaComCenario: sistemaComCenarioProp = [],
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const { data: session } = useSession()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  // Server already provides the correct sistemaNames — use first as default.
-  // localStorage preference is applied silently on mount with no visible delay.
-  const [sistemaSelecionado, setSistemaSelecionado] = useState<string>(sistemaNames[0] ?? "")
   const [isDark, setIsDark] = useState(false)
   const [assistenteOpen, setAssistenteOpen] = useState(false)
+  const [isPending, startNavigationTransition] = useTransition()
 
-  // Computed flags — derived directly from server props, no async step needed.
-  const hasActiveSistema = sistemaNames.length > 0
-  const hasSistemaModulo = hasActiveSistema && sistemaComModulo.includes(sistemaSelecionado)
-  const hasSistemaCenario = hasActiveSistema && sistemaComCenario.includes(sistemaSelecionado)
+  // ── Preserve last-known-good menu data ──────────────────────────────────────
+  // Never let empty props (arriving during router.refresh() mid-flight) blank the menu.
+  const [stableNames, setStableNames] = useState(sistemaNamesProp)
+  const [stableIntegracoes, setStableIntegracoes] = useState(integracoesProp)
+  const [stableModulo, setStableModulo] = useState(sistemaComModuloProp)
+  const [stableCenario, setStableCenario] = useState(sistemaComCenarioProp)
 
-  // On mount: silently apply the localStorage preference if it differs from the default.
-  // No loading gate — the UI is already correct with sistemaNames[0] as the default.
+  useEffect(() => {
+    if (sistemaNamesProp.length > 0) setStableNames(sistemaNamesProp)
+    if (integracoesProp.length > 0) setStableIntegracoes(integracoesProp)
+    if (sistemaComModuloProp.length > 0) setStableModulo(sistemaComModuloProp)
+    if (sistemaComCenarioProp.length > 0) setStableCenario(sistemaComCenarioProp)
+  }, [sistemaNamesProp, integracoesProp, sistemaComModuloProp, sistemaComCenarioProp])
+
+  // sistemaNames/etc now always use the stable (last-known-good) values
+  const sistemaNames = stableNames
+  const integracoes = stableIntegracoes
+  const sistemaComModulo = stableModulo
+  const sistemaComCenario = stableCenario
+
+  // ── Sistema selecionado ──────────────────────────────────────────────────────
+  const [sistemaSelecionado, setSistemaSelecionado] = useState<string>(sistemaNames[0] ?? "")
+
+  // On mount: apply localStorage preference
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved && sistemaNames.includes(saved) && saved !== sistemaSelecionado) {
+    if (saved && sistemaNames.includes(saved)) {
       setSistemaSelecionado(saved)
+    } else if (sistemaNames[0]) {
+      setSistemaSelecionado(sistemaNames[0])
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Redirect to /configuracoes/sistemas when there are no active systems
+  // Keep sistemaSelecionado valid when stableNames updates
   useEffect(() => {
-    if (!hasActiveSistema && !pathname.startsWith("/configuracoes/sistemas")) {
-      router.push("/configuracoes/sistemas")
-    }
-  }, [hasActiveSistema, pathname, router])
+    if (sistemaNames.length === 0) return
+    setSistemaSelecionado((prev) => {
+      if (prev && sistemaNames.includes(prev)) return prev
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved && sistemaNames.includes(saved)) return saved
+      return sistemaNames[0] ?? ""
+    })
+  }, [sistemaNames])
 
+  // ── Computed flags ────────────────────────────────────────────────────────────
+  const hasActiveSistema = sistemaNames.length > 0
+  const hasSistemaModulo = hasActiveSistema && sistemaComModulo.includes(sistemaSelecionado)
+  const hasSistemaCenario = hasActiveSistema && sistemaComCenario.includes(sistemaSelecionado)
+
+  // ── Theme ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
     const savedTheme = localStorage.getItem(THEME_KEY)
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -440,6 +473,13 @@ export default function LayoutClient({
     setIsDark(dark)
     document.documentElement.classList.toggle("dark", dark)
   }, [])
+
+  // ── Redirect if no systems ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!hasActiveSistema && !pathname.startsWith("/configuracoes/sistemas")) {
+      router.push("/configuracoes/sistemas")
+    }
+  }, [hasActiveSistema, pathname, router])
 
   function handleSistemaChange(value: string) {
     setSistemaSelecionado(value)
@@ -467,6 +507,7 @@ export default function LayoutClient({
           hasSistemaModulo={hasSistemaModulo}
           hasSistemaCenario={hasSistemaCenario}
           hasIntegracoes={integracoes.length > 0}
+          onNavigate={() => startNavigationTransition(() => {})}
         />
         <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -480,7 +521,15 @@ export default function LayoutClient({
             isDark={isDark}
             onToggleTheme={handleToggleTheme}
           />
-          <main className="flex-1 overflow-auto bg-surface-default p-4 lg:p-6">
+          <main className="relative flex-1 overflow-auto bg-surface-default p-4 lg:p-6">
+            {isPending && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-surface-default/80 backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
+                  <span className="text-sm text-text-secondary">Carregando...</span>
+                </div>
+              </div>
+            )}
             {(hasActiveSistema || pathname.startsWith("/configuracoes/sistemas")) ? children : null}
           </main>
         </div>
