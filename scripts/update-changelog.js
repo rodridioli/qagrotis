@@ -1,104 +1,57 @@
 #!/usr/bin/env node
 /**
- * update-changelog.js
- * Reads recent git commits and appends new entries to data/changelog.json.
+ * Automatically adds a new changelog entry based on git commits since the last entry.
+ * Run: node scripts/update-changelog.js <version> <tag> [author]
  *
- * Usage:
- *   node scripts/update-changelog.js
- *   npm run changelog:update
- *
- * Each run adds all commits since the last recorded commit as a single entry.
- * Edit the generated entry in data/changelog.json to adjust the tag and changes.
+ * Example: node scripts/update-changelog.js 1.6.0 Melhoria "Rodrigo Diego de Oliveira"
  */
-
-const { execSync } = require("child_process")
 const fs = require("fs")
+const { execSync } = require("child_process")
 const path = require("path")
 
-const CHANGELOG_PATH = path.join(__dirname, "..", "data", "changelog.json")
+const [,, version, tag = "Melhoria", author = "Rodrigo Diego de Oliveira"] = process.argv
 
-// ── Read existing changelog ───────────────────────────────────────────────────
+if (!version) {
+  console.error("Usage: node scripts/update-changelog.js <version> [tag] [author]")
+  process.exit(1)
+}
 
-let entries = []
+const changelogPath = path.join(__dirname, "../data/changelog.json")
+const data = JSON.parse(fs.readFileSync(changelogPath, "utf-8"))
+
+// Get date of last entry to use as 'since'
+const lastDate = data[0]?.date ?? "2026-01-01"
+
+// Get commits since last changelog
+let commits = []
 try {
-  entries = JSON.parse(fs.readFileSync(CHANGELOG_PATH, "utf-8"))
+  const log = execSync(
+    `git log --since="${lastDate}T00:00:00" --format="%s" --no-merges`,
+    { encoding: "utf-8" }
+  ).trim()
+  commits = log.split("\n").filter(Boolean).filter(s =>
+    !s.startsWith("prisma") && !s.includes("seed") && !s.includes("Merge")
+  )
 } catch {
-  console.warn("[changelog] Could not read changelog.json — starting fresh.")
+  commits = ["Melhorias gerais e correções de bugs."]
 }
-
-const lastCommit = entries[0]?.commit ?? null
-
-// ── Read git log ───────────────────────────────────────────────────────────────
-
-function git(cmd) {
-  try {
-    return execSync(cmd, { encoding: "utf-8" }).trim()
-  } catch {
-    return ""
-  }
-}
-
-// Get commits since last recorded one (or all if no previous entry)
-const range = lastCommit && lastCommit !== "pendente" ? `${lastCommit}..HEAD` : "HEAD"
-const logOutput = git(`git log ${range} --pretty=format:"%H|%h|%s|%an|%ad" --date=short`)
-
-if (!logOutput) {
-  console.log("[changelog] Nenhum commit novo encontrado desde a última entrada.")
-  process.exit(0)
-}
-
-const commits = logOutput
-  .split("\n")
-  .filter(Boolean)
-  .map((line) => {
-    const [hash, shortHash, subject, author, date] = line.split("|")
-    return { hash, shortHash, subject, author, date }
-  })
 
 if (commits.length === 0) {
-  console.log("[changelog] Nenhum commit novo.")
+  console.log("No new commits found since last entry. Nothing added.")
   process.exit(0)
 }
 
-// ── Build new entry ───────────────────────────────────────────────────────────
-
-const latest = commits[0]
-const changes = commits.map((c) => {
-  // Strip conventional commit prefixes (feat:, fix:, chore:, etc.)
-  return c.subject.replace(/^(feat|fix|chore|refactor|style|test|docs|perf|ci|build|revert)(\(.+?\))?:\s*/i, "")
-})
-
-// Auto-detect tag from commit messages
-function detectTag(subjects) {
-  const text = subjects.join(" ").toLowerCase()
-  if (/\bfix\b|bug|erro|corr/.test(text)) return "Correção"
-  if (/\bfeat\b|novo|add|nova|implementa|gerador|integra/.test(text)) return "Novidade"
-  return "Melhoria"
-}
-
-// Derive next version number
-function nextVersion(existingEntries) {
-  if (existingEntries.length === 0) return "1.0.1"
-  const last = existingEntries[0]?.version ?? "1.0.0"
-  const parts = last.split(".").map(Number)
-  parts[2] = (parts[2] ?? 0) + 1
-  return parts.join(".")
-}
+const today = new Date().toISOString().split("T")[0]
 
 const newEntry = {
-  version: nextVersion(entries),
-  commit: latest.shortHash,
-  date: latest.date,
-  tag: detectTag(commits.map((c) => c.subject)),
-  author: latest.author,
-  changes,
+  version,
+  commit: "deploy-vercel",
+  date: today,
+  tag,
+  author,
+  changes: commits.slice(0, 15) // max 15 entries
 }
 
-// ── Prepend and write ──────────────────────────────────────────────────────────
-
-entries.unshift(newEntry)
-fs.writeFileSync(CHANGELOG_PATH, JSON.stringify(entries, null, 2) + "\n", "utf-8")
-
-console.log(`[changelog] ✓ Adicionada entrada v${newEntry.version} (${newEntry.tag}) com ${changes.length} alteração(ões).`)
-console.log(`[changelog] Commits incluídos: ${commits.map((c) => c.shortHash).join(", ")}`)
-console.log(`[changelog] Revise data/changelog.json para ajustar tag e descrições se necessário.`)
+data.unshift(newEntry)
+fs.writeFileSync(changelogPath, JSON.stringify(data, null, 2), "utf-8")
+console.log(`✅ Added changelog entry ${version} with ${newEntry.changes.length} changes.`)

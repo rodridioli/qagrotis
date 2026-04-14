@@ -1,5 +1,24 @@
 [
   {
+    "version": "1.5.0",
+    "commit": "deploy-vercel",
+    "date": "2026-04-14",
+    "tag": "Melhoria",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Menu lateral: itens habilitados imediatamente ao carregar, sem delay ou piscar de itens desabilitados.",
+      "Tela de carregamento: exibida enquanto o sistema inicializa, interface só aparece quando está pronta.",
+      "Modal 'Adicionar Cenário' (Suítes): corrigido para mostrar todos os cenários ativos corretamente.",
+      "Inativação otimista: loading só desaparece após os itens já terem sumido da tela em todas as telas.",
+      "Foco automático: campo 'Ação' recebe foco ao clicar em 'Adicionar passo' (cadastro e edição).",
+      "Cenários inativos na Suíte: exibem opção 'Visualizar' ao invés de 'Testar', com badge 'Inativo'.",
+      "Login Google: usuário novo aparece imediatamente na listagem sem precisar relogar.",
+      "Suítes/Nova: cenários recém-cadastrados aparecem na modal sem precisar recarregar a página.",
+      "Configurações: seção de limpeza de banco redesenhada, resultado exibido via toast.",
+      "Dependências e Suítes: filtros de cenários com comparação case-insensitive para cenários importados."
+    ]
+  },
+  {
     "version": "1.4.0",
     "commit": "deploy-vercel",
     "date": "2026-04-13",
