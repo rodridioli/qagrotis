@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useTransition, useCallback } from "react"
+import React, { useEffect, useState, useMemo, useTransition, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AlertCircle, ArrowLeft, Check, ChevronDown, ChevronUp, Eye, EyeOff, Filter, Loader2, MoreVertical, Plus, Power, ShieldCheck, X } from "lucide-react"
@@ -55,9 +55,11 @@ interface Props {
   isAdmin: boolean
 }
 
-export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props) {
+export default function IntegracoesClient({ initialIntegracoes: initialIntegracoesParam, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [localIntegracoes, setLocalIntegracoes] = useState(initialIntegracoesParam)
+  useEffect(() => { setLocalIntegracoes(initialIntegracoesParam) }, [initialIntegracoesParam])
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
 
@@ -161,7 +163,7 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
   // ──────────────────────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
-    const result = initialIntegracoes.filter((i) => {
+    const result = localIntegracoes.filter((i) => {
       const matchSearch =
         !search ||
         i.id.toLowerCase().includes(search.toLowerCase()) ||
@@ -174,7 +176,7 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
       const diff = numericId(a.id) - numericId(b.id)
       return sortOrder === "desc" ? -diff : diff
     })
-  }, [search, filters, initialIntegracoes, sortOrder])
+  }, [search, filters, localIntegracoes, sortOrder])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -183,7 +185,7 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
   )
 
   const activeFilterCount = filters.apenasInativos ? 1 : 0
-  const hasActiveIntegracoes = initialIntegracoes.some((i) => i.active)
+  const hasActiveIntegracoes = localIntegracoes.some((i) => i.active)
   const showBulkActions = isAdmin && !filters.apenasInativos && hasActiveIntegracoes
   const selectableIds = pageItems.map((i) => i.id)
 
@@ -229,17 +231,15 @@ export default function IntegracoesClient({ initialIntegracoes, isAdmin }: Props
     startTransition(async () => {
       try {
         await inativarIntegracoes(ids)
+        const idSet = new Set(ids)
+        setLocalIntegracoes((prev) => prev.map((i) => idSet.has(i.id) ? { ...i, active: false } : i))
+        setIsInativando(false)
         router.refresh()
         toast.success(
-          count === 1
-            ? "Integração inativada com sucesso."
-            : `${count} integrações inativadas com sucesso.`
-        )
       } catch {
+        setIsInativando(false)
         router.refresh()
         toast.error("Erro ao inativar. Tente novamente.")
-      } finally {
-        setIsInativando(false)
       }
     })
   }

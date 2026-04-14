@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useTransition } from "react"
+import React, { useEffect, useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, X, Filter, Power, Check } from "lucide-react"
@@ -47,9 +47,11 @@ interface Props {
   isAdmin: boolean
 }
 
-export default function SistemasClient({ initialSistemas, initialModulos, isAdmin }: Props) {
+export default function SistemasClient({ initialSistemas: initialSistemasParam, initialModulos, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [localSistemas, setLocalSistemas] = useState(initialSistemasParam)
+  useEffect(() => { setLocalSistemas(initialSistemasParam) }, [initialSistemasParam])
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
 
@@ -108,7 +110,7 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
   // ──────────────────────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
-    const result = initialSistemas.filter((s) => {
+    const result = localSistemas.filter((s) => {
       const matchSearch =
         !search ||
         s.id.toLowerCase().includes(search.toLowerCase()) ||
@@ -121,7 +123,7 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
       const diff = numericId(a.id) - numericId(b.id)
       return sortOrder === "desc" ? -diff : diff
     })
-  }, [search, filters, initialSistemas, sortOrder])
+  }, [search, filters, localSistemas, sortOrder])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -130,7 +132,7 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
   )
 
   const activeFilterCount = filters.apenasInativos ? 1 : 0
-  const hasActiveSistemas = initialSistemas.some((s) => s.active)
+  const hasActiveSistemas = localSistemas.some((s) => s.active)
   const showBulkActions = isAdmin && !filters.apenasInativos && hasActiveSistemas
   const selectableIds = pageItems.map((s) => s.id)
 
@@ -177,6 +179,9 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
     startTransition(async () => {
       try {
         await inativarSistemas(ids)
+        const idSet = new Set(ids)
+        setLocalSistemas((prev) => prev.map((s) => idSet.has(s.id) ? { ...s, active: false } : s))
+        setIsInativando(false)
         router.refresh()
         toast.success(
           count === 1
@@ -184,10 +189,9 @@ export default function SistemasClient({ initialSistemas, initialModulos, isAdmi
             : `${count} sistemas inativados com sucesso.`
         )
       } catch {
+        setIsInativando(false)
         router.refresh()
         toast.error("Erro ao inativar. Tente novamente.")
-      } finally {
-        setIsInativando(false)
       }
     })
   }

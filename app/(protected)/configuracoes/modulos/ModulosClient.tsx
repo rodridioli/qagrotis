@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useTransition } from "react"
+import React, { useEffect, useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, X, Filter, Power, Check } from "lucide-react"
@@ -52,9 +52,11 @@ interface Props {
   isAdmin: boolean
 }
 
-export default function ModulosClient({ initialModulos, initialCenarios, initialSistemas, isAdmin }: Props) {
+export default function ModulosClient({ initialModulos: initialModulosParam, initialCenarios, initialSistemas, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [localModulos, setLocalModulos] = useState(initialModulosParam)
+  useEffect(() => { setLocalModulos(initialModulosParam) }, [initialModulosParam])
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
 
@@ -131,7 +133,7 @@ export default function ModulosClient({ initialModulos, initialCenarios, initial
   // ──────────────────────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
-    const result = initialModulos.filter((m) => {
+    const result = localModulos.filter((m) => {
       const matchSearch =
         !search ||
         m.id.toLowerCase().includes(search.toLowerCase()) ||
@@ -145,7 +147,7 @@ export default function ModulosClient({ initialModulos, initialCenarios, initial
       const diff = numericId(a.id) - numericId(b.id)
       return sortOrder === "desc" ? -diff : diff
     })
-  }, [search, apenasInativos, initialModulos, sortOrder])
+  }, [search, apenasInativos, localModulos, sortOrder])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -154,7 +156,7 @@ export default function ModulosClient({ initialModulos, initialCenarios, initial
   )
 
   const activeFilterCount = apenasInativos ? 1 : 0
-  const hasActiveModulos = initialModulos.some((m) => m.active)
+  const hasActiveModulos = localModulos.some((m) => m.active)
   const showBulkActions = isAdmin && !apenasInativos && hasActiveModulos
   const selectableIds = pageItems.map((m) => m.id)
 
@@ -197,15 +199,15 @@ export default function ModulosClient({ initialModulos, initialCenarios, initial
     startTransition(async () => {
       try {
         await inativarModulos(ids)
+        const idSet = new Set(ids)
+        setLocalModulos((prev) => prev.map((m) => idSet.has(m.id) ? { ...m, active: false } : m))
+        setIsInativando(false)
         router.refresh()
         toast.success(
-          count === 1 ? "Módulo inativado com sucesso." : `${count} módulos inativados com sucesso.`
-        )
       } catch {
+        setIsInativando(false)
         router.refresh()
         toast.error("Erro ao inativar. Tente novamente.")
-      } finally {
-        setIsInativando(false)
       }
     })
   }

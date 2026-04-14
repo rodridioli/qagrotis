@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import React, { useState, useMemo, useTransition } from "react"
+import React, { useEffect, useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, X, Filter, Power, Check } from "lucide-react"
@@ -44,9 +44,11 @@ interface Props {
   isAdmin: boolean
 }
 
-export default function ClientesClient({ initialClientes, initialCenarios, isAdmin }: Props) {
+export default function ClientesClient({ initialClientes: initialClientesParam, initialCenarios, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [localClientes, setLocalClientes] = useState(initialClientesParam)
+  useEffect(() => { setLocalClientes(initialClientesParam) }, [initialClientesParam])
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
 
@@ -141,7 +143,7 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
   }
 
   const filtered = useMemo(() => {
-    const result = initialClientes.filter((c) => {
+    const result = localClientes.filter((c) => {
       const matchSearch =
         !search ||
         c.id.toLowerCase().includes(search.toLowerCase()) ||
@@ -155,7 +157,7 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
       const diff = numericId(a.id) - numericId(b.id)
       return sortOrder === "desc" ? -diff : diff
     })
-  }, [search, apenasInativos, initialClientes, sortOrder])
+  }, [search, apenasInativos, localClientes, sortOrder])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -174,7 +176,7 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
   }, [initialCenarios])
 
   const activeFilterCount = apenasInativos ? 1 : 0
-  const hasActiveClientes = initialClientes.some((c) => c.active)
+  const hasActiveClientes = localClientes.some((c) => c.active)
   const showBulkActions = isAdmin && !apenasInativos && hasActiveClientes
   const selectableIds = pageItems.map((c) => c.id)
 
@@ -217,15 +219,17 @@ export default function ClientesClient({ initialClientes, initialCenarios, isAdm
     startTransition(async () => {
       try {
         await inativarClientes(ids)
+        const idSet = new Set(ids)
+        setLocalClientes((prev) => prev.map((c) => idSet.has(c.id) ? { ...c, active: false } : c))
+        setIsInativando(false)
         router.refresh()
         toast.success(
           count === 1 ? "Cliente inativado com sucesso." : `${count} clientes inativados com sucesso.`
         )
       } catch {
+        setIsInativando(false)
         router.refresh()
         toast.error("Erro ao inativar. Tente novamente.")
-      } finally {
-        setIsInativando(false)
       }
     })
   }

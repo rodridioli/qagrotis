@@ -186,6 +186,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
     startTransition(async () => {
       try {
         await inativarSuites(ids)
+        setIsInativando(false)
         router.refresh()
         toast.success(count === 1 ? "Suíte inativada com sucesso." : `${count} suítes inativadas com sucesso.`)
       } catch {
@@ -195,10 +196,9 @@ export default function SuitesClient({ allModulos, suites }: Props) {
           ids.forEach((id) => next.delete(id))
           return next
         })
+        setIsInativando(false)
         router.refresh()
         toast.error("Erro ao inativar. Tente novamente.")
-      } finally {
-        setIsInativando(false)
       }
     })
   }

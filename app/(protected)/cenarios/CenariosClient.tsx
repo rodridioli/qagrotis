@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useTransition, useEffect, useRef } from "react"
+import { useState, useEffect, useMemo, useTransition, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AlertCircle, ArrowRightLeft, ChevronDown, ChevronUp, FileText, Filter, MoreVertical, Plus, Power, Upload, X } from "lucide-react"
@@ -61,10 +61,12 @@ interface Props {
   initialClientes: ClienteRecord[]
 }
 
-export default function CenariosClient({ initialCenarios, allModulos, initialClientes }: Props) {
+export default function CenariosClient({ initialCenarios: initialCenariosParam, allModulos, initialClientes }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isImporting, setIsImporting] = useState(false)
+  const [initialCenarios, setInitialCenarios] = useState(initialCenariosParam)
+  useEffect(() => { setInitialCenarios(initialCenariosParam) }, [initialCenariosParam])
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
   const { sistemaSelecionado } = useSistemaSelecionado()
@@ -183,6 +185,9 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
     startTransition(async () => {
       try {
         await inativarCenarios(ids)
+        const idSet = new Set(ids)
+        setInitialCenarios((prev) => prev.map((c) => idSet.has(c.id) ? { ...c, active: false } : c))
+        setIsInativando(false)
         router.refresh()
         toast.success(
           count === 1
@@ -190,10 +195,9 @@ export default function CenariosClient({ initialCenarios, allModulos, initialCli
             : `${count} cenários inativados com sucesso.`
         )
       } catch {
+        setIsInativando(false)
         router.refresh()
         toast.error("Erro ao inativar. Tente novamente.")
-      } finally {
-        setIsInativando(false)
       }
     })
   }
