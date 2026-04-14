@@ -18,6 +18,10 @@ export interface LimparResult {
 /**
  * Hard-deletes all inactive records from every entity.
  * Admin-only. Runs in FK-safe order.
+ *
+ * FK constraint note: Modulo.sistemaId is non-nullable → FK RESTRICT.
+ * Before deleting inactive Sistemas, we must delete ALL their Modulos
+ * (active or inactive) to avoid FK violations from inconsistent data.
  */
 export async function limparRegistrosInativos(): Promise<LimparResult> {
   await requireAdmin()
@@ -51,26 +55,21 @@ export async function limparRegistrosInativos(): Promise<LimparResult> {
   const clienteIds    = inactiveClientes.map((r) => r.id)
   const integracaoIds = inactiveIntegracoes.map((r) => r.id)
 
-  // Inactive CreatedUsers: only those whose ID appears in InactiveUser table
-  // (never touch MOCK_USERS, they are managed by constants)
+  // Inactive CreatedUsers: only those whose ID appears in InactiveUser table.
+  // Never touch MOCK_USERS — they live in code constants and can't be DB-deleted.
   const mockUserIds    = new Set(MOCK_USERS.map((u) => u.id))
   const createdUserIds = new Set(createdUsers.map((u) => u.id))
   const inactiveCreatedUserIds = inactiveUserRecords
     .map((r) => r.userId)
     .filter((id) => createdUserIds.has(id) && !mockUserIds.has(id))
 
-  // ── Step 1: NULL FK on Cenarios/Suites pointing to inactive Modulos ───────
+  // ── Step 1: NULL FK on Cenarios/Suites → inactive Modulos ───────────────
+  // (covers both active and inactive records that reference these Modulos)
 
   if (moduloIds.length > 0) {
     await prisma.$transaction([
-      prisma.cenario.updateMany({
-        where: { moduleId: { in: moduloIds } },
-        data: { moduleId: null },
-      }),
-      prisma.suite.updateMany({
-        where: { moduloId: { in: moduloIds } },
-        data: { moduloId: null },
-      }),
+      prisma.cenario.updateMany({ where: { moduleId: { in: moduloIds } }, data: { moduleId: null } }),
+      prisma.suite.updateMany({ where: { moduloId: { in: moduloIds } }, data: { moduloId: null } }),
     ])
   }
 
@@ -78,91 +77,89 @@ export async function limparRegistrosInativos(): Promise<LimparResult> {
 
   let deletedCenarios = 0
   if (cenarioIds.length > 0) {
-    const result = await prisma.cenario.deleteMany({
-      where: { id: { in: cenarioIds } },
-    })
-    deletedCenarios = result.count
+    const r = await prisma.cenario.deleteMany({ where: { id: { in: cenarioIds } } })
+    deletedCenarios = r.count
   }
 
   // ── Step 3: Delete inactive Suites ──────────────────────────────────────
 
   let deletedSuites = 0
   if (suiteIds.length > 0) {
-    const result = await prisma.suite.deleteMany({
-      where: { id: { in: suiteIds } },
-    })
-    deletedSuites = result.count
+    const r = await prisma.suite.deleteMany({ where: { id: { in: suiteIds } } })
+    deletedSuites = r.count
   }
 
   // ── Step 4: Delete inactive Modulos ─────────────────────────────────────
 
   let deletedModulos = 0
   if (moduloIds.length > 0) {
-    const result = await prisma.modulo.deleteMany({
-      where: { id: { in: moduloIds } },
-    })
-    deletedModulos = result.count
+    const r = await prisma.modulo.deleteMany({ where: { id: { in: moduloIds } } })
+    deletedModulos = r.count
   }
 
-  // ── Step 5: NULL FK on Cenarios/Suites pointing to inactive Sistemas ─────
+  // ── Step 5: NULL FK on Cenarios/Suites → inactive Sistemas ──────────────
 
   if (sistemaIds.length > 0) {
     await prisma.$transaction([
-      prisma.cenario.updateMany({
-        where: { systemId: { in: sistemaIds } },
-        data: { systemId: null },
-      }),
-      prisma.suite.updateMany({
-        where: { sistemaId: { in: sistemaIds } },
-        data: { sistemaId: null },
-      }),
+      prisma.cenario.updateMany({ where: { systemId: { in: sistemaIds } }, data: { systemId: null } }),
+      prisma.suite.updateMany({ where: { sistemaId: { in: sistemaIds } }, data: { sistemaId: null } }),
     ])
   }
 
-  // ── Step 6: Delete inactive Sistemas ────────────────────────────────────
+  // ── Step 6: Delete ALL Modulos of inactive Sistemas ─────────────────────
+  // Modulo.sistemaId is non-nullable (FK RESTRICT). Any Modulo — active or
+  // inactive — still referencing an inactive Sistema must be removed first.
+  // This covers data-inconsistency edge cases where cascade didn't fire.
+
+  if (sistemaIds.length > 0) {
+    // First NULL their FK pointers from Cenarios/Suites
+    const residualModulos = await prisma.modulo.findMany({
+      where: { sistemaId: { in: sistemaIds } },
+      select: { id: true },
+    })
+    const residualIds = residualModulos.map((m) => m.id)
+    if (residualIds.length > 0) {
+      await prisma.$transaction([
+        prisma.cenario.updateMany({ where: { moduleId: { in: residualIds } }, data: { moduleId: null } }),
+        prisma.suite.updateMany({ where: { moduloId: { in: residualIds } }, data: { moduloId: null } }),
+        prisma.modulo.deleteMany({ where: { id: { in: residualIds } } }),
+      ])
+      deletedModulos += residualIds.length
+    }
+  }
+
+  // ── Step 7: Delete inactive Sistemas ────────────────────────────────────
 
   let deletedSistemas = 0
   if (sistemaIds.length > 0) {
-    const result = await prisma.sistema.deleteMany({
-      where: { id: { in: sistemaIds } },
-    })
-    deletedSistemas = result.count
+    const r = await prisma.sistema.deleteMany({ where: { id: { in: sistemaIds } } })
+    deletedSistemas = r.count
   }
 
-  // ── Step 7: Delete inactive Clientes ────────────────────────────────────
+  // ── Step 8: Delete inactive Clientes ────────────────────────────────────
 
   let deletedClientes = 0
   if (clienteIds.length > 0) {
-    const result = await prisma.cliente.deleteMany({
-      where: { id: { in: clienteIds } },
-    })
-    deletedClientes = result.count
+    const r = await prisma.cliente.deleteMany({ where: { id: { in: clienteIds } } })
+    deletedClientes = r.count
   }
 
-  // ── Step 8: Delete inactive Integracoes ─────────────────────────────────
+  // ── Step 9: Delete inactive Integracoes ─────────────────────────────────
 
   let deletedIntegracoes = 0
   if (integracaoIds.length > 0) {
-    const result = await prisma.integracao.deleteMany({
-      where: { id: { in: integracaoIds } },
-    })
-    deletedIntegracoes = result.count
+    const r = await prisma.integracao.deleteMany({ where: { id: { in: integracaoIds } } })
+    deletedIntegracoes = r.count
   }
 
-  // ── Step 9: Delete inactive CreatedUsers ────────────────────────────────
+  // ── Step 10: Delete inactive CreatedUsers ───────────────────────────────
 
   let deletedUsuarios = 0
   if (inactiveCreatedUserIds.length > 0) {
     await prisma.$transaction([
-      prisma.userProfile.deleteMany({
-        where: { userId: { in: inactiveCreatedUserIds } },
-      }),
-      prisma.inactiveUser.deleteMany({
-        where: { userId: { in: inactiveCreatedUserIds } },
-      }),
-      prisma.createdUser.deleteMany({
-        where: { id: { in: inactiveCreatedUserIds } },
-      }),
+      prisma.userProfile.deleteMany({ where: { userId: { in: inactiveCreatedUserIds } } }),
+      prisma.inactiveUser.deleteMany({ where: { userId: { in: inactiveCreatedUserIds } } }),
+      prisma.createdUser.deleteMany({ where: { id: { in: inactiveCreatedUserIds } } }),
     ])
     deletedUsuarios = inactiveCreatedUserIds.length
   }

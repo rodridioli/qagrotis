@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Trash2 } from "lucide-react"
 import { limparRegistrosInativos, type LimparResult } from "@/lib/actions/admin"
 
 export default function LimparBancoButton() {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [result, setResult] = useState<LimparResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -22,6 +24,7 @@ export default function LimparBancoButton() {
       try {
         const res = await limparRegistrosInativos()
         setResult(res)
+        router.refresh()
       } catch (e) {
         setError(e instanceof Error ? e.message : "Erro ao limpar registros.")
       }
@@ -34,9 +37,9 @@ export default function LimparBancoButton() {
     : 0
 
   return (
-    <div className="rounded-xl border border-border bg-surface-card p-6 shadow-card">
+    <div className="rounded-xl border border-neutral-grey-200 bg-surface-card p-6 shadow-card">
       <div className="flex items-start gap-4">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-danger-50 text-danger-600">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
           <Trash2 className="size-6" />
         </div>
         <div className="flex-1 min-w-0">
@@ -46,7 +49,7 @@ export default function LimparBancoButton() {
           </p>
 
           {result && (
-            <p className="mt-3 text-sm text-success-600 font-medium">
+            <p className="mt-3 text-sm text-green-600 font-medium">
               {total === 0
                 ? "Nenhum registro inativo encontrado."
                 : `${total} registro${total !== 1 ? "s" : ""} removido${total !== 1 ? "s" : ""}: ${[
@@ -64,7 +67,7 @@ export default function LimparBancoButton() {
           )}
 
           {error && (
-            <p className="mt-3 text-sm text-danger-600">{error}</p>
+            <p className="mt-3 text-sm text-red-600 font-medium">{error}</p>
           )}
 
           <div className="mt-4 flex items-center gap-3">
@@ -73,7 +76,7 @@ export default function LimparBancoButton() {
               disabled={isPending}
               className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60 ${
                 confirmando
-                  ? "bg-danger-600 text-white hover:bg-danger-700"
+                  ? "bg-red-600 text-white hover:bg-red-700"
                   : "bg-neutral-grey-100 text-text-primary hover:bg-neutral-grey-200"
               }`}
             >
@@ -96,7 +99,7 @@ export default function LimparBancoButton() {
           </div>
 
           {confirmando && (
-            <p className="mt-2 text-xs text-danger-600">
+            <p className="mt-2 text-xs text-red-600">
               Atenção: esta ação é irreversível. Os registros serão excluídos permanentemente.
             </p>
           )}
