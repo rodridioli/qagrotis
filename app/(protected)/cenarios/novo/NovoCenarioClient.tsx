@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useMemo, useRef, useState, useTransition } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowDown, ArrowLeft, ArrowUp, Bot, Check, Circle, ClipboardList, FileDown, GripVertical, LayoutList, Network, Plus, Trash2 } from "lucide-react"
@@ -113,6 +113,16 @@ export default function NovoCenarioClient({
   const [urlScript, setUrlScript] = useState("")
   const [steps, setSteps] = useState<Step[]>([])
   const draggedStepId = useRef<number | null>(null)
+  const pendingFocusStepId = useRef<number | null>(null)
+  const stepInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
+
+  useEffect(() => {
+    const id = pendingFocusStepId.current
+    if (id !== null && stepInputRefs.current[id]) {
+      stepInputRefs.current[id]?.focus()
+      pendingFocusStepId.current = null
+    }
+  }, [steps])
 
   // ── Deps ─────────────────────────────────────────────────────────────────────
   const [deps, setDeps] = useState<Dep[]>([])
@@ -195,8 +205,10 @@ export default function NovoCenarioClient({
 
   // ── Steps ────────────────────────────────────────────────────────────────────
   function addStepRow() {
+    const newId = Date.now()
+    pendingFocusStepId.current = newId
     setHasSaved(false)
-    setSteps((prev) => [...prev, { id: Date.now(), acao: "", resultado: "" }])
+    setSteps((prev) => [...prev, { id: newId, acao: "", resultado: "" }])
   }
 
   function updateStep(id: number, field: "acao" | "resultado", value: string) {
@@ -749,6 +761,7 @@ export default function NovoCenarioClient({
                           <td className="w-8 py-1.5 text-xs font-medium text-text-secondary">{idx + 1}</td>
                           <td className="px-2 py-1.5">
                             <Input
+                              ref={(el) => { stepInputRefs.current[s.id] = el }}
                               value={s.acao}
                               onChange={(e) => updateStep(s.id, "acao", e.target.value)}
                               placeholder="Descreva a ação..."

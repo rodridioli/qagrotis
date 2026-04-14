@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useMemo, useRef, useState, useTransition } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowDown, ArrowLeft, ArrowUp, Bot, Check, Circle, ClipboardList, FileDown, GripVertical, LayoutList, Network, Plus, Trash2 } from "lucide-react"
@@ -123,6 +123,16 @@ export default function EditarCenarioClient({
   )
   const draggedStepId = useRef<number | null>(null)
   const pendingFocusStepId = useRef<number | null>(null)
+  const stepInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
+
+  // Focus the ação input whenever a new step is added
+  useEffect(() => {
+    const id = pendingFocusStepId.current
+    if (id !== null && stepInputRefs.current[id]) {
+      stepInputRefs.current[id]?.focus()
+      pendingFocusStepId.current = null
+    }
+  }, [steps])
 
   // ── Deps ─────────────────────────────────────────────────────────────────────
   const [deps, setDeps] = useState<Dep[]>(
@@ -180,12 +190,14 @@ export default function EditarCenarioClient({
   const DEP_LIMIT = 50
   const filteredDepCenarios = useMemo(() => {
     if (!depSistema || !depModulo) return { items: [], total: 0 }
-    const q = depSearch.toLowerCase()
+    const q = depSearch.toLowerCase().trim()
+    const sysLower = depSistema.toLowerCase().trim()
+    const modLower = depModulo.toLowerCase().trim()
     const existingIds = new Set(deps.map((d) => d.id))
     const all = allCenarios.filter(
       (c) =>
-        c.system === depSistema &&
-        c.module === depModulo &&
+        (c.system || "").toLowerCase().trim() === sysLower &&
+        (c.module || "").toLowerCase().trim() === modLower &&
         !existingIds.has(c.id) &&
         (!q || c.id.toLowerCase().includes(q) || c.scenarioName.toLowerCase().includes(q))
     )
@@ -779,11 +791,10 @@ export default function EditarCenarioClient({
                           <td className="w-8 py-1.5 text-xs font-medium text-text-secondary">{idx + 1}</td>
                           <td className="px-2 py-1.5">
                             <Input
+                              ref={(el) => { stepInputRefs.current[s.id] = el }}
                               value={s.acao}
                               onChange={(e) => updateStep(s.id, "acao", e.target.value)}
                               placeholder="Descreva a ação..."
-                              autoFocus={s.id === pendingFocusStepId.current}
-                              onFocus={() => { if (s.id === pendingFocusStepId.current) pendingFocusStepId.current = null }}
                             />
                           </td>
                           <td className="px-2 py-1.5">

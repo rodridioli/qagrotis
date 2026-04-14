@@ -8,10 +8,11 @@ export interface InputProps extends React.ComponentProps<"input"> {
   error?: string
 }
 
-function Input({ className, type, error, ...props }: InputProps) {
+const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input({ className, type, error, ...props }, ref) {
   return (
     <div className="flex w-full flex-col gap-1">
       <input
+        ref={ref}
         type={type}
         data-slot="input"
         aria-invalid={!!error}
@@ -41,6 +42,6 @@ function Input({ className, type, error, ...props }: InputProps) {
       )}
     </div>
   )
-}
+})
 
 export { Input }

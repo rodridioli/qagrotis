@@ -174,6 +174,7 @@ export function SuiteForm({
   const [removerHistoricoOpen, setRemoverHistoricoOpen] = useState(false)
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
   const [addSearch, setAddSearch] = useState("")
+  const [addModuloFilter, setAddModuloFilter] = useState("")
 
   const filteredModules = useMemo(() => {
     return allModulos.filter(m => m.sistemaName === sistemaSelecionado)
@@ -191,7 +192,7 @@ export function SuiteForm({
     const sysSelected = (sistemaSelecionado || "").toLowerCase().trim()
     const cSys = (c.system || "").toLowerCase().trim()
     const matchesSystem = !sysSelected || cSys === sysSelected
-    const modSelected = (selectedModule || "").toLowerCase().trim()
+    const modSelected = (addModuloFilter || "").toLowerCase().trim()
     const cMod = (c.module || "").toLowerCase().trim()
     const matchesModule = !modSelected || cMod === modSelected
     return matchesSearch && matchesSystem && matchesModule
@@ -658,12 +659,21 @@ export function SuiteForm({
       </div>
 
       {/* Dialogs */}
-      <Dialog open={addCenarioOpen} onOpenChange={setAddCenarioOpen}>
+      <Dialog open={addCenarioOpen} onOpenChange={(open) => { setAddCenarioOpen(open); if (!open) { setAddSearch(""); setAddModuloFilter(""); setSelectedAddIds(new Set()) } }}>
         <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Adicionar Cenário</DialogTitle>
           </DialogHeader>
           <div className="flex min-h-0 flex-1 flex-col gap-3 py-2">
+            <Select value={addModuloFilter} onValueChange={(v) => setAddModuloFilter(v ?? "")}>
+              <SelectTrigger><SelectValue placeholder="Todos os módulos" /></SelectTrigger>
+              <SelectPopup>
+                <SelectItem value="">Todos os módulos</SelectItem>
+                {filteredModules.map((m) => (
+                  <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
             <Input
               placeholder="Buscar por código ou nome..."
               value={addSearch}
@@ -687,7 +697,10 @@ export function SuiteForm({
                     }}
                   />
                   <div className="min-w-0 flex-1">
-                    <span className="font-mono text-xs text-text-secondary">{c.id}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-text-secondary">{c.id}</span>
+                      <span className="text-xs text-text-secondary">· {c.module}</span>
+                    </div>
                     <p className="truncate text-sm font-medium text-text-primary">{c.scenarioName}</p>
                   </div>
                   <div className="shrink-0">
