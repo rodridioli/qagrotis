@@ -402,7 +402,7 @@ export default function LayoutClient({
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const [hydrated, setHydrated] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -417,33 +417,35 @@ export default function LayoutClient({
   const hasSistemaModulo = hasActiveSistema && sistemaComModulo.includes(sistemaSelecionado)
   const hasSistemaCenario = hasActiveSistema && sistemaComCenario.includes(sistemaSelecionado)
 
-  // After a fresh login (e.g. Google OAuth), force the server layout to re-fetch
-  // so the new user and any updated data appear immediately without a manual reload.
-  const prevStatusRef = React.useRef(status)
+  // On mount only: read localStorage preference and mark UI as ready.
+  // Runs once after hydration — never resets hydrated to false on re-renders.
   useEffect(() => {
-    if (prevStatusRef.current === "loading" && status === "authenticated") {
-      router.refresh()
-    }
-    prevStatusRef.current = status
-  }, [status, router])
-
-  // On mount: apply localStorage preference and mark UI as ready.
-  // We do this in useEffect (client-only) to avoid SSR/hydration mismatch.
-  useEffect(() => {
-    if (sistemaNames.length === 0) {
-      setSistemaSelecionado("")
-      localStorage.removeItem(STORAGE_KEY)
-      setHydrated(true)
-      return
-    }
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved && sistemaNames.includes(saved)) {
       setSistemaSelecionado(saved)
-    } else {
-      setSistemaSelecionado(sistemaNames[0] ?? "")
+    } else if (sistemaNames.length > 0) {
+      setSistemaSelecionado(sistemaNames[0])
     }
     setHydrated(true)
-  }, [sistemaNames])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // intentionally empty — only runs on mount
+
+  // Keep sistemaSelecionado valid if sistemaNames changes after mount
+  // (e.g. user adds/removes a system without reloading)
+  useEffect(() => {
+    if (!hydrated) return
+    if (sistemaNames.length === 0) {
+      setSistemaSelecionado("")
+      localStorage.removeItem(STORAGE_KEY)
+      return
+    }
+    setSistemaSelecionado((prev) => {
+      if (prev && sistemaNames.includes(prev)) return prev
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved && sistemaNames.includes(saved)) return saved
+      return sistemaNames[0] ?? ""
+    })
+  }, [sistemaNames, hydrated])
 
   // Redirect to /configuracoes/sistemas when there are no active systems
   useEffect(() => {
