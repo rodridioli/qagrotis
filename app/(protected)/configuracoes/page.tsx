@@ -63,14 +63,8 @@ export default async function ConfiguracoesPage() {
 
       {isAdmin && (
         <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">
-            Administração
-          </h2>
           <div className="rounded-xl border border-neutral-grey-200 bg-surface-card p-6 shadow-card">
-            <h3 className="font-semibold text-text-primary">Limpeza de banco de dados</h3>
-            <p className="mt-1 text-sm text-text-secondary">
-              Remove permanentemente todos os registros inativos: cenários, suítes, módulos, sistemas, clientes, integrações e usuários desativados.
-            </p>
+            <h3 className="font-semibold text-text-primary">Limpeza de registros inativos do banco de dados</h3>
             <div className="mt-4">
               <LimparBancoButton />
             </div>

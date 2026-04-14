@@ -4,14 +4,29 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
 import { limparRegistrosInativos, type LimparResult } from "@/lib/actions/admin"
 
 export default function LimparBancoButton() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [result, setResult] = useState<LimparResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [confirmando, setConfirmando] = useState(false)
+
+  function buildMessage(res: LimparResult): string {
+    const total = res.cenarios + res.suites + res.modulos + res.sistemas +
+      res.clientes + res.integracoes + res.usuarios
+    if (total === 0) return "Nenhum registro inativo encontrado."
+    const partes = [
+      res.cenarios   > 0 && `${res.cenarios} cenário${res.cenarios !== 1 ? "s" : ""}`,
+      res.suites     > 0 && `${res.suites} suíte${res.suites !== 1 ? "s" : ""}`,
+      res.modulos    > 0 && `${res.modulos} módulo${res.modulos !== 1 ? "s" : ""}`,
+      res.sistemas   > 0 && `${res.sistemas} sistema${res.sistemas !== 1 ? "s" : ""}`,
+      res.clientes   > 0 && `${res.clientes} cliente${res.clientes !== 1 ? "s" : ""}`,
+      res.integracoes > 0 && `${res.integracoes} integração${res.integracoes !== 1 ? "ões" : ""}`,
+      res.usuarios   > 0 && `${res.usuarios} usuário${res.usuarios !== 1 ? "s" : ""}`,
+    ].filter(Boolean).join(", ")
+    return `${total} registro${total !== 1 ? "s" : ""} removido${total !== 1 ? "s" : ""}: ${partes}.`
+  }
 
   function handleClick() {
     if (!confirmando) {
@@ -19,23 +34,16 @@ export default function LimparBancoButton() {
       return
     }
     setConfirmando(false)
-    setResult(null)
-    setError(null)
     startTransition(async () => {
       try {
         const res = await limparRegistrosInativos()
-        setResult(res)
+        toast.success(buildMessage(res))
         router.refresh()
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Erro ao limpar registros.")
+        toast.error(e instanceof Error ? e.message : "Erro ao limpar registros.")
       }
     })
   }
-
-  const total = result
-    ? result.cenarios + result.suites + result.modulos + result.sistemas +
-      result.clientes + result.integracoes + result.usuarios
-    : 0
 
   return (
     <div className="flex flex-col gap-2">
@@ -57,33 +65,10 @@ export default function LimparBancoButton() {
           </>
         )}
       </div>
-
       {confirmando && (
         <p className="text-xs text-red-600">
           Atenção: esta ação é irreversível. Os registros inativos serão excluídos permanentemente.
         </p>
-      )}
-
-      {result && !confirmando && (
-        <p className="text-sm text-green-600 font-medium">
-          {total === 0
-            ? "Nenhum registro inativo encontrado."
-            : `${total} registro${total !== 1 ? "s" : ""} removido${total !== 1 ? "s" : ""}: ${[
-                result.cenarios > 0 && `${result.cenarios} cenário${result.cenarios !== 1 ? "s" : ""}`,
-                result.suites > 0 && `${result.suites} suíte${result.suites !== 1 ? "s" : ""}`,
-                result.modulos > 0 && `${result.modulos} módulo${result.modulos !== 1 ? "s" : ""}`,
-                result.sistemas > 0 && `${result.sistemas} sistema${result.sistemas !== 1 ? "s" : ""}`,
-                result.clientes > 0 && `${result.clientes} cliente${result.clientes !== 1 ? "s" : ""}`,
-                result.integracoes > 0 && `${result.integracoes} integração${result.integracoes !== 1 ? "ões" : ""}`,
-                result.usuarios > 0 && `${result.usuarios} usuário${result.usuarios !== 1 ? "s" : ""}`,
-              ]
-                .filter(Boolean)
-                .join(", ")}.`}
-        </p>
-      )}
-
-      {error && (
-        <p className="text-sm text-red-600 font-medium">{error}</p>
       )}
     </div>
   )
