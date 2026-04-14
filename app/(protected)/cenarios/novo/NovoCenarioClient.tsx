@@ -118,10 +118,15 @@ export default function NovoCenarioClient({
 
   useEffect(() => {
     const id = pendingFocusStepId.current
-    if (id !== null && stepInputRefs.current[id]) {
-      stepInputRefs.current[id]?.focus()
-      pendingFocusStepId.current = null
-    }
+    if (id === null) return
+    const raf = requestAnimationFrame(() => {
+      const el = stepInputRefs.current[id]
+      if (el) {
+        el.focus()
+        pendingFocusStepId.current = null
+      }
+    })
+    return () => cancelAnimationFrame(raf)
   }, [steps])
 
   // ── Deps ─────────────────────────────────────────────────────────────────────

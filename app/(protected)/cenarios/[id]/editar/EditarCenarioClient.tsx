@@ -128,10 +128,16 @@ export default function EditarCenarioClient({
   // Focus the ação input whenever a new step is added
   useEffect(() => {
     const id = pendingFocusStepId.current
-    if (id !== null && stepInputRefs.current[id]) {
-      stepInputRefs.current[id]?.focus()
-      pendingFocusStepId.current = null
-    }
+    if (id === null) return
+    // Use rAF to ensure the DOM element is mounted before focusing
+    const raf = requestAnimationFrame(() => {
+      const el = stepInputRefs.current[id]
+      if (el) {
+        el.focus()
+        pendingFocusStepId.current = null
+      }
+    })
+    return () => cancelAnimationFrame(raf)
   }, [steps])
 
   // ── Deps ─────────────────────────────────────────────────────────────────────
