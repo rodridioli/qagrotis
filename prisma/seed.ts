@@ -38,6 +38,15 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
 }
 
 async function main() {
+  // ── Clean mock data ─────────────────────────────────────────────────────────
+  // Cenarios and suites are seeded from JSON files. When those files are emptied
+  // (mock data removed), we also hard-delete everything from the DB so the app
+  // starts with a clean slate. Sistemas and modulos are kept (real config data).
+  await prisma.suite.deleteMany({})
+  await prisma.cenario.deleteMany({})
+  await prisma.cliente.deleteMany({})
+  console.log("✓ cleaned cenarios, suites, clientes")
+
   // ── Sistemas ────────────────────────────────────────────────────────────────
   // Use upsert so that placeholder sistemas marked active:false in the JSON
   // are correctly inactivated even if they were previously seeded as active:true.

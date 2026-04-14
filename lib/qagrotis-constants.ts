@@ -11,32 +11,6 @@ export interface MockUser {
   active: boolean
 }
 
-export interface MockCenario {
-  id: string
-  scenarioName: string
-  system: string
-  module: string
-  client: string
-  execucoes: number
-  erros: number
-  suites: number
-  tipo: CenarioTipo
-  active: boolean
-}
-
-export interface MockSuite {
-  id: string
-  suiteName: string
-  versao: string
-  modulo: string
-  cliente: string
-  execucoes: number
-  automacao: number
-  erros: number
-  cenarios: number
-  tipo: SuiteTipo
-  active: boolean
-}
 
 export interface DashboardMetric {
   label: string
@@ -89,10 +63,6 @@ function pick<T>(arr: T[], i: number): T {
   return arr[i % arr.length]
 }
 
-function rng(seed: number, min: number, max: number): number {
-  const x = Math.sin(seed) * 10000
-  return Math.floor((x - Math.floor(x)) * (max - min + 1)) + min
-}
 
 export const MOCK_USERS: MockUser[] = [
   {
@@ -118,80 +88,6 @@ export const MOCK_USERS: MockUser[] = [
   }
 })]
 
-const cenarioNames = [
-  "Cadastro de Produtores",
-  "Emissão de Receituário Agronômico",
-  "Cálculo do peso líquido de grãos",
-  "Lançamento de Notas Fiscais",
-  "Consulta de Estoque",
-  "Relatório de Vendas Mensais",
-  "Aprovação de Compras",
-  "Pagamento de Fornecedores",
-  "Controle de Pragas",
-  "Análise de Solo",
-  "Orçamento de Produtos",
-  "Cadastro de Clientes",
-  "Fechamento de Caixa",
-  "Importação de XML",
-  "Exportação para Jira",
-  "Login e Autenticação",
-  "Configuração de Permissões",
-  "Geração de Boletos",
-  "Conciliação Bancária",
-  "Rastreabilidade de Lotes",
-]
-
-export const MOCK_CENARIOS: MockCenario[] = Array.from({ length: 1000 }, (_, i) => {
-  const tipos: CenarioTipo[] = ["Automatizado", "Manual", "Man./Auto."]
-  return {
-    id: `CT-${String(i + 1).padStart(3, "0")}`,
-    scenarioName: `${pick(cenarioNames, i)} - Caso ${i + 1}`,
-    system: pick(SYSTEMS, i + 3),
-    module: pick(MODULES, i * 2 + 1),
-    client: pick(CLIENTS, i + 2),
-    execucoes: rng(i + 100, 0, 150),
-    erros: rng(i + 200, 0, 20),
-    suites: rng(i + 300, 0, 10),
-    tipo: tipos[i % 3],
-    active: i % 8 !== 0,
-  }
-})
-
-const suiteNames = [
-  "SPRINT-001",
-  "SPRINT-002",
-  "SPRINT-003",
-  "KANBAN-2026-Q1",
-  "KANBAN-2026-Q2",
-  "RELEASE-1.0",
-  "RELEASE-2.0",
-  "HOTFIX-001",
-  "REGRESSÃO-GERAL",
-  "SMOKE-TEST",
-  "INTEGRACAO-ERP",
-  "MODULO-FINANCEIRO",
-  "MODULO-ESTOQUE",
-  "MODULO-VENDAS",
-  "MODULO-RH",
-]
-
-export const MOCK_SUITES: MockSuite[] = Array.from({ length: 1000 }, (_, i) => {
-  const tipos: SuiteTipo[] = ["Sprint", "Kanban", "Outro"]
-  const automacao = [0, 20, 50, 75, 100][i % 5]
-  return {
-    id: `S-${String(i + 1).padStart(3, "0")}`,
-    suiteName: `${pick(suiteNames, i)} - v${Math.floor(i / 15) + 1}`,
-    versao: `${Math.floor(i / 20) + 1}.${(i % 10) + 1}.0`,
-    modulo: pick(MODULES, i + 4),
-    cliente: pick(CLIENTS, i + 1),
-    execucoes: rng(i + 400, 0, 200),
-    automacao,
-    erros: rng(i + 500, 0, 30),
-    cenarios: rng(i + 600, 1, 50),
-    tipo: tipos[i % 3],
-    active: i % 6 !== 0,
-  }
-})
 
 export const DASHBOARD_METRICS: DashboardMetric[] = [
   { label: "Módulos", value: "6" },

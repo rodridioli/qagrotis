@@ -748,19 +748,17 @@ export default function NovoCenarioClient({
                           </td>
                           <td className="w-8 py-1.5 text-xs font-medium text-text-secondary">{idx + 1}</td>
                           <td className="px-2 py-1.5">
-                            <AutoResizeTextarea
+                            <Input
                               value={s.acao}
                               onChange={(e) => updateStep(s.id, "acao", e.target.value)}
                               placeholder="Descreva a ação..."
-                              className="py-1.5 min-h-9"
                             />
                           </td>
                           <td className="px-2 py-1.5">
-                            <AutoResizeTextarea
+                            <Input
                               value={s.resultado}
                               onChange={(e) => updateStep(s.id, "resultado", e.target.value)}
                               placeholder="Resultado esperado..."
-                              className="py-1.5 min-h-9"
                             />
                           </td>
                           <td className="py-1.5 pl-1">
