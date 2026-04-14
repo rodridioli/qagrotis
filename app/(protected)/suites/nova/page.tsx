@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { Suspense } from "react"
 import { getActiveSistemaNames } from "@/lib/actions/sistemas"
 import { getModulos } from "@/lib/actions/modulos"

@@ -214,6 +214,8 @@ export async function criarCenario(data: {
   })
 
   revalidatePath("/cenarios")
+  revalidatePath("/suites/nova")
+  revalidatePath("/suites")
   revalidateTag(LAYOUT_CACHE_TAG)
   return toRecord(row)
 }
