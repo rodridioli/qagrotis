@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { getChangelog } from "@/lib/actions/changelog"
 import { AtualizacoesClient } from "./AtualizacoesClient"
 

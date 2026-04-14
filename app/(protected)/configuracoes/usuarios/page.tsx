@@ -3,6 +3,9 @@ import { getQaUsers } from "@/lib/actions/usuarios"
 import { checkIsAdmin } from "@/lib/session"
 import UsuariosClient from "./UsuariosClient"
 
+// Always render fresh — Google OAuth creates users at login time and must appear immediately
+export const dynamic = "force-dynamic"
+
 export default async function UsuariosPage() {
   const [users, session, isAdmin] = await Promise.all([getQaUsers(), auth(), checkIsAdmin()])
 

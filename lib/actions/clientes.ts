@@ -68,11 +68,21 @@ export async function criarCliente(data: {
     cpfCnpj: data.cpfCnpj?.trim() || null,
   })
 
-  const existing = await prisma.cliente.findMany({ select: { id: true } })
+  const existing = await prisma.cliente.findMany({ select: { id: true, nomeFantasia: true, active: true } })
+
+  const duplicate = existing.some(
+    (c) => c.active && c.nomeFantasia.trim().toLowerCase() === parsed.nomeFantasia.trim().toLowerCase()
+  )
+  if (duplicate) throw new Error("Já existe um cliente ativo com esse nome.")
+
   const id = nextId(existing.map((c) => c.id), "CLI")
 
   const row = await prisma.cliente.create({ data: { id, ...parsed, active: true } })
   revalidatePath("/configuracoes/clientes")
+  revalidatePath("/cenarios")
+  revalidatePath("/cenarios/novo")
+  revalidatePath("/suites")
+  revalidatePath("/gerador")
   return toRecord(row)
 }
 

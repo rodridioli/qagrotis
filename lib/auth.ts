@@ -109,8 +109,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               data: { id, email, name: user.name ?? email, type: "Padrão", password: "" },
             })
           }
-          // Invalidate cache for user list immediately after registration/reactivation
+          // Invalidate cache so the new user appears immediately in the admin listing
           revalidatePath("/configuracoes/usuarios")
+          revalidatePath("/configuracoes")
         }
       }
       return true

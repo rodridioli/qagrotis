@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { getModulos } from "@/lib/actions/modulos"
 import { getSuites } from "@/lib/actions/suites"
 import SuitesClient from "./SuitesClient"

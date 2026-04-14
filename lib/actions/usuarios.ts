@@ -38,12 +38,21 @@ const idSchema = z.string().regex(/^U-\d+$/, "ID inválido")
 const idsArraySchema = z.array(idSchema).max(1000)
 
 /**
- * Validate that a photo path is a safe URL path within /uploads/.
- * Prevents path traversal attacks where a caller could store "../../../etc/passwd".
- * Accepts URL paths like /uploads/avatars/U-01.jpg returned by the avatar API.
+ * Validate that a photo path is either:
+ * - A base64 data URL for an image (data:image/[type];base64,...)
+ * - A safe URL path within /uploads/ (legacy filesystem avatars)
+ * Prevents path traversal and XSS from arbitrary data URIs.
  */
 function validatePhotoPath(photoPath: string | null | undefined): string | null {
   if (!photoPath) return null
+  // Accept base64 data URLs produced by the avatar upload route
+  if (photoPath.startsWith("data:")) {
+    if (!/^data:image\/(jpeg|png|webp|gif);base64,/.test(photoPath)) {
+      throw new Error("Caminho de foto inválido.")
+    }
+    return photoPath
+  }
+  // Accept legacy filesystem paths under /uploads/
   if (
     !photoPath.startsWith("/uploads/") ||
     photoPath.includes("..") ||

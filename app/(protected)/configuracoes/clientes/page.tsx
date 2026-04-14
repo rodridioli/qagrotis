@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { getClientes } from "@/lib/actions/clientes"
 import { getCenarios } from "@/lib/actions/cenarios"
 import { auth } from "@/lib/auth"

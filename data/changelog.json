@@ -1,5 +1,24 @@
 [
   {
+    "version": "1.4.0",
+    "commit": "deploy-vercel",
+    "date": "2026-04-13",
+    "tag": "Melhoria",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Cache global: Todas as páginas de listagem configuradas como force-dynamic, garantindo exibição imediata após qualquer alteração.",
+      "Cadastro de Clientes: Validação de duplicidade no servidor impedindo nomes de clientes ativos idênticos.",
+      "Botão Prompt.md: Exibição correta em cenários automatizados já salvos ao entrar na tela de edição.",
+      "Auto-foco: Campo 'Ação' recebe foco automaticamente ao clicar em 'Adicionar passo'.",
+      "Upload de foto: Substituição de armazenamento em disco por base64 em banco, corrigindo falha no Vercel.",
+      "Login Google: Novo usuário @agrotis.com aparece imediatamente na listagem após primeiro acesso.",
+      "Suítes: Lista de cenários para adicionar exibe todos os itens sem limite de 100.",
+      "Exportação Jira: Detalhes completos do cenário incluídos no relatório (descrição, BDD, pré-condições, regras de negócio).",
+      "Cenário automatizado: Corrigido erro de renderização ao criar cenário do tipo somente automatizado.",
+      "Inativação em cascata: Módulos propagam inativação para cenários, suítes e revalidam sistemas corretamente."
+    ]
+  },
+  {
     "version": "1.3.0",
     "commit": "deploy-vercel",
     "date": "2026-04-10",

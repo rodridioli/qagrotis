@@ -1028,6 +1028,7 @@ export default function NovoCenarioClient({
                     const novo = await criarCliente({ nomeFantasia: newClienteName.trim(), razaoSocial: newClienteRazaoSocial.trim() || null, cpfCnpj: newClienteCpf || null })
                     setClientes((prev) => [...prev, novo])
                     setClienteSelecionado(novo.nomeFantasia)
+                    router.refresh()
                     setNewClienteName("")
                     setNewClienteRazaoSocial("")
                     setNewClienteCpf("")

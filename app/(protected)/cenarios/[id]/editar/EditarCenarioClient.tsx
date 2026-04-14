@@ -2,6 +2,7 @@
 
 import React, { useCallback, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowDown, ArrowLeft, ArrowUp, Bot, Check, Circle, ClipboardList, FileDown, GripVertical, LayoutList, Network, Plus, Trash2 } from "lucide-react"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 import { Button } from "@/components/ui/button"
@@ -78,6 +79,7 @@ export default function EditarCenarioClient({
   allCenarios = [],
 }: Props) {
   const { sistemaSelecionado } = useSistemaSelecionado()
+  const router = useRouter()
   const [localModulos, setLocalModulos] = useState<ModuloRecord[]>(initialModulos)
   const modulosDosistema = useMemo(
     () => localModulos.filter((m) => m.sistemaName === (sistemaSelecionado || cenario.system)),
@@ -120,6 +122,7 @@ export default function EditarCenarioClient({
     (cenario.steps ?? []).map((s, i) => ({ id: i + 1, acao: s.acao, resultado: s.resultado }))
   )
   const draggedStepId = useRef<number | null>(null)
+  const pendingFocusStepId = useRef<number | null>(null)
 
   // ── Deps ─────────────────────────────────────────────────────────────────────
   const [deps, setDeps] = useState<Dep[]>(
@@ -136,7 +139,17 @@ export default function EditarCenarioClient({
 
   // ── Save state ───────────────────────────────────────────────────────────────
   const [isSaving, startSaveTransition] = useTransition()
-  const [hasSaved, setHasSaved] = useState(false)
+  const [hasSaved, setHasSaved] = useState(() => {
+    const hasAutomatizado = cenario.tipo === "Automatizado" || cenario.tipo === "Man./Auto."
+    if (!hasAutomatizado) return false
+    return !!(
+      cenario.urlAmbiente?.trim() &&
+      cenario.usuarioTeste?.trim() &&
+      cenario.senhaTeste?.trim() &&
+      cenario.resultadoEsperado?.trim() &&
+      cenario.steps?.some((s) => s.acao.trim() && s.resultado.trim())
+    )
+  })
 
   // ── Loading for sub-operations ───────────────────────────────────────────────
   const [isClientePending, startClienteTransition] = useTransition()
@@ -208,8 +221,10 @@ export default function EditarCenarioClient({
 
   // ── Steps ────────────────────────────────────────────────────────────────────
   function addStepRow() {
+    const newId = Date.now()
+    pendingFocusStepId.current = newId
     setHasSaved(false)
-    setSteps((prev) => [...prev, { id: Date.now(), acao: "", resultado: "" }])
+    setSteps((prev) => [...prev, { id: newId, acao: "", resultado: "" }])
   }
 
   function updateStep(id: number, field: "acao" | "resultado", value: string) {
@@ -768,6 +783,8 @@ export default function EditarCenarioClient({
                               onChange={(e) => updateStep(s.id, "acao", e.target.value)}
                               placeholder="Descreva a ação..."
                               className="py-1.5 min-h-9"
+                              autoFocus={s.id === pendingFocusStepId.current}
+                              onFocus={() => { if (s.id === pendingFocusStepId.current) pendingFocusStepId.current = null }}
                             />
                           </td>
                           <td className="px-2 py-1.5">
@@ -1031,6 +1048,10 @@ export default function EditarCenarioClient({
               disabled={isClientePending}
               onClick={() => {
                 if (!newClienteName.trim()) { toast.error("O Nome Fantasia é obrigatório."); return }
+                const duplicate = clientes.some(
+                  (c) => c.nomeFantasia.trim().toLowerCase() === newClienteName.trim().toLowerCase()
+                )
+                if (duplicate) { toast.error("Já existe um cliente ativo com esse nome."); return }
                 startClienteTransition(async () => {
                   try {
                     const novo = await criarCliente({ nomeFantasia: newClienteName.trim(), razaoSocial: newClienteRazaoSocial.trim() || null, cpfCnpj: newClienteCpf || null })
@@ -1040,6 +1061,7 @@ export default function EditarCenarioClient({
                     setNewClienteRazaoSocial("")
                     setNewClienteCpf("")
                     setAddClienteOpen(false)
+                    router.refresh()
                   } catch (e) {
                     toast.error(e instanceof Error ? e.message : "Erro ao adicionar cliente.")
                   }

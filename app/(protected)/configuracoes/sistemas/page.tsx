@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { getSistemas } from "@/lib/actions/sistemas"
 import { getModulos } from "@/lib/actions/modulos"
 import { checkIsAdmin } from "@/lib/session"

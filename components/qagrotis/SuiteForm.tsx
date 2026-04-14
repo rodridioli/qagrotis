@@ -111,18 +111,27 @@ export function SuiteForm({
     if (selected.length === 0) return
 
     const resultIcon = (r: string) => r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : "⏳"
+    const fieldOrDash = (v: string | undefined | null) => (v && v.trim()) ? v.trim() : "—"
 
     // ── Detailed blocks ───────────────────────────────────────────────────────
     const details = selected.map((h) => {
       const icon = resultIcon(h.resultado)
+      const cenario = allCenarios.find((c) => c.id === h.id)
       return [
-        `### ${h.id} — ${h.cenario} ${icon} ${h.resultado}`,
-        `- **Módulo:** ${h.module || "—"}`,
-        `- **Tipo:** ${h.tipo || "—"}`,
+        `### ${h.id} — ${h.cenario}  ${icon} ${h.resultado}`,
+        ``,
+        `- **Sistema:** ${fieldOrDash(cenario?.system ?? suite?.sistema)}`,
+        `- **Módulo:** ${fieldOrDash(h.module)}`,
+        `- **Tipo:** ${fieldOrDash(h.tipo)}`,
+        `- **Descrição:** ${fieldOrDash(cenario?.descricao)}`,
+        `- **Regra de Negócio:** ${fieldOrDash(cenario?.regraDeNegocio)}`,
+        `- **Pré-condições:** ${fieldOrDash(cenario?.preCondicoes)}`,
+        `- **BDD (Gherkin):** ${fieldOrDash(cenario?.bdd)}`,
+        `- **Resultado esperado:** ${fieldOrDash(cenario?.resultadoEsperado)}`,
         `- **Execução:** ${h.data}${h.hora ? ` às ${h.hora}` : ""}`,
         `- **Resultado:** ${icon} ${h.resultado}`,
       ].join("\n")
-    }).join("\n\n---\n\n")
+    }).join("\n---\n\n")
 
     // ── Summary table ─────────────────────────────────────────────────────────
     const tableRows = selected.map((h) =>
@@ -142,10 +151,10 @@ export function SuiteForm({
       `**Total:** ${selected.length} | ✅ Sucesso: ${sucessos} | ❌ Erro: ${erros}`,
     ].join("\n")
 
-    const suiteName = suite?.suiteName ?? "Suíte"
+    const exportSuiteName = suite?.suiteName ?? "Suíte"
     const exportDate = new Date().toLocaleDateString("pt-BR")
     const content = [
-      `## Histórico de Execução — ${suiteName}`,
+      `## Histórico de Execução — ${exportSuiteName}`,
       `*Exportado em ${exportDate}*`,
       ``,
       `---`,
@@ -185,7 +194,7 @@ export function SuiteForm({
     const cMod = (c.module || "").toLowerCase().trim()
     const matchesModule = !modSelected || cMod === modSelected
     return matchesSearch && matchesSystem && matchesModule
-  }).slice(0, 100)
+  })
 
   // Stats computed from historico (execuções and erros per cenário)
   const historicoStats = useMemo(() => {

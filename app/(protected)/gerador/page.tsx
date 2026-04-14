@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { GeradorClient } from "./GeradorClient"
 import { getCenarios } from "@/lib/actions/cenarios"
 import { getModulos } from "@/lib/actions/modulos"

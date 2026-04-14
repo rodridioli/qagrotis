@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { notFound } from "next/navigation"
 import { getCenario, getCenarios } from "@/lib/actions/cenarios"
 import { getSuiteById, getSuites } from "@/lib/actions/suites"

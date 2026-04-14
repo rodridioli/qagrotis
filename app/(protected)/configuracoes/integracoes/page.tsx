@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { getIntegracoes } from "@/lib/actions/integracoes"
 import { checkIsAdmin } from "@/lib/session"
 import IntegracoesClient from "./IntegracoesClient"

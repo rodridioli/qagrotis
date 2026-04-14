@@ -54,8 +54,8 @@ const cenarioCreateSchema = z.object({
   module:            z.string().min(1, "Módulo é obrigatório").max(200),
   client:            z.string().max(200),
   risco:             z.string().min(1, "Risco é obrigatório").max(50),
-  regraDeNegocio:    z.string().min(1, "Regra de Negócio é obrigatória").max(5000),
-  descricao:         z.string().min(1, "Descrição é obrigatória").max(5000),
+  regraDeNegocio:    z.string().max(5000),
+  descricao:         z.string().max(5000),
   caminhoTela:       z.string().max(1000),
   preCondicoes:      z.string().max(5000),
   bdd:               z.string().max(5000),
@@ -145,24 +145,30 @@ export async function criarCenario(data: {
   const session = await requireSession()
   const createdBy = session?.user?.name ?? session?.user?.email ?? undefined
 
-  const parsed = cenarioCreateSchema.parse({
-    ...data,
-    scenarioName:      (data.scenarioName || "").trim(),
-    client:            (data.client || "").trim(),
-    risco:             (data.risco || "").trim(),
-    regraDeNegocio:    (data.regraDeNegocio || "").trim(),
-    descricao:         (data.descricao || "").trim(),
-    caminhoTela:       (data.caminhoTela || "").trim(),
-    preCondicoes:      (data.preCondicoes || "").trim(),
-    bdd:               (data.bdd || "").trim(),
-    resultadoEsperado: (data.resultadoEsperado || "").trim(),
-    urlAmbiente:       (data.urlAmbiente || "").trim(),
-    objetivo:          (data.objetivo || "").trim(),
-    urlScript:         (data.urlScript || "").trim(),
-    usuarioTeste:      (data.usuarioTeste || "").trim(),
-    senhaTeste:        (data.senhaTeste || "").trim(),
-    senhaFalsa:        (data.senhaFalsa || "").trim(),
-  })
+  let parsed: z.infer<typeof cenarioCreateSchema>
+  try {
+    parsed = cenarioCreateSchema.parse({
+      ...data,
+      scenarioName:      (data.scenarioName || "").trim(),
+      client:            (data.client || "").trim(),
+      risco:             (data.risco || "").trim(),
+      regraDeNegocio:    (data.regraDeNegocio || "").trim(),
+      descricao:         (data.descricao || "").trim(),
+      caminhoTela:       (data.caminhoTela || "").trim(),
+      preCondicoes:      (data.preCondicoes || "").trim(),
+      bdd:               (data.bdd || "").trim(),
+      resultadoEsperado: (data.resultadoEsperado || "").trim(),
+      urlAmbiente:       (data.urlAmbiente || "").trim(),
+      objetivo:          (data.objetivo || "").trim(),
+      urlScript:         (data.urlScript || "").trim(),
+      usuarioTeste:      (data.usuarioTeste || "").trim(),
+      senhaTeste:        (data.senhaTeste || "").trim(),
+      senhaFalsa:        (data.senhaFalsa || "").trim(),
+    })
+  } catch (e) {
+    if (e instanceof z.ZodError) throw new Error(e.issues[0]?.message ?? "Dados inválidos.")
+    throw e
+  }
 
   const existing = await prisma.cenario.findMany({ select: { id: true } })
   const id = nextId(existing.map((c) => c.id), "CT", 3)
@@ -236,24 +242,30 @@ export async function atualizarCenario(id: string, data: {
   const parsedId = idSchema.safeParse(id)
   if (!parsedId.success) throw new Error("ID inválido")
 
-  const parsed = cenarioCreateSchema.parse({
-    ...data,
-    scenarioName:      (data.scenarioName || "").trim(),
-    client:            (data.client || "").trim(),
-    risco:             (data.risco || "").trim(),
-    regraDeNegocio:    (data.regraDeNegocio || "").trim(),
-    descricao:         (data.descricao || "").trim(),
-    caminhoTela:       (data.caminhoTela || "").trim(),
-    preCondicoes:      (data.preCondicoes || "").trim(),
-    bdd:               (data.bdd || "").trim(),
-    resultadoEsperado: (data.resultadoEsperado || "").trim(),
-    urlAmbiente:       (data.urlAmbiente || "").trim(),
-    objetivo:          (data.objetivo || "").trim(),
-    urlScript:         (data.urlScript || "").trim(),
-    usuarioTeste:      (data.usuarioTeste || "").trim(),
-    senhaTeste:        (data.senhaTeste || "").trim(),
-    senhaFalsa:        (data.senhaFalsa || "").trim(),
-  })
+  let parsed: z.infer<typeof cenarioCreateSchema>
+  try {
+    parsed = cenarioCreateSchema.parse({
+      ...data,
+      scenarioName:      (data.scenarioName || "").trim(),
+      client:            (data.client || "").trim(),
+      risco:             (data.risco || "").trim(),
+      regraDeNegocio:    (data.regraDeNegocio || "").trim(),
+      descricao:         (data.descricao || "").trim(),
+      caminhoTela:       (data.caminhoTela || "").trim(),
+      preCondicoes:      (data.preCondicoes || "").trim(),
+      bdd:               (data.bdd || "").trim(),
+      resultadoEsperado: (data.resultadoEsperado || "").trim(),
+      urlAmbiente:       (data.urlAmbiente || "").trim(),
+      objetivo:          (data.objetivo || "").trim(),
+      urlScript:         (data.urlScript || "").trim(),
+      usuarioTeste:      (data.usuarioTeste || "").trim(),
+      senhaTeste:        (data.senhaTeste || "").trim(),
+      senhaFalsa:        (data.senhaFalsa || "").trim(),
+    })
+  } catch (e) {
+    if (e instanceof z.ZodError) throw new Error(e.issues[0]?.message ?? "Dados inválidos.")
+    throw e
+  }
 
   const updatedBy = session.user?.name ?? session.user?.email ?? undefined
 
