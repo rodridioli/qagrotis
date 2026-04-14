@@ -38,18 +38,34 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
 }
 
 async function main() {
-  // ── Remove all prototype/test users from the DB ──────────────────────────────
-  // U-01..U-100: mock users previously hardcoded in MOCK_USERS.
-  // U-101..U-105: test users that were in created-users.json but have been removed.
-  // All their seed JSON files are now empty — delete them from the DB too.
-  const prototypeIds = [
+  // ── Remove all prototype/test data from the DB ───────────────────────────────
+  // All seed JSON files have been emptied. Delete the corresponding records from
+  // the DB so they don't persist across deploys.
+
+  // Users: U-01..U-100 (mock) + U-101..U-105 (test)
+  const protoUserIds = [
     ...Array.from({ length: 100 }, (_, i) => `U-${String(i + 1).padStart(2, "0")}`),
     "U-101", "U-102", "U-103", "U-104", "U-105",
   ]
-  await prisma.inactiveUser.deleteMany({ where: { userId: { in: prototypeIds } } })
-  await prisma.userProfile.deleteMany({ where: { userId: { in: prototypeIds } } })
-  await prisma.createdUser.deleteMany({ where: { id: { in: prototypeIds } } })
+  await prisma.inactiveUser.deleteMany({ where: { userId: { in: protoUserIds } } })
+  await prisma.userProfile.deleteMany({ where: { userId: { in: protoUserIds } } })
+  await prisma.createdUser.deleteMany({ where: { id: { in: protoUserIds } } })
+  await prisma.inviteToken.deleteMany({ where: { userId: { in: protoUserIds } } })
   console.log("✓ cleaned prototype/test user records")
+
+  // Sistemas: SIS-01..SIS-10
+  const protoSistemaIds = Array.from({ length: 10 }, (_, i) => `SIS-${String(i + 1).padStart(2, "0")}`)
+  // Modulos: MOD-01..MOD-22
+  const protoModuloIds = Array.from({ length: 22 }, (_, i) => `MOD-${String(i + 1).padStart(2, "0")}`)
+
+  // NULL FK references on cenarios/suites before deleting modulos/sistemas
+  await prisma.cenario.updateMany({ where: { moduleId: { in: protoModuloIds } }, data: { moduleId: null } })
+  await prisma.suite.updateMany({ where: { moduloId: { in: protoModuloIds } }, data: { moduloId: null } })
+  await prisma.modulo.deleteMany({ where: { id: { in: protoModuloIds } } })
+  await prisma.cenario.updateMany({ where: { systemId: { in: protoSistemaIds } }, data: { systemId: null } })
+  await prisma.suite.updateMany({ where: { sistemaId: { in: protoSistemaIds } }, data: { sistemaId: null } })
+  await prisma.sistema.deleteMany({ where: { id: { in: protoSistemaIds } } })
+  console.log("✓ cleaned prototype sistemas and modulos")
 
   // ── Sistemas ────────────────────────────────────────────────────────────────
   // Use upsert so that placeholder sistemas marked active:false in the JSON
