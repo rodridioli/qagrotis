@@ -1,7 +1,6 @@
 "use server"
 
-import { revalidatePath, updateTag } from "next/cache"
-import { LAYOUT_CACHE_TAG } from "@/lib/layout-cache"
+import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { requireSession } from "@/lib/session"
 import { nextId } from "@/lib/db-utils"
@@ -216,7 +215,6 @@ export async function criarCenario(data: {
   revalidatePath("/cenarios")
   revalidatePath("/suites/nova")
   revalidatePath("/suites")
-  updateTag(LAYOUT_CACHE_TAG)
   return toRecord(row)
 }
 

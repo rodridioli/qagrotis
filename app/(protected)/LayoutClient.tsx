@@ -395,16 +395,12 @@ interface Props {
   children: React.ReactNode
   sistemaNames: string[]
   integracoes?: IntegracaoRecord[]
-  sistemaComModulo?: string[]
-  sistemaComCenario?: string[]
 }
 
 export default function LayoutClient({
   children,
   sistemaNames: sistemaNamesProp,
   integracoes: integracoesProp = [],
-  sistemaComModulo: sistemaComModuloProp = [],
-  sistemaComCenario: sistemaComCenarioProp = [],
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -416,24 +412,16 @@ export default function LayoutClient({
   const [isPending, startNavigationTransition] = useTransition()
 
   // ── Preserve last-known-good menu data ──────────────────────────────────────
-  // Never let empty props (arriving during router.refresh() mid-flight) blank the menu.
   const [stableNames, setStableNames] = useState(sistemaNamesProp)
   const [stableIntegracoes, setStableIntegracoes] = useState(integracoesProp)
-  const [stableModulo, setStableModulo] = useState(sistemaComModuloProp)
-  const [stableCenario, setStableCenario] = useState(sistemaComCenarioProp)
 
   useEffect(() => {
     if (sistemaNamesProp.length > 0) setStableNames(sistemaNamesProp)
     if (integracoesProp.length > 0) setStableIntegracoes(integracoesProp)
-    if (sistemaComModuloProp.length > 0) setStableModulo(sistemaComModuloProp)
-    if (sistemaComCenarioProp.length > 0) setStableCenario(sistemaComCenarioProp)
-  }, [sistemaNamesProp, integracoesProp, sistemaComModuloProp, sistemaComCenarioProp])
+  }, [sistemaNamesProp, integracoesProp])
 
-  // sistemaNames/etc now always use the stable (last-known-good) values
   const sistemaNames = stableNames
   const integracoes = stableIntegracoes
-  const sistemaComModulo = stableModulo
-  const sistemaComCenario = stableCenario
 
   // ── Sistema selecionado ──────────────────────────────────────────────────────
   const [sistemaSelecionado, setSistemaSelecionado] = useState<string>(sistemaNames[0] ?? "")
@@ -461,9 +449,11 @@ export default function LayoutClient({
   }, [sistemaNames])
 
   // ── Computed flags ────────────────────────────────────────────────────────────
+  // Menu items depend only on hasActiveSistema — removing module/cenario checks
+  // eliminates stale-cache flicker where the menu shows disabled despite having data.
   const hasActiveSistema = sistemaNames.length > 0
-  const hasSistemaModulo = hasActiveSistema && sistemaComModulo.includes(sistemaSelecionado)
-  const hasSistemaCenario = hasActiveSistema && sistemaComCenario.includes(sistemaSelecionado)
+  const hasSistemaModulo = hasActiveSistema   // any active system = modules accessible
+  const hasSistemaCenario = hasActiveSistema  // any active system = suites accessible
 
   // ── Theme ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -481,6 +471,10 @@ export default function LayoutClient({
     }
   }, [hasActiveSistema, pathname, router])
 
+  // Show loading screen only during the brief hydration gap where props arrived
+  // but sistemaSelecionado hasn't been initialized yet
+  const isReady = !hasActiveSistema || sistemaSelecionado !== ""
+
   function handleSistemaChange(value: string) {
     setSistemaSelecionado(value)
     localStorage.setItem(STORAGE_KEY, value)
@@ -491,6 +485,17 @@ export default function LayoutClient({
     document.documentElement.classList.toggle("dark", next)
     setIsDark(next)
     localStorage.setItem(THEME_KEY, next ? "dark" : "light")
+  }
+
+  if (!isReady) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-surface-default">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
+          <span className="text-sm text-text-secondary">Carregando...</span>
+        </div>
+      </div>
+    )
   }
 
   return (
