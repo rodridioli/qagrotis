@@ -182,6 +182,7 @@ export function SuiteForm({
   const existingIds = useMemo(() => new Set(cenarios.map(c => c.id)), [cenarios])
 
   const filteredAdd = allCenarios.filter((c) => {
+    if (!c.active) return false
     if (existingIds.has(c.id)) return false
     const searchLow = addSearch.toLowerCase().trim()
     const matchesSearch = !addSearch ||

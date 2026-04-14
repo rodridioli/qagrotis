@@ -12,14 +12,13 @@ async function NovaSuiteContent() {
   ])
 
   const activeModulos = allModulos.filter(m => m.active)
-  const activeCenarios = allCenarios.filter(c => c.active)
 
   return (
     <SuiteForm
       mode="create"
       systemList={systemList}
       allModulos={activeModulos}
-      allCenarios={activeCenarios}
+      allCenarios={allCenarios}
     />
   )
 }

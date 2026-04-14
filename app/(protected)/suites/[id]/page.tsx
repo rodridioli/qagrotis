@@ -19,7 +19,6 @@ async function SuiteDetailContent({ id }: { id: string }) {
   if (!suite) notFound()
 
   const activeModulos = allModulos.filter((m) => m.active)
-  const activeCenarios = allCenarios.filter((c) => c.active)
 
   return (
     <SuiteForm
@@ -27,7 +26,7 @@ async function SuiteDetailContent({ id }: { id: string }) {
       suite={suite}
       systemList={systemList}
       allModulos={activeModulos}
-      allCenarios={activeCenarios}
+      allCenarios={allCenarios}
     />
   )
 }
