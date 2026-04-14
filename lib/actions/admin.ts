@@ -166,7 +166,6 @@ export async function limparRegistrosInativos(): Promise<LimparResult> {
 
   // ── Revalidate ───────────────────────────────────────────────────────────
 
-  revalidatePath("/(protected)", "layout")
   revalidatePath("/cenarios")
   revalidatePath("/suites")
   revalidatePath("/configuracoes/sistemas")

@@ -1,4 +1,7 @@
 import { getSistemas } from "@/lib/actions/sistemas"
+
+// Always fetch fresh — prevents stale cache from delivering empty sistemaNames to LayoutClient
+export const dynamic = "force-dynamic"
 import { getIntegracoes } from "@/lib/actions/integracoes"
 import { getModulos } from "@/lib/actions/modulos"
 import { getCenarios } from "@/lib/actions/cenarios"

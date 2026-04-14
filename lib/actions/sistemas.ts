@@ -67,7 +67,6 @@ export async function criarSistema(data: {
   revalidatePath("/suites")
   revalidatePath("/suites/nova")
   revalidatePath("/gerador")
-  revalidatePath("/(protected)", "layout")
 }
 
 export async function atualizarSistema(
@@ -106,7 +105,6 @@ export async function atualizarSistema(
   revalidatePath("/suites")
   revalidatePath("/suites/nova")
   revalidatePath("/gerador")
-  revalidatePath("/(protected)", "layout")
   if (oldName !== parsed.name) {
     revalidatePath("/configuracoes/modulos")
   }
@@ -139,5 +137,4 @@ export async function inativarSistemas(ids: string[]): Promise<void> {
   revalidatePath("/suites")
   revalidatePath("/suites/nova")
   revalidatePath("/gerador")
-  revalidatePath("/(protected)", "layout")
 }

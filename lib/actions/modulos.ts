@@ -136,7 +136,6 @@ export async function inativarModulos(ids: string[]): Promise<void> {
 
   revalidatePath("/configuracoes/modulos")
   revalidatePath("/configuracoes/sistemas")
-  revalidatePath("/(protected)", "layout")
   revalidatePath("/cenarios")
   revalidatePath("/cenarios/novo")
   revalidatePath("/suites")

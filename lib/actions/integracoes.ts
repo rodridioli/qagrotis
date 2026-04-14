@@ -54,7 +54,6 @@ export async function criarIntegracao(data: unknown): Promise<void> {
   await prisma.integracao.create({ data: { id, ...parsed, active: true } })
   revalidatePath("/configuracoes/integracoes")
   revalidatePath("/gerador")
-  revalidatePath("/(protected)", "layout")
 }
 
 export async function atualizarIntegracao(id: string, data: unknown): Promise<void> {
@@ -69,7 +68,6 @@ export async function atualizarIntegracao(id: string, data: unknown): Promise<vo
   revalidatePath("/configuracoes/integracoes")
   revalidatePath(`/configuracoes/integracoes/${id}/editar`)
   revalidatePath("/gerador")
-  revalidatePath("/(protected)", "layout")
 }
 
 export async function inativarIntegracoes(ids: string[]): Promise<void> {
@@ -80,5 +78,4 @@ export async function inativarIntegracoes(ids: string[]): Promise<void> {
   await prisma.integracao.updateMany({ where: { id: { in: ids } }, data: { active: false } })
   revalidatePath("/configuracoes/integracoes")
   revalidatePath("/gerador")
-  revalidatePath("/(protected)", "layout")
 }
