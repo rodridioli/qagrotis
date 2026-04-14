@@ -64,10 +64,7 @@ export default async function ConfiguracoesPage() {
       {isAdmin && (
         <div>
           <div className="rounded-xl border border-neutral-grey-200 bg-surface-card p-6 shadow-card">
-            <h3 className="font-semibold text-text-primary">Limpeza de registros inativos do banco de dados</h3>
-            <div className="mt-4">
-              <LimparBancoButton />
-            </div>
+            <LimparBancoButton />
           </div>
         </div>
       )}
