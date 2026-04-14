@@ -82,7 +82,7 @@ interface SidebarProps {
   onNavigate?: () => void
 }
 
-function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasActiveSistema, hasSistemaModulo, hasSistemaCenario, hasIntegracoes, onNavigate }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasActiveSistema, hasSistemaModulo, hasSistemaCenario, hasIntegracoes, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const expanded = !collapsed
@@ -288,7 +288,7 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen,
       </aside>
     </>
   )
-}
+})
 
 // ── Topbar ──────────────────────────────────────────────────
 interface TopbarProps {
@@ -302,7 +302,7 @@ interface TopbarProps {
   onToggleTheme: () => void
 }
 
-function Topbar({
+const Topbar = React.memo(function Topbar({
   collapsed,
   onToggleDesktop,
   onToggleMobile,
@@ -388,7 +388,7 @@ function Topbar({
       </div>
     </header>
   )
-}
+})
 
 // ── Layout ──────────────────────────────────────────────────
 interface Props {
@@ -489,6 +489,8 @@ export default function LayoutClient({
     localStorage.setItem(THEME_KEY, next ? "dark" : "light")
   }
 
+  const handleNavigate = React.useCallback(() => startNavigationTransition(() => {}), [startNavigationTransition])
+
   if (!isReady) {
     return (
       <div className="flex h-screen items-center justify-center bg-surface-default">
@@ -514,7 +516,7 @@ export default function LayoutClient({
           hasSistemaModulo={hasSistemaModulo}
           hasSistemaCenario={hasSistemaCenario}
           hasIntegracoes={integracoes.length > 0}
-          onNavigate={() => startNavigationTransition(() => {})}
+          onNavigate={handleNavigate}
         />
         <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />
         <div className="flex flex-1 flex-col overflow-hidden">

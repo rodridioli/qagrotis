@@ -152,6 +152,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
   const steps = cenario.steps ?? []
   const depIds = cenario.deps ?? []
   const isAutomatizado = cenario.tipo === "Automatizado" || cenario.tipo === "Man./Auto."
+  // Cenário inativo = somente visualização, sem botões de ação
+  const viewOnly = cenario.active === false
 
   async function handleResult(resultado: "Sucesso" | "Erro") {
     if (!suite) return
@@ -204,7 +206,12 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {suite && (
+          {viewOnly && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-grey-300 bg-neutral-grey-100 px-3 py-1 text-xs font-medium text-text-secondary">
+              Somente visualização — cenário inativo
+            </span>
+          )}
+          {suite && !viewOnly && (
             <>
               <Button
                 onClick={() => handleResult("Sucesso")}

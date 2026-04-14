@@ -186,6 +186,15 @@ export function SuiteForm({
 
   const existingIds = useMemo(() => new Set(cenarios.map(c => c.id)), [cenarios])
 
+  // Memoized active status map — O(1) lookup instead of repeated .find()
+  const cenarioActiveMap = useMemo(() => {
+    const map = new Map<string, boolean>()
+    allCenarios.forEach((ac) => map.set(ac.id, ac.active))
+    return map
+  }, [allCenarios])
+
+  const isCenarioAtivoFn = (id: string) => cenarioActiveMap.get(id) !== false
+
   const filteredAdd = allCenarios.filter((c) => {
     if (!c.active) return false
     if (existingIds.has(c.id)) return false
@@ -497,7 +506,7 @@ export function SuiteForm({
                 </thead>
                 <tbody>
                   {cenarios.map((c) => {
-                    const isCenarioAtivo = allCenarios.find((ac) => ac.id === c.id)?.active !== false
+                    const isCenarioAtivo = isCenarioAtivoFn(c.id)
                     return (
                     <tr key={c.id} className={`border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50${!isCenarioAtivo ? " opacity-60" : ""}`}>
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -541,7 +550,7 @@ export function SuiteForm({
                             <Trash2 className="size-4" />
                           </button>
                         ) : (() => {
-                          const cenarioAtivo = allCenarios.find((ac) => ac.id === c.id)?.active !== false
+                          const cenarioAtivo = isCenarioAtivoFn(c.id)
                           return (
                             <DropdownMenu>
                               <DropdownMenuTrigger
@@ -669,12 +678,20 @@ export function SuiteForm({
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        {existingIds.has(h.id) ? (
-                          <Link
-                            href={suite?.id ? `/suites/${suite.id}/${h.id}` : `/cenarios/${h.id}`}
-                            className="font-medium text-brand-primary hover:underline"
-                          >{h.id}</Link>
-                        ) : (
+                        {existingIds.has(h.id) ? (() => {
+                          const hAtivo = isCenarioAtivoFn(h.id)
+                          return hAtivo ? (
+                            <Link
+                              href={suite?.id ? `/suites/${suite.id}/${h.id}` : `/cenarios/${h.id}`}
+                              className="font-medium text-brand-primary hover:underline"
+                            >{h.id}</Link>
+                          ) : (
+                            <Link
+                              href={`/cenarios/${h.id}`}
+                              className="font-medium text-text-secondary hover:underline"
+                            >{h.id}</Link>
+                          )
+                        })() : (
                           <span className="font-medium text-text-secondary">{h.id}</span>
                         )}
                       </td>
@@ -699,25 +716,40 @@ export function SuiteForm({
 
       {/* Dialogs */}
       <Dialog open={addCenarioOpen} onOpenChange={(open) => { setAddCenarioOpen(open); if (!open) { setAddSearch(""); setAddModuloFilter(""); setSelectedAddIds(new Set()) } }}>
-        <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Adicionar Cenário</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-2xl">
+          <DialogHeader><DialogTitle>Adicionar Cenário</DialogTitle></DialogHeader>
           <div className="flex min-h-0 flex-1 flex-col gap-3 py-2">
-            <Select value={addModuloFilter} onValueChange={(v) => setAddModuloFilter(v ?? "")}>
-              <SelectTrigger><SelectValue placeholder="Todos os módulos" /></SelectTrigger>
-              <SelectPopup>
-                <SelectItem value="">Todos os módulos</SelectItem>
-                {filteredModules.map((m) => (
-                  <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
-                ))}
-              </SelectPopup>
-            </Select>
-            <Input
-              placeholder="Buscar por código ou nome..."
-              value={addSearch}
-              onChange={(e) => setAddSearch(e.target.value)}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">Módulo</label>
+                <Select value={addModuloFilter} onValueChange={(v) => setAddModuloFilter(v ?? "")}>
+                  <SelectTrigger><SelectValue placeholder="Todos os módulos" /></SelectTrigger>
+                  <SelectPopup>
+                    <SelectItem value="">Todos os módulos</SelectItem>
+                    {filteredModules.map((m) => (
+                      <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
+                    ))}
+                  </SelectPopup>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">Buscar</label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Buscar por código ou nome..."
+                      value={addSearch}
+                      onChange={(e) => setAddSearch(e.target.value)}
+                    />
+                  </div>
+                  {selectedAddIds.size > 0 && (
+                    <span className="shrink-0 text-xs font-medium text-brand-primary">
+                      {selectedAddIds.size} selecionado{selectedAddIds.size !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
             <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border-default">
               {filteredAdd.length === 0 ? (
                 <p className="py-6 text-center text-sm text-text-secondary">Nenhum cenário encontrado.</p>
@@ -736,10 +768,7 @@ export function SuiteForm({
                     }}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-text-secondary">{c.id}</span>
-                      <span className="text-xs text-text-secondary">· {c.module}</span>
-                    </div>
+                    <span className="font-mono text-xs text-text-secondary">{c.id}</span>
                     <p className="truncate text-sm font-medium text-text-primary">{c.scenarioName}</p>
                   </div>
                   <div className="shrink-0">
