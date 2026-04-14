@@ -38,14 +38,18 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
 }
 
 async function main() {
-  // ── Remove orphaned mock user records ───────────────────────────────────────
-  // U-01..U-100 were prototype users hardcoded in MOCK_USERS. They have been
-  // removed from the constant but may still have InactiveUser / UserProfile
-  // rows in the DB from previous seeds. Clean those up once.
-  const mockIds = Array.from({ length: 100 }, (_, i) => `U-${String(i + 1).padStart(2, "0")}`)
-  await prisma.inactiveUser.deleteMany({ where: { userId: { in: mockIds } } })
-  await prisma.userProfile.deleteMany({ where: { userId: { in: mockIds } } })
-  console.log("✓ cleaned orphaned mock user records (U-01..U-100)")
+  // ── Remove all prototype/test users from the DB ──────────────────────────────
+  // U-01..U-100: mock users previously hardcoded in MOCK_USERS.
+  // U-101..U-105: test users that were in created-users.json but have been removed.
+  // All their seed JSON files are now empty — delete them from the DB too.
+  const prototypeIds = [
+    ...Array.from({ length: 100 }, (_, i) => `U-${String(i + 1).padStart(2, "0")}`),
+    "U-101", "U-102", "U-103", "U-104", "U-105",
+  ]
+  await prisma.inactiveUser.deleteMany({ where: { userId: { in: prototypeIds } } })
+  await prisma.userProfile.deleteMany({ where: { userId: { in: prototypeIds } } })
+  await prisma.createdUser.deleteMany({ where: { id: { in: prototypeIds } } })
+  console.log("✓ cleaned prototype/test user records")
 
   // ── Sistemas ────────────────────────────────────────────────────────────────
   // Use upsert so that placeholder sistemas marked active:false in the JSON
