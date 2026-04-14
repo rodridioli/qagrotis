@@ -32,7 +32,7 @@ import { UserTipoBadge } from "@/components/qagrotis/StatusBadge"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { inativarQaUsers, type QaUserRecord } from "@/lib/actions/usuarios"
+import { inativarQaUsers, getQaUsers, type QaUserRecord } from "@/lib/actions/usuarios"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -75,12 +75,13 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
   }, [initialUsers])
 
   // If the currently logged-in user is not yet in the list (e.g. just registered via Google OAuth),
-  // force a fresh fetch so the new record appears without requiring a manual reload.
+  // fetch fresh users directly via server action — avoids router.refresh() which would
+  // reload the entire layout (including heavy DB queries) and disable the menu for ~20s.
   useEffect(() => {
-    if (currentUserId && !initialUsers.some((u) => u.id === currentUserId)) {
-      router.refresh()
-    }
-  }, [currentUserId, initialUsers, router])
+    if (!currentUserId) return
+    if (initialUsers.some((u) => u.id === currentUserId)) return
+    getQaUsers().then((fresh) => setUsers(fresh)).catch(() => {})
+  }, [currentUserId, initialUsers])
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
 

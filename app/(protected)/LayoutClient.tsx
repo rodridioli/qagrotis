@@ -395,10 +395,10 @@ interface Props {
 
 export default function LayoutClient({
   children,
-  sistemaNames,
-  integracoes = [],
-  sistemaComModulo = [],
-  sistemaComCenario = [],
+  sistemaNames: sistemaNamesProp,
+  integracoes: integracoesProp = [],
+  sistemaComModulo: sistemaComModuloProp = [],
+  sistemaComCenario: sistemaComCenarioProp = [],
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -406,8 +406,26 @@ export default function LayoutClient({
   const [hydrated, setHydrated] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Preserve last-known-good values so the menu never flickers to disabled
+  // when router.refresh() temporarily delivers empty props during re-fetch.
+  const [sistemaNames, setSistemaNames] = useState(sistemaNamesProp)
+  const [integracoes, setIntegracoes] = useState(integracoesProp)
+  const [sistemaComModulo, setSistemaComModulo] = useState(sistemaComModuloProp)
+  const [sistemaComCenario, setSistemaComCenario] = useState(sistemaComCenarioProp)
+
+  useEffect(() => {
+    // Only update if the new props are non-empty, OR if we have nothing yet.
+    // This prevents a router.refresh() mid-flight (with empty arrays) from blanking the menu.
+    if (sistemaNamesProp.length > 0 || sistemaNames.length === 0) setSistemaNames(sistemaNamesProp)
+    if (integracoesProp.length > 0 || integracoes.length === 0) setIntegracoes(integracoesProp)
+    if (sistemaComModuloProp.length > 0 || sistemaComModulo.length === 0) setSistemaComModulo(sistemaComModuloProp)
+    if (sistemaComCenarioProp.length > 0 || sistemaComCenario.length === 0) setSistemaComCenario(sistemaComCenarioProp)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sistemaNamesProp, integracoesProp, sistemaComModuloProp, sistemaComCenarioProp])
+
   const [sistemaSelecionado, setSistemaSelecionado] = useState<string>(
-    sistemaNames[0] ?? ""
+    sistemaNamesProp[0] ?? ""
   )
   const [isDark, setIsDark] = useState(false)
   const [assistenteOpen, setAssistenteOpen] = useState(false)
@@ -431,7 +449,6 @@ export default function LayoutClient({
   }, []) // intentionally empty — only runs on mount
 
   // Keep sistemaSelecionado valid if sistemaNames changes after mount
-  // (e.g. user adds/removes a system without reloading)
   useEffect(() => {
     if (!hydrated) return
     if (sistemaNames.length === 0) {

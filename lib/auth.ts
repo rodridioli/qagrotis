@@ -109,9 +109,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               data: { id, email, name: user.name ?? email, type: "Padrão", password: "" },
             })
           }
-          // Invalidate cache so the new user appears immediately in the admin listing
-          revalidatePath("/configuracoes/usuarios")
-          revalidatePath("/configuracoes")
+          // Note: /configuracoes/usuarios uses force-dynamic, so it always fetches fresh.
+          // No revalidatePath needed — it would cause a full layout reload and disable the menu.
         }
       }
       return true
