@@ -303,7 +303,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
           onFilterOpen={() => { setPendingInativos(apenasInativos); setFilterOpen(true) }}
           totalLabel="Total de clientes"
           totalCount={filtered.length}
-          baseCount={initialClientes.length}
+          baseCount={localClientes.length}
         />
 
         {pageItems.length === 0 ? (

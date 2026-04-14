@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useTransition, useEffect, useRef } from "react"
+import { useState, useEffect, useMemo, useTransition, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AlertCircle, ArrowRightLeft, ChevronDown, ChevronUp, FileText, Filter, MoreVertical, Plus, Power, Upload, X } from "lucide-react"

@@ -203,7 +203,7 @@ export default function ModulosClient({ initialModulos: initialModulosParam, ini
         setLocalModulos((prev) => prev.map((m) => idSet.has(m.id) ? { ...m, active: false } : m))
         setIsInativando(false)
         router.refresh()
-        toast.success(
+        toast.success(count === 1 ? "Módulo inativado com sucesso." : `${count} módulos inativados com sucesso.`)
       } catch {
         setIsInativando(false)
         router.refresh()
@@ -281,7 +281,7 @@ export default function ModulosClient({ initialModulos: initialModulosParam, ini
           onFilterOpen={() => { setPendingInativos(apenasInativos); setFilterOpen(true) }}
           totalLabel="Total de módulos"
           totalCount={filtered.length}
-          baseCount={initialModulos.length}
+          baseCount={localModulos.length}
         />
 
         {pageItems.length === 0 ? (

@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { LAYOUT_CACHE_TAG } from "@/lib/layout-cache"
 import { z } from "zod"
 import { nextId } from "@/lib/db-utils"
@@ -68,7 +68,7 @@ export async function criarSistema(data: {
   revalidatePath("/suites")
   revalidatePath("/suites/nova")
   revalidatePath("/gerador")
-  revalidateTag(LAYOUT_CACHE_TAG)
+  updateTag(LAYOUT_CACHE_TAG)
 }
 
 export async function atualizarSistema(
@@ -107,7 +107,7 @@ export async function atualizarSistema(
   revalidatePath("/suites")
   revalidatePath("/suites/nova")
   revalidatePath("/gerador")
-  revalidateTag(LAYOUT_CACHE_TAG)
+  updateTag(LAYOUT_CACHE_TAG)
   if (oldName !== parsed.name) {
     revalidatePath("/configuracoes/modulos")
   }
@@ -140,5 +140,5 @@ export async function inativarSistemas(ids: string[]): Promise<void> {
   revalidatePath("/suites")
   revalidatePath("/suites/nova")
   revalidatePath("/gerador")
-  revalidateTag(LAYOUT_CACHE_TAG)
+  updateTag(LAYOUT_CACHE_TAG)
 }

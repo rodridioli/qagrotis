@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { LAYOUT_CACHE_TAG } from "@/lib/layout-cache"
 import { z } from "zod"
 import { requireSession } from "@/lib/session"
@@ -172,7 +172,7 @@ export async function criarCenario(data: {
   }
 
   const existing = await prisma.cenario.findMany({ select: { id: true } })
-  const id = nextId(existing.map((c) => c.id), "CT", 3)
+  const id = nextId(existing.map((c: { id: string }) => c.id), "CT", 3)
 
   // Lookup IDs by name for data integrity
   const [sysRow, modRow] = await Promise.all([
@@ -216,7 +216,7 @@ export async function criarCenario(data: {
   revalidatePath("/cenarios")
   revalidatePath("/suites/nova")
   revalidatePath("/suites")
-  revalidateTag(LAYOUT_CACHE_TAG)
+  updateTag(LAYOUT_CACHE_TAG)
   return toRecord(row)
 }
 

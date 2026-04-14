@@ -235,7 +235,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
         setLocalIntegracoes((prev) => prev.map((i) => idSet.has(i.id) ? { ...i, active: false } : i))
         setIsInativando(false)
         router.refresh()
-        toast.success(
+        toast.success(count === 1 ? "Integração inativada com sucesso." : `${count} integrações inativadas com sucesso.`)
       } catch {
         setIsInativando(false)
         router.refresh()
@@ -312,7 +312,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
           onFilterOpen={() => { setPendingFilters(filters); setFilterOpen(true) }}
           totalLabel="Total de integrações"
           totalCount={filtered.length}
-          baseCount={initialIntegracoes.length}
+          baseCount={localIntegracoes.length}
         />
 
         {pageItems.length === 0 ? (

@@ -264,7 +264,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
           onFilterOpen={() => { setPendingFilters(filters); setFilterOpen(true) }}
           totalLabel="Total de sistemas"
           totalCount={filtered.length}
-          baseCount={initialSistemas.length}
+          baseCount={localSistemas.length}
         />
 
         {pageItems.length === 0 ? (
