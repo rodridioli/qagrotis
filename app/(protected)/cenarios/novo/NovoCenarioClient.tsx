@@ -119,14 +119,21 @@ export default function NovoCenarioClient({
   useEffect(() => {
     const id = pendingFocusStepId.current
     if (id === null) return
-    const raf = requestAnimationFrame(() => {
+    // Try immediately first, then fall back to setTimeout in case the tab
+    // transition or DOM paint hasn't completed yet (e.g. hidden -> visible).
+    const tryFocus = () => {
       const el = stepInputRefs.current[id]
       if (el) {
         el.focus()
         pendingFocusStepId.current = null
+        return true
       }
-    })
-    return () => cancelAnimationFrame(raf)
+      return false
+    }
+    if (!tryFocus()) {
+      const t = setTimeout(tryFocus, 50)
+      return () => clearTimeout(t)
+    }
   }, [steps])
 
   // ── Deps ─────────────────────────────────────────────────────────────────────
@@ -213,6 +220,8 @@ export default function NovoCenarioClient({
     const newId = Date.now()
     pendingFocusStepId.current = newId
     setHasSaved(false)
+    // Ensure the automatizado tab is active so the input is visible and focusable
+    setActiveTab("automatizado")
     setSteps((prev) => [...prev, { id: newId, acao: "", resultado: "" }])
   }
 

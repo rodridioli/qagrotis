@@ -129,15 +129,19 @@ export default function EditarCenarioClient({
   useEffect(() => {
     const id = pendingFocusStepId.current
     if (id === null) return
-    // Use rAF to ensure the DOM element is mounted before focusing
-    const raf = requestAnimationFrame(() => {
+    const tryFocus = () => {
       const el = stepInputRefs.current[id]
       if (el) {
         el.focus()
         pendingFocusStepId.current = null
+        return true
       }
-    })
-    return () => cancelAnimationFrame(raf)
+      return false
+    }
+    if (!tryFocus()) {
+      const t = setTimeout(tryFocus, 50)
+      return () => clearTimeout(t)
+    }
   }, [steps])
 
   // ── Deps ─────────────────────────────────────────────────────────────────────
@@ -242,6 +246,8 @@ export default function EditarCenarioClient({
     const newId = Date.now()
     pendingFocusStepId.current = newId
     setHasSaved(false)
+    // Ensure the automatizado tab is active so the input is visible and focusable
+    setActiveTab("automatizado")
     setSteps((prev) => [...prev, { id: newId, acao: "", resultado: "" }])
   }
 
