@@ -19,6 +19,7 @@ async function NovaSuiteContent() {
     <SuiteForm
       mode="create"
       systemList={systemList}
+      initialSistema={systemList[0] ?? ""}
       allModulos={activeModulos}
       allCenarios={allCenarios}
     />

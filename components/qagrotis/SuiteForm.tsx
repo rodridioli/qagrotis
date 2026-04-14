@@ -42,6 +42,7 @@ export interface SuiteFormProps {
   mode: "create" | "edit"
   suite?: SuiteRecord
   systemList?: string[]
+  initialSistema?: string
   allModulos?: ModuloRecord[]
   allCenarios?: CenarioRecord[]
 }
@@ -74,12 +75,15 @@ export function SuiteForm({
   mode,
   suite,
   systemList = SYSTEM_LIST,
+  initialSistema,
   allModulos = [],
   allCenarios = []
 }: SuiteFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { sistemaSelecionado } = useSistemaSelecionado()
+  const { sistemaSelecionado: sistemaSelecionadoCtx } = useSistemaSelecionado()
+  // Use context value if available, otherwise fall back to saved suite sistema
+  const sistemaSelecionado = sistemaSelecionadoCtx || suite?.sistema || initialSistema || ""
   const tabParam = searchParams.get("tab")
   const initialTab = (tabParam === "cenarios" || tabParam === "historico") ? tabParam : "cadastro"
   const [activeTab, setActiveTab] = useState<"cadastro" | "cenarios" | "historico">(initialTab)
@@ -99,6 +103,12 @@ export function SuiteForm({
   const [suiteName, setSuiteName] = useState(suite?.suiteName || "")
   const [versao, setVersao] = useState(suite?.versao || "")
   const [selectedModule, setSelectedModule] = useState(suite?.modulo || "")
+
+  // Sync addModuloFilter when selectedModule changes so the modal pre-filters
+  // by the module chosen in the Cadastro tab
+  useEffect(() => {
+    setAddModuloFilter(selectedModule)
+  }, [selectedModule])
 
   const [tipo, setTipo] = useState(suite?.tipo || "")
   const [removeOpen, setRemoveOpen] = useState(false)
@@ -174,7 +184,7 @@ export function SuiteForm({
   const [removerHistoricoOpen, setRemoverHistoricoOpen] = useState(false)
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
   const [addSearch, setAddSearch] = useState("")
-  const [addModuloFilter, setAddModuloFilter] = useState("")
+  const [addModuloFilter, setAddModuloFilter] = useState(suite?.modulo || "")
 
   const filteredModules = useMemo(() => {
     return allModulos.filter(m => m.sistemaName === sistemaSelecionado)
@@ -695,7 +705,7 @@ export function SuiteForm({
       </div>
 
       {/* Dialogs */}
-      <Dialog open={addCenarioOpen} onOpenChange={(open) => { setAddCenarioOpen(open); if (!open) { setAddSearch(""); setAddModuloFilter(""); setSelectedAddIds(new Set()) } }}>
+      <Dialog open={addCenarioOpen} onOpenChange={(open) => { setAddCenarioOpen(open); if (!open) { setAddSearch(""); setAddModuloFilter(selectedModule); setSelectedAddIds(new Set()) } }}>
         <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Adicionar Cenário</DialogTitle>

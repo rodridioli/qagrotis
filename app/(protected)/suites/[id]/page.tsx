@@ -25,6 +25,7 @@ async function SuiteDetailContent({ id }: { id: string }) {
       mode="edit"
       suite={suite}
       systemList={systemList}
+      initialSistema={suite.sistema || systemList[0] || ""}
       allModulos={activeModulos}
       allCenarios={allCenarios}
     />
