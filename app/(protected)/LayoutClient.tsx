@@ -405,13 +405,11 @@ export default function LayoutClient({
   const { data: session, status } = useSession()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [sistemaSelecionado, setSistemaSelecionado] = useState<string>(() => {
-    // Initialize synchronously from localStorage to avoid disabled-menu flash
-    if (typeof window === "undefined" || sistemaNames.length === 0) return ""
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved && sistemaNames.includes(saved)) return saved
-    return sistemaNames[0] ?? ""
-  })
+  // Default to the first system so the menu is never incorrectly disabled on first render.
+  // localStorage preference is applied after hydration via the useEffect below.
+  const [sistemaSelecionado, setSistemaSelecionado] = useState<string>(
+    sistemaNames[0] ?? ""
+  )
   const [isDark, setIsDark] = useState(false)
   const [assistenteOpen, setAssistenteOpen] = useState(false)
 
@@ -430,19 +428,20 @@ export default function LayoutClient({
     prevStatusRef.current = status
   }, [status, router])
 
-  // Keep sistemaSelecionado in sync if sistemaNames changes (e.g. after adding a new system)
+  // On mount and whenever sistemaNames changes: apply localStorage preference.
+  // We do this in useEffect (client-only) to avoid SSR/hydration mismatch.
   useEffect(() => {
     if (sistemaNames.length === 0) {
       setSistemaSelecionado("")
       localStorage.removeItem(STORAGE_KEY)
       return
     }
-    setSistemaSelecionado((prev) => {
-      if (prev && sistemaNames.includes(prev)) return prev
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved && sistemaNames.includes(saved)) return saved
-      return sistemaNames[0] ?? ""
-    })
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved && sistemaNames.includes(saved)) {
+      setSistemaSelecionado(saved)
+    } else {
+      setSistemaSelecionado(sistemaNames[0] ?? "")
+    }
   }, [sistemaNames])
 
   // Redirect to /configuracoes/sistemas when there are no active systems
