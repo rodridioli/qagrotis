@@ -47,23 +47,6 @@ const CLIENTS = [
   "Solo Fértil",
 ]
 
-const firstNames = [
-  "Ana", "Bruno", "Carlos", "Diana", "Eduardo", "Fernanda", "Gabriel", "Helena",
-  "Igor", "Julia", "Kevin", "Laura", "Marcos", "Natalia", "Oscar", "Paula",
-  "Quellison", "Rafael", "Sandra", "Tiago", "Ursula", "Vitor", "Wendy", "Xavier",
-  "Yasmin", "Zeca", "André", "Beatriz", "Cesar", "Daniela",
-]
-const lastNames = [
-  "Silva", "Santos", "Oliveira", "Souza", "Lima", "Costa", "Ferreira", "Alves",
-  "Rodrigues", "Nascimento", "Obed", "Roger", "Aquino", "Nemetz", "Pereira",
-  "Martins", "Carvalho", "Araújo", "Gomes", "Ribeiro",
-]
-
-function pick<T>(arr: T[], i: number): T {
-  return arr[i % arr.length]
-}
-
-
 export const MOCK_USERS: MockUser[] = [
   {
     id: "U-00",
@@ -73,20 +56,7 @@ export const MOCK_USERS: MockUser[] = [
     avatar: "",
     active: true,
   },
-  ...Array.from({ length: 100 }, (_, i) => {
-  const firstName = pick(firstNames, i * 3 + 7)
-  const lastName = pick(lastNames, i * 2 + 5)
-  const name = `${firstName} ${lastName}`
-  const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i + 1}@empresa.com.br`
-  return {
-    id: `U-${String(i + 1).padStart(2, "0")}`,
-    name,
-    email,
-    type: (i % 4 === 0 ? "Administrador" : "Padrão") as UserType,
-    avatar: "",
-    active: i % 7 !== 0,
-  }
-})]
+]
 
 
 export const DASHBOARD_METRICS: DashboardMetric[] = [

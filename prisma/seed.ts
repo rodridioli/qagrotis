@@ -39,13 +39,20 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
 
 async function main() {
   // ── Clean mock data ─────────────────────────────────────────────────────────
-  // Cenarios and suites are seeded from JSON files. When those files are emptied
-  // (mock data removed), we also hard-delete everything from the DB so the app
-  // starts with a clean slate. Sistemas and modulos are kept (real config data).
+  // Hard-delete everything that was previously seeded as prototype/mock data.
+  // Sistemas and modulos are kept (real configuration data).
   await prisma.suite.deleteMany({})
   await prisma.cenario.deleteMany({})
   await prisma.cliente.deleteMany({})
   console.log("✓ cleaned cenarios, suites, clientes")
+
+  // Remove InactiveUser and UserProfile rows for the 100 removed mock users
+  // (U-01 to U-100). These exist in the DB from previous seeds but no longer
+  // have a corresponding entry in MOCK_USERS, so they are orphaned.
+  const mockIds = Array.from({ length: 100 }, (_, i) => `U-${String(i + 1).padStart(2, "0")}`)
+  await prisma.inactiveUser.deleteMany({ where: { userId: { in: mockIds } } })
+  await prisma.userProfile.deleteMany({ where: { userId: { in: mockIds } } })
+  console.log("✓ cleaned orphaned mock user records (U-01..U-100)")
 
   // ── Sistemas ────────────────────────────────────────────────────────────────
   // Use upsert so that placeholder sistemas marked active:false in the JSON
