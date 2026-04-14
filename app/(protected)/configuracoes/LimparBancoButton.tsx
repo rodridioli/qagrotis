@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, Trash2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { limparRegistrosInativos, type LimparResult } from "@/lib/actions/admin"
 
 export default function LimparBancoButton() {
@@ -40,30 +41,19 @@ export default function LimparBancoButton() {
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-3">
         {!confirmando ? (
-          <button
-            onClick={handleClick}
-            disabled={isPending}
-            className="inline-flex items-center gap-2 rounded-lg border border-neutral-grey-200 bg-surface-card px-4 py-2 text-sm font-medium text-text-primary shadow-card transition-colors hover:bg-neutral-grey-50 disabled:opacity-60"
-          >
-            <Trash2 className="size-4" />
+          <Button variant="outline" onClick={handleClick} disabled={isPending}>
+            <Trash2 />
             {isPending ? "Limpando..." : "Limpar registros inativos"}
-          </button>
+          </Button>
         ) : (
           <>
-            <button
-              onClick={handleClick}
-              disabled={isPending}
-              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-60"
-            >
-              <AlertTriangle className="size-4" />
+            <Button variant="destructive" onClick={handleClick} disabled={isPending}>
+              <AlertTriangle />
               Confirmar limpeza
-            </button>
-            <button
-              onClick={() => setConfirmando(false)}
-              className="text-sm text-text-secondary transition-colors hover:text-text-primary"
-            >
+            </Button>
+            <Button variant="outline" onClick={() => setConfirmando(false)}>
               Cancelar
-            </button>
+            </Button>
           </>
         )}
       </div>
