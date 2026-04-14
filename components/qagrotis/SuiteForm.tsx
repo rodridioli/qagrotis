@@ -493,15 +493,35 @@ export function SuiteForm({
                   </tr>
                 </thead>
                 <tbody>
-                  {cenarios.map((c) => (
-                    <tr key={c.id} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
+                  {cenarios.map((c) => {
+                    const isCenarioAtivo = allCenarios.find((ac) => ac.id === c.id)?.active !== false
+                    return (
+                    <tr key={c.id} className={`border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50${!isCenarioAtivo ? " opacity-60" : ""}`}>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <Link
-                          href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
-                          className="font-medium text-brand-primary hover:underline"
-                        >{c.id}</Link>
+                        {isCenarioAtivo ? (
+                          <Link
+                            href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
+                            className="font-medium text-brand-primary hover:underline"
+                          >{c.id}</Link>
+                        ) : (
+                          <Link
+                            href={`/cenarios/${c.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-text-secondary hover:underline"
+                          >{c.id}</Link>
+                        )}
                       </td>
-                      <td className="px-4 py-3 truncate text-text-primary">{c.name}</td>
+                      <td className="px-4 py-3 truncate text-text-primary">
+                        <span className="flex items-center gap-2">
+                          {c.name}
+                          {!isCenarioAtivo && (
+                            <span className="shrink-0 rounded-full bg-neutral-grey-200 px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
+                              Inativo
+                            </span>
+                          )}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-text-secondary truncate">{c.module}</td>
                       <td className="px-4 py-3 text-text-secondary">{historicoStats[c.id]?.execucoes ?? 0}</td>
                       <td className="px-4 py-3 text-text-secondary">{historicoStats[c.id]?.erros ?? 0}</td>
@@ -517,33 +537,49 @@ export function SuiteForm({
                           >
                             <Trash2 className="size-4" />
                           </button>
-                        ) : (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={
-                                <button type="button" className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100" />
-                              }
-                            >
-                              <MoreVertical className="size-4" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" side="bottom">
-                              <DropdownMenuItem>
-                                <Link
-                                  href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
-                                  className="w-full"
-                                >
-                                  Testar
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
-                                Remover
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
+                        ) : (() => {
+                          const cenarioAtivo = allCenarios.find((ac) => ac.id === c.id)?.active !== false
+                          return (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={
+                                  <button type="button" className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100" />
+                                }
+                              >
+                                <MoreVertical className="size-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" side="bottom">
+                                {cenarioAtivo ? (
+                                  <DropdownMenuItem>
+                                    <Link
+                                      href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
+                                      className="w-full"
+                                    >
+                                      Testar
+                                    </Link>
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem>
+                                    <Link
+                                      href={`/cenarios/${c.id}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="w-full"
+                                    >
+                                      Visualizar
+                                    </Link>
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
+                                  Remover
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )
+                        })()}
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
