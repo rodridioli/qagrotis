@@ -104,12 +104,6 @@ export function SuiteForm({
   const [versao, setVersao] = useState(suite?.versao || "")
   const [selectedModule, setSelectedModule] = useState(suite?.modulo || "")
 
-  // Sync addModuloFilter when selectedModule changes so the modal pre-filters
-  // by the module chosen in the Cadastro tab
-  useEffect(() => {
-    setAddModuloFilter(selectedModule)
-  }, [selectedModule])
-
   const [tipo, setTipo] = useState(suite?.tipo || "")
   const [removeOpen, setRemoveOpen] = useState(false)
   const [removeId, setRemoveId] = useState<string | null>(null)
@@ -184,7 +178,7 @@ export function SuiteForm({
   const [removerHistoricoOpen, setRemoverHistoricoOpen] = useState(false)
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
   const [addSearch, setAddSearch] = useState("")
-  const [addModuloFilter, setAddModuloFilter] = useState(suite?.modulo || "")
+  const [addModuloFilter, setAddModuloFilter] = useState("")
 
   const filteredModules = useMemo(() => {
     return allModulos.filter(m => m.sistemaName === sistemaSelecionado)
@@ -195,17 +189,16 @@ export function SuiteForm({
   const filteredAdd = allCenarios.filter((c) => {
     if (!c.active) return false
     if (existingIds.has(c.id)) return false
+    // Search filter
     const searchLow = addSearch.toLowerCase().trim()
-    const matchesSearch = !addSearch ||
+    const matchesSearch = !searchLow ||
       (c.id || "").toLowerCase().includes(searchLow) ||
       (c.scenarioName || "").toLowerCase().includes(searchLow)
-    const sysSelected = (sistemaSelecionado || "").toLowerCase().trim()
-    const cSys = (c.system || "").toLowerCase().trim()
-    const matchesSystem = !sysSelected || cSys === sysSelected
+    // Module filter (optional — only applied when user explicitly picks a module)
     const modSelected = (addModuloFilter || "").toLowerCase().trim()
     const cMod = (c.module || "").toLowerCase().trim()
     const matchesModule = !modSelected || cMod === modSelected
-    return matchesSearch && matchesSystem && matchesModule
+    return matchesSearch && matchesModule
   })
 
   // Stats computed from historico (execuções and erros per cenário)
@@ -705,7 +698,7 @@ export function SuiteForm({
       </div>
 
       {/* Dialogs */}
-      <Dialog open={addCenarioOpen} onOpenChange={(open) => { setAddCenarioOpen(open); if (!open) { setAddSearch(""); setAddModuloFilter(selectedModule); setSelectedAddIds(new Set()) } }}>
+      <Dialog open={addCenarioOpen} onOpenChange={(open) => { setAddCenarioOpen(open); if (!open) { setAddSearch(""); setAddModuloFilter(""); setSelectedAddIds(new Set()) } }}>
         <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Adicionar Cenário</DialogTitle>
