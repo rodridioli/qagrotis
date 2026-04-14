@@ -67,6 +67,12 @@ interface Props {
 export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [users, setUsers] = useState<QaUserRecord[]>(initialUsers)
+
+  // Keep local users in sync when initialUsers changes (e.g. after router.refresh())
+  useEffect(() => {
+    setUsers(initialUsers)
+  }, [initialUsers])
 
   // If the currently logged-in user is not yet in the list (e.g. just registered via Google OAuth),
   // force a fresh fetch so the new record appears without requiring a manual reload.
@@ -88,7 +94,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
 
   const filtered = useMemo(() => {
-    const result = initialUsers.filter((u) => {
+    const result = users.filter((u) => {
       const matchSearch =
         !search ||
         u.id.toLowerCase().includes(search.toLowerCase()) ||
@@ -102,7 +108,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
       const diff = numericId(a.id) - numericId(b.id)
       return sortOrder === "desc" ? -diff : diff
     })
-  }, [search, filters, initialUsers, sortOrder])
+  }, [search, filters, users, sortOrder])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -112,13 +118,13 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
 
   const activeFilterCount = [filters.tipo, filters.apenasInativos ? "1" : ""].filter(Boolean).length
   // Checkboxes and bulk inactivation only apply when there are other active users to act on
-  const hasOtherActiveUsers = initialUsers.some((u) => u.id !== currentUserId && u.active)
+  const hasOtherActiveUsers = users.some((u) => u.id !== currentUserId && u.active)
   const showBulkActions = isAdmin && !filters.apenasInativos && hasOtherActiveUsers
 
   // Protect the last active admin from being inactivated
   const activeAdminCount = useMemo(
-    () => initialUsers.filter((u) => u.active && u.type === "Administrador").length,
-    [initialUsers]
+    () => users.filter((u) => u.active && u.type === "Administrador").length,
+    [users]
   )
   function isLastActiveAdmin(u: QaUserRecord) {
     return u.active && u.type === "Administrador" && activeAdminCount === 1
@@ -131,7 +137,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
 
   function toggleRow(id: string) {
     if (id === currentUserId) return
-    const u = initialUsers.find((u) => u.id === id)
+    const u = users.find((u) => u.id === id)
     if (u && isLastActiveAdmin(u)) return
     setSelectedIds((prev) => {
       const next = new Set(prev)
@@ -156,7 +162,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
   }
 
   function handleInativarSingle(id: string) {
-    const u = initialUsers.find((u) => u.id === id)
+    const u = users.find((u) => u.id === id)
     if (u && isLastActiveAdmin(u)) return
     setInativarIds([id])
     setInativarOpen(true)
@@ -177,7 +183,16 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
     startTransition(async () => {
       try {
         const result = await inativarQaUsers(ids)
-        if (result.error) { toast.error(result.error); return }
+        if (result.error) {
+          toast.error(result.error)
+          setIsInativando(false)
+          return
+        }
+        // Optimistic update: mark users as inactive immediately so the UI
+        // updates before router.refresh() completes — no visible delay.
+        const idSet = new Set(ids)
+        setUsers((prev) => prev.map((u) => idSet.has(u.id) ? { ...u, active: false } : u))
+        setIsInativando(false)
         router.refresh()
         toast.success(
           count === 1
@@ -185,10 +200,9 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
             : `${count} usuários inativados com sucesso.`
         )
       } catch {
+        setIsInativando(false)
         router.refresh()
         toast.error("Erro ao inativar. Tente novamente.")
-      } finally {
-        setIsInativando(false)
       }
     })
   }
@@ -257,7 +271,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
           onFilterOpen={() => { setPendingFilters(filters); setFilterOpen(true) }}
           totalLabel="Total de usuários"
           totalCount={filtered.length}
-          baseCount={initialUsers.length}
+          baseCount={users.length}
         />
 
         {pageItems.length === 0 ? (
