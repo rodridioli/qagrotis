@@ -395,74 +395,36 @@ interface Props {
 
 export default function LayoutClient({
   children,
-  sistemaNames: sistemaNamesProp,
-  integracoes: integracoesProp = [],
-  sistemaComModulo: sistemaComModuloProp = [],
-  sistemaComCenario: sistemaComCenarioProp = [],
+  sistemaNames,
+  integracoes = [],
+  sistemaComModulo = [],
+  sistemaComCenario = [],
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const { data: session } = useSession()
-  const [hydrated, setHydrated] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-
-  // Preserve last-known-good values so the menu never flickers to disabled
-  // when router.refresh() temporarily delivers empty props during re-fetch.
-  const [sistemaNames, setSistemaNames] = useState(sistemaNamesProp)
-  const [integracoes, setIntegracoes] = useState(integracoesProp)
-  const [sistemaComModulo, setSistemaComModulo] = useState(sistemaComModuloProp)
-  const [sistemaComCenario, setSistemaComCenario] = useState(sistemaComCenarioProp)
-
-  useEffect(() => {
-    // Only update if the new props are non-empty, OR if we have nothing yet.
-    // This prevents a router.refresh() mid-flight (with empty arrays) from blanking the menu.
-    if (sistemaNamesProp.length > 0 || sistemaNames.length === 0) setSistemaNames(sistemaNamesProp)
-    if (integracoesProp.length > 0 || integracoes.length === 0) setIntegracoes(integracoesProp)
-    if (sistemaComModuloProp.length > 0 || sistemaComModulo.length === 0) setSistemaComModulo(sistemaComModuloProp)
-    if (sistemaComCenarioProp.length > 0 || sistemaComCenario.length === 0) setSistemaComCenario(sistemaComCenarioProp)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sistemaNamesProp, integracoesProp, sistemaComModuloProp, sistemaComCenarioProp])
-
-  const [sistemaSelecionado, setSistemaSelecionado] = useState<string>(
-    sistemaNamesProp[0] ?? ""
-  )
+  // Server already provides the correct sistemaNames — use first as default.
+  // localStorage preference is applied silently on mount with no visible delay.
+  const [sistemaSelecionado, setSistemaSelecionado] = useState<string>(sistemaNames[0] ?? "")
   const [isDark, setIsDark] = useState(false)
   const [assistenteOpen, setAssistenteOpen] = useState(false)
 
-  // Computed flags based on selected sistema
+  // Computed flags — derived directly from server props, no async step needed.
   const hasActiveSistema = sistemaNames.length > 0
   const hasSistemaModulo = hasActiveSistema && sistemaComModulo.includes(sistemaSelecionado)
   const hasSistemaCenario = hasActiveSistema && sistemaComCenario.includes(sistemaSelecionado)
 
-  // On mount only: read localStorage preference and mark UI as ready.
-  // Runs once after hydration — never resets hydrated to false on re-renders.
+  // On mount: silently apply the localStorage preference if it differs from the default.
+  // No loading gate — the UI is already correct with sistemaNames[0] as the default.
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved && sistemaNames.includes(saved)) {
+    if (saved && sistemaNames.includes(saved) && saved !== sistemaSelecionado) {
       setSistemaSelecionado(saved)
-    } else if (sistemaNames.length > 0) {
-      setSistemaSelecionado(sistemaNames[0])
     }
-    setHydrated(true)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // intentionally empty — only runs on mount
-
-  // Keep sistemaSelecionado valid if sistemaNames changes after mount
-  useEffect(() => {
-    if (!hydrated) return
-    if (sistemaNames.length === 0) {
-      setSistemaSelecionado("")
-      localStorage.removeItem(STORAGE_KEY)
-      return
-    }
-    setSistemaSelecionado((prev) => {
-      if (prev && sistemaNames.includes(prev)) return prev
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved && sistemaNames.includes(saved)) return saved
-      return sistemaNames[0] ?? ""
-    })
-  }, [sistemaNames, hydrated])
+  }, [])
 
   // Redirect to /configuracoes/sistemas when there are no active systems
   useEffect(() => {
@@ -489,17 +451,6 @@ export default function LayoutClient({
     document.documentElement.classList.toggle("dark", next)
     setIsDark(next)
     localStorage.setItem(THEME_KEY, next ? "dark" : "light")
-  }
-
-  if (!hydrated) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-surface-default">
-        <div className="flex flex-col items-center gap-3">
-          <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
-          <span className="text-sm text-text-secondary">Carregando...</span>
-        </div>
-      </div>
-    )
   }
 
   return (
