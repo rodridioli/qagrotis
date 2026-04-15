@@ -42,16 +42,10 @@ async function main() {
   // All seed JSON files have been emptied. Delete the corresponding records from
   // the DB so they don't persist across deploys.
 
-  // Users: U-01..U-100 (mock) + U-101..U-105 (test)
-  const protoUserIds = [
-    ...Array.from({ length: 100 }, (_, i) => `U-${String(i + 1).padStart(2, "0")}`),
-    "U-101", "U-102", "U-103", "U-104", "U-105",
-  ]
-  await prisma.inactiveUser.deleteMany({ where: { userId: { in: protoUserIds } } })
-  await prisma.userProfile.deleteMany({ where: { userId: { in: protoUserIds } } })
-  await prisma.createdUser.deleteMany({ where: { id: { in: protoUserIds } } })
-  await prisma.inviteToken.deleteMany({ where: { userId: { in: protoUserIds } } })
-  console.log("✓ cleaned prototype/test user records")
+  // Note: user deletion removed — real users created via Google OAuth get IDs like
+  // U-01, U-02, etc. and must NOT be deleted on deploy. The MOCK_USERS list now only
+  // contains U-00 (hardcoded admin). No prototype users to clean.
+  console.log("✓ no prototype user records to clean")
 
   // Sistemas: SIS-01..SIS-10
   const protoSistemaIds = Array.from({ length: 10 }, (_, i) => `SIS-${String(i + 1).padStart(2, "0")}`)
