@@ -5,6 +5,8 @@ import { getIntegracoes } from "@/lib/actions/integracoes"
 // ── GitBook content cache ─────────────────────────────────────────────────────
 
 const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
+const GITBOOK_ORG_ID = process.env.GITBOOK_ORG_ID ?? "YJL6kpwzoMMhtvwRrmNt"
+const GITBOOK_SITE_ID = process.env.GITBOOK_SITE_ID ?? "site_YbjJD"
 const GITBOOK_SPACE_ID = process.env.GITBOOK_SPACE_ID ?? ""
 const GITBOOK_API_TOKEN = process.env.GITBOOK_API_TOKEN ?? ""
 
@@ -15,17 +17,34 @@ async function fetchGitBookContent(): Promise<string> {
   const now = Date.now()
   if (cachedContent && now < cacheExpiry) return cachedContent
 
-  if (!GITBOOK_API_TOKEN || !GITBOOK_SPACE_ID) {
-    throw new Error("Configure GITBOOK_API_TOKEN e GITBOOK_SPACE_ID nas variáveis de ambiente do Vercel.")
+  if (!GITBOOK_API_TOKEN) {
+    throw new Error("Configure GITBOOK_API_TOKEN nas variáveis de ambiente do Vercel.")
   }
 
   const headers = { "Authorization": `Bearer ${GITBOOK_API_TOKEN}` }
 
+  // Resolve spaceId: use env var if set, otherwise discover from org + site
+  let spaceId = GITBOOK_SPACE_ID
+  if (!spaceId) {
+    // Get the first space associated with the site
+    const siteRes = await fetch(
+      `https://api.gitbook.com/v1/orgs/${GITBOOK_ORG_ID}/sites/${GITBOOK_SITE_ID}/site-spaces`,
+      { headers }
+    )
+    if (!siteRes.ok) {
+      const err = await siteRes.text()
+      throw new Error(`GitBook site-spaces error: ${siteRes.status} — ${err.slice(0, 200)}`)
+    }
+    const siteData = await siteRes.json() as { items?: { space: { id: string } }[] }
+    spaceId = siteData.items?.[0]?.space?.id ?? ""
+    if (!spaceId) throw new Error("Não foi possível encontrar o Space ID via API do GitBook.")
+  }
+
   // List all pages in the space
-  const pagesRes = await fetch(`https://api.gitbook.com/v1/spaces/${GITBOOK_SPACE_ID}/content`, { headers })
+  const pagesRes = await fetch(`https://api.gitbook.com/v1/spaces/${spaceId}/content`, { headers })
   if (!pagesRes.ok) {
     const err = await pagesRes.text()
-    throw new Error(`GitBook API error: ${pagesRes.status} — ${err.slice(0, 200)}`)
+    throw new Error(`GitBook content error: ${pagesRes.status} — ${err.slice(0, 200)}`)
   }
 
   const data = await pagesRes.json() as { pages?: { id: string; title: string; path: string; type: string }[] }
@@ -37,7 +56,7 @@ async function fetchGitBookContent(): Promise<string> {
   for (const page of pages.slice(0, 30)) {
     try {
       const pageRes = await fetch(
-        `https://api.gitbook.com/v1/spaces/${GITBOOK_SPACE_ID}/content/path/${encodeURIComponent(page.path)}`,
+        `https://api.gitbook.com/v1/spaces/${spaceId}/content/path/${encodeURIComponent(page.path)}`,
         { headers }
       )
       if (!pageRes.ok) continue
