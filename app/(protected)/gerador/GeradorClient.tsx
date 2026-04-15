@@ -51,13 +51,18 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
   const [contexto, setContexto] = useState("")
   const activeIntegracoes = useMemo(() => integracoes.filter(i => i.active !== false), [integracoes])
-  const [aiProvider, setAiProvider] = useState<string>(activeIntegracoes[0]?.id ?? "")
+  const [aiProvider, setAiProvider] = useState<string>(() => {
+    // Safe: activeIntegracoes is derived from server props, stable on first render
+    return activeIntegracoes[0]?.id ?? ""
+  })
 
-  // Apply localStorage preference after hydration (avoids SSR/CSR mismatch)
+  // On mount: restore saved preference if still valid, else keep first available
   useEffect(() => {
     const saved = localStorage.getItem("gerador-ai-provider")
     if (saved && activeIntegracoes.some((i) => i.id === saved)) {
       setAiProvider(saved)
+    } else if (activeIntegracoes.length > 0) {
+      setAiProvider(activeIntegracoes[0].id)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

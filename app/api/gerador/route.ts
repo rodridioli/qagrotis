@@ -519,7 +519,7 @@ export async function POST(req: NextRequest) {
   const { jira, imagens, integrationId } = body
 
   if (!integrationId) {
-    return new Response("Selecione um Motor de IA antes de gerar.", { status: 400 })
+    return new Response("Nenhum modelo de IA selecionado. Recarregue a página e tente novamente.", { status: 400 })
   }
 
   if (!jira && (!imagens || imagens.length === 0)) {
@@ -527,8 +527,15 @@ export async function POST(req: NextRequest) {
   }
 
   const integracao = await getIntegracao(integrationId)
-  if (!integracao || !integracao.active) {
-    return new Response("Integração não encontrada ou inativa.", { status: 404 })
+  if (!integracao) {
+    return new Response(
+      `Modelo de IA não encontrado (ID: ${integrationId}). ` +
+      "Pode ter sido removido ou inativado. Recarregue a página e selecione outro modelo.",
+      { status: 404 }
+    )
+  }
+  if (!integracao.active) {
+    return new Response("O modelo de IA selecionado está inativo. Selecione outro nas Configurações.", { status: 404 })
   }
 
   const hasImages = imagens && imagens.length > 0
