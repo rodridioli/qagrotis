@@ -51,18 +51,11 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [integracaoId, setIntegracaoId] = useState<string>("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   // Init selected integration when list loads
-  useEffect(() => {
-    if (integracoes.length > 0 && !integracaoId) {
-      setIntegracaoId(integracoes[0].id)
-    }
-  }, [integracoes, integracaoId])
-
   // Auto-scroll to the latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -109,7 +102,7 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
         body: JSON.stringify({
           pergunta: trimmed,
           sistema: sistemaSelecionado,
-          integracaoId: integracaoId || undefined,
+
           historico,
         }),
         signal: abortRef.current.signal,
@@ -157,7 +150,7 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
       abortRef.current = null
       setTimeout(() => inputRef.current?.focus(), 50)
     }
-  }, [input, isLoading, messages, sistemaSelecionado, integracaoId])
+  }, [input, isLoading, messages, sistemaSelecionado])
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -220,35 +213,7 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
             </div>
           </div>
 
-          {/* ── Integration selector ── */}
-          <div className="shrink-0 border-b border-border-default px-4 py-2">
-            <Select 
-              value={integracoes.length > 0 ? integracaoId : ""} 
-              onValueChange={(v) => setIntegracaoId(v ?? "")}
-              disabled={integracoes.length === 0}
-            >
-              <SelectTrigger className="h-7 text-xs">
-                <span className="mr-1 text-text-secondary">Modelo:</span>
-                <SelectValue placeholder={integracoes.length > 0 ? "Selecionar modelo" : "Não cadastrado"}>
-                  {integracoes.length > 0 
-                    ? (integracoes.find((i) => i.id === integracaoId)?.descricao || 
-                       integracoes.find((i) => i.id === integracaoId)?.model || 
-                       "Selecionar modelo")
-                    : "Não cadastrado"
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              {integracoes.length > 0 && (
-                <SelectPopup>
-                  {integracoes.map((i) => (
-                    <SelectItem key={i.id} value={i.id}>
-                      {i.descricao || i.model}
-                    </SelectItem>
-                  ))}
-                </SelectPopup>
-              )}
-            </Select>
-          </div>
+
 
           {/* ── Messages ── */}
           <div className="flex-1 overflow-y-auto px-4 py-4">
