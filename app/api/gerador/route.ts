@@ -306,6 +306,9 @@ async function streamGemini(
 const OPENROUTER_MODEL_ALIASES: Record<string, string> = {
   "google/gemini-2.0-flash-lite:free": "google/gemini-2.0-flash-lite-preview-02-05:free",
   "google/gemini-flash-lite:free": "google/gemini-2.0-flash-lite-preview-02-05:free",
+  // "openrouter/free" is not a valid model ID — map to a stable free model
+  "openrouter/free": "google/gemini-2.0-flash-exp:free",
+  "free": "google/gemini-2.0-flash-exp:free",
 }
 
 function normalizeOpenRouterModel(model: string): string {
