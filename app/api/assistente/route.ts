@@ -61,17 +61,11 @@ async function fetchGitBookContent(): Promise<string> {
       )
       if (!pageRes.ok) continue
       const pageData = await pageRes.json() as { markdown?: string }
-      if (pageData.markdown) contents.push(`# ${page.title}
-
-${pageData.markdown}`)
+      if (pageData.markdown) contents.push(`# ${page.title}\n\n${pageData.markdown}`)
     } catch { /* skip failed pages */ }
   }
 
-  cachedContent = contents.join("
-
----
-
-") || "Documentação ainda não indexada."
+  cachedContent = contents.join("---") || "Documentação ainda não indexada."
   cacheExpiry = now + CACHE_TTL_MS
   return cachedContent
 }
