@@ -344,11 +344,21 @@ export async function POST(req: NextRequest) {
     { role: "user", content: pergunta },
   ]
 
-  const res = await callProvider(integracao.provider.toLowerCase().trim(), integracao.model, integracao.apiKey, systemPrompt, messages)
+  const providerNorm = integracao.provider.toLowerCase().trim()
+  if (!integracao.apiKey) {
+    return new Response(`API Key da integração "${integracao.descricao || integracao.model}" está vazia. Configure em Configurações → Integrações.`, { status: 503 })
+  }
+  const res = await callProvider(providerNorm, integracao.model, integracao.apiKey, systemPrompt, messages)
   if (!res.ok) {
     const err = await res.text()
-    console.error("[assistente] Provider error:", integracao.provider, err)
-    return new Response(`Erro na IA (${integracao.provider}): ${res.status}. Tente novamente.`, { status: 502 })
+    console.error("[assistente] Provider error:", integracao.provider, res.status, err.slice(0, 300))
+    // Return detailed error so the user can see what went wrong
+    let userMsg = `Erro no modelo de IA (${integracao.model}): `
+    if (res.status === 401 || res.status === 403) userMsg += "API Key inválida ou sem permissão."
+    else if (res.status === 429) userMsg += "Cota excedida. Aguarde alguns minutos."
+    else if (res.status === 400) userMsg += `Requisição inválida — ${err.slice(0, 150)}`
+    else userMsg += `${res.status} — ${err.slice(0, 150)}`
+    return new Response(userMsg, { status: 502 })
   }
 
   // Stream the response through — provider-agnostic delta extraction
