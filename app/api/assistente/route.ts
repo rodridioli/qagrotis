@@ -36,6 +36,7 @@ async function askGitBook(question: string, sistema: string): Promise<string> {
       headers: {
         "Authorization": `Bearer ${GITBOOK_API_TOKEN}`,
         "Content-Type": "application/json",
+        "Accept": "application/json",
       },
       body: JSON.stringify({
         question: sistema && sistema !== "Geral"
@@ -51,9 +52,34 @@ async function askGitBook(question: string, sistema: string): Promise<string> {
     throw new Error(`GitBook Ask API error ${res.status}: ${err.slice(0, 300)}`)
   }
 
-  const data = await res.json() as {
-    answer?: { text?: string; followupQuestions?: string[] }
-    sources?: { page?: { title?: string; path?: string } }[]
+  // GitBook may return SSE stream (data: {...}\n) or plain JSON
+  const rawText = await res.text()
+
+  let data: { answer?: { text?: string }; sources?: { page?: { title?: string } }[] } = {}
+
+  if (rawText.trim().startsWith("data:")) {
+    // SSE format — collect all data lines and use the last complete JSON
+    const lines = rawText.split("\n").filter((l) => l.startsWith("data:"))
+    for (const line of lines) {
+      try {
+        const parsed = JSON.parse(line.slice(5).trim())
+        // Merge: accumulate answer text and sources
+        if (parsed.answer?.text) {
+          data.answer = { text: (data.answer?.text ?? "") + parsed.answer.text }
+        }
+        if (parsed.sources) data.sources = parsed.sources
+        // Final event usually has the full answer
+        if (parsed.type === "answer" || parsed.answer?.text) {
+          data = { ...data, ...parsed }
+        }
+      } catch { /* skip unparseable lines */ }
+    }
+  } else {
+    try {
+      data = JSON.parse(rawText)
+    } catch {
+      throw new Error(`GitBook response parse error: ${rawText.slice(0, 200)}`)
+    }
   }
 
   const answer = data.answer?.text ?? ""
