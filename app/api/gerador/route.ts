@@ -22,15 +22,9 @@ Gerar casos de teste estruturados no formato QA (CTs) com base nas informações
 
 **Cenário:** [nome do cenário — sem colchetes, escreva o nome real]
 
-**Módulo:** [nome do módulo funcional em que o cenário se encaixa. Ex: Cadastro de Propriedades, Financeiro, Estoque, Lançamentos, etc. Se não houver contexto, escreva exatamente: Não informado]
+**Descrição:** [descrição objetiva do que o cenário valida]
 
-**Tipo:** Manual
-
-**Descrição:** [descrição do cenário]
-
-**Caminho da Tela:** [caminho de navegação para chegar na tela. Ex: Menu > Cadastros > Propriedades > Nova. Se não houver, escreva: Não informado]
-
-**Regra de negócio**: [detalhamento da regra de negócio. Se não houver, escreva exatamente: Não informado]
+**Regra de negócio**: [detalhamento da regra de negócio. Se não houver, escreva: Não informado]
 
 **Pré-condições**:
 - [pré-condição 1]
@@ -54,19 +48,15 @@ E [resultado adicional, se houver]
 
 ## REGRAS INVIOLÁVEIS
 
-1. Cada cenário DEVE conter EXATAMENTE estes 9 campos na ordem acima:
+1. Cada cenário DEVE conter EXATAMENTE estes 6 campos na ordem acima:
    - **Cenário:**
-   - **Módulo:**
-   - **Tipo:**
    - **Descrição:**
-   - **Caminho da Tela:**
    - **Regra de negócio**:
    - **Pré-condições**:
    - **BDD (Gherkin)**:
    - **Resultado esperado:**
 
-2. O campo **Tipo:** DEVE ser um destes valores: Manual, Automatizado, Man./Auto.
-   - Use "Manual" como padrão quando não especificado pelo contexto
+2. NUNCA adicionar campos extras além dos 6 listados acima (sem Módulo, sem Tipo, sem Caminho da Tela, sem nenhum outro campo)
 
 3. O BDD DEVE seguir a estrutura Gherkin com palavras-chave em MAIÚSCULAS: DADO, E, QUANDO, ENTÃO
    - Use "E" para adicionar condições ao DADO ou resultados ao ENTÃO
@@ -74,11 +64,9 @@ E [resultado adicional, se houver]
 
 4. Separar cada cenário com "---" (inclusive após o último)
 
-5. NUNCA adicionar campos extras fora da estrutura acima
+5. Linguagem clara, objetiva e testável — evitar termos vagos
 
-6. Linguagem clara, objetiva e testável — evitar termos vagos
-
-7. NÃO use formatação markdown de heading (# ou ##) nos cenários — use APENAS **bold** para os rótulos dos campos
+6. NÃO use formatação markdown de heading (# ou ##) nos cenários — use APENAS **bold** para os rótulos dos campos
 
 ## COBERTURA MÍNIMA
 
@@ -92,16 +80,14 @@ Incluir cenários para:
 ## CHECKLIST FINAL — valide CADA cenário antes de gerar a saída
 
 ✓ Começa com **Cenário:** seguido do nome (sem colchetes)?
-✓ Tem **Módulo:** com texto real (ou "Não informado")?
-✓ Tem **Tipo:** com valor "Manual", "Automatizado" ou "Man./Auto."?
 ✓ Tem **Descrição:** com texto real na mesma linha?
-✓ Tem **Caminho da Tela:** com o caminho de navegação (ou "Não informado")?
 ✓ Tem **Regra de negócio**: com texto real (ou "Não informado")?
 ✓ Tem **Pré-condições**: com bullets abaixo?
 ✓ Tem **BDD (Gherkin)**: com DADO/QUANDO/ENTÃO sem colchetes?
 ✓ Tem **Resultado esperado:** com bullets abaixo?
 ✓ Termina com "---"?
-✓ NÃO há texto introdutório antes do primeiro **Cenário:**?`
+✓ NÃO há texto introdutório antes do primeiro **Cenário:**?
+✓ NÃO há campos extras além dos 6 obrigatórios (sem Módulo, sem Tipo, sem Caminho da Tela)?`
 
 // ── Provider routing ──────────────────────────────────────────────────────────
 
