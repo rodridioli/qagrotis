@@ -340,7 +340,7 @@ function MessageBubble({ msg }: { msg: Message }) {
         className={cn(
           "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm",
           isUser
-            ? "rounded-br-sm bg-brand-primary"
+            ? "rounded-br-sm bg-brand-primary text-white"
             : msg.error
               ? "rounded-bl-sm border border-destructive/20 bg-destructive/10 text-destructive"
               : "rounded-bl-sm border border-border-default bg-surface-card text-text-primary"

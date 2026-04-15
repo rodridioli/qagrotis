@@ -5,9 +5,8 @@ import { getIntegracoes } from "@/lib/actions/integracoes"
 // ── GitBook content cache ─────────────────────────────────────────────────────
 
 const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
-const GITBOOK_CONTENT_URL =
-  process.env.GITBOOK_CONTENT_URL ??
-  "https://openapi.gitbook.com/o/YJL6kpwzoMMhtvwRrmNt/spec/agrotis-base-de-conhecimento-api.txt"
+const GITBOOK_SPACE_ID = process.env.GITBOOK_SPACE_ID ?? ""
+const GITBOOK_API_TOKEN = process.env.GITBOOK_API_TOKEN ?? ""
 
 let cachedContent: string | null = null
 let cacheExpiry = 0
@@ -16,17 +15,46 @@ async function fetchGitBookContent(): Promise<string> {
   const now = Date.now()
   if (cachedContent && now < cacheExpiry) return cachedContent
 
-  const headers: HeadersInit = {}
-  const token = process.env.GITBOOK_API_TOKEN
-  if (token) headers["Authorization"] = `Bearer ${token}`
+  if (!GITBOOK_API_TOKEN || !GITBOOK_SPACE_ID) {
+    throw new Error("Configure GITBOOK_API_TOKEN e GITBOOK_SPACE_ID nas variáveis de ambiente do Vercel.")
+  }
 
-  const res = await fetch(GITBOOK_CONTENT_URL, { headers })
-  if (!res.ok) throw new Error(`GitBook fetch failed: ${res.status} ${res.statusText}`)
+  const headers = { "Authorization": `Bearer ${GITBOOK_API_TOKEN}` }
 
-  const text = await res.text()
-  cachedContent = text
+  // List all pages in the space
+  const pagesRes = await fetch(`https://api.gitbook.com/v1/spaces/${GITBOOK_SPACE_ID}/content`, { headers })
+  if (!pagesRes.ok) {
+    const err = await pagesRes.text()
+    throw new Error(`GitBook API error: ${pagesRes.status} — ${err.slice(0, 200)}`)
+  }
+
+  const data = await pagesRes.json() as { pages?: { id: string; title: string; path: string; type: string }[] }
+  const pages = (data.pages ?? []).filter((p) => p.type === "document")
+  if (pages.length === 0) throw new Error("Nenhuma página encontrada no espaço GitBook.")
+
+  // Fetch markdown content of each page (up to 30)
+  const contents: string[] = []
+  for (const page of pages.slice(0, 30)) {
+    try {
+      const pageRes = await fetch(
+        `https://api.gitbook.com/v1/spaces/${GITBOOK_SPACE_ID}/content/path/${encodeURIComponent(page.path)}`,
+        { headers }
+      )
+      if (!pageRes.ok) continue
+      const pageData = await pageRes.json() as { markdown?: string }
+      if (pageData.markdown) contents.push(`# ${page.title}
+
+${pageData.markdown}`)
+    } catch { /* skip failed pages */ }
+  }
+
+  cachedContent = contents.join("
+
+---
+
+") || "Documentação ainda não indexada."
   cacheExpiry = now + CACHE_TTL_MS
-  return text
+  return cachedContent
 }
 
 // ── Keyword-based retrieval (RAG sem embeddings) ──────────────────────────────
@@ -297,7 +325,7 @@ export async function POST(req: NextRequest) {
     { role: "user", content: pergunta },
   ]
 
-  const res = await callProvider(integracao.provider, integracao.model, integracao.apiKey, systemPrompt, messages)
+  const res = await callProvider(integracao.provider.toLowerCase().trim(), integracao.model, integracao.apiKey, systemPrompt, messages)
   if (!res.ok) {
     const err = await res.text()
     console.error("[assistente] Provider error:", integracao.provider, err)
