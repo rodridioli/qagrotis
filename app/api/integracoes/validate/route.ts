@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json() as { apiKey?: string; provider?: string }
   const key = body.apiKey?.trim()
-  const provider = body.provider || "google"
+  // Normalize to lowercase to handle "OpenRouter", "Google", etc.
+  const provider = (body.provider || "google").toLowerCase().trim()
 
   if (!key) return new Response("apiKey é obrigatória.", { status: 400 })
 

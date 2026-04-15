@@ -537,7 +537,9 @@ export async function POST(req: NextRequest) {
   if (jira) textParts.push(`## Contexto / Requisitos\n${jira}`)
   if (hasImages) textParts.push(`## Imagens anexadas\n${imagens.map((img, i) => `${i + 1}. ${img.name}`).join("\n")}`)
   const userMessage = textParts.join("\n\n")
-  const { provider, model, apiKey } = integracao
+  const { model, apiKey } = integracao
+  // Normalize provider to lowercase to handle values saved as "OpenRouter", "Google", etc.
+  const provider = integracao.provider.toLowerCase().trim()
 
   switch (provider) {
     case "google":
