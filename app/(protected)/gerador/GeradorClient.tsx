@@ -346,7 +346,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
               </Button>
               <Button variant="outline" onClick={handleCopyMarkdown} className="gap-2">
                 <Copy className="size-4" />
-                Copiar Markdown
+                Copiar
               </Button>
               <Button
                 variant="outline"
