@@ -306,17 +306,18 @@ async function streamGemini(
 const OPENROUTER_MODEL_ALIASES: Record<string, string> = {
   "google/gemini-2.0-flash-lite:free": "google/gemini-2.0-flash-lite-preview-02-05:free",
   "google/gemini-flash-lite:free": "google/gemini-2.0-flash-lite-preview-02-05:free",
-  "openrouter/free": "meta-llama/llama-3.1-8b-instruct:free",
-  "free": "meta-llama/llama-3.1-8b-instruct:free",
+  "openrouter/free": "openrouter/auto",
+  "free": "openrouter/auto",
 }
 
-// Fallback free models to try in order when the configured model is unavailable
+// Fallback models to try in order when the configured model is unavailable
 const OPENROUTER_FALLBACK_MODELS = [
+  "openrouter/auto",                             // let OpenRouter pick best available
+  "mistralai/mistral-7b-instruct:free",
   "meta-llama/llama-3.1-8b-instruct:free",
   "meta-llama/llama-3.2-3b-instruct:free",
-  "mistralai/mistral-7b-instruct:free",
-  "google/gemini-2.0-flash-exp:free",
-  "deepseek/deepseek-r1-0528:free",
+  "nousresearch/hermes-3-llama-3.1-8b:free",
+  "google/gemma-3-4b-it:free",
 ]
 
 function normalizeOpenRouterModel(model: string): string {
@@ -385,8 +386,8 @@ async function streamOpenRouter(
     return r
   }
 
-  // Try fallback models if the primary is unavailable (503)
-  if (!res.ok && res.status === 503) {
+  // Try fallback models if the primary is unavailable (503/502/529)
+  if (!res.ok && (res.status === 503 || res.status === 502 || res.status === 529)) {
     const fallbacks = OPENROUTER_FALLBACK_MODELS.filter((m) => m !== resolvedModel)
     for (const fallbackModel of fallbacks) {
       const fallbackRes = await tryModel(fallbackModel)
