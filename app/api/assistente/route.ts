@@ -320,11 +320,22 @@ export async function POST(req: NextRequest) {
 
   // Fetch and cache GitBook content
   let gitbookContent = ""
+  let gitbookError = ""
   try {
     gitbookContent = await fetchGitBookContent()
   } catch (err) {
-    console.warn("[assistente] GitBook fetch error (falling back to empty):", err)
-    gitbookContent = "Informação não disponível no momento."
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error("[assistente] GitBook fetch error:", msg)
+    gitbookError = msg
+    gitbookContent = ""
+  }
+
+  // If GitBook failed, return a clear error to the user so they can diagnose
+  if (!gitbookContent && gitbookError) {
+    return new Response(
+      `⚠️ Não foi possível carregar a documentação do GitBook: ${gitbookError}`,
+      { status: 503 }
+    )
   }
 
   const relevantContext = findRelevantSections(gitbookContent, pergunta, sistema)
