@@ -59,7 +59,7 @@ const FIELD_SECTION_RE =
  *   **CT-001 — Title**        (numbered, everything inside bold)
  */
 const BOLD_TITLE_RE =
-  /^\*\*(cenário|título|titulo|ct-?\d*|nome)\s*[:\-–—]\s*\*\*\s*\S|\*\*(cenário|título|titulo|ct-?\d*|nome)\*\*\s*[:\-–—]\s*\S|\*\*(cenário|título|titulo|ct-?\d*|nome)[:\s-–—]+[^*]+\*\*\s*$/i
+  /^\*\*(cenário|título|titulo|ct-?\d*|nome)\s*[:\-–—]\s*\*\*\s*\S|\*\*(cenário|título|titulo|ct-?\d*|nome)\*\*\s*[:\-–—]\s*\S|\*\*(cenário|título|titulo|ct-?\d*|nome)[:\s-–—]+[^*]+\*\*\s*$|^(cenário|título|titulo|nome)\s*:\s*\S/i
 
 /**
  * Parses a markdown string and returns only real scenario blocks.
@@ -139,9 +139,13 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
         const mB = line.match(/^\*\*(cenário|título|titulo|ct-?\d*|nome)\*\*\s*[:\-–—]\s*(.+)/i)
         // Pattern C: **Label: Title**   (everything inside bold)
         const mC = line.match(/^\*\*(cenário|título|titulo|ct-?\d*|nome)[:\s-–—]+([^*]+)\*\*\s*$/i)
-        const m = mA ?? mB ?? mC
+        // Pattern D: Cenário: Title  (plain text, no bold/markdown)
+        const mD = !mA && !mB && !mC
+          ? line.match(/^(?:cenário|título|titulo|nome)\s*:\s*(.+)/i)
+          : null
+        const m = mA ?? mB ?? mC ?? mD
         if (m) {
-          name = m[2].replace(/^ct-?\d+\s*[-–—:]\s*/i, "").trim()
+          name = (m[2] ?? m[1]).replace(/^ct-?\d+\s*[-–—:]\s*/i, "").trim()
           nameLineIdx = i
           break
         }
@@ -158,9 +162,10 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
       // H1-H4 headings
       if (/^#{1,4}\s/.test(line)) return true
       // Inline bold label on same line: **Field:** value or **Field**: value
-      // (used in the new format for Cenário, Descrição, Regra de negócio)
       if (/^\s*\*\*(?:cenário|título|titulo|descri[çc][aã]o|descricao|regra\s+de\s+neg[oó]cio|m[oó]dulo|cliente|risco|tipo)[:\s]+\*\*\s*\S/.test(line)) return true
       if (/^\s*\*\*(?:cenário|título|titulo|descri[çc][aã]o|descricao|regra\s+de\s+neg[oó]cio|m[oó]dulo|cliente|risco|tipo)\*\*[:\s]+\S/.test(line)) return true
+      // Plain text label: "Descrição: value" or "Pré-condições:" or "BDD (Gherkin):" etc.
+      if (/^(?:cenário|descrição|descricao|regra\s+de\s+neg[oó]cio|pré-condições|pre-condicoes|bdd(?:\s*\(gherkin\))?|resultado\s+esperado|resultados?\s+esperados?)\s*:/i.test(line)) return true
       return false
     }
 

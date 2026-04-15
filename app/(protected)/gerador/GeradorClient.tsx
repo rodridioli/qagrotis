@@ -171,7 +171,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   )
 
   const cenarioCount = useMemo(
-    () => (output ? (output.match(/^\*\*Cenário:\*\*/gim) ?? []).length : 0),
+    () => (output ? (output.match(/^(\*\*Cenário:\*\*|Cenário:)/gim) ?? []).length : 0),
     [output]
   )
 
