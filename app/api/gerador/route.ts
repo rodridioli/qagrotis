@@ -306,10 +306,18 @@ async function streamGemini(
 const OPENROUTER_MODEL_ALIASES: Record<string, string> = {
   "google/gemini-2.0-flash-lite:free": "google/gemini-2.0-flash-lite-preview-02-05:free",
   "google/gemini-flash-lite:free": "google/gemini-2.0-flash-lite-preview-02-05:free",
-  // "openrouter/free" is not a valid model ID — map to a stable free model
-  "openrouter/free": "google/gemini-2.0-flash-exp:free",
-  "free": "google/gemini-2.0-flash-exp:free",
+  "openrouter/free": "meta-llama/llama-3.1-8b-instruct:free",
+  "free": "meta-llama/llama-3.1-8b-instruct:free",
 }
+
+// Fallback free models to try in order when the configured model is unavailable
+const OPENROUTER_FALLBACK_MODELS = [
+  "meta-llama/llama-3.1-8b-instruct:free",
+  "meta-llama/llama-3.2-3b-instruct:free",
+  "mistralai/mistral-7b-instruct:free",
+  "google/gemini-2.0-flash-exp:free",
+  "deepseek/deepseek-r1-0528:free",
+]
 
 function normalizeOpenRouterModel(model: string): string {
   return OPENROUTER_MODEL_ALIASES[model.toLowerCase()] ?? model
@@ -353,6 +361,70 @@ async function streamOpenRouter(
       ],
     }),
   })
+
+  // Helper to attempt a single model
+  async function tryModel(mdl: string): Promise<Response> {
+    const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+        "X-Title": "QAgrotis",
+      },
+      body: JSON.stringify({
+        model: mdl,
+        max_tokens: 8192,
+        stream: true,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: contentParts },
+        ],
+      }),
+    })
+    return r
+  }
+
+  // Try fallback models if the primary is unavailable (503)
+  if (!res.ok && res.status === 503) {
+    const fallbacks = OPENROUTER_FALLBACK_MODELS.filter((m) => m !== resolvedModel)
+    for (const fallbackModel of fallbacks) {
+      const fallbackRes = await tryModel(fallbackModel)
+      if (fallbackRes.ok) {
+        // Stream the fallback response
+        const { provider: _p, ...rest } = { provider: "openrouter" }
+        void rest
+        const enc2 = new TextEncoder()
+        const readable2 = new ReadableStream({
+          async start(controller) {
+            const reader = fallbackRes.body!.getReader()
+            const decoder = new TextDecoder()
+            let buf = ""
+            try {
+              while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                buf += decoder.decode(value, { stream: true })
+                const lines = buf.split("\n")
+                buf = lines.pop() ?? ""
+                for (const line of lines) {
+                  if (!line.startsWith("data:")) continue
+                  const data = line.slice(5).trim()
+                  if (data === "[DONE]") continue
+                  try {
+                    const parsed = JSON.parse(data)
+                    const text = parsed.choices?.[0]?.delta?.content ?? ""
+                    if (text) controller.enqueue(enc2.encode(text))
+                  } catch { /* ignore */ }
+                }
+              }
+            } finally { controller.close() }
+          },
+        })
+        return new Response(readable2, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
+      }
+    }
+  }
 
   if (!res.ok) {
     const err = await res.text()
