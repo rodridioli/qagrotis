@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useRef, useMemo, useEffect, useTransition, useCallback } from "react"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
 import { useRouter } from "next/navigation"
 import {
   Sparkles, Copy, RotateCcw,
@@ -33,6 +31,84 @@ import { criarIntegracao, type IntegracaoRecord } from "@/lib/actions/integracoe
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 
+
+// ── CenarioOutputRenderer ────────────────────────────────────────────────────
+// Renders AI output matching exactly the visual format:
+// **Label:** value on same line, bullet lists below multi-line fields
+
+const INLINE_FIELDS = ["Cenário", "Módulo", "Tipo", "Descrição", "Caminho da Tela", "Regra de negócio"]
+const BLOCK_FIELDS  = ["Pré-condições", "BDD (Gherkin)", "Resultado esperado"]
+
+function CenarioOutputRenderer({ output }: { output: string }) {
+  // Split into individual cenarios by "---" separator
+  const blocks = output.split(/^---$/m).map(b => b.trim()).filter(Boolean)
+
+  return (
+    <div className="space-y-6">
+      {blocks.map((block, bi) => <CenarioBlock key={bi} text={block} />)}
+    </div>
+  )
+}
+
+function CenarioBlock({ text }: { text: string }) {
+  // Parse each line into structured fields
+  const lines = text.split("\n")
+  const fields: { label: string; value: string; lines: string[] }[] = []
+  let current: { label: string; value: string; lines: string[] } | null = null
+
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (!line) continue
+
+    // Match **Field:** or **Field**:
+    const match = line.match(/^\*\*([^*]+?)\*\*:?\s*(.*)$/)
+    if (match) {
+      const label = match[1].replace(/:$/, "").trim()
+      const value = match[2].trim()
+      if (current) fields.push(current)
+      current = { label, value, lines: [] }
+    } else if (current) {
+      current.lines.push(line)
+    }
+  }
+  if (current) fields.push(current)
+
+  return (
+    <div className="space-y-1.5 text-sm">
+      {fields.map((f, i) => {
+        const isInline = INLINE_FIELDS.some(n => f.label.toLowerCase().startsWith(n.toLowerCase()))
+        const bulletLines = f.lines.filter(l => l.startsWith("-") || l.startsWith("•"))
+        const textLines   = f.lines.filter(l => !l.startsWith("-") && !l.startsWith("•") && l.trim())
+
+        return (
+          <div key={i} className={isInline ? "flex flex-wrap gap-1" : "space-y-0.5"}>
+            <span className="font-semibold text-text-primary">{f.label}:</span>
+            {isInline ? (
+              <span className="text-text-primary">{f.value}</span>
+            ) : (
+              <>
+                {f.value && <span className="text-text-primary block">{f.value}</span>}
+                {textLines.map((l, j) => (
+                  <p key={j} className="text-text-primary pl-0">{l}</p>
+                ))}
+                {bulletLines.length > 0 && (
+                  <ul className="space-y-0.5 pl-1">
+                    {bulletLines.map((l, j) => (
+                      <li key={j} className="flex gap-2 text-text-primary">
+                        <span className="mt-0.5 shrink-0">•</span>
+                        <span>{l.replace(/^[-•]\s*/, "")}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -529,38 +605,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             )}
 
             {output && !isEditing && (
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  h2: ({ children }) => (
-                    <h2 className="mb-1 mt-6 text-base font-bold text-text-primary first:mt-0">
-                      {children}
-                    </h2>
-                  ),
-                  p: ({ children }) => (
-                    <p className="text-sm leading-relaxed text-text-primary">{children}</p>
-                  ),
-                  strong: ({ children }) => (
-                    <strong className="font-semibold text-text-primary">{children}</strong>
-                  ),
-                  ul: ({ children }) => (
-                    <ul className="ml-4 space-y-0.5 list-disc text-sm text-text-primary">{children}</ul>
-                  ),
-                  li: ({ children }) => (
-                    <li className="text-sm leading-relaxed text-text-primary">{children}</li>
-                  ),
-                  hr: () => (
-                    <hr className="my-5 border-border-default" />
-                  ),
-                  code: ({ children }) => (
-                    <code className="rounded bg-neutral-grey-100 px-1 py-0.5 font-mono text-xs text-text-primary">
-                      {children}
-                    </code>
-                  ),
-                }}
-              >
-                {output}
-              </ReactMarkdown>
+              <CenarioOutputRenderer output={output} />
             )}
 
             {output && isEditing && (
