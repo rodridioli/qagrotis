@@ -36,17 +36,27 @@ function docToMarkdown(node: unknown, listDepth = 0): string {
   if (!node || typeof node !== "object") return ""
   const n = node as Record<string, unknown>
 
-  // Leaf — apply marks (bold, italic, etc.)
-  if (n.object === "leaf" || typeof n.text === "string") {
+  // Leaf node — has text + marks
+  if (n.object === "leaf") {
     let text = (n.text as string) ?? ""
+    if (!text) return ""
     const marks = (n.marks as { type: string }[]) ?? []
-    if (marks.some((m) => m.type === "bold")) text = `**${text}**`
-    if (marks.some((m) => m.type === "italic")) text = `*${text}*`
-    if (marks.some((m) => m.type === "code")) text = `\`${text}\``
+    if (marks.some((m) => m.type === "bold"))   text = `**${text}**`
+    if (marks.some((m) => m.type === "italic"))  text = `*${text}*`
+    if (marks.some((m) => m.type === "code"))    text = `\`${text}\``
     return text
   }
 
-  // Inline node with leaves
+  // Text node — wraps leaves array (object: "text")
+  if (n.object === "text") {
+    if (Array.isArray(n.leaves)) {
+      return (n.leaves as unknown[]).map((l) => docToMarkdown(l, listDepth)).join("")
+    }
+    // Fallback: plain text field
+    return (n.text as string) ?? ""
+  }
+
+  // Inline node (links, etc.)
   if (n.object === "inline") {
     const inner = Array.isArray(n.nodes)
       ? (n.nodes as unknown[]).map((c) => docToMarkdown(c, listDepth)).join("")
@@ -55,51 +65,38 @@ function docToMarkdown(node: unknown, listDepth = 0): string {
         : ""
     if (n.type === "link") {
       const href = (n.data as Record<string, string>)?.href ?? ""
-      return `[${inner}](${href})`
+      return href ? `[${inner}](${href})` : inner
     }
     return inner
   }
 
-  // Block/document nodes
-  const type = (n.type as string) ?? n.object
-  const children = Array.isArray(n.nodes)
-    ? (n.nodes as unknown[]).map((c) => docToMarkdown(c, listDepth)).join("")
-    : ""
+  // Block/document nodes — children come from nodes array
+  const childNodes = Array.isArray(n.nodes) ? (n.nodes as unknown[]) : []
+  const children = childNodes.map((c) => docToMarkdown(c, listDepth)).join("")
+  const type = (n.type as string) ?? (n.object as string) ?? ""
 
   switch (type) {
-    case "document": return children
-    case "paragraph": return children ? `${children}\n\n` : ""
-    case "heading-one": return `# ${children}\n\n`
-    case "heading-two": return `## ${children}\n\n`
-    case "heading-three": return `### ${children}\n\n`
-    case "heading-four": return `#### ${children}\n\n`
+    case "document":        return children
+    case "paragraph":       return children ? `${children}\n\n` : ""
+    case "heading-one":     return `# ${children.trim()}\n\n`
+    case "heading-two":     return `## ${children.trim()}\n\n`
+    case "heading-three":   return `### ${children.trim()}\n\n`
+    case "heading-four":    return `#### ${children.trim()}\n\n`
     case "bulleted-list":
-    case "unordered-list": {
-      const items = Array.isArray(n.nodes)
-        ? (n.nodes as unknown[]).map((c) => docToMarkdown(c, listDepth + 1)).join("")
-        : ""
-      return items + "\n"
-    }
+    case "unordered-list":  return childNodes.map((c) => docToMarkdown(c, listDepth + 1)).join("") + "\n"
     case "ordered-list": {
       let idx = 0
-      const items = Array.isArray(n.nodes)
-        ? (n.nodes as unknown[]).map((c) => {
-            idx++
-            const inner = docToMarkdown(c, listDepth)
-            return inner.replace(/^- /, `${idx}. `)
-          }).join("")
-        : ""
-      return items + "\n"
+      return childNodes.map((c) => {
+        idx++
+        return docToMarkdown(c, listDepth).replace(/^- /, `${idx}. `)
+      }).join("") + "\n"
     }
-    case "list-item": {
-      const inner = children.trim()
-      return `- ${inner}\n`
-    }
+    case "list-item":       return `- ${children.trim()}\n`
     case "list-item-child": return children
-    case "blockquote": return `> ${children}\n\n`
-    case "code-block": return `\`\`\`\n${children}\n\`\`\`\n\n`
-    case "divider": return `---\n\n`
-    default: return children
+    case "blockquote":      return `> ${children.trim()}\n\n`
+    case "code-block":      return `\`\`\`\n${children}\n\`\`\`\n\n`
+    case "divider":         return `---\n\n`
+    default:                return children
   }
 }
 
