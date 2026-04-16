@@ -143,7 +143,7 @@ export async function criarCenario(data: {
   deps: string[]
 }): Promise<CenarioRecord> {
   const session = await requireSession()
-  const createdBy = session?.user?.name ?? session?.user?.email ?? undefined
+  const createdBy = session?.user?.email ?? session?.user?.name ?? undefined
 
   let parsed: z.infer<typeof cenarioCreateSchema>
   try {

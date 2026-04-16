@@ -180,21 +180,21 @@ export function DashboardClient({
   const userMap = useMemo(() => {
     const map = new Map<string, { displayName: string; photoPath: string | null }>()
     for (const u of allUsers) {
-      if (u.name)  map.set(u.name,  { displayName: u.name,  photoPath: u.photoPath ?? null })
-      if (u.email) map.set(u.email, { displayName: u.name,  photoPath: u.photoPath ?? null })
-    }
-    if (currentUser && currentUserPhotoPath) {
-      map.set(currentUser, { displayName: currentUser, photoPath: currentUserPhotoPath })
+      const display = u.name || (u.email ? u.email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase()) : "Usuário")
+      // Key by email (primary, unique) AND name for backward compat
+      if (u.email) map.set(u.email, { displayName: display, photoPath: u.photoPath ?? null })
+      if (u.name && u.name !== u.email) map.set(u.name, { displayName: display, photoPath: u.photoPath ?? null })
     }
     return map
-  }, [allUsers, currentUser, currentUserPhotoPath])
+  }, [allUsers])
 
   function resolveUser(createdBy: string | undefined): { displayName: string; photoPath: string | null } {
     if (!createdBy) return { displayName: "Desconhecido", photoPath: null }
     const found = userMap.get(createdBy)
     if (found) return found
+    // Fallback: format email as name
     if (createdBy.includes("@")) {
-      const name = createdBy.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+      const name = createdBy.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase())
       return { displayName: name, photoPath: null }
     }
     return { displayName: createdBy, photoPath: null }
@@ -279,12 +279,23 @@ export function DashboardClient({
   // ── Ranking ────────────────────────────────────────────────────────────────
   const rankingData = useMemo((): RankingItem[] => {
     const { start, end } = getDateRange(rankingFilter)
+    // Normalize key: find canonical email for each createdBy value
+    const normalizeKey = (cb: string | undefined): string => {
+      if (!cb) return "Desconhecido"
+      // Already in userMap by email → use as-is
+      if (userMap.has(cb)) return cb
+      // Try to find user by name → return their email as canonical key
+      for (const u of allUsers) {
+        if (u.name === cb && u.email) return u.email
+      }
+      return cb
+    }
     const countByUser = new Map<string, number>()
     for (const c of cenariosFiltrados) {
       if (rankingModulo && c.module !== rankingModulo) continue
       const ts = c.createdAt ?? 0
       if (ts >= start && ts <= end) {
-        const key = c.createdBy ?? "Desconhecido"
+        const key = normalizeKey(c.createdBy)
         countByUser.set(key, (countByUser.get(key) ?? 0) + 1)
       }
     }
@@ -292,7 +303,7 @@ export function DashboardClient({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([createdBy, count]) => ({ createdBy, count }))
-  }, [cenariosFiltrados, rankingFilter, rankingModulo])
+  }, [cenariosFiltrados, rankingFilter, rankingModulo, userMap, allUsers])
 
   // ── Testes chart ───────────────────────────────────────────────────────────
   const testesData = useMemo((): DataPoint[] => {
