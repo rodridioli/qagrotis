@@ -750,13 +750,13 @@ export function SuiteForm({
                           const cenarioAtivo = isCenarioAtivoFn(c.id)
                           const href = suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`
                           return (
-                            <div className="flex items-center justify-end gap-4">
+                            <div className="flex items-center justify-end gap-1">
                               {cenarioAtivo && (
                                 <Link
                                   href={href}
                                   aria-label="Testar Cenário"
                                   title="Testar Cenário"
-                                  className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-brand-primary/10 hover:text-brand-primary"
+                                  className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                 >
                                   <Play className="size-4" />
                                 </Link>
@@ -764,7 +764,11 @@ export function SuiteForm({
                               <DropdownMenu>
                                 <DropdownMenuTrigger
                                   render={
-                                    <button type="button" aria-label="Mais ações" className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100" />
+                                    <button
+                                      type="button"
+                                      aria-label="Mais ações"
+                                      className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                    />
                                   }
                                 >
                                   <MoreVertical className="size-4" />
