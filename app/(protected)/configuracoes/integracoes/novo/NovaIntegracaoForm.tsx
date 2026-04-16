@@ -106,7 +106,7 @@ export default function NovaIntegracaoForm() {
           </Link>
           <span className="text-text-secondary">/</span>
           <Link href="/configuracoes/integracoes" className="text-text-secondary hover:text-brand-primary">
-            Integrações
+            Modelos de IA
           </Link>
           <span className="text-text-secondary">/</span>
           <span className="font-medium text-text-primary">Nova Integração</span>
