@@ -750,7 +750,7 @@ export function SuiteForm({
                           const cenarioAtivo = isCenarioAtivoFn(c.id)
                           const href = suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`
                           return (
-                            <div className="flex items-center justify-end gap-0.5">
+                            <div className="flex items-center justify-end gap-4">
                               {cenarioAtivo && (
                                 <Link
                                   href={href}
