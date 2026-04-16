@@ -961,7 +961,9 @@ export function SuiteForm({
           </DialogHeader>
           <div className="flex flex-col gap-3 py-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">URL ou chave da issue</label>
+              <label className="text-sm font-medium text-text-primary">
+                URL ou chave da issue <span className="text-destructive">*</span>
+              </label>
               <Input
                 placeholder="https://agrotis.atlassian.net/browse/UX-951 ou UX-951"
                 value={jiraIssueInput}
@@ -969,6 +971,9 @@ export function SuiteForm({
                 onKeyDown={(e) => { if (e.key === "Enter" && !jiraLoading) handleJiraExport() }}
                 autoFocus
               />
+              {!jiraIssueInput.trim() && (
+                <p className="text-xs text-destructive">Campo obrigatório.</p>
+              )}
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
