@@ -1,9 +1,11 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
+import * as jose from "jose"
 
 const GITBOOK_ORG_ID = process.env.GITBOOK_ORG_ID ?? "YJL6kpwzoMMhtvwRrmNt"
 const GITBOOK_SITE_ID = process.env.GITBOOK_SITE_ID ?? "site_YbjJD"
 const GITBOOK_API_TOKEN = process.env.GITBOOK_API_TOKEN ?? ""
+const GITBOOK_PRIVATE_KEY = process.env.GITBOOK_PRIVATE_KEY ?? ""
 
 // ── Rate limiter ──────────────────────────────────────────────────────────────
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
@@ -19,88 +21,77 @@ function checkRateLimit(userId: string): boolean {
   return true
 }
 
+// ── Generate visitor JWT signed with GitBook Private Key ──────────────────────
+async function generateVisitorJWT(): Promise<string> {
+  const secret = new TextEncoder().encode(GITBOOK_PRIVATE_KEY)
+  return new jose.SignJWT({})
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("2h")
+    .sign(secret)
+}
+
 // ── Parse GitBook SSE stream ──────────────────────────────────────────────────
-// GitBook streams "data: {...}\n" lines and ends with "data: done"
 function parseGitBookSSE(rawText: string): { answer: string; sources: string[] } {
   const lines = rawText.split("\n").filter((l) => l.startsWith("data:"))
-  
   let answer = ""
   const sources: string[] = []
 
   for (const line of lines) {
     const payload = line.slice(5).trim()
     if (payload === "done" || payload === "") continue
-    
     try {
       const parsed = JSON.parse(payload)
-      
-      // Sites Ask API response shape
       if (parsed.answer?.text) answer = parsed.answer.text
       if (parsed.answer?.markdown) answer = parsed.answer.markdown
-      
-      // Org Ask API response shape: answer.answer.markdown
       if (parsed.answer?.answer?.markdown) answer = parsed.answer.answer.markdown
       if (parsed.answer?.answer?.text) answer = parsed.answer.answer.text
-
-      // Sources
-      if (Array.isArray(parsed.answer?.sources)) {
-        for (const s of parsed.answer.sources) {
-          const title = s.page?.title ?? s.title ?? s.page ?? ""
-          if (title && !sources.includes(title)) sources.push(title)
-        }
+      const srcArr = parsed.answer?.sources ?? parsed.sources ?? []
+      for (const s of srcArr) {
+        const title = s.page?.title ?? s.title ?? s.page ?? ""
+        if (title && !sources.includes(title)) sources.push(title)
       }
-      if (Array.isArray(parsed.sources)) {
-        for (const s of parsed.sources) {
-          const title = s.page?.title ?? s.title ?? s.page ?? ""
-          if (title && !sources.includes(title)) sources.push(title)
-        }
-      }
-    } catch { /* skip non-JSON lines */ }
+    } catch { /* skip */ }
   }
-
   return { answer, sources }
 }
 
 // ── GitBook Ask ───────────────────────────────────────────────────────────────
 async function askGitBook(question: string, sistema: string): Promise<string> {
-  if (!GITBOOK_API_TOKEN) {
-    throw new Error("GITBOOK_API_TOKEN não configurado no Vercel.")
-  }
+  if (!GITBOOK_API_TOKEN) throw new Error("GITBOOK_API_TOKEN não configurado.")
+  if (!GITBOOK_PRIVATE_KEY) throw new Error("GITBOOK_PRIVATE_KEY não configurada.")
 
-  const headers = {
-    "Authorization": `Bearer ${GITBOOK_API_TOKEN}`,
-    "Content-Type": "application/json",
-  }
+  const visitorJWT = await generateVisitorJWT()
+  const queryText = sistema && sistema !== "Geral" ? `[${sistema}] ${question}` : question
 
-  const queryText = sistema && sistema !== "Geral"
-    ? `[${sistema}] ${question}`
-    : question
-
-  // Try sites Ask endpoint first
-  const siteRes = await fetch(
+  const res = await fetch(
     `https://api.gitbook.com/v1/orgs/${GITBOOK_ORG_ID}/sites/${GITBOOK_SITE_ID}/ask`,
     {
       method: "POST",
-      headers,
-      body: JSON.stringify({ question: queryText, scope: { mode: "default" } }),
+      headers: {
+        "Authorization": `Bearer ${GITBOOK_API_TOKEN}`,
+        "Content-Type": "application/json",
+        "X-GitBook-Token": visitorJWT,
+      },
+      body: JSON.stringify({
+        question: queryText,
+        scope: { mode: "default" },
+        visitor: { jwtToken: visitorJWT },
+      }),
     }
   )
 
-  const siteRaw = await siteRes.text()
-  console.log("[assistente] site status:", siteRes.status)
-  console.log("[assistente] site raw (first 500):", siteRaw.slice(0, 500))
+  const raw = await res.text()
+  console.log("[assistente] status:", res.status, "| raw:", raw.slice(0, 400))
 
-  if (siteRes.ok) {
-    const { answer, sources } = parseGitBookSSE(siteRaw)
-    if (answer) {
-      const srcLines = sources.slice(0, 3).map((s) => `- ${s}`).join("\n")
-      return srcLines ? `${answer}\n\n**Fontes:**\n${srcLines}` : answer
-    }
-    // Return raw for diagnosis if no answer parsed
-    throw new Error(`Site ask OK but no answer parsed. Raw: ${siteRaw.slice(0, 300)}`)
-  }
+  if (!res.ok) throw new Error(`GitBook API ${res.status}: ${raw.slice(0, 200)}`)
 
-  throw new Error(`Site ask ${siteRes.status}: ${siteRaw.slice(0, 300)}`)
+  const { answer, sources } = parseGitBookSSE(raw)
+
+  if (!answer) throw new Error(`Resposta vazia do GitBook. Raw: ${raw.slice(0, 300)}`)
+
+  const srcLines = sources.slice(0, 3).map((s) => `- ${s}`).join("\n")
+  return srcLines ? `${answer}\n\n**Fontes:**\n${srcLines}` : answer
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -135,6 +126,6 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error("[assistente] error:", msg)
-    return new Response(`⚠️ Erro ao consultar documentação: ${msg}`, { status: 503 })
+    return new Response(`⚠️ ${msg}`, { status: 503 })
   }
 }
