@@ -279,7 +279,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
             Configurações
           </Link>
           <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">Integrações</span>
+          <span className="font-medium text-text-primary">Modelos de IA</span>
         </div>
 
         {isAdmin && (
