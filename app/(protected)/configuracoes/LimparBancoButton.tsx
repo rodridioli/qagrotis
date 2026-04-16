@@ -15,7 +15,7 @@ export default function LimparBancoButton() {
   function buildMessage(res: LimparResult): string {
     const total = res.cenarios + res.suites + res.modulos + res.sistemas +
       res.clientes + res.integracoes + res.usuarios
-    if (total === 0) return "Nenhum registro inativo encontrado."
+    if (total === 0) return "Nenhum registro encontrado para remover."
     const partes = [
       res.cenarios   > 0 && `${res.cenarios} cenário${res.cenarios !== 1 ? "s" : ""}`,
       res.suites     > 0 && `${res.suites} suíte${res.suites !== 1 ? "s" : ""}`,
@@ -51,7 +51,7 @@ export default function LimparBancoButton() {
         {!confirmando ? (
           <Button variant="outline" onClick={handleClick} disabled={isPending}>
             <Trash2 />
-            {isPending ? "Limpando..." : "Limpar registros inativos"}
+            {isPending ? "Limpando..." : "Limpar registros"}
           </Button>
         ) : (
           <>
@@ -67,7 +67,7 @@ export default function LimparBancoButton() {
       </div>
       {confirmando && (
         <p className="text-xs text-red-600">
-          Atenção: esta ação é irreversível. Os registros inativos serão excluídos permanentemente.
+          Atenção: esta ação é irreversível. Todos os sistemas, módulos, cenários, suítes, clientes e integrações serão removidos. Usuários inativos também serão excluídos. Usuários ativos serão mantidos.
         </p>
       )}
     </div>
