@@ -184,62 +184,71 @@ export function SuiteForm({
     setJiraModalOpen(true)
   }
 
-  async function fetchJiraExisting() {
-    if (!jiraUrl || !jiraEmail || !jiraToken || !jiraIssueKey.trim()) return
-    setJiraFetching(true)
-    setJiraExisting(null)
-    try {
-      localStorage.setItem("jira_url", jiraUrl)
-      localStorage.setItem("jira_email", jiraEmail)
-      localStorage.setItem("jira_token", jiraToken)
-      const params = new URLSearchParams({
-        jiraUrl, issueKey: jiraIssueKey.trim(),
-        email: jiraEmail, apiToken: jiraToken,
-      })
-      const res = await fetch(`/api/jira?${params}`)
-      if (res.ok) {
-        const data = await res.json()
-        setJiraExisting(data)
-        setJiraMode(data.hasContent ? "append" : "replace")
-      } else {
-        const err = await res.text()
-        toast.error(`Erro ao buscar issue: ${err.slice(0, 150)}`)
-      }
-    } catch {
-      toast.error("Não foi possível conectar ao Jira. Verifique as credenciais.")
-    } finally {
-      setJiraFetching(false)
+  function getJiraCredentials() {
+    return {
+      jiraUrl: localStorage.getItem("jira_url") ?? "",
+      email: localStorage.getItem("jira_email") ?? "",
+      apiToken: localStorage.getItem("jira_token") ?? "",
     }
   }
 
-  async function handleJiraConfirm() {
-    if (!jiraUrl || !jiraEmail || !jiraToken || !jiraIssueKey) {
-      toast.error("Preencha todos os campos.")
+  function parseIssueKey(input: string): string {
+    // Accept full URL or bare key
+    const trimmed = input.trim()
+    if (trimmed.includes("/")) return trimmed.split("/").pop() ?? trimmed
+    return trimmed
+  }
+
+  async function handleJiraExport() {
+    const issueKey = parseIssueKey(jiraIssueInput)
+    if (!issueKey) { toast.error("Informe a URL ou chave da issue."); return }
+    const creds = getJiraCredentials()
+    if (!creds.jiraUrl || !creds.email || !creds.apiToken) {
+      toast.error("Configure a Integração Jira em Configurações antes de exportar.")
       return
     }
     setJiraLoading(true)
+    setJiraExisting(null)
     try {
-      localStorage.setItem("jira_url", jiraUrl)
-      localStorage.setItem("jira_email", jiraEmail)
-      localStorage.setItem("jira_token", jiraToken)
+      const params = new URLSearchParams({ jiraUrl: creds.jiraUrl, issueKey, email: creds.email, apiToken: creds.apiToken })
+      const res = await fetch(`/api/jira?${params}`)
+      if (!res.ok) {
+        const err = await res.text()
+        toast.error(`Erro ao buscar issue: ${err.slice(0, 150)}`)
+        return
+      }
+      const data = await res.json() as { summary: string; descText: string; hasContent: boolean }
+      if (data.hasContent) {
+        // Show step 2 with existing content
+        setJiraExisting(data)
+        setJiraMode("append")
+      } else {
+        // No existing content — send directly
+        await sendToJira(issueKey, creds, "replace")
+      }
+    } catch {
+      toast.error("Não foi possível conectar ao Jira.")
+    } finally {
+      setJiraLoading(false)
+    }
+  }
 
+  async function sendToJira(issueKey: string, creds: { jiraUrl: string; email: string; apiToken: string }, mode: "replace" | "append") {
+    setJiraLoading(true)
+    try {
       const res = await fetch("/api/jira", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jiraUrl, issueKey: jiraIssueKey.trim(),
-          apiToken: jiraToken, email: jiraEmail,
-          content: jiraContent, mode: jiraMode,
-        }),
+        body: JSON.stringify({ jiraUrl: creds.jiraUrl, issueKey, apiToken: creds.apiToken, email: creds.email, content: jiraContent, mode }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error((data as string) || "Erro ao enviar para o Jira.")
-      toast.success("Enviado para o Jira com sucesso!", {
-        description: `Issue ${jiraIssueKey} atualizada.`,
+      toast.success("Exportado para o Jira com sucesso!", {
+        description: `Issue ${issueKey} atualizada.`,
         action: { label: "Abrir no Jira", onClick: () => window.open(data.url, "_blank") },
       })
       setJiraModalOpen(false)
-      setJiraIssueKey("")
+      setJiraIssueInput("")
       setJiraExisting(null)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao conectar com o Jira.")
@@ -251,13 +260,9 @@ export function SuiteForm({
 
   // ── Jira export modal ─────────────────────────────────────────────────────
   const [jiraModalOpen, setJiraModalOpen] = useState(false)
-  const [jiraUrl, setJiraUrl] = useState(() => typeof window !== "undefined" ? localStorage.getItem("jira_url") ?? "" : "")
-  const [jiraEmail, setJiraEmail] = useState(() => typeof window !== "undefined" ? localStorage.getItem("jira_email") ?? "" : "")
-  const [jiraToken, setJiraToken] = useState(() => typeof window !== "undefined" ? localStorage.getItem("jira_token") ?? "" : "")
-  const [jiraIssueKey, setJiraIssueKey] = useState("")
+  const [jiraIssueInput, setJiraIssueInput] = useState("")  // URL completa ou chave
   const [jiraLoading, setJiraLoading] = useState(false)
   const [jiraContent, setJiraContent] = useState("")
-  const [jiraFetching, setJiraFetching] = useState(false)
   const [jiraExisting, setJiraExisting] = useState<{ summary: string; descText: string; hasContent: boolean } | null>(null)
   const [jiraMode, setJiraMode] = useState<"replace" | "append">("replace")
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
@@ -948,50 +953,30 @@ export function SuiteForm({
         onConfirm={confirmRemoverHistorico}
       />
 
-      {/* ── Jira Modal — Passo 1: Credenciais ── */}
-      <Dialog open={jiraModalOpen && !jiraExisting} onOpenChange={(v) => { if (!v) { setJiraModalOpen(false); setJiraIssueKey("") } }}>
-        <DialogContent className="sm:max-w-md">
+      {/* ── Jira Modal — Passo 1: URL/Chave ── */}
+      <Dialog open={jiraModalOpen && !jiraExisting} onOpenChange={(v) => { if (!v) { setJiraModalOpen(false); setJiraIssueInput("") } }}>
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Exportar para o Jira</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-4 py-2">
-            <p className="text-sm text-text-secondary">
-              Preencha os dados abaixo. As credenciais são salvas localmente para próximas exportações.
-            </p>
+          <div className="flex flex-col gap-3 py-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">URL do Jira</label>
-              <Input placeholder="https://empresa.atlassian.net" value={jiraUrl} onChange={(e) => setJiraUrl(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">E-mail da conta Jira</label>
-              <Input placeholder="seu@email.com" value={jiraEmail} onChange={(e) => setJiraEmail(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">API Token</label>
-              <Input type="password" placeholder="••••••••••••••••••••" value={jiraToken} onChange={(e) => setJiraToken(e.target.value)} />
-              <p className="text-xs text-text-secondary">
-                Gere em{" "}
-                <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener noreferrer" className="text-brand-primary underline">id.atlassian.com</a>
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Chave da Issue</label>
+              <label className="text-sm font-medium text-text-primary">URL ou chave da issue</label>
               <Input
-                placeholder="PROJ-123"
-                value={jiraIssueKey}
-                onChange={(e) => setJiraIssueKey(e.target.value.toUpperCase())}
+                placeholder="https://agrotis.atlassian.net/browse/UX-951 ou UX-951"
+                value={jiraIssueInput}
+                onChange={(e) => setJiraIssueInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !jiraLoading) handleJiraExport() }}
+                autoFocus
               />
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => { setJiraModalOpen(false); setJiraIssueKey("") }}>
+            <Button variant="outline" onClick={() => { setJiraModalOpen(false); setJiraIssueInput("") }}>
               Cancelar
             </Button>
-            <Button
-              onClick={fetchJiraExisting}
-              disabled={jiraFetching || !jiraUrl || !jiraEmail || !jiraToken || !jiraIssueKey}
-            >
-              {jiraFetching ? "Verificando..." : "Verificar Issue"}
+            <Button onClick={handleJiraExport} disabled={jiraLoading || !jiraIssueInput.trim()}>
+              {jiraLoading ? "Verificando..." : "Exportar"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1001,46 +986,36 @@ export function SuiteForm({
       <Dialog open={jiraModalOpen && jiraExisting !== null} onOpenChange={(v) => { if (!v) { setJiraExisting(null) } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {jiraExisting?.summary ? jiraExisting.summary : jiraIssueKey}
-            </DialogTitle>
+            <DialogTitle>{jiraExisting?.summary || parseIssueKey(jiraIssueInput)}</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3 py-2">
-            {jiraExisting?.hasContent ? (
-              <>
-                <p className="text-sm text-text-secondary">
-                  Esta issue já possui conteúdo na descrição. Como deseja prosseguir?
-                </p>
-                <div className="max-h-36 overflow-y-auto rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2">
-                  <pre className="whitespace-pre-wrap text-xs leading-relaxed text-text-secondary">
-                    {jiraExisting.descText.length > 600 ? jiraExisting.descText.slice(0, 600) + "..." : jiraExisting.descText}
-                  </pre>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-text-secondary">
-                A descrição desta issue está vazia. O conteúdo será inserido diretamente.
-              </p>
-            )}
+            <p className="text-sm text-text-secondary">
+              Esta issue já possui conteúdo na descrição. Como deseja prosseguir?
+            </p>
+            <div className="max-h-40 overflow-y-auto rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2">
+              <pre className="whitespace-pre-wrap text-xs leading-relaxed text-text-secondary">
+                {(jiraExisting?.descText ?? "").length > 800
+                  ? (jiraExisting?.descText ?? "").slice(0, 800) + "..."
+                  : (jiraExisting?.descText ?? "")}
+              </pre>
+            </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setJiraExisting(null)}>
-              Voltar
+            <Button variant="outline" onClick={() => setJiraExisting(null)} disabled={jiraLoading}>
+              Cancelar
             </Button>
-            {jiraExisting?.hasContent && (
-              <Button
-                variant="outline"
-                onClick={() => { setJiraMode("replace"); handleJiraConfirm() }}
-                disabled={jiraLoading}
-              >
-                Substituir
-              </Button>
-            )}
             <Button
-              onClick={() => { setJiraMode(jiraExisting?.hasContent ? "append" : "replace"); handleJiraConfirm() }}
+              variant="outline"
+              onClick={() => { const creds = getJiraCredentials(); sendToJira(parseIssueKey(jiraIssueInput), creds, "replace") }}
               disabled={jiraLoading}
             >
-              {jiraLoading ? "Enviando..." : jiraExisting?.hasContent ? "Acrescentar" : "Confirmar"}
+              {jiraLoading ? "Enviando..." : "Substituir"}
+            </Button>
+            <Button
+              onClick={() => { const creds = getJiraCredentials(); sendToJira(parseIssueKey(jiraIssueInput), creds, "append") }}
+              disabled={jiraLoading}
+            >
+              {jiraLoading ? "Enviando..." : "Acrescentar"}
             </Button>
           </DialogFooter>
         </DialogContent>

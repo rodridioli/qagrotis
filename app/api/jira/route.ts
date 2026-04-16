@@ -115,22 +115,37 @@ export async function POST(req: NextRequest) {
   const base = jiraUrl.replace(/\/$/, "")
   const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64")
 
-  // If appending, fetch current description first
-  let finalContent = content
+  // Build the final ADF document
+  let adf: object
   if (mode === "append") {
+    // Fetch existing ADF and append new content as ADF nodes (preserves original formatting)
     const getRes = await fetch(`${base}/rest/api/3/issue/${issueKey}?fields=description`, {
       headers: { "Authorization": `Basic ${credentials}`, "Accept": "application/json" },
     })
     if (getRes.ok) {
-      const existing = await getRes.json() as { fields?: { description?: unknown } }
-      if (existing.fields?.description) {
-        const existingText = adfToText(existing.fields.description)
-        finalContent = existingText.trim() + "\n\n---\n\n" + content
+      const existing = await getRes.json() as { fields?: { description?: { version: number; type: string; content: unknown[] } | null } }
+      const existingAdf = existing.fields?.description
+      if (existingAdf?.content) {
+        const newAdf = markdownToADF(content) as { version: number; type: string; content: unknown[] }
+        // Merge: existing nodes + divider + new nodes
+        adf = {
+          version: 1,
+          type: "doc",
+          content: [
+            ...existingAdf.content,
+            { type: "rule" },
+            ...newAdf.content,
+          ],
+        }
+      } else {
+        adf = markdownToADF(content)
       }
+    } else {
+      adf = markdownToADF(content)
     }
+  } else {
+    adf = markdownToADF(content)
   }
-
-  const adf = markdownToADF(finalContent)
 
   const res = await fetch(`${base}/rest/api/3/issue/${issueKey}`, {
     method: "PUT",
