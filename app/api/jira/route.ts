@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const base = jiraUrl.replace(/\/$/, "")
   const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64")
 
-  const res = await fetch(`${base}/rest/api/3/issue/${issueKey}?fields=description,summary`, {
+  const res = await fetch(`${base}/rest/api/3/issue/${issueKey}?fields=description,summary,attachment`, {
     headers: {
       "Authorization": `Basic ${credentials}`,
       "Accept": "application/json",
@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
     fields?: {
       summary?: string
       description?: { content?: unknown[] } | null
+      attachment?: { id: string; filename: string; mimeType: string; content: string; size: number }[]
     }
   }
 
@@ -43,7 +44,37 @@ export async function GET(req: NextRequest) {
   const descAdf = data.fields?.description
   const descText = descAdf ? adfToText(descAdf) : ""
 
-  return Response.json({ summary, descText, hasContent: descText.trim().length > 0 })
+  // Fetch attachments (images and PDFs, up to 5, max 5MB each)
+  const attachments = data.fields?.attachment ?? []
+  const supported = attachments.filter(a =>
+    a.size < 5 * 1024 * 1024 &&
+    (a.mimeType.startsWith("image/") || a.mimeType === "application/pdf")
+  ).slice(0, 5)
+
+  const attachmentData: { name: string; mimeType: string; dataUrl: string }[] = []
+  for (const att of supported) {
+    try {
+      const attRes = await fetch(att.content, {
+        headers: { "Authorization": `Basic ${credentials}` },
+      })
+      if (attRes.ok) {
+        const buf = await attRes.arrayBuffer()
+        const base64 = Buffer.from(buf).toString("base64")
+        attachmentData.push({
+          name: att.filename,
+          mimeType: att.mimeType,
+          dataUrl: `data:${att.mimeType};base64,${base64}`,
+        })
+      }
+    } catch { /* skip failed attachment */ }
+  }
+
+  return Response.json({
+    summary,
+    descText,
+    hasContent: descText.trim().length > 0,
+    attachments: attachmentData,
+  })
 }
 
 // Convert ADF back to plain text for preview

@@ -208,6 +208,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
     // Fetch Jira issue content if URL/key provided
     let jiraContext = contexto.trim()
+    const jiraAttachments: { list: { name: string; dataUrl: string }[] } = { list: [] }
     if (jiraInput.trim()) {
       try {
         const jiraUrl = localStorage.getItem("jira_url") ?? ""
@@ -220,12 +221,24 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         const params = new URLSearchParams({ jiraUrl, issueKey, email: jiraEmail, apiToken: jiraToken })
         const jiraRes = await fetch(`/api/jira?${params}`)
         if (jiraRes.ok) {
-          const jiraData = await jiraRes.json() as { summary?: string; descText?: string }
+          const jiraData = await jiraRes.json() as {
+            summary?: string
+            descText?: string
+            attachments?: { name: string; mimeType: string; dataUrl: string }[]
+          }
           const jiraContent = [
             jiraData.summary ? `Issue: ${jiraData.summary}` : "",
-            jiraData.descText ? `Descrição: ${jiraData.descText}` : "",
+            jiraData.descText ? `Descrição:\n${jiraData.descText}` : "",
           ].filter(Boolean).join("\n\n")
           jiraContext = [jiraContent, jiraContext].filter(Boolean).join("\n\n---\n\n")
+          // Merge Jira attachments with existing anexos
+          if (jiraData.attachments && jiraData.attachments.length > 0) {
+            const jiraAnexos = jiraData.attachments.map(a => ({ name: a.name, dataUrl: a.dataUrl }))
+            // Prepend Jira attachments so they get analyzed first
+            const merged = [...jiraAnexos, ...anexoPreviews]
+            // Temporarily override for this generate call (we'll pass merged directly)
+            Object.assign(jiraAttachments, { list: merged })
+          }
         }
       } catch { /* continue without Jira data */ }
     }
@@ -246,7 +259,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jira: jiraContext || undefined,
-          imagens: anexoPreviews.length > 0 ? anexoPreviews : undefined,
+          imagens: jiraAttachments.list.length > 0 ? jiraAttachments.list : (anexoPreviews.length > 0 ? anexoPreviews : undefined),
           integrationId: aiProvider,
         }),
         signal: controller.signal,
@@ -417,7 +430,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleCopyMarkdown}>
                   <Copy className="size-4" />
-                  Copiar Markdown
+                  Copiar
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={openImportSetup} disabled={isImporting}>
                   <Upload className="size-4" />
