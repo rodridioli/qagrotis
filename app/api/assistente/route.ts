@@ -86,40 +86,21 @@ async function askGitBook(question: string, sistema: string): Promise<string> {
     }
   )
 
+  const siteRaw = await siteRes.text()
+  console.log("[assistente] site status:", siteRes.status)
+  console.log("[assistente] site raw (first 500):", siteRaw.slice(0, 500))
+
   if (siteRes.ok) {
-    const raw = await siteRes.text()
-    const { answer, sources } = parseGitBookSSE(raw)
+    const { answer, sources } = parseGitBookSSE(siteRaw)
     if (answer) {
       const srcLines = sources.slice(0, 3).map((s) => `- ${s}`).join("\n")
       return srcLines ? `${answer}\n\n**Fontes:**\n${srcLines}` : answer
     }
+    // Return raw for diagnosis if no answer parsed
+    throw new Error(`Site ask OK but no answer parsed. Raw: ${siteRaw.slice(0, 300)}`)
   }
 
-  // Log site error and try org-level endpoint
-  const siteErr = siteRes.ok ? "empty answer" : `${siteRes.status}`
-  console.warn(`[assistente] site ask failed (${siteErr}), trying org ask`)
-
-  const orgRes = await fetch(
-    `https://api.gitbook.com/v1/orgs/${GITBOOK_ORG_ID}/ask`,
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ query: queryText }),
-    }
-  )
-
-  if (orgRes.ok) {
-    const raw = await orgRes.text()
-    const { answer, sources } = parseGitBookSSE(raw)
-    if (answer) {
-      const srcLines = sources.slice(0, 3).map((s) => `- ${s}`).join("\n")
-      return srcLines ? `${answer}\n\n**Fontes:**\n${srcLines}` : answer
-    }
-  }
-
-  // Both failed — return diagnostic error
-  const orgErr = orgRes.ok ? "empty answer" : `${orgRes.status}: ${(await orgRes.text()).slice(0, 200)}`
-  throw new Error(`Site ask: ${siteErr} | Org ask: ${orgErr}`)
+  throw new Error(`Site ask ${siteRes.status}: ${siteRaw.slice(0, 300)}`)
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
