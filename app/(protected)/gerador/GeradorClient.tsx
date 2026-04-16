@@ -230,8 +230,22 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     }
   }
 
+  // Convert plain output to rich Markdown for Jira/display
+  function formatOutputAsMarkdown(raw: string): string {
+    return raw
+      // Add bold + newlines before field labels
+      .replace(
+        /^(Cenário:|Descrição:|Regra de negócio:|Pré-condições:|BDD \(Gherkin\):|Resultado esperado:)/gim,
+        (_, label) => `\n\n**${label}**`
+      )
+      // Ensure --- separators have blank lines around them
+      .replace(/\n?---\n?/g, "\n\n---\n\n")
+      .trim()
+  }
+
   function handleCopyMarkdown() {
-    navigator.clipboard.writeText(output)
+    const markdown = formatOutputAsMarkdown(output)
+    navigator.clipboard.writeText(markdown)
     toast.success("Markdown copiado! Cole diretamente no Jira.")
   }
 
@@ -533,13 +547,13 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                 remarkPlugins={[remarkGfm]}
                 components={{
                   p: ({ children }) => (
-                    <p className="text-sm leading-[1.6] text-text-primary">{children}</p>
+                    <p className="text-sm leading-[1.7] text-text-primary mb-1">{children}</p>
                   ),
                   strong: ({ children }) => (
                     <strong className="font-semibold text-text-primary">{children}</strong>
                   ),
                   ul: ({ children }) => (
-                    <ul className="space-y-0.5 pl-1 text-sm text-text-primary">{children}</ul>
+                    <ul className="space-y-0.5 pl-1 text-sm text-text-primary mb-2">{children}</ul>
                   ),
                   li: ({ children }) => (
                     <li className="flex gap-2 text-sm leading-relaxed text-text-primary">
@@ -548,14 +562,15 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                     </li>
                   ),
                   hr: () => (
-                    <div className="my-5 border-t border-border-default" />
+                    <div className="my-8 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border-default" />
+                      <span className="text-[10px] font-medium uppercase tracking-widest text-text-secondary">próximo cenário</span>
+                      <div className="h-px flex-1 bg-border-default" />
+                    </div>
                   ),
                 }}
               >
-                {output.replace(
-                  /^(Cenário:|Descrição:|Regra de negócio:|Pré-condições:|BDD \(Gherkin\):|Resultado esperado:)/gim,
-                  '\n\n**$1**'
-                ).trim()}
+                {formatOutputAsMarkdown(output)}
               </ReactMarkdown>
             )}
 
