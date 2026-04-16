@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.6.0",
+    "commit": "deploy-vercel",
+    "date": "2026-04-16",
+    "tag": "Melhoria",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Assistente de IA: integração com GitBook via JWT (Visitor Auth) — respostas diretas da Base de Conhecimento.",
+      "Assistente de IA: subtítulo alterado para 'Base de Conhecimento', sugestões removidas da tela inicial.",
+      "Assistente de IA: formatação rica nas respostas — negrito, itálico, bullets, links clicáveis em nova aba.",
+      "Gerador CT: template sem asteriscos, compatível com importação direta após geração.",
+      "Gerador CT: botão Copiar gera Markdown formatado para colar no Jira com negrito e estrutura correta.",
+      "Gerador CT: separador visual 'próximo cenário' entre os CTs gerados.",
+      "Gerador CT: fallback automático entre modelos gratuitos do OpenRouter quando indisponível.",
+      "Suítes: cenários inativos abrem na mesma aba (não em nova aba), com opção de voltar.",
+      "Suítes: aba Histórico com visual de inativo (opacidade + badge 'Inativo') igual à aba Cenários.",
+      "Dashboard: ranking de cenários gerados corrigido por usuário único (email), com foto de perfil.",
+      "Dashboard: cenários sem data de criação tratados como recentes e incluídos nos filtros corretamente.",
+      "Configurações: título 'Administração' removido, resultado da limpeza exibido via toast.",
+      "Performance: Sidebar e Topbar com React.memo, memoized Map para lookup de cenários ativos."
+    ]
+  },
+  {
     "version": "1.5.0",
     "commit": "deploy-vercel",
     "date": "2026-04-14",

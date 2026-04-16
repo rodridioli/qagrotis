@@ -21,7 +21,9 @@
     "storybook:lan": "storybook dev -p 6006 --host 0.0.0.0",
     "build-storybook": "storybook build",
     "storybook:serve": "npx http-server storybook-static -p 6007 --host 0.0.0.0",
-    "changelog:update": "node scripts/update-changelog.js"
+    "changelog:update": "node scripts/update-changelog.js",
+    "changelog": "node scripts/pre-commit-changelog.js",
+    "predeploy": "node scripts/pre-commit-changelog.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
