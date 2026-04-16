@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import {
   Sparkles, Copy, RotateCcw,
   Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2, ExternalLink,
-  FileText, ListChecks, Plus, Eye, EyeOff, ShieldCheck, Loader2, Link2
+  FileText, ListChecks, Plus, Eye, EyeOff, ShieldCheck, Loader2, Link2, MoreVertical
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,12 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { criarCenario, atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
 import { parseMarkdownCenarios, buildImportItems, type ParsedCenario, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
@@ -99,6 +105,8 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
   const [importProgressOpen, setImportProgressOpen] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [importedIds, setImportedIds] = useState<string[]>([])
+  const [suitePromptOpen, setSuitePromptOpen] = useState(false)
 
   // ── Inline integration modal state ─────────────────────────────────────────
   type KeyStatus = "idle" | "validating" | "valid" | "invalid" | "uncertain"
@@ -337,6 +345,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     setIsImporting(true)
 
     let success = 0
+    const createdIds: string[] = []
     try {
       for (let i = 0; i < toImport.length; i++) {
         const item = toImport[i]
@@ -365,8 +374,10 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         try {
           if (item.replace && item.existing) {
             await atualizarCenario(item.existing.id, payload)
+            createdIds.push(item.existing.id)
           } else {
-            await criarCenario(payload)
+            const created = await criarCenario(payload)
+            createdIds.push(created.id)
           }
           success++
         } catch (err) {
@@ -382,6 +393,9 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     if (success > 0) {
       router.refresh()
       toast.success(success === 1 ? "1 cenário importado com sucesso." : `${success} cenários importados com sucesso.`)
+      // Store IDs of newly created cenarios and prompt to create suite
+      setImportedIds(createdIds)
+      setSuitePromptOpen(true)
     }
   }
 
@@ -390,34 +404,32 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       {/* ── Header actions ── */}
       <div className="flex flex-wrap items-center justify-end gap-2">
           {output && !loading && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setIsEditing((v) => !v)}
-                className="gap-2"
-              >
-                {isEditing ? <Check className="size-4" /> : <Pencil className="size-4" />}
-                {isEditing ? "Concluir edição" : "Editar"}
-              </Button>
-              <Button variant="outline" onClick={handleCopyMarkdown} className="gap-2">
-                <Copy className="size-4" />
-                Copiar
-              </Button>
-              <Button
-                variant="outline"
-                onClick={openImportSetup}
-                disabled={isImporting}
-                className="gap-2"
-              >
-                <Upload className="size-4" />
-                {isImporting ? "Importando…" : "Importar"}
-              </Button>
-            </>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={
+                <Button variant="outline" className="gap-2">
+                  <MoreVertical className="size-4" />
+                </Button>
+              } />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsEditing((v) => !v)}>
+                  {isEditing ? <Check className="size-4" /> : <Pencil className="size-4" />}
+                  {isEditing ? "Concluir edição" : "Editar"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopyMarkdown}>
+                  <Copy className="size-4" />
+                  Copiar Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={openImportSetup} disabled={isImporting}>
+                  <Upload className="size-4" />
+                  {isImporting ? "Importando…" : "Importar"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleReset}>
+                  <RotateCcw className="size-4" />
+                  Limpar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
-          <Button variant="outline" onClick={handleReset} disabled={loading || !output} className="gap-2">
-            <RotateCcw className="size-4" />
-            Limpar
-          </Button>
           <Button
             onClick={generate}
             disabled={loading}
@@ -1007,6 +1019,30 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             <Button onClick={handleSalvarIntegracao} disabled={isIntModalPending || intKeyStatus === "validating"}>
               <Check className="size-4" />
               {isIntModalPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Suite Prompt Dialog ── */}
+      <Dialog open={suitePromptOpen} onOpenChange={setSuitePromptOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Criar Suíte de Testes?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-text-secondary">
+            {importedIds.length} cenário{importedIds.length !== 1 ? "s" : ""} importado{importedIds.length !== 1 ? "s" : ""} com sucesso.
+            Deseja criar uma nova Suíte de Testes com esses cenários?
+          </p>
+          <DialogFooter showCloseButton={false}>
+            <Button variant="outline" onClick={() => setSuitePromptOpen(false)}>
+              Agora não
+            </Button>
+            <Button onClick={() => {
+              setSuitePromptOpen(false)
+              router.push(`/suites/nova?cenarios=${importedIds.join(",")}`)
+            }}>
+              Criar Suíte
             </Button>
           </DialogFooter>
         </DialogContent>

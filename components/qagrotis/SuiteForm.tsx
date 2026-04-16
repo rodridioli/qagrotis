@@ -45,6 +45,7 @@ export interface SuiteFormProps {
   initialSistema?: string
   allModulos?: ModuloRecord[]
   allCenarios?: CenarioRecord[]
+  preloadedSuite?: { cenarios: { id: string; name: string; module: string; tipo: string; execucoes: number; erros: number }[] }
 }
 
 interface SuiteCenario {
@@ -77,7 +78,8 @@ export function SuiteForm({
   systemList = SYSTEM_LIST,
   initialSistema,
   allModulos = [],
-  allCenarios = []
+  allCenarios = [],
+  preloadedSuite,
 }: SuiteFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -86,8 +88,15 @@ export function SuiteForm({
   const sistemaSelecionado = sistemaSelecionadoCtx || suite?.sistema || initialSistema || ""
   const tabParam = searchParams.get("tab")
   const initialTab = (tabParam === "cenarios" || tabParam === "historico") ? tabParam : "cadastro"
-  const [activeTab, setActiveTab] = useState<"cadastro" | "cenarios" | "historico">(initialTab)
-  const [cenarios, setCenarios] = useState<SuiteCenario[]>(suite?.cenarios ?? [])
+  const [activeTab, setActiveTab] = useState<"cadastro" | "cenarios" | "historico">(
+    preloadedSuite?.cenarios?.length ? "cenarios" : initialTab
+  )
+  const [cenarios, setCenarios] = useState<SuiteCenario[]>(
+    suite?.cenarios ?? preloadedSuite?.cenarios?.map(c => ({
+      id: c.id, name: c.name, module: c.module, tipo: c.tipo,
+      execucoes: c.execucoes, erros: c.erros, deps: 0,
+    })) ?? []
+  )
   const [historico, setHistorico] = useState<HistoricoItem[]>(() => {
     const raw = (suite?.historico ?? []) as HistoricoItem[]
     // Sort by timestamp descending (newest first)
