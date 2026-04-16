@@ -277,6 +277,94 @@ function EmptyState() {
   )
 }
 
+const MD_COMPONENTS = {
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="mb-2 text-xs leading-relaxed text-text-primary last:mb-0">{children}</p>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="font-semibold text-text-primary">{children}</strong>
+  ),
+  em: ({ children }: { children?: React.ReactNode }) => (
+    <em className="italic text-text-secondary">{children}</em>
+  ),
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer"
+      className="font-medium text-brand-primary underline underline-offset-2 hover:text-brand-primary/80 transition-colors">
+      {children}
+    </a>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="mb-2 space-y-0.5 pl-1 text-xs text-text-primary">{children}</ul>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <ol className="mb-2 space-y-0.5 pl-4 text-xs text-text-primary list-decimal">{children}</ol>
+  ),
+  li: ({ children }: { children?: React.ReactNode }) => (
+    <li className="flex gap-1.5 leading-relaxed">
+      <span className="mt-[5px] shrink-0 size-1.5 rounded-full bg-brand-primary/50" />
+      <span>{children}</span>
+    </li>
+  ),
+  h1: ({ children }: { children?: React.ReactNode }) => (
+    <h1 className="mb-1.5 mt-3 text-sm font-semibold text-text-primary first:mt-0">{children}</h1>
+  ),
+  h2: ({ children }: { children?: React.ReactNode }) => (
+    <h2 className="mb-1 mt-2.5 text-xs font-semibold uppercase tracking-wide text-text-secondary first:mt-0">{children}</h2>
+  ),
+  h3: ({ children }: { children?: React.ReactNode }) => (
+    <h3 className="mb-1 mt-2 text-xs font-semibold text-text-primary first:mt-0">{children}</h3>
+  ),
+  hr: () => <hr className="my-2.5 border-border-default" />,
+  code: ({ children }: { children?: React.ReactNode }) => (
+    <code className="rounded bg-neutral-grey-100 px-1 py-0.5 text-[10px] font-mono text-text-primary">{children}</code>
+  ),
+  blockquote: ({ children }: { children?: React.ReactNode }) => (
+    <blockquote className="border-l-2 border-brand-primary/40 pl-2.5 text-xs italic text-text-secondary">{children}</blockquote>
+  ),
+}
+
+function TypewriterContent({ content }: { content: string }) {
+  const [displayed, setDisplayed] = useState("")
+  const [done, setDone] = useState(false)
+  const prevContent = useRef("")
+
+  useEffect(() => {
+    // If content shrank (reset) or is new message, restart
+    if (content.length < prevContent.current.length) {
+      setDisplayed("")
+      setDone(false)
+      prevContent.current = ""
+    }
+
+    const newChars = content.slice(prevContent.current.length)
+    if (!newChars) return
+
+    prevContent.current = content
+
+    // Animate new chars word-by-word for natural feel
+    const words = newChars.split(/(?<=\s)/)
+    let i = 0
+    setDone(false)
+
+    const tick = () => {
+      if (i >= words.length) { setDone(true); return }
+      setDisplayed((prev) => prev + words[i])
+      i++
+      setTimeout(tick, 12)
+    }
+    tick()
+  }, [content])
+
+  return (
+    <div className="min-w-0 overflow-hidden">
+      <ReactMarkdown components={MD_COMPONENTS}>{displayed}</ReactMarkdown>
+      {!done && (
+        <span className="inline-block w-1.5 h-3 bg-brand-primary/70 rounded-sm animate-pulse ml-0.5 align-middle" />
+      )}
+    </div>
+  )
+}
+
 function MessageBubble({ msg }: { msg: Message }) {
   const isUser = msg.role === "user"
 
@@ -289,25 +377,29 @@ function MessageBubble({ msg }: { msg: Message }) {
       )}
       <div
         className={cn(
-          "min-w-0 rounded-2xl px-3.5 py-2.5 text-sm",
+          "min-w-0 rounded-2xl px-3.5 py-2.5",
           isUser
-            ? "max-w-[80%] rounded-br-sm bg-brand-primary text-white"
+            ? "max-w-[80%] rounded-br-sm bg-brand-primary text-white text-sm"
             : msg.error
-              ? "w-full rounded-bl-sm border border-destructive/20 bg-destructive/10 text-destructive"
+              ? "w-full rounded-bl-sm border border-destructive/20 bg-destructive/10 text-destructive text-xs"
               : "w-full rounded-bl-sm border border-border-default bg-surface-card text-text-primary"
         )}
       >
         {/* Loading state */}
         {!isUser && !msg.content && !msg.error && (
-          <div className="flex items-center gap-1.5 py-0.5">
-            <Loader2 className="size-3.5 animate-spin text-text-secondary" />
+          <div className="flex items-center gap-2 py-1">
+            <span className="flex gap-0.5">
+              <span className="size-1.5 rounded-full bg-brand-primary/60 animate-bounce [animation-delay:0ms]" />
+              <span className="size-1.5 rounded-full bg-brand-primary/60 animate-bounce [animation-delay:150ms]" />
+              <span className="size-1.5 rounded-full bg-brand-primary/60 animate-bounce [animation-delay:300ms]" />
+            </span>
             <span className="text-xs text-text-secondary">Buscando na documentação…</span>
           </div>
         )}
 
         {/* Error */}
         {msg.error && (
-          <div className="flex items-start gap-1.5">
+          <div className="flex items-start gap-1.5 text-xs">
             <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
             <span>{msg.content}</span>
           </div>
@@ -316,65 +408,9 @@ function MessageBubble({ msg }: { msg: Message }) {
         {/* User message */}
         {isUser && <span>{msg.content}</span>}
 
-        {/* Assistant markdown — full width, rich formatting */}
+        {/* Assistant — typewriter effect */}
         {!isUser && !msg.error && msg.content && (
-          <div className="min-w-0 overflow-hidden">
-            <ReactMarkdown
-              components={{
-                p: ({ children }) => (
-                  <p className="mb-2 text-xs leading-relaxed text-text-primary last:mb-0">{children}</p>
-                ),
-                strong: ({ children }) => (
-                  <strong className="font-semibold text-text-primary">{children}</strong>
-                ),
-                em: ({ children }) => (
-                  <em className="italic text-text-secondary">{children}</em>
-                ),
-                a: ({ href, children }) => (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-brand-primary underline underline-offset-2 hover:text-brand-primary/80 transition-colors"
-                  >
-                    {children}
-                  </a>
-                ),
-                ul: ({ children }) => (
-                  <ul className="mb-2 space-y-0.5 pl-3 text-xs text-text-primary">{children}</ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="mb-2 space-y-0.5 pl-3 text-xs text-text-primary list-decimal">{children}</ol>
-                ),
-                li: ({ children }) => (
-                  <li className="flex gap-1.5 leading-relaxed">
-                    <span className="mt-1 shrink-0 size-1 rounded-full bg-brand-primary/60" />
-                    <span>{children}</span>
-                  </li>
-                ),
-                h1: ({ children }) => (
-                  <h1 className="mb-1.5 mt-3 text-sm font-semibold text-text-primary first:mt-0">{children}</h1>
-                ),
-                h2: ({ children }) => (
-                  <h2 className="mb-1 mt-2.5 text-xs font-semibold uppercase tracking-wide text-text-secondary first:mt-0">{children}</h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="mb-1 mt-2 text-xs font-semibold text-text-primary first:mt-0">{children}</h3>
-                ),
-                hr: () => (
-                  <hr className="my-2.5 border-border-default" />
-                ),
-                code: ({ children }) => (
-                  <code className="rounded bg-neutral-grey-100 px-1 py-0.5 text-[10px] font-mono text-text-primary">{children}</code>
-                ),
-                blockquote: ({ children }) => (
-                  <blockquote className="border-l-2 border-brand-primary/40 pl-2.5 text-xs italic text-text-secondary">{children}</blockquote>
-                ),
-              }}
-            >
-              {msg.content}
-            </ReactMarkdown>
-          </div>
+          <TypewriterContent content={msg.content} />
         )}
       </div>
     </div>
