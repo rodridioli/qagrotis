@@ -22,7 +22,7 @@ export default function LimparBancoButton() {
       res.modulos    > 0 && `${res.modulos} módulo${res.modulos !== 1 ? "s" : ""}`,
       res.sistemas   > 0 && `${res.sistemas} sistema${res.sistemas !== 1 ? "s" : ""}`,
       res.clientes   > 0 && `${res.clientes} cliente${res.clientes !== 1 ? "s" : ""}`,
-      res.integracoes > 0 && `${res.integracoes} integração${res.integracoes !== 1 ? "ões" : ""}`,
+      res.integracoes > 0 && `${res.integracoes} modelo de IA${res.integracoes !== 1 ? "ões" : ""}`,
       res.usuarios   > 0 && `${res.usuarios} usuário${res.usuarios !== 1 ? "s" : ""}`,
     ].filter(Boolean).join(", ")
     return `${total} registro${total !== 1 ? "s" : ""} removido${total !== 1 ? "s" : ""}: ${partes}.`
@@ -67,7 +67,7 @@ export default function LimparBancoButton() {
       </div>
       {confirmando && (
         <p className="text-xs text-red-600">
-          Atenção: esta ação é irreversível. Todos os sistemas, módulos, cenários, suítes, clientes e integrações serão removidos. Usuários inativos também serão excluídos. Usuários ativos serão mantidos.
+          Atenção: esta ação é irreversível. Todos os sistemas, módulos, cenários, suítes, clientes e modelos de IA serão removidos. Usuários inativos também serão excluídos. Usuários ativos serão mantidos.
         </p>
       )}
     </div>

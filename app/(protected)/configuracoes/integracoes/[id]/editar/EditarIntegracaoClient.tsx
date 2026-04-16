@@ -70,7 +70,7 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
           apiKey: apiKey.trim()
         })
 
-        toast.success("Integração atualizada com sucesso.")
+        toast.success("Modelo de IA atualizado com sucesso.")
         router.push("/configuracoes/integracoes")
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Erro ao salvar")

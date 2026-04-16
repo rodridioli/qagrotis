@@ -66,7 +66,7 @@ export default function NovaIntegracaoForm() {
           apiKey: apiKey.trim()
         })
 
-        toast.success("Integração criada com sucesso.")
+        toast.success("Modelo de IA criado com sucesso.")
         router.push("/configuracoes/integracoes")
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Erro ao salvar")
@@ -109,7 +109,7 @@ export default function NovaIntegracaoForm() {
             Modelos de IA
           </Link>
           <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">Nova Integração</span>
+          <span className="font-medium text-text-primary">Nova Modelo de IA</span>
         </div>
         <Button onClick={handleSave} disabled={isSaveDisabled}>
           <Check className="size-4" />
