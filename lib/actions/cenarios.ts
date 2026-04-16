@@ -182,6 +182,7 @@ export async function criarCenario(data: {
   const row = await prisma.cenario.create({
     data: {
       id,
+      createdAt:         new Date(),
       scenarioName:      parsed.scenarioName,
       system:            parsed.system,
       module:            parsed.module,
