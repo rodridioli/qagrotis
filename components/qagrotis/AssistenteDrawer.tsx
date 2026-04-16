@@ -323,20 +323,9 @@ const MD_COMPONENTS = {
   ),
 }
 
-function TypewriterContent({ content }: { content: string }) {
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    setVisible(false)
-    const t = requestAnimationFrame(() => setVisible(true))
-    return () => cancelAnimationFrame(t)
-  }, [content])
-
+function AssistantMarkdown({ content }: { content: string }) {
   return (
-    <div
-      className="min-w-0 overflow-hidden transition-opacity duration-300"
-      style={{ opacity: visible ? 1 : 0 }}
-    >
+    <div className="min-w-0 overflow-hidden">
       <ReactMarkdown components={MD_COMPONENTS}>{content}</ReactMarkdown>
     </div>
   )
@@ -387,7 +376,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 
         {/* Assistant — typewriter effect */}
         {!isUser && !msg.error && msg.content && (
-          <TypewriterContent content={msg.content} />
+          <AssistantMarkdown content={msg.content} />
         )}
       </div>
     </div>
