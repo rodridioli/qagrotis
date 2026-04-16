@@ -31,29 +31,80 @@ async function generateVisitorJWT(): Promise<string> {
     .sign(secret)
 }
 
-// ── Extract plain text from GitBook document nodes ───────────────────────────
+// ── Convert GitBook document nodes to Markdown ───────────────────────────────
+function docToMarkdown(node: unknown, listDepth = 0): string {
+  if (!node || typeof node !== "object") return ""
+  const n = node as Record<string, unknown>
+
+  // Leaf — apply marks (bold, italic, etc.)
+  if (n.object === "leaf" || typeof n.text === "string") {
+    let text = (n.text as string) ?? ""
+    const marks = (n.marks as { type: string }[]) ?? []
+    if (marks.some((m) => m.type === "bold")) text = `**${text}**`
+    if (marks.some((m) => m.type === "italic")) text = `*${text}*`
+    if (marks.some((m) => m.type === "code")) text = `\`${text}\``
+    return text
+  }
+
+  // Inline node with leaves
+  if (n.object === "inline") {
+    const inner = Array.isArray(n.nodes)
+      ? (n.nodes as unknown[]).map((c) => docToMarkdown(c, listDepth)).join("")
+      : Array.isArray(n.leaves)
+        ? (n.leaves as unknown[]).map((c) => docToMarkdown(c, listDepth)).join("")
+        : ""
+    if (n.type === "link") {
+      const href = (n.data as Record<string, string>)?.href ?? ""
+      return `[${inner}](${href})`
+    }
+    return inner
+  }
+
+  // Block/document nodes
+  const type = (n.type as string) ?? n.object
+  const children = Array.isArray(n.nodes)
+    ? (n.nodes as unknown[]).map((c) => docToMarkdown(c, listDepth)).join("")
+    : ""
+
+  switch (type) {
+    case "document": return children
+    case "paragraph": return children ? `${children}\n\n` : ""
+    case "heading-one": return `# ${children}\n\n`
+    case "heading-two": return `## ${children}\n\n`
+    case "heading-three": return `### ${children}\n\n`
+    case "heading-four": return `#### ${children}\n\n`
+    case "bulleted-list":
+    case "unordered-list": {
+      const items = Array.isArray(n.nodes)
+        ? (n.nodes as unknown[]).map((c) => docToMarkdown(c, listDepth + 1)).join("")
+        : ""
+      return items + "\n"
+    }
+    case "ordered-list": {
+      let idx = 0
+      const items = Array.isArray(n.nodes)
+        ? (n.nodes as unknown[]).map((c) => {
+            idx++
+            const inner = docToMarkdown(c, listDepth)
+            return inner.replace(/^- /, `${idx}. `)
+          }).join("")
+        : ""
+      return items + "\n"
+    }
+    case "list-item": {
+      const inner = children.trim()
+      return `- ${inner}\n`
+    }
+    case "list-item-child": return children
+    case "blockquote": return `> ${children}\n\n`
+    case "code-block": return `\`\`\`\n${children}\n\`\`\`\n\n`
+    case "divider": return `---\n\n`
+    default: return children
+  }
+}
+
 function extractTextFromDocument(doc: unknown): string {
-  if (!doc || typeof doc !== "object") return ""
-  const d = doc as Record<string, unknown>
-  // Leaf node with text
-  if (typeof d.text === "string") return d.text
-  // Node with leaves array
-  if (Array.isArray(d.leaves)) {
-    return (d.leaves as unknown[]).map(extractTextFromDocument).join("")
-  }
-  // Node with nodes array
-  if (Array.isArray(d.nodes)) {
-    const parts = (d.nodes as unknown[]).map(extractTextFromDocument)
-    // Add newline after block-level nodes
-    const type = d.type as string ?? ""
-    const isBlock = ["paragraph","heading-one","heading-two","heading-three","list-item","blockquote"].includes(type)
-    return parts.join("") + (isBlock ? "\n" : "")
-  }
-  // Document root
-  if (d.object === "document" && Array.isArray(d.nodes)) {
-    return (d.nodes as unknown[]).map(extractTextFromDocument).join("")
-  }
-  return ""
+  return docToMarkdown(doc).trim()
 }
 
 // ── Parse GitBook SSE stream ──────────────────────────────────────────────────
