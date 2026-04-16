@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink } from "lucide-react"
+import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -109,6 +109,7 @@ export function SuiteForm({
   }, [])
 
   const [addCenarioOpen, setAddCenarioOpen] = useState(false)
+  const [selectedCenarios, setSelectedCenarios] = useState<Set<string>>(new Set())
   const [suiteName, setSuiteName] = useState(suite?.suiteName || "")
   const [versao, setVersao] = useState(suite?.versao || "")
   const [selectedModule, setSelectedModule] = useState(suite?.modulo || "")
@@ -118,6 +119,38 @@ export function SuiteForm({
   const [removeId, setRemoveId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [selectedHistorico, setSelectedHistorico] = useState<Set<number>>(new Set())
+
+  function buildCenariosJiraContent(ids: Set<string>): string {
+    const selected = cenarios.filter(c => ids.has(c.id))
+    if (selected.length === 0) return ""
+    const resultIcon = (r: string) => r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : "⏳"
+    const fieldOrDash = (v: string | undefined | null) => (v && v.trim()) ? v.trim() : "—"
+    const details = selected.map((c) => {
+      const cenario = allCenarios.find((ac) => ac.id === c.id)
+      return [
+        `### ${c.id} — ${c.name}`,
+        ``,
+        `- **Sistema:** ${fieldOrDash(cenario?.system ?? suite?.sistema)}`,
+        `- **Módulo:** ${fieldOrDash(c.module)}`,
+        `- **Tipo:** ${fieldOrDash(c.tipo)}`,
+        `- **Descrição:** ${fieldOrDash(cenario?.descricao)}`,
+        `- **Regra de Negócio:** ${fieldOrDash(cenario?.regraDeNegocio)}`,
+        `- **Pré-condições:** ${fieldOrDash(cenario?.preCondicoes)}`,
+        `- **BDD (Gherkin):** ${fieldOrDash(cenario?.bdd)}`,
+        `- **Resultado esperado:** ${fieldOrDash(cenario?.resultadoEsperado)}`,
+        `- **Testes:** ${historicoStats[c.id]?.execucoes ?? 0} | **Erros:** ${historicoStats[c.id]?.erros ?? 0}`,
+      ].join("\n")
+    }).join("\n---\n\n")
+    const exportDate = new Date().toLocaleDateString("pt-BR")
+    return [
+      `## Cenários de Teste — ${suite?.suiteName ?? "Suíte"}`,
+      `*Exportado em ${exportDate}*`,
+      ``,
+      `---`,
+      ``,
+      details,
+    ].join("\n")
+  }
 
   function handleExportarJira() {
     const selected = sortedHistorico.filter((h) => selectedHistorico.has(h._originalIdx))
@@ -601,7 +634,21 @@ export function SuiteForm({
 
         {/* ── Cenários ── */}
         <div className={activeTab !== "cenarios" ? "hidden" : ""}>
-          <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border-default px-5 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-default px-5 py-3">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={selectedCenarios.size === 0}
+                onClick={() => {
+                  setJiraContent(buildCenariosJiraContent(selectedCenarios))
+                  setJiraModalOpen(true)
+                }}
+              >
+                <ExternalLink className="size-4" />
+                Exportar para o Jira
+              </Button>
+            </div>
             <Button variant="outline" size="sm" onClick={() => setAddCenarioOpen(true)}>
               <Plus className="size-4" />
               Adicionar Cenário
@@ -616,6 +663,7 @@ export function SuiteForm({
             <div className="overflow-x-auto">
               <table className="w-full table-fixed text-sm">
                 <colgroup>
+                  <col className="w-10" />
                   <col className="w-24" />
                   <col />
                   <col className="w-32" />
@@ -626,6 +674,15 @@ export function SuiteForm({
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
+                    <th className="px-4 py-3 text-left">
+                      <Checkbox
+                        checked={cenarios.length > 0 && selectedCenarios.size === cenarios.length}
+                        onChange={() => {
+                          if (selectedCenarios.size === cenarios.length) setSelectedCenarios(new Set())
+                          else setSelectedCenarios(new Set(cenarios.map(c => c.id)))
+                        }}
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
@@ -640,6 +697,19 @@ export function SuiteForm({
                     const isCenarioAtivo = isCenarioAtivoFn(c.id)
                     return (
                     <tr key={c.id} className={`border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50${!isCenarioAtivo ? " opacity-60" : ""}`}>
+                      <td className="px-4 py-3">
+                        <Checkbox
+                          checked={selectedCenarios.has(c.id)}
+                          onChange={() => {
+                            setSelectedCenarios(prev => {
+                              const next = new Set(prev)
+                              if (next.has(c.id)) next.delete(c.id)
+                              else next.add(c.id)
+                              return next
+                            })
+                          }}
+                        />
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {isCenarioAtivo ? (
                           <Link
@@ -680,40 +750,38 @@ export function SuiteForm({
                           </button>
                         ) : (() => {
                           const cenarioAtivo = isCenarioAtivoFn(c.id)
+                          const href = suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`
                           return (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                render={
-                                  <button type="button" className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100" />
-                                }
-                              >
-                                <MoreVertical className="size-4" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" side="bottom">
-                                {cenarioAtivo ? (
-                                  <DropdownMenuItem>
-                                    <Link
-                                      href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
-                                      className="w-full"
-                                    >
-                                      Testar
-                                    </Link>
+                            <div className="flex items-center justify-end">
+                              {cenarioAtivo && (
+                                <Link
+                                  href={href}
+                                  title="Testar Cenário"
+                                  className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-brand-primary/10 hover:text-brand-primary"
+                                >
+                                  <Play className="size-4" />
+                                </Link>
+                              )}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  render={
+                                    <button type="button" className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100" />
+                                  }
+                                >
+                                  <MoreVertical className="size-4" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" side="bottom">
+                                  {!cenarioAtivo && (
+                                    <DropdownMenuItem>
+                                      <Link href={href} className="w-full">Visualizar</Link>
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
+                                    Remover
                                   </DropdownMenuItem>
-                                ) : (
-                                  <DropdownMenuItem>
-                                    <Link
-                                      href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
-                                      className="w-full"
-                                    >
-                                      Visualizar
-                                    </Link>
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
-                                  Remover
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           )
                         })()}
                       </td>
