@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import {
   Sparkles, Copy, RotateCcw,
   Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2, ExternalLink,
-  FileText, ListChecks, Plus, Eye, EyeOff, ShieldCheck, Loader2
+  FileText, ListChecks, Plus, Eye, EyeOff, ShieldCheck, Loader2, Link2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -50,6 +50,16 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   const [contexto, setContexto] = useState("")
+  const [jiraInput, setJiraInput] = useState("")
+  const [jiraConfigured, setJiraConfigured] = useState(false)
+
+  // Check if Jira is configured in localStorage
+  useEffect(() => {
+    const url = localStorage.getItem("jira_url")
+    const email = localStorage.getItem("jira_email")
+    const token = localStorage.getItem("jira_token")
+    setJiraConfigured(!!(url && email && token))
+  }, [])
   const activeIntegracoes = useMemo(() => integracoes.filter(i => i.active !== false), [integracoes])
   const [aiProvider, setAiProvider] = useState<string>(() => {
     // Safe: activeIntegracoes is derived from server props, stable on first render
@@ -176,9 +186,40 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   )
 
   async function generate() {
-    if (!contexto.trim() && anexoPreviews.length === 0) {
-      toast.error("Informe ao menos um contexto ou anexo antes de gerar.")
+    const hasInput = contexto.trim() || jiraInput.trim() || anexoPreviews.length > 0
+    if (!aiProvider) {
+      setActiveTab("contexto")
+      toast.error("Selecione um Modelo de IA antes de gerar.")
       return
+    }
+    if (!hasInput) {
+      setActiveTab("contexto")
+      toast.error("Preencha ao menos um campo: URL do Jira, Contexto ou Anexos.")
+      return
+    }
+
+    // Fetch Jira issue content if URL/key provided
+    let jiraContext = contexto.trim()
+    if (jiraInput.trim()) {
+      try {
+        const jiraUrl = localStorage.getItem("jira_url") ?? ""
+        const jiraEmail = localStorage.getItem("jira_email") ?? ""
+        const jiraToken = localStorage.getItem("jira_token") ?? ""
+        // Extract issue key from full URL or use as-is
+        const issueKey = jiraInput.trim().includes("/")
+          ? jiraInput.trim().split("/").pop() ?? jiraInput.trim()
+          : jiraInput.trim()
+        const params = new URLSearchParams({ jiraUrl, issueKey, email: jiraEmail, apiToken: jiraToken })
+        const jiraRes = await fetch(`/api/jira?${params}`)
+        if (jiraRes.ok) {
+          const jiraData = await jiraRes.json() as { summary?: string; descText?: string }
+          const jiraContent = [
+            jiraData.summary ? `Issue: ${jiraData.summary}` : "",
+            jiraData.descText ? `Descrição: ${jiraData.descText}` : "",
+          ].filter(Boolean).join("\n\n")
+          jiraContext = [jiraContent, jiraContext].filter(Boolean).join("\n\n---\n\n")
+        }
+      } catch { /* continue without Jira data */ }
     }
 
     abortRef.current?.abort()
@@ -196,7 +237,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          jira: contexto || undefined,
+          jira: jiraContext || undefined,
           imagens: anexoPreviews.length > 0 ? anexoPreviews : undefined,
           integrationId: aiProvider,
         }),
@@ -379,7 +420,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
           </Button>
           <Button
             onClick={generate}
-            disabled={loading || !aiProvider || (!contexto.trim() && anexoPreviews.length === 0)}
+            disabled={loading}
             className="gap-2"
           >
             <Sparkles className="size-4" />
@@ -472,13 +513,31 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             )}
           </div>
 
+          {/* URL do Jira — visible when Jira is configured */}
+          {jiraConfigured && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                <Link2 className="size-3.5" />
+                URL do Jira
+              </label>
+              <Input
+                value={jiraInput}
+                onChange={(e) => setJiraInput(e.target.value)}
+                placeholder="https://agrotis.atlassian.net/browse/AC-1641 ou AC-1641"
+              />
+              <p className="text-xs text-text-secondary">
+                O conteúdo da issue será analisado junto com o contexto e os anexos.
+              </p>
+            </div>
+          )}
+
           {/* Contexto */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">Contexto</label>
             <textarea
               value={contexto}
               onChange={(e) => setContexto(e.target.value)}
-              placeholder="Cole aqui o texto da tarefa do Jira ou especifique o contexto."
+              placeholder="Cole aqui requisitos, regras de negócio ou descrição da funcionalidade."
               rows={10}
               className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 transition-colors"
             />
