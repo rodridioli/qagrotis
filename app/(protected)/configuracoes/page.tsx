@@ -57,7 +57,7 @@ export default async function ConfiguracoesPage() {
             <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
               <Plug className="size-6" />
             </div>
-            <span className="font-semibold text-text-primary">Integrações</span>
+            <span className="font-semibold text-text-primary">Modelos de IA</span>
           </Link>
       </div>
 
