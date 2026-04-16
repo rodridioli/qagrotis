@@ -323,43 +323,21 @@ const MD_COMPONENTS = {
   ),
 }
 
-function TypewriterContent({ content, isLoading }: { content: string; isLoading: boolean }) {
-  const [displayed, setDisplayed] = useState("")
-  const indexRef = useRef(0)
-  const contentRef = useRef(content)
+function TypewriterContent({ content }: { content: string }) {
+  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    // Reset when content changes to a new message (shorter = reset)
-    if (content.length < contentRef.current.length || content === "") {
-      indexRef.current = 0
-      setDisplayed("")
-    }
-    contentRef.current = content
-
-    if (!content) return
-
-    // Animate from current index to end of content
-    const interval = setInterval(() => {
-      if (indexRef.current >= content.length) {
-        clearInterval(interval)
-        return
-      }
-      // Advance 3 chars per tick for speed
-      indexRef.current = Math.min(indexRef.current + 3, content.length)
-      setDisplayed(content.slice(0, indexRef.current))
-    }, 10)
-
-    return () => clearInterval(interval)
+    setVisible(false)
+    const t = requestAnimationFrame(() => setVisible(true))
+    return () => cancelAnimationFrame(t)
   }, [content])
 
-  const showCursor = isLoading || (displayed.length < content.length)
-
   return (
-    <div className="min-w-0 overflow-hidden">
-      <ReactMarkdown components={MD_COMPONENTS}>{displayed || " "}</ReactMarkdown>
-      {showCursor && (
-        <span className="inline-block w-1.5 h-3 bg-brand-primary/70 rounded-sm animate-pulse ml-0.5 align-middle" />
-      )}
+    <div
+      className="min-w-0 overflow-hidden transition-opacity duration-300"
+      style={{ opacity: visible ? 1 : 0 }}
+    >
+      <ReactMarkdown components={MD_COMPONENTS}>{content}</ReactMarkdown>
     </div>
   )
 }
@@ -409,7 +387,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 
         {/* Assistant — typewriter effect */}
         {!isUser && !msg.error && msg.content && (
-          <TypewriterContent content={msg.content} isLoading={false} />
+          <TypewriterContent content={msg.content} />
         )}
       </div>
     </div>
