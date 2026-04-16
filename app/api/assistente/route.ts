@@ -80,11 +80,15 @@ function parseGitBookSSE(rawText: string): { answer: string; sources: string[] }
         answer = extractTextFromDocument(a.answer.document).trim()
       }
 
-      // Sources
+      // Sources — capture title + URL when available
       const srcArr = a?.sources ?? parsed.sources ?? []
       for (const s of srcArr) {
-        const title = s.page?.title ?? s.title ?? (typeof s.page === "string" ? s.page : "") ?? ""
-        if (title && !sources.includes(title)) sources.push(title)
+        const title = s.page?.title ?? s.title ?? ""
+        const path = s.page?.path ?? s.path ?? ""
+        const entry = title
+          ? (path ? `[${title}](https://agrotis-1.gitbook.io/agrotis/${path})` : title)
+          : ""
+        if (entry && !sources.includes(entry)) sources.push(entry)
       }
     } catch { /* skip */ }
   }
@@ -126,11 +130,16 @@ async function askGitBook(question: string, sistema: string): Promise<string> {
   if (!answer) throw new Error(`Resposta vazia do GitBook. Raw: ${raw.slice(0, 300)}`)
 
   const cleanSources = sources
-    .filter((s) => s.length < 80 && !/^[a-f0-9]{8,}$/i.test(s))
-    .slice(0, 3)
-    .map((s) => `- ${s}`)
-    .join("\n")
-  return cleanSources ? `${answer}\n\n**Fontes:** ${cleanSources}` : answer
+    .filter((s) => {
+      const plain = s.replace(/\[.*?\]\(.*?\)/, "").replace(/[^a-z0-9]/gi, "")
+      return s.length < 200 && !/^[a-f0-9]{8,}$/i.test(plain)
+    })
+    .slice(0, 4)
+  if (cleanSources.length > 0) {
+    const srcBlock = cleanSources.map((s) => `- ${s}`).join("\n")
+    return `${answer}\n\n---\n**Fontes:**\n${srcBlock}`
+  }
+  return answer
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────

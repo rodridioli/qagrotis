@@ -332,24 +332,62 @@ function MessageBubble({ msg }: { msg: Message }) {
 
         {/* Assistant markdown — full width, rich formatting */}
         {!isUser && !msg.error && msg.content && (
-          <div className="
-            min-w-0 overflow-hidden
-            text-sm leading-relaxed text-text-primary
-            [&_p]:mb-2 [&_p:last-child]:mb-0
-            [&_strong]:font-semibold [&_strong]:text-text-primary
-            [&_a]:text-brand-primary [&_a]:underline [&_a]:underline-offset-2 [&_a:hover]:text-brand-primary/80
-            [&_ul]:mb-2 [&_ul]:space-y-0.5 [&_ul]:pl-4
-            [&_ol]:mb-2 [&_ol]:space-y-0.5 [&_ol]:pl-4
-            [&_li]:leading-relaxed
-            [&_h1]:mb-1.5 [&_h1]:text-base [&_h1]:font-semibold
-            [&_h2]:mb-1.5 [&_h2]:text-sm [&_h2]:font-semibold
-            [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-medium
-            [&_code]:rounded [&_code]:bg-neutral-grey-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs [&_code]:font-mono
-            [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-neutral-grey-100 [&_pre]:p-3 [&_pre]:text-xs
-            [&_blockquote]:border-l-2 [&_blockquote]:border-brand-primary/30 [&_blockquote]:pl-3 [&_blockquote]:text-text-secondary
-            [&_hr]:my-3 [&_hr]:border-border-default
-          ">
-            <ReactMarkdown>{msg.content}</ReactMarkdown>
+          <div className="min-w-0 overflow-hidden">
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => (
+                  <p className="mb-2 text-xs leading-relaxed text-text-primary last:mb-0">{children}</p>
+                ),
+                strong: ({ children }) => (
+                  <strong className="font-semibold text-text-primary">{children}</strong>
+                ),
+                em: ({ children }) => (
+                  <em className="italic text-text-secondary">{children}</em>
+                ),
+                a: ({ href, children }) => (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-brand-primary underline underline-offset-2 hover:text-brand-primary/80 transition-colors"
+                  >
+                    {children}
+                  </a>
+                ),
+                ul: ({ children }) => (
+                  <ul className="mb-2 space-y-0.5 pl-3 text-xs text-text-primary">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="mb-2 space-y-0.5 pl-3 text-xs text-text-primary list-decimal">{children}</ol>
+                ),
+                li: ({ children }) => (
+                  <li className="flex gap-1.5 leading-relaxed">
+                    <span className="mt-1 shrink-0 size-1 rounded-full bg-brand-primary/60" />
+                    <span>{children}</span>
+                  </li>
+                ),
+                h1: ({ children }) => (
+                  <h1 className="mb-1.5 mt-3 text-sm font-semibold text-text-primary first:mt-0">{children}</h1>
+                ),
+                h2: ({ children }) => (
+                  <h2 className="mb-1 mt-2.5 text-xs font-semibold uppercase tracking-wide text-text-secondary first:mt-0">{children}</h2>
+                ),
+                h3: ({ children }) => (
+                  <h3 className="mb-1 mt-2 text-xs font-semibold text-text-primary first:mt-0">{children}</h3>
+                ),
+                hr: () => (
+                  <hr className="my-2.5 border-border-default" />
+                ),
+                code: ({ children }) => (
+                  <code className="rounded bg-neutral-grey-100 px-1 py-0.5 text-[10px] font-mono text-text-primary">{children}</code>
+                ),
+                blockquote: ({ children }) => (
+                  <blockquote className="border-l-2 border-brand-primary/40 pl-2.5 text-xs italic text-text-secondary">{children}</blockquote>
+                ),
+              }}
+            >
+              {msg.content}
+            </ReactMarkdown>
           </div>
         )}
       </div>
