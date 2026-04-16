@@ -197,6 +197,10 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
       // **Field**:  alone — colon outside bold, block below
       const reHeaderExt = new RegExp(`^\\s*\\*\\*(${kp})\\*\\*\\s*:\\s*$`, "i")
       const reHeading   = new RegExp(`^#{2,4}\\s+(${kp})\\s*$`, "i")
+      // Plain text inline: "Field: value"  (no bold, no heading)
+      const rePlainInline = new RegExp(`^\\s*(${kp})\\s*:\\s*(\\S.*)$`, "i")
+      // Plain text block: "Field:" alone, content on following lines
+      const rePlainBlock  = new RegExp(`^\\s*(${kp})\\s*:\\s*$`, "i")
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i]
@@ -208,7 +212,18 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
             if (isHeader(lines[j])) break
             buf.push(lines[j])
           }
-          // Preserve multi-line content (BDD, lists, etc.)
+          return buf.join("\n").trim()
+        }
+        // Plain text inline match
+        const mPlain = line.match(rePlainInline)
+        if (mPlain) return (mPlain[2] ?? "").trim()
+        // Plain text block match
+        if (rePlainBlock.test(line)) {
+          const buf: string[] = []
+          for (let j = i + 1; j < lines.length; j++) {
+            if (isHeader(lines[j])) break
+            buf.push(lines[j])
+          }
           return buf.join("\n").trim()
         }
       }
