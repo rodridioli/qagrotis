@@ -190,12 +190,27 @@ export function DashboardClient({
 
   function resolveUser(createdBy: string | undefined): { displayName: string; photoPath: string | null } {
     if (!createdBy) return { displayName: "Desconhecido", photoPath: null }
+    // Try exact match (email or name)
     const found = userMap.get(createdBy)
     if (found) return found
+    // Try case-insensitive match
+    const lower = createdBy.toLowerCase()
+    for (const [key, val] of userMap.entries()) {
+      if (key.toLowerCase() === lower) return val
+    }
+    // Try partial name match (first + last name)
+    for (const u of allUsers) {
+      if (u.name && u.name.toLowerCase().includes(lower)) {
+        const display = u.name
+        return { displayName: display, photoPath: u.photoPath ?? null }
+      }
+    }
     // Fallback: format email as name
     if (createdBy.includes("@")) {
       const name = createdBy.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase())
-      return { displayName: name, photoPath: null }
+      // Try to find user by email to get photo
+      const byEmail = allUsers.find(u => u.email === createdBy)
+      return { displayName: byEmail?.name || name, photoPath: byEmail?.photoPath ?? null }
     }
     return { displayName: createdBy, photoPath: null }
   }
@@ -233,7 +248,7 @@ export function DashboardClient({
 
     const ultimasAutomacoes: UltimaAutomacao[] = cenariosFiltrados
       .filter(c => c.tipo === "Automatizado" || c.tipo === "Man./Auto.")
-      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+      .sort((a, b) => (b.createdAt ?? Date.now()) - (a.createdAt ?? Date.now()))
       .slice(0, 20)
       .map(c => ({
         id: c.id,
@@ -294,7 +309,8 @@ export function DashboardClient({
     for (const c of source) {
       if (rankingModulo && c.module !== rankingModulo) continue
       if (sistemaSelecionado && c.system !== sistemaSelecionado) continue
-      const ts = c.createdAt ?? 0
+      // If createdAt is missing (imported cenarios), treat as current time so they always appear
+      const ts = c.createdAt ?? Date.now()
       if (ts >= start && ts <= end) {
         const key = normalizeKey(c.createdBy)
         countByUser.set(key, (countByUser.get(key) ?? 0) + 1)
