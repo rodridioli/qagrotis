@@ -175,6 +175,26 @@ export function SuiteForm({
     setJiraModalOpen(true)
   }
 
+  async function fetchJiraExisting() {
+    if (!jiraUrl || !jiraEmail || !jiraToken || !jiraIssueKey.trim()) return
+    setJiraFetching(true)
+    setJiraExisting(null)
+    try {
+      const params = new URLSearchParams({
+        jiraUrl, issueKey: jiraIssueKey.trim(),
+        email: jiraEmail, apiToken: jiraToken,
+      })
+      const res = await fetch(`/api/jira?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setJiraExisting(data)
+        setJiraMode(data.hasContent ? "append" : "replace")
+      }
+    } catch { /* ignore */ } finally {
+      setJiraFetching(false)
+    }
+  }
+
   async function handleJiraConfirm() {
     if (!jiraUrl || !jiraEmail || !jiraToken || !jiraIssueKey) {
       toast.error("Preencha todos os campos.")
@@ -182,7 +202,6 @@ export function SuiteForm({
     }
     setJiraLoading(true)
     try {
-      // Save to localStorage for next time
       localStorage.setItem("jira_url", jiraUrl)
       localStorage.setItem("jira_email", jiraEmail)
       localStorage.setItem("jira_token", jiraToken)
@@ -193,17 +212,18 @@ export function SuiteForm({
         body: JSON.stringify({
           jiraUrl, issueKey: jiraIssueKey.trim(),
           apiToken: jiraToken, email: jiraEmail,
-          content: jiraContent,
+          content: jiraContent, mode: jiraMode,
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data as string || "Erro ao enviar para o Jira.")
+      if (!res.ok) throw new Error((data as string) || "Erro ao enviar para o Jira.")
       toast.success("Enviado para o Jira com sucesso!", {
         description: `Issue ${jiraIssueKey} atualizada.`,
         action: { label: "Abrir no Jira", onClick: () => window.open(data.url, "_blank") },
       })
       setJiraModalOpen(false)
       setJiraIssueKey("")
+      setJiraExisting(null)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao conectar com o Jira.")
     } finally {
@@ -220,6 +240,9 @@ export function SuiteForm({
   const [jiraIssueKey, setJiraIssueKey] = useState("")
   const [jiraLoading, setJiraLoading] = useState(false)
   const [jiraContent, setJiraContent] = useState("")
+  const [jiraFetching, setJiraFetching] = useState(false)
+  const [jiraExisting, setJiraExisting] = useState<{ summary: string; descText: string; hasContent: boolean } | null>(null)
+  const [jiraMode, setJiraMode] = useState<"replace" | "append">("replace")
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
   const [addSearch, setAddSearch] = useState("")
   const [addModuloFilter, setAddModuloFilter] = useState("")
@@ -909,19 +932,62 @@ export function SuiteForm({
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Chave da Issue</label>
-              <Input
-                placeholder="PROJ-123"
-                value={jiraIssueKey}
-                onChange={(e) => setJiraIssueKey(e.target.value.toUpperCase())}
-              />
+              <div className="flex gap-2">
+                <Input
+                  placeholder="PROJ-123"
+                  value={jiraIssueKey}
+                  onChange={(e) => { setJiraIssueKey(e.target.value.toUpperCase()); setJiraExisting(null) }}
+                  onBlur={fetchJiraExisting}
+                />
+                <Button variant="outline" size="sm" onClick={fetchJiraExisting}
+                  disabled={jiraFetching || !jiraIssueKey || !jiraUrl || !jiraEmail || !jiraToken}
+                  className="shrink-0">
+                  {jiraFetching ? "..." : "Verificar"}
+                </Button>
+              </div>
             </div>
+
+            {/* Existing content preview */}
+            {jiraExisting && (
+              <div className="space-y-3 rounded-lg border border-border-default bg-neutral-grey-50 p-3">
+                {jiraExisting.summary && (
+                  <p className="text-xs font-semibold text-text-primary">{jiraExisting.summary}</p>
+                )}
+                {jiraExisting.hasContent ? (
+                  <>
+                    <p className="text-xs text-text-secondary">Esta issue já possui conteúdo na descrição. Como deseja prosseguir?</p>
+                    <div className="max-h-28 overflow-y-auto rounded border border-border-default bg-white p-2">
+                      <pre className="whitespace-pre-wrap text-[10px] text-text-secondary leading-relaxed">{jiraExisting.descText.slice(0, 500)}{jiraExisting.descText.length > 500 ? "..." : ""}</pre>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setJiraMode("append")}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${jiraMode === "append" ? "border-brand-primary bg-brand-primary/10 text-brand-primary" : "border-border-default text-text-secondary hover:border-brand-primary"}`}
+                      >
+                        ➕ Acrescentar ao final
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setJiraMode("replace")}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${jiraMode === "replace" ? "border-destructive bg-destructive/10 text-destructive" : "border-border-default text-text-secondary hover:border-destructive"}`}
+                      >
+                        🔄 Substituir tudo
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-text-secondary">✅ Descrição está vazia — o conteúdo será inserido.</p>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setJiraModalOpen(false)} disabled={jiraLoading}>
+            <Button variant="outline" onClick={() => { setJiraModalOpen(false); setJiraExisting(null); setJiraIssueKey("") }} disabled={jiraLoading}>
               Cancelar
             </Button>
             <Button onClick={handleJiraConfirm} disabled={jiraLoading || !jiraUrl || !jiraEmail || !jiraToken || !jiraIssueKey}>
-              {jiraLoading ? "Enviando..." : "Confirmar"}
+              {jiraLoading ? "Enviando..." : jiraMode === "append" ? "Acrescentar" : "Confirmar"}
             </Button>
           </DialogFooter>
         </DialogContent>

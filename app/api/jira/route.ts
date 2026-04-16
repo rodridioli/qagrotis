@@ -1,6 +1,67 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 
+// Fetch current issue description
+export async function GET(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
+
+  const { searchParams } = new URL(req.url)
+  const jiraUrl = searchParams.get("jiraUrl") ?? ""
+  const issueKey = searchParams.get("issueKey") ?? ""
+  const email = searchParams.get("email") ?? ""
+  const apiToken = searchParams.get("apiToken") ?? ""
+
+  if (!jiraUrl || !issueKey || !email || !apiToken) {
+    return new Response("Campos obrigatórios ausentes.", { status: 400 })
+  }
+
+  const base = jiraUrl.replace(/\/$/, "")
+  const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64")
+
+  const res = await fetch(`${base}/rest/api/3/issue/${issueKey}?fields=description,summary`, {
+    headers: {
+      "Authorization": `Basic ${credentials}`,
+      "Accept": "application/json",
+    },
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    return new Response(`Erro Jira ${res.status}: ${err.slice(0, 300)}`, { status: res.status })
+  }
+
+  const data = await res.json() as {
+    fields?: {
+      summary?: string
+      description?: { content?: unknown[] } | null
+    }
+  }
+
+  // Extract plain text from ADF description
+  const summary = data.fields?.summary ?? ""
+  const descAdf = data.fields?.description
+  const descText = descAdf ? adfToText(descAdf) : ""
+
+  return Response.json({ summary, descText, hasContent: descText.trim().length > 0 })
+}
+
+// Convert ADF back to plain text for preview
+function adfToText(node: unknown): string {
+  if (!node || typeof node !== "object") return ""
+  const n = node as Record<string, unknown>
+  if (n.type === "text") return (n.text as string) ?? ""
+  if (Array.isArray(n.content)) {
+    const children = (n.content as unknown[]).map(adfToText).join("")
+    if (n.type === "paragraph") return children + "\n"
+    if (n.type === "heading") return children + "\n"
+    if (n.type === "listItem") return "• " + children
+    if (n.type === "rule") return "---\n"
+    return children
+  }
+  return ""
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
@@ -15,14 +76,30 @@ export async function POST(req: NextRequest) {
   try { body = await req.json() }
   catch { return new Response("JSON inválido.", { status: 400 }) }
 
-  const { jiraUrl, issueKey, apiToken, email, content } = body
+  const { jiraUrl, issueKey, apiToken, email, content, mode } = body as typeof body & { mode?: "replace" | "append" }
   if (!jiraUrl || !issueKey || !apiToken || !email) {
     return new Response("Campos obrigatórios ausentes.", { status: 400 })
   }
 
   const base = jiraUrl.replace(/\/$/, "")
   const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64")
-  const adf = markdownToADF(content)
+
+  // If appending, fetch current description first
+  let finalContent = content
+  if (mode === "append") {
+    const getRes = await fetch(`${base}/rest/api/3/issue/${issueKey}?fields=description`, {
+      headers: { "Authorization": `Basic ${credentials}`, "Accept": "application/json" },
+    })
+    if (getRes.ok) {
+      const existing = await getRes.json() as { fields?: { description?: unknown } }
+      if (existing.fields?.description) {
+        const existingText = adfToText(existing.fields.description)
+        finalContent = existingText.trim() + "\n\n---\n\n" + content
+      }
+    }
+  }
+
+  const adf = markdownToADF(finalContent)
 
   const res = await fetch(`${base}/rest/api/3/issue/${issueKey}`, {
     method: "PUT",
