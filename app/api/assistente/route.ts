@@ -31,6 +31,31 @@ async function generateVisitorJWT(): Promise<string> {
     .sign(secret)
 }
 
+// ── Extract plain text from GitBook document nodes ───────────────────────────
+function extractTextFromDocument(doc: unknown): string {
+  if (!doc || typeof doc !== "object") return ""
+  const d = doc as Record<string, unknown>
+  // Leaf node with text
+  if (typeof d.text === "string") return d.text
+  // Node with leaves array
+  if (Array.isArray(d.leaves)) {
+    return (d.leaves as unknown[]).map(extractTextFromDocument).join("")
+  }
+  // Node with nodes array
+  if (Array.isArray(d.nodes)) {
+    const parts = (d.nodes as unknown[]).map(extractTextFromDocument)
+    // Add newline after block-level nodes
+    const type = d.type as string ?? ""
+    const isBlock = ["paragraph","heading-one","heading-two","heading-three","list-item","blockquote"].includes(type)
+    return parts.join("") + (isBlock ? "\n" : "")
+  }
+  // Document root
+  if (d.object === "document" && Array.isArray(d.nodes)) {
+    return (d.nodes as unknown[]).map(extractTextFromDocument).join("")
+  }
+  return ""
+}
+
 // ── Parse GitBook SSE stream ──────────────────────────────────────────────────
 function parseGitBookSSE(rawText: string): { answer: string; sources: string[] } {
   const lines = rawText.split("\n").filter((l) => l.startsWith("data:"))
@@ -42,13 +67,23 @@ function parseGitBookSSE(rawText: string): { answer: string; sources: string[] }
     if (payload === "done" || payload === "") continue
     try {
       const parsed = JSON.parse(payload)
-      if (parsed.answer?.text) answer = parsed.answer.text
-      if (parsed.answer?.markdown) answer = parsed.answer.markdown
-      if (parsed.answer?.answer?.markdown) answer = parsed.answer.answer.markdown
-      if (parsed.answer?.answer?.text) answer = parsed.answer.answer.text
-      const srcArr = parsed.answer?.sources ?? parsed.sources ?? []
+      const a = parsed.answer
+
+      // Format 1: answer.text or answer.markdown (plain string)
+      if (a?.text) answer = a.text
+      else if (a?.markdown) answer = a.markdown
+      // Format 2: answer.answer.markdown or answer.answer.text
+      else if (a?.answer?.markdown) answer = a.answer.markdown
+      else if (a?.answer?.text) answer = a.answer.text
+      // Format 3: answer.answer.document (rich document format)
+      else if (a?.answer?.document) {
+        answer = extractTextFromDocument(a.answer.document).trim()
+      }
+
+      // Sources
+      const srcArr = a?.sources ?? parsed.sources ?? []
       for (const s of srcArr) {
-        const title = s.page?.title ?? s.title ?? s.page ?? ""
+        const title = s.page?.title ?? s.title ?? (typeof s.page === "string" ? s.page : "") ?? ""
         if (title && !sources.includes(title)) sources.push(title)
       }
     } catch { /* skip */ }
