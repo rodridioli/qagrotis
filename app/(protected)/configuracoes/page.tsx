@@ -1,12 +1,16 @@
 export const dynamic = "force-dynamic"
 
 import Link from "next/link"
-import { Users, Monitor, Box, Building2, Plug } from "lucide-react"
+import { Users, Monitor, Box, Building2, Sparkles } from "lucide-react"
 import { checkIsAdmin } from "@/lib/session"
+import { auth } from "@/lib/auth"
 import LimparBancoButton from "./LimparBancoButton"
+import JiraConfigButton from "./JiraConfigButton"
 
 export default async function ConfiguracoesPage() {
   const isAdmin = await checkIsAdmin()
+  const session = await auth()
+  const currentEmail = session?.user?.email ?? ""
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,10 +59,12 @@ export default async function ConfiguracoesPage() {
             className="flex flex-col items-center gap-3 rounded-xl bg-surface-card p-8 shadow-card transition-colors hover:bg-neutral-grey-50"
           >
             <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
-              <Plug className="size-6" />
+              <Sparkles className="size-6" />
             </div>
             <span className="font-semibold text-text-primary">Modelos de IA</span>
           </Link>
+
+          <JiraConfigButton defaultEmail={currentEmail} />
       </div>
 
       {isAdmin && (
