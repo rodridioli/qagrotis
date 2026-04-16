@@ -136,10 +136,12 @@ function parseGitBookSSE(rawText: string): { answer: string; sources: string[] }
       for (const s of srcArr) {
         const title = s.page?.title ?? s.title ?? ""
         const path = s.page?.path ?? s.path ?? ""
-        const entry = title
-          ? (path ? `[${title}](https://agrotis-1.gitbook.io/agrotis/${path})` : title)
-          : ""
-        if (entry && !sources.includes(entry)) sources.push(entry)
+        if (!title) continue
+        // Build URL: use path if available, else slug from title
+        const slug = path || title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+        const url = `https://agrotis-1.gitbook.io/agrotis/${slug}`
+        const entry = `[${title}](${url})`
+        if (!sources.includes(entry)) sources.push(entry)
       }
     } catch { /* skip */ }
   }
@@ -180,17 +182,31 @@ async function askGitBook(question: string, sistema: string): Promise<string> {
 
   if (!answer) throw new Error(`Resposta vazia do GitBook. Raw: ${raw.slice(0, 300)}`)
 
+  // Build a title→url map for linkification
+  const titleUrlMap = new Map<string, string>()
+  for (const s of sources) {
+    const m = s.match(/^\[(.+?)\]\((.+?)\)$/)
+    if (m) titleUrlMap.set(m[1].toLowerCase(), m[2])
+  }
+
+  // Linkify "Veja ... em [Title]" and "Acesse [Title]" patterns in the answer text
+  let processedAnswer = answer
+  for (const [title, url] of titleUrlMap.entries()) {
+    // Match the title text in the answer (case-insensitive) if not already a link
+    const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const re = new RegExp(`(?<!\\]\\()(?<!\\[)(${escapedTitle})(?!\\])`, "gi")
+    processedAnswer = processedAnswer.replace(re, `[$1](${url})`)
+  }
+
   const cleanSources = sources
-    .filter((s) => {
-      const plain = s.replace(/\[.*?\]\(.*?\)/, "").replace(/[^a-z0-9]/gi, "")
-      return s.length < 200 && !/^[a-f0-9]{8,}$/i.test(plain)
-    })
+    .filter((s) => s.length < 300)
     .slice(0, 4)
+
   if (cleanSources.length > 0) {
     const srcBlock = cleanSources.map((s) => `- ${s}`).join("\n")
-    return `${answer}\n\n---\n**Fontes:**\n${srcBlock}`
+    return `${processedAnswer}\n\n---\n**Fontes:**\n${srcBlock}`
   }
-  return answer
+  return processedAnswer
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
