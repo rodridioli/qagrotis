@@ -218,7 +218,7 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
           {/* ── Messages ── */}
           <div className="flex-1 overflow-y-auto px-4 py-4">
             {messages.length === 0 ? (
-              <EmptyState onSuggestion={(s) => sendMessage(s)} />
+              <EmptyState />
             ) : (
               <div className="flex flex-col gap-4">
                 {messages.map((msg) => (
@@ -266,27 +266,13 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function EmptyState({ onSuggestion }: { onSuggestion: (s: string) => void }) {
+function EmptyState() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-5 py-8 text-center">
+    <div className="flex h-full flex-col items-center justify-center gap-4 py-8 text-center">
       <div className="flex size-14 items-center justify-center rounded-full bg-brand-primary/10">
         <Bot className="size-7 text-brand-primary" />
       </div>
-      <div>
-        <p className="text-sm font-medium text-text-primary">Como posso ajudar?</p>
-        </div>
-      <div className="flex w-full max-w-xs flex-col gap-1.5">
-        {SUGESTOES.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => onSuggestion(s)}
-            className="cursor-pointer rounded-lg border border-border-default bg-surface-card px-3 py-2 text-left text-xs text-text-secondary transition-colors hover:border-brand-primary hover:text-text-primary"
-          >
-            {s}
-          </button>
-        ))}
-      </div>
+      <p className="text-sm font-medium text-text-primary">Como posso ajudar?</p>
     </div>
   )
 }

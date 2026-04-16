@@ -128,7 +128,10 @@ function parseGitBookSSE(rawText: string): { answer: string; sources: string[] }
       else if (a?.answer?.text) answer = a.answer.text
       // Format 3: answer.answer.document (rich document format)
       else if (a?.answer?.document) {
-        answer = extractTextFromDocument(a.answer.document).trim()
+        const md = extractTextFromDocument(a.answer.document).trim()
+        console.log("[assistente] doc->md (first 300):", md.slice(0, 300))
+        console.log("[assistente] raw doc (first 400):", JSON.stringify(a.answer.document).slice(0, 400))
+        answer = md
       }
 
       // Sources — capture title + URL when available
