@@ -552,7 +552,10 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                   ),
                 }}
               >
-                {output}
+                {output.replace(
+                  /^(Cenário:|Descrição:|Regra de negócio:|Pré-condições:|BDD \(Gherkin\):|Resultado esperado:)/gim,
+                  '\n\n**$1**'
+                ).trim()}
               </ReactMarkdown>
             )}
 
