@@ -279,20 +279,21 @@ export function DashboardClient({
   // ── Ranking ────────────────────────────────────────────────────────────────
   const rankingData = useMemo((): RankingItem[] => {
     const { start, end } = getDateRange(rankingFilter)
-    // Normalize key: find canonical email for each createdBy value
+    // Normalize: map any createdBy value to a canonical key (prefer email)
     const normalizeKey = (cb: string | undefined): string => {
       if (!cb) return "Desconhecido"
-      // Already in userMap by email → use as-is
       if (userMap.has(cb)) return cb
-      // Try to find user by name → return their email as canonical key
       for (const u of allUsers) {
-        if (u.name === cb && u.email) return u.email
+        if (u.name && u.name === cb && u.email) return u.email
       }
       return cb
     }
     const countByUser = new Map<string, number>()
-    for (const c of cenariosFiltrados) {
+    // Use ALL cenarios (active) — not filtered by system/module to show all users
+    const source = allCenarios.filter(c => c.active)
+    for (const c of source) {
       if (rankingModulo && c.module !== rankingModulo) continue
+      if (sistemaSelecionado && c.system !== sistemaSelecionado) continue
       const ts = c.createdAt ?? 0
       if (ts >= start && ts <= end) {
         const key = normalizeKey(c.createdBy)
@@ -303,7 +304,7 @@ export function DashboardClient({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([createdBy, count]) => ({ createdBy, count }))
-  }, [cenariosFiltrados, rankingFilter, rankingModulo, userMap, allUsers])
+  }, [allCenarios, rankingFilter, rankingModulo, sistemaSelecionado, userMap, allUsers])
 
   // ── Testes chart ───────────────────────────────────────────────────────────
   const testesData = useMemo((): DataPoint[] => {

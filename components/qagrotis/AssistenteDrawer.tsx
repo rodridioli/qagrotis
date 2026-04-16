@@ -323,42 +323,41 @@ const MD_COMPONENTS = {
   ),
 }
 
-function TypewriterContent({ content }: { content: string }) {
+function TypewriterContent({ content, isLoading }: { content: string; isLoading: boolean }) {
   const [displayed, setDisplayed] = useState("")
-  const [done, setDone] = useState(false)
-  const prevContent = useRef("")
+  const indexRef = useRef(0)
+  const contentRef = useRef(content)
 
   useEffect(() => {
-    // If content shrank (reset) or is new message, restart
-    if (content.length < prevContent.current.length) {
+    // Reset when content changes to a new message (shorter = reset)
+    if (content.length < contentRef.current.length || content === "") {
+      indexRef.current = 0
       setDisplayed("")
-      setDone(false)
-      prevContent.current = ""
     }
+    contentRef.current = content
 
-    const newChars = content.slice(prevContent.current.length)
-    if (!newChars) return
+    if (!content) return
 
-    prevContent.current = content
+    // Animate from current index to end of content
+    const interval = setInterval(() => {
+      if (indexRef.current >= content.length) {
+        clearInterval(interval)
+        return
+      }
+      // Advance 3 chars per tick for speed
+      indexRef.current = Math.min(indexRef.current + 3, content.length)
+      setDisplayed(content.slice(0, indexRef.current))
+    }, 10)
 
-    // Animate new chars word-by-word for natural feel
-    const words = newChars.split(/(?<=\s)/)
-    let i = 0
-    setDone(false)
-
-    const tick = () => {
-      if (i >= words.length) { setDone(true); return }
-      setDisplayed((prev) => prev + words[i])
-      i++
-      setTimeout(tick, 12)
-    }
-    tick()
+    return () => clearInterval(interval)
   }, [content])
+
+  const showCursor = isLoading || (displayed.length < content.length)
 
   return (
     <div className="min-w-0 overflow-hidden">
-      <ReactMarkdown components={MD_COMPONENTS}>{displayed}</ReactMarkdown>
-      {!done && (
+      <ReactMarkdown components={MD_COMPONENTS}>{displayed || " "}</ReactMarkdown>
+      {showCursor && (
         <span className="inline-block w-1.5 h-3 bg-brand-primary/70 rounded-sm animate-pulse ml-0.5 align-middle" />
       )}
     </div>
@@ -410,7 +409,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 
         {/* Assistant — typewriter effect */}
         {!isUser && !msg.error && msg.content && (
-          <TypewriterContent content={msg.content} />
+          <TypewriterContent content={msg.content} isLoading={false} />
         )}
       </div>
     </div>
