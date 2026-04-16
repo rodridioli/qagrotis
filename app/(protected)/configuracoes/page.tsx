@@ -51,7 +51,7 @@ export default async function ConfiguracoesPage() {
           </Link>
 
           <Link
-            href="/configuracoes/integracoes"
+            href="/configuracoes/modelos-de-ia"
             className="flex flex-col items-center gap-3 rounded-xl bg-surface-card p-8 shadow-card transition-colors hover:bg-neutral-grey-50"
           >
             <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">

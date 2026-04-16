@@ -13,7 +13,7 @@ import {
   SelectPopup,
   SelectItem,
 } from "@/components/ui/select"
-import { atualizarIntegracao, type IntegracaoRecord } from "@/lib/actions/integracoes"
+import { criarIntegracao } from "@/lib/actions/integracoes"
 import { toast } from "sonner"
 
 
@@ -21,20 +21,16 @@ const MAX_DESCRICAO = 200
 
 type KeyStatus = "idle" | "validating" | "valid" | "invalid" | "uncertain"
 
-interface Props {
-  integracao: IntegracaoRecord
-}
-
-export default function EditarIntegracaoClient({ integracao }: Props) {
+export default function NovaIntegracaoForm() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [provider, setProvider] = useState(integracao.provider || "OpenRouter")
+  const [provider, setProvider] = useState("OpenRouter")
 
-  const [model, setModel] = useState(integracao.model ?? "gemini-2.0-flash")
-  const [apiKey, setApiKey] = useState(integracao.apiKey)
+  const [model, setModel] = useState("google/gemini-2.0-flash-exp:free")
+  const [apiKey, setApiKey] = useState("")
   const [showKey, setShowKey] = useState(false)
-  const [keyStatus, setKeyStatus] = useState<KeyStatus>("idle")
 
+  const [keyStatus, setKeyStatus] = useState<KeyStatus>("idle")
 
   const validateKey = useCallback(async () => {
     if (!apiKey.trim()) { toast.error("Digite a API Key antes de verificar."); return }
@@ -64,14 +60,14 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
 
     startTransition(async () => {
       try {
-        await atualizarIntegracao(integracao.id, {
+        await criarIntegracao({
           provider,
           model: model.trim(),
           apiKey: apiKey.trim()
         })
 
-        toast.success("Modelo de IA atualizado com sucesso.")
-        router.push("/configuracoes/integracoes")
+        toast.success("Modelo de IA criado com sucesso.")
+        router.push("/configuracoes/modelos-de-ia")
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Erro ao salvar")
       }
@@ -98,7 +94,7 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-sm">
           <Link
-            href="/configuracoes/integracoes"
+            href="/configuracoes/modelos-de-ia"
             title="Voltar"
             aria-label="Voltar"
             className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
@@ -109,11 +105,11 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
             Configurações
           </Link>
           <span className="text-text-secondary">/</span>
-          <Link href="/configuracoes/integracoes" className="text-text-secondary hover:text-brand-primary">
+          <Link href="/configuracoes/modelos-de-ia" className="text-text-secondary hover:text-brand-primary">
             Modelos de IA
           </Link>
           <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">Editar — {integracao.id}</span>
+          <span className="font-medium text-text-primary">Nova Modelo de IA</span>
         </div>
         <Button onClick={handleSave} disabled={isSaveDisabled}>
           <Check className="size-4" />
@@ -150,7 +146,10 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
               disabled={isPending}
             />
             {provider.toLowerCase().includes("openrouter") && (
-              <p className="text-[10px] text-text-secondary">Modelos gratuitos: meta-llama/llama-3.1-8b-instruct:free · mistralai/mistral-7b-instruct:free · google/gemma-2-9b-it:free · microsoft/phi-3-mini-128k-instruct:free</p>
+              <p className="text-[10px] text-text-secondary">
+                Com visão (recomendado): <span className="font-medium">google/gemini-2.0-flash-exp:free</span> · meta-llama/llama-3.2-11b-vision-instruct:free<br />
+                Apenas texto: meta-llama/llama-3.1-8b-instruct:free · mistralai/mistral-7b-instruct:free · google/gemma-2-9b-it:free
+              </p>
             )}
             {provider.toLowerCase().includes("groq") && (
               <p className="text-[10px] text-text-secondary">Sugestão: llama-3.1-70b-versatile, llama-3.1-8b-instant</p>

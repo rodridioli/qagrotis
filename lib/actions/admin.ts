@@ -78,7 +78,7 @@ export async function limparRegistrosInativos(): Promise<LimparResult> {
   revalidatePath("/configuracoes/sistemas")
   revalidatePath("/configuracoes/modulos")
   revalidatePath("/configuracoes/clientes")
-  revalidatePath("/configuracoes/integracoes")
+  revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath("/configuracoes/usuarios")
   revalidatePath("/dashboard")
 

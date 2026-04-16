@@ -296,7 +296,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
             )}
             <Button onClick={openAdicionarIntegracao}>
               <Plus className="size-4" />
-              Adicionar Modelo de IA
+              Adicionar Modelo
             </Button>
           </div>
         )}
@@ -307,7 +307,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
         <TableToolbar
           search={search}
           onSearchChange={(v) => { setSearch(v); setCurrentPage(1) }}
-          searchPlaceholder="Buscar modelo de IA..."
+          searchPlaceholder="Buscar Modelo..."
           activeFilterCount={activeFilterCount}
           onFilterOpen={() => { setPendingFilters(filters); setFilterOpen(true) }}
           totalLabel="Total de modelos de IA"
@@ -485,7 +485,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
       <Dialog open={integracaoModalOpen} onOpenChange={(open) => { if (!open) { setIntegracaoModalOpen(false); setIntegracaoEditando(null) } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{integracaoEditando ? `Editar — ${integracaoEditando.id}` : "Adicionar Modelo de IA"}</DialogTitle>
+            <DialogTitle>{integracaoEditando ? `Editar — ${integracaoEditando.id}` : "Adicionar Modelo"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

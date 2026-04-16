@@ -512,7 +512,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                 </div>
                 <p className="pl-6 text-sm text-text-primary">{apiError}</p>
                 <a
-                  href="/configuracoes/integracoes"
+                  href="/configuracoes/modelos-de-ia"
                   className="ml-6 inline-flex w-fit items-center gap-1 text-xs text-brand-primary hover:underline"
                 >
                   <ExternalLink className="size-3" />
