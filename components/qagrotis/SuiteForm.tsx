@@ -113,6 +113,7 @@ export function SuiteForm({
   function handleExportarJira() {
     const selected = sortedHistorico.filter((h) => selectedHistorico.has(h._originalIdx))
     if (selected.length === 0) return
+    // Build content and open modal
 
     const resultIcon = (r: string) => r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : "⏳"
     const fieldOrDash = (v: string | undefined | null) => (v && v.trim()) ? v.trim() : "—"
@@ -170,12 +171,55 @@ export function SuiteForm({
       summary,
     ].join("\n")
 
-    navigator.clipboard.writeText(content)
-    toast.success("Cole o conteúdo selecionado no Jira.", {
-      description: `${selected.length} cenário${selected.length !== 1 ? "s" : ""} copiado${selected.length !== 1 ? "s" : ""} para a área de transferência.`,
-    })
+    setJiraContent(content)
+    setJiraModalOpen(true)
+  }
+
+  async function handleJiraConfirm() {
+    if (!jiraUrl || !jiraEmail || !jiraToken || !jiraIssueKey) {
+      toast.error("Preencha todos os campos.")
+      return
+    }
+    setJiraLoading(true)
+    try {
+      // Save to localStorage for next time
+      localStorage.setItem("jira_url", jiraUrl)
+      localStorage.setItem("jira_email", jiraEmail)
+      localStorage.setItem("jira_token", jiraToken)
+
+      const res = await fetch("/api/jira", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jiraUrl, issueKey: jiraIssueKey.trim(),
+          apiToken: jiraToken, email: jiraEmail,
+          content: jiraContent,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data as string || "Erro ao enviar para o Jira.")
+      toast.success("Enviado para o Jira com sucesso!", {
+        description: `Issue ${jiraIssueKey} atualizada.`,
+        action: { label: "Abrir no Jira", onClick: () => window.open(data.url, "_blank") },
+      })
+      setJiraModalOpen(false)
+      setJiraIssueKey("")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao conectar com o Jira.")
+    } finally {
+      setJiraLoading(false)
+    }
   }
   const [removerHistoricoOpen, setRemoverHistoricoOpen] = useState(false)
+
+  // ── Jira export modal ─────────────────────────────────────────────────────
+  const [jiraModalOpen, setJiraModalOpen] = useState(false)
+  const [jiraUrl, setJiraUrl] = useState(() => typeof window !== "undefined" ? localStorage.getItem("jira_url") ?? "" : "")
+  const [jiraEmail, setJiraEmail] = useState(() => typeof window !== "undefined" ? localStorage.getItem("jira_email") ?? "" : "")
+  const [jiraToken, setJiraToken] = useState(() => typeof window !== "undefined" ? localStorage.getItem("jira_token") ?? "" : "")
+  const [jiraIssueKey, setJiraIssueKey] = useState("")
+  const [jiraLoading, setJiraLoading] = useState(false)
+  const [jiraContent, setJiraContent] = useState("")
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
   const [addSearch, setAddSearch] = useState("")
   const [addModuloFilter, setAddModuloFilter] = useState("")
@@ -821,6 +865,67 @@ export function SuiteForm({
         confirmLabel="Remover"
         onConfirm={confirmRemoverHistorico}
       />
+
+      {/* ── Jira Export Modal ── */}
+      <Dialog open={jiraModalOpen} onOpenChange={(v) => { setJiraModalOpen(v); if (!v) setJiraIssueKey("") }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Exportar para o Jira</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-2">
+            <p className="text-sm text-text-secondary">
+              Preencha os dados abaixo. As credenciais são salvas localmente para próximas exportações.
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">URL do Jira</label>
+              <Input
+                placeholder="https://empresa.atlassian.net"
+                value={jiraUrl}
+                onChange={(e) => setJiraUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">E-mail da conta Jira</label>
+              <Input
+                placeholder="seu@email.com"
+                value={jiraEmail}
+                onChange={(e) => setJiraEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">API Token</label>
+              <Input
+                type="password"
+                placeholder="••••••••••••••••••••"
+                value={jiraToken}
+                onChange={(e) => setJiraToken(e.target.value)}
+              />
+              <p className="text-xs text-text-secondary">
+                Gere em{" "}
+                <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener noreferrer" className="text-brand-primary underline">
+                  id.atlassian.com
+                </a>
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Chave da Issue</label>
+              <Input
+                placeholder="PROJ-123"
+                value={jiraIssueKey}
+                onChange={(e) => setJiraIssueKey(e.target.value.toUpperCase())}
+              />
+            </div>
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <Button variant="outline" onClick={() => setJiraModalOpen(false)} disabled={jiraLoading}>
+              Cancelar
+            </Button>
+            <Button onClick={handleJiraConfirm} disabled={jiraLoading || !jiraUrl || !jiraEmail || !jiraToken || !jiraIssueKey}>
+              {jiraLoading ? "Enviando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
