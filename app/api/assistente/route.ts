@@ -1,15 +1,12 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
-import { getIntegracoes } from "@/lib/actions/integracoes"
 
 const GITBOOK_ORG_ID = process.env.GITBOOK_ORG_ID ?? "YJL6kpwzoMMhtvwRrmNt"
 const GITBOOK_SITE_ID = process.env.GITBOOK_SITE_ID ?? "site_YbjJD"
 const GITBOOK_API_TOKEN = process.env.GITBOOK_API_TOKEN ?? ""
 
-// ── Simple in-memory rate limiter ─────────────────────────────────────────────
-
+// ── Rate limiter ──────────────────────────────────────────────────────────────
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-
 function checkRateLimit(userId: string): boolean {
   const now = Date.now()
   const entry = rateLimitMap.get(userId)
@@ -22,129 +19,138 @@ function checkRateLimit(userId: string): boolean {
   return true
 }
 
-// ── GitBook Ask API ───────────────────────────────────────────────────────────
+// ── Parse GitBook SSE stream ──────────────────────────────────────────────────
+// GitBook streams "data: {...}\n" lines and ends with "data: done"
+function parseGitBookSSE(rawText: string): { answer: string; sources: string[] } {
+  const lines = rawText.split("\n").filter((l) => l.startsWith("data:"))
+  
+  let answer = ""
+  const sources: string[] = []
 
-async function askGitBook(question: string, sistema: string): Promise<string> {
-  if (!GITBOOK_API_TOKEN) {
-    throw new Error("Configure GITBOOK_API_TOKEN nas variáveis de ambiente do Vercel.")
+  for (const line of lines) {
+    const payload = line.slice(5).trim()
+    if (payload === "done" || payload === "") continue
+    
+    try {
+      const parsed = JSON.parse(payload)
+      
+      // Sites Ask API response shape
+      if (parsed.answer?.text) answer = parsed.answer.text
+      if (parsed.answer?.markdown) answer = parsed.answer.markdown
+      
+      // Org Ask API response shape: answer.answer.markdown
+      if (parsed.answer?.answer?.markdown) answer = parsed.answer.answer.markdown
+      if (parsed.answer?.answer?.text) answer = parsed.answer.answer.text
+
+      // Sources
+      if (Array.isArray(parsed.answer?.sources)) {
+        for (const s of parsed.answer.sources) {
+          const title = s.page?.title ?? s.title ?? s.page ?? ""
+          if (title && !sources.includes(title)) sources.push(title)
+        }
+      }
+      if (Array.isArray(parsed.sources)) {
+        for (const s of parsed.sources) {
+          const title = s.page?.title ?? s.title ?? s.page ?? ""
+          if (title && !sources.includes(title)) sources.push(title)
+        }
+      }
+    } catch { /* skip non-JSON lines */ }
   }
 
-  const res = await fetch(
+  return { answer, sources }
+}
+
+// ── GitBook Ask ───────────────────────────────────────────────────────────────
+async function askGitBook(question: string, sistema: string): Promise<string> {
+  if (!GITBOOK_API_TOKEN) {
+    throw new Error("GITBOOK_API_TOKEN não configurado no Vercel.")
+  }
+
+  const headers = {
+    "Authorization": `Bearer ${GITBOOK_API_TOKEN}`,
+    "Content-Type": "application/json",
+  }
+
+  const queryText = sistema && sistema !== "Geral"
+    ? `[${sistema}] ${question}`
+    : question
+
+  // Try sites Ask endpoint first
+  const siteRes = await fetch(
     `https://api.gitbook.com/v1/orgs/${GITBOOK_ORG_ID}/sites/${GITBOOK_SITE_ID}/ask`,
     {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GITBOOK_API_TOKEN}`,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify({
-        question: sistema && sistema !== "Geral"
-          ? `[${sistema}] ${question}`
-          : question,
-        scope: { mode: "default" },
-      }),
+      headers,
+      body: JSON.stringify({ question: queryText, scope: { mode: "default" } }),
     }
   )
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`GitBook Ask API error ${res.status}: ${err.slice(0, 300)}`)
-  }
-
-  // GitBook may return SSE stream (data: {...}\n) or plain JSON
-  const rawText = await res.text()
-
-  let data: { answer?: { text?: string }; sources?: { page?: { title?: string } }[] } = {}
-
-  if (rawText.trim().startsWith("data:")) {
-    // SSE format — collect all data lines and use the last complete JSON
-    const lines = rawText.split("\n").filter((l) => l.startsWith("data:"))
-    for (const line of lines) {
-      try {
-        const parsed = JSON.parse(line.slice(5).trim())
-        // Merge: accumulate answer text and sources
-        if (parsed.answer?.text) {
-          data.answer = { text: (data.answer?.text ?? "") + parsed.answer.text }
-        }
-        if (parsed.sources) data.sources = parsed.sources
-        // Final event usually has the full answer
-        if (parsed.type === "answer" || parsed.answer?.text) {
-          data = { ...data, ...parsed }
-        }
-      } catch { /* skip unparseable lines */ }
-    }
-  } else {
-    try {
-      data = JSON.parse(rawText)
-    } catch {
-      throw new Error(`GitBook response parse error: ${rawText.slice(0, 200)}`)
+  if (siteRes.ok) {
+    const raw = await siteRes.text()
+    const { answer, sources } = parseGitBookSSE(raw)
+    if (answer) {
+      const srcLines = sources.slice(0, 3).map((s) => `- ${s}`).join("\n")
+      return srcLines ? `${answer}\n\n**Fontes:**\n${srcLines}` : answer
     }
   }
 
-  const answer = data.answer?.text ?? ""
-  if (!answer) {
-    return "Não encontrei informações sobre isso na documentação disponível. Tente reformular sua pergunta ou entre em contato com o suporte técnico."
+  // Log site error and try org-level endpoint
+  const siteErr = siteRes.ok ? "empty answer" : `${siteRes.status}`
+  console.warn(`[assistente] site ask failed (${siteErr}), trying org ask`)
+
+  const orgRes = await fetch(
+    `https://api.gitbook.com/v1/orgs/${GITBOOK_ORG_ID}/ask`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ query: queryText }),
+    }
+  )
+
+  if (orgRes.ok) {
+    const raw = await orgRes.text()
+    const { answer, sources } = parseGitBookSSE(raw)
+    if (answer) {
+      const srcLines = sources.slice(0, 3).map((s) => `- ${s}`).join("\n")
+      return srcLines ? `${answer}\n\n**Fontes:**\n${srcLines}` : answer
+    }
   }
 
-  // Append sources if available
-  const sources = (data.sources ?? [])
-    .filter((s) => s.page?.title)
-    .map((s) => `- ${s.page!.title}`)
-    .slice(0, 3)
-
-  if (sources.length > 0) {
-    return `${answer}\n\n**Fontes:** \n${sources.join("\n")}`
-  }
-
-  return answer
+  // Both failed — return diagnostic error
+  const orgErr = orgRes.ok ? "empty answer" : `${orgRes.status}: ${(await orgRes.text()).slice(0, 200)}`
+  throw new Error(`Site ask: ${siteErr} | Org ask: ${orgErr}`)
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
-
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session?.user?.id) {
-    return new Response("Unauthorized", { status: 401 })
-  }
+  if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
 
   if (!checkRateLimit(session.user.id)) {
-    return new Response("Muitas requisições. Aguarde um momento antes de continuar.", { status: 429 })
+    return new Response("Muitas requisições. Aguarde um momento.", { status: 429 })
   }
 
-  let body: {
-    pergunta: string
-    sistema: string
-    integracaoId?: string
-    historico?: { role: "user" | "assistant"; content: string }[]
-  }
-  try {
-    body = await req.json()
-  } catch {
-    return new Response("JSON inválido.", { status: 400 })
-  }
+  let body: { pergunta: string; sistema: string }
+  try { body = await req.json() }
+  catch { return new Response("JSON inválido.", { status: 400 }) }
 
   const { pergunta, sistema = "Geral" } = body
-
-  if (!pergunta?.trim()) {
-    return new Response("A pergunta não pode ser vazia.", { status: 400 })
-  }
-  if (pergunta.length > 600) {
-    return new Response("Pergunta muito longa (máximo 600 caracteres).", { status: 400 })
-  }
+  if (!pergunta?.trim()) return new Response("Pergunta vazia.", { status: 400 })
+  if (pergunta.length > 600) return new Response("Pergunta muito longa.", { status: 400 })
 
   try {
     const answer = await askGitBook(pergunta, sistema)
     const encoder = new TextEncoder()
-    const readable = new ReadableStream({
-      start(controller) {
-        controller.enqueue(encoder.encode(answer))
-        controller.close()
-      },
-    })
-    return new Response(readable, {
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    })
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(answer))
+          controller.close()
+        },
+      }),
+      { headers: { "Content-Type": "text/plain; charset=utf-8" } }
+    )
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error("[assistente] error:", msg)
