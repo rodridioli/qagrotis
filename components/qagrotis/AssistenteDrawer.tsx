@@ -187,7 +187,7 @@ export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: Assis
                 <SheetTitle className="text-sm font-semibold leading-none text-text-primary">
                   Assistente de IA
                 </SheetTitle>
-                <p className="mt-0.5 text-xs text-text-secondary">{sistemaSelecionado}</p>
+                <p className="mt-0.5 text-xs text-text-secondary">Base de Conhecimento</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -303,15 +303,15 @@ function MessageBubble({ msg }: { msg: Message }) {
       )}
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm",
+          "min-w-0 rounded-2xl px-3.5 py-2.5 text-sm",
           isUser
-            ? "rounded-br-sm bg-brand-primary text-white"
+            ? "max-w-[80%] rounded-br-sm bg-brand-primary text-white"
             : msg.error
-              ? "rounded-bl-sm border border-destructive/20 bg-destructive/10 text-destructive"
-              : "rounded-bl-sm border border-border-default bg-surface-card text-text-primary"
+              ? "w-full rounded-bl-sm border border-destructive/20 bg-destructive/10 text-destructive"
+              : "w-full rounded-bl-sm border border-border-default bg-surface-card text-text-primary"
         )}
       >
-        {/* Loading state (empty assistant message) */}
+        {/* Loading state */}
         {!isUser && !msg.content && !msg.error && (
           <div className="flex items-center gap-1.5 py-0.5">
             <Loader2 className="size-3.5 animate-spin text-text-secondary" />
@@ -330,9 +330,25 @@ function MessageBubble({ msg }: { msg: Message }) {
         {/* User message */}
         {isUser && <span>{msg.content}</span>}
 
-        {/* Assistant markdown */}
+        {/* Assistant markdown — full width, rich formatting */}
         {!isUser && !msg.error && msg.content && (
-          <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-surface-default [&_pre]:p-3 [&_code]:rounded [&_code]:bg-surface-default [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs">
+          <div className="
+            min-w-0 overflow-hidden
+            text-sm leading-relaxed text-text-primary
+            [&_p]:mb-2 [&_p:last-child]:mb-0
+            [&_strong]:font-semibold [&_strong]:text-text-primary
+            [&_a]:text-brand-primary [&_a]:underline [&_a]:underline-offset-2 [&_a:hover]:text-brand-primary/80
+            [&_ul]:mb-2 [&_ul]:space-y-0.5 [&_ul]:pl-4
+            [&_ol]:mb-2 [&_ol]:space-y-0.5 [&_ol]:pl-4
+            [&_li]:leading-relaxed
+            [&_h1]:mb-1.5 [&_h1]:text-base [&_h1]:font-semibold
+            [&_h2]:mb-1.5 [&_h2]:text-sm [&_h2]:font-semibold
+            [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-medium
+            [&_code]:rounded [&_code]:bg-neutral-grey-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs [&_code]:font-mono
+            [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-neutral-grey-100 [&_pre]:p-3 [&_pre]:text-xs
+            [&_blockquote]:border-l-2 [&_blockquote]:border-brand-primary/30 [&_blockquote]:pl-3 [&_blockquote]:text-text-secondary
+            [&_hr]:my-3 [&_hr]:border-border-default
+          ">
             <ReactMarkdown>{msg.content}</ReactMarkdown>
           </div>
         )}

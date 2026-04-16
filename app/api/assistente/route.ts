@@ -125,8 +125,12 @@ async function askGitBook(question: string, sistema: string): Promise<string> {
 
   if (!answer) throw new Error(`Resposta vazia do GitBook. Raw: ${raw.slice(0, 300)}`)
 
-  const srcLines = sources.slice(0, 3).map((s) => `- ${s}`).join("\n")
-  return srcLines ? `${answer}\n\n**Fontes:**\n${srcLines}` : answer
+  const cleanSources = sources
+    .filter((s) => s.length < 80 && !/^[a-f0-9]{8,}$/i.test(s))
+    .slice(0, 3)
+    .map((s) => `- ${s}`)
+    .join("\n")
+  return cleanSources ? `${answer}\n\n**Fontes:** ${cleanSources}` : answer
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
