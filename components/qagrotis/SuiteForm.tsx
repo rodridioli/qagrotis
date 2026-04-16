@@ -634,21 +634,19 @@ export function SuiteForm({
 
         {/* ── Cenários ── */}
         <div className={activeTab !== "cenarios" ? "hidden" : ""}>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-default px-5 py-3">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={selectedCenarios.size === 0}
-                onClick={() => {
-                  setJiraContent(buildCenariosJiraContent(selectedCenarios))
-                  setJiraModalOpen(true)
-                }}
-              >
-                <ExternalLink className="size-4" />
-                Exportar para o Jira
-              </Button>
-            </div>
+          <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border-default px-5 py-3">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={selectedCenarios.size === 0}
+              onClick={() => {
+                setJiraContent(buildCenariosJiraContent(selectedCenarios))
+                setJiraModalOpen(true)
+              }}
+            >
+              <ExternalLink className="size-4" />
+              Exportar para o Jira
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setAddCenarioOpen(true)}>
               <Plus className="size-4" />
               Adicionar Cenário
