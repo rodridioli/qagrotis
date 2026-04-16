@@ -517,9 +517,7 @@ export function SuiteForm({
                           >{c.id}</Link>
                         ) : (
                           <Link
-                            href={`/cenarios/${c.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
                             className="font-medium text-text-secondary hover:underline"
                           >{c.id}</Link>
                         )}
@@ -573,9 +571,7 @@ export function SuiteForm({
                                 ) : (
                                   <DropdownMenuItem>
                                     <Link
-                                      href={`/cenarios/${c.id}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
+                                      href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
                                       className="w-full"
                                     >
                                       Visualizar
