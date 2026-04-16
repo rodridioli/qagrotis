@@ -398,6 +398,48 @@ export function SuiteForm({
     setAddCenarioOpen(false)
   }
 
+  // ── Auto-save when cenarios change (only for existing suites with ID) ────────
+  const isFirstRender = React.useRef(true)
+  const autoSaveTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    // Skip on first render — we don't want to save immediately on mount
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    // Only auto-save for existing suites (edit mode with an ID)
+    if (mode !== "edit" || !suite?.id) return
+
+    // Debounce to avoid multiple rapid saves
+    if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current)
+    autoSaveTimeout.current = setTimeout(async () => {
+      try {
+        await atualizarSuite(suite.id, {
+          suiteName,
+          versao,
+          sistema: sistemaSelecionado,
+          modulo: selectedModule,
+          tipo,
+          cliente: "",
+          objetivo: null,
+          cenarios: cenarios.map((c) => ({
+            id: c.id, name: c.name, module: c.module,
+            execucoes: c.execucoes, erros: c.erros, deps: c.deps, tipo: c.tipo,
+          })),
+        })
+        toast.success("Suíte salva automaticamente.", { duration: 2000 })
+      } catch {
+        // Silent fail — user can still save manually
+      }
+    }, 600)
+
+    return () => {
+      if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cenarios])
+
   async function confirmRemoverHistorico() {
     if (!suite?.id) return
     const indicesToRemove = [...selectedHistorico]
