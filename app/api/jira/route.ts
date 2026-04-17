@@ -1,6 +1,15 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 
+// GET is no longer supported - all Jira calls use POST with action field
+// This handler prevents 404 errors from cached old code
+export async function GET() {
+  return new Response(
+    JSON.stringify({ error: "Use POST with action: 'fetch' or 'update'" }),
+    { status: 405, headers: { "Content-Type": "application/json", "Allow": "POST" } }
+  )
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
