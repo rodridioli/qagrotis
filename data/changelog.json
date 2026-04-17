@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.6.1",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT",
+      "ícones Play e More seguem exatamente o padrão visual da tabela de Cenários",
+      "ícones Play e More com 32x32px e espaçamento de 16px entre eles",
+      "ícones Play e More com size-8 igual ao padrão da tela de Suítes",
+      "espaçamento entre ícone Play e More na aba Cenários",
+      "botão Exportar para Jira ao lado do Adicionar Cenário na aba Cenários",
+      "aba Cenários — ícone Play (Testar), checkboxes, Exportar para Jira com cenários selecionados",
+      "após registrar Sucesso/Erro redireciona para aba Cenários (não Histórico)",
+      "campo URL/chave da issue marcado como obrigatório com asterisco e mensagem de validação",
+      "Exportar Jira — modal simplificada (só URL/chave), Acrescentar preserva formatação ADF original",
+      "suíte salva automaticamente ao adicionar/remover cenários quando já tem código",
+      "gerador — Copiar (sem Markdown) + Jira busca título, descrição e anexos (imagens/PDF) para análise",
+      "gerador — menu more com opções, prompt criar suíte após importar, suites/nova recebe cenários pré-carregados",
+      "gerador — campo URL do Jira integrado, busca dados da issue, validação com toast e redirect para aba Contexto",
+      "botão Integração Jira na tela de configurações + ícone Sparkles para Modelos de IA"
+    ]
+  },
+  {
     "version": "1.6.0",
     "commit": "deploy-vercel",
     "date": "2026-04-16",

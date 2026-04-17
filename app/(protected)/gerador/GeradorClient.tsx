@@ -417,6 +417,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       {/* ── Header actions ── */}
       <div className="flex flex-wrap items-center justify-end gap-2">
           {output && !loading && (
+            <>
             <DropdownMenu>
               <DropdownMenuTrigger render={
                 <Button variant="outline" className="gap-2">
@@ -442,6 +443,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
               <Upload className="size-4" />
               {isImporting ? "Importando…" : "Importar"}
             </Button>
+            </>
           )}
           <Button
             onClick={generate}
