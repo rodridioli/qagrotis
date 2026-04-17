@@ -109,7 +109,7 @@ function toRecord(row: any): CenarioRecord {
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getCenarios(): Promise<CenarioRecord[]> {
-  const rows = await prisma.cenario.findMany({ orderBy: { createdAt: "asc" } })
+  const rows = await prisma.cenario.findMany({ orderBy: { createdAt: "asc" }, take: 2000 })
   return rows.map(toRecord)
 }
 

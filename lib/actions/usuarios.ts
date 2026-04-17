@@ -66,14 +66,25 @@ function validatePhotoPath(photoPath: string | null | undefined): string | null 
 // ── Public actions ─────────────────────────────────────────────────────────
 
 export async function getQaUsers(): Promise<QaUserRecord[]> {
-  const [inactiveRecords, profiles, createdUsers] = await Promise.all([
+  const [inactiveRecords, profiles, createdUsers, oauthUsers] = await Promise.all([
     prisma.inactiveUser.findMany({ select: { userId: true } }),
     prisma.userProfile.findMany(),
     prisma.createdUser.findMany({ orderBy: { createdAt: "asc" } }),
+    // Include Google OAuth users not yet in createdUser (e.g. external domains)
+    prisma.user.findMany({
+      select: { id: true, name: true, email: true, createdAt: true, image: true },
+      orderBy: { createdAt: "asc" },
+    }),
   ])
 
   const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
   const profileMap = new Map(profiles.map((p) => [p.userId, p]))
+
+  // Emails already covered by createdUser or mockUsers
+  const knownEmails = new Set([
+    ...MOCK_USERS.map((u) => u.email.toLowerCase()),
+    ...createdUsers.map((u) => u.email.toLowerCase()),
+  ])
 
   const mockRecords: QaUserRecord[] = MOCK_USERS.map((u) => {
     const p = profileMap.get(u.id)
@@ -100,7 +111,23 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
     }
   })
 
-  return [...mockRecords, ...createdRecords]
+  // OAuth-only users (Google login, external domain, not in createdUser)
+  const oauthRecords: QaUserRecord[] = oauthUsers
+    .filter((u) => u.email && !knownEmails.has(u.email.toLowerCase()))
+    .map((u) => {
+      const p = profileMap.get(u.id)
+      return {
+        id:        u.id,
+        name:      p?.name ?? u.name ?? u.email ?? "",
+        email:     p?.email ?? u.email ?? "",
+        type:      p?.type ?? "Padrão",
+        active:    !inactiveIds.has(u.id),
+        photoPath: p?.photoPath ?? u.image ?? null,
+        createdAt: u.createdAt.getTime(),
+      }
+    })
+
+  return [...mockRecords, ...createdRecords, ...oauthRecords]
 }
 
 export async function getQaUserProfile(id: string): Promise<QaUserProfile | null> {

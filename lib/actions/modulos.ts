@@ -31,7 +31,7 @@ const idsArraySchema = z.array(idSchema).max(1000)
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getModulos(): Promise<ModuloRecord[]> {
-  const rows = await prisma.modulo.findMany({ orderBy: { createdAt: "asc" } })
+  const rows = await prisma.modulo.findMany({ orderBy: { createdAt: "asc" }, take: 500 })
   return rows.map((r) => ({ ...r, createdAt: r.createdAt.getTime() }))
 }
 

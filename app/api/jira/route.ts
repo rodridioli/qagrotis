@@ -26,9 +26,19 @@ export async function POST(req: NextRequest) {
   try { body = await req.json() }
   catch { return new Response("JSON inválido.", { status: 400 }) }
 
-  const { action = "update", jiraUrl, issueKey, apiToken, email } = body
+  let { action = "update", jiraUrl, issueKey, apiToken, email } = body as typeof body & { action?: string }
+
+  // If credentials not in body, try server-side cookies (httpOnly, not accessible from JS)
+  if (!jiraUrl || !apiToken || !email) {
+    const { cookies } = await import("next/headers")
+    const cookieStore = await cookies()
+    jiraUrl   = jiraUrl   || cookieStore.get("jira_url")?.value   || ""
+    email     = email     || cookieStore.get("jira_email")?.value || ""
+    apiToken  = apiToken  || cookieStore.get("jira_token")?.value || ""
+  }
+
   if (!jiraUrl || !issueKey || !apiToken || !email) {
-    return new Response("Campos obrigatórios ausentes.", { status: 400 })
+    return new Response("Campos obrigatórios ausentes. Configure a Integração Jira em Configurações.", { status: 400 })
   }
 
   const base = jiraUrl.replace(/\/$/, "")

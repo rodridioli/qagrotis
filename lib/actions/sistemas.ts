@@ -28,7 +28,7 @@ const idsArraySchema = z.array(idSchema).max(1000)
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getSistemas(): Promise<SistemaRecord[]> {
-  const rows = await prisma.sistema.findMany({ orderBy: { createdAt: "asc" } })
+  const rows = await prisma.sistema.findMany({ orderBy: { createdAt: "asc" }, take: 200 })
   return rows.map((r) => ({ ...r, createdAt: r.createdAt.getTime() }))
 }
 

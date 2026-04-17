@@ -30,7 +30,7 @@ const idsArraySchema = z.array(idSchema).max(1000)
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getIntegracoes(): Promise<IntegracaoRecord[]> {
-  const rows = await prisma.integracao.findMany({ orderBy: { createdAt: "asc" } })
+  const rows = await prisma.integracao.findMany({ orderBy: { createdAt: "asc" }, take: 100 })
   return rows.map((r) => ({
     ...r,
     provider: r.provider,

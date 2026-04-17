@@ -47,15 +47,24 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
     }
     setSaving(true)
     try {
-      const res = await fetch("/api/jira", {
+      // First validate credentials against Jira
+      const validateRes = await fetch("/api/jira", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "fetch", jiraUrl: jiraUrl.trim(), issueKey: "TEST-1", email: email.trim(), apiToken: token.trim() }),
       })
-      if (!res.ok && res.status !== 404 && (res.status === 401 || res.status === 403)) {
+      if (!validateRes.ok && validateRes.status !== 404 && (validateRes.status === 401 || validateRes.status === 403)) {
         toast.error("Credenciais inválidas. Verifique o e-mail e o API Token.")
         return
       }
+      // Save to httpOnly cookies (secure, not accessible by JS)
+      const saveRes = await fetch("/api/jira/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jiraUrl: jiraUrl.trim(), jiraEmail: email.trim(), jiraToken: token.trim() }),
+      })
+      if (!saveRes.ok) throw new Error("Erro ao salvar credenciais.")
+      // Keep localStorage for backward compat with existing code that reads it
       localStorage.setItem("jira_url", jiraUrl.trim())
       localStorage.setItem("jira_email", email.trim())
       localStorage.setItem("jira_token", token.trim())

@@ -1,6 +1,23 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 
+// Rate limit: max 10 validation requests per user per minute
+const validateRateMap = new Map<string, { count: number; resetAt: number }>()
+function checkValidateRateLimit(userId: string): boolean {
+  const now = Date.now()
+  for (const [k, v] of validateRateMap) { if (now > v.resetAt) validateRateMap.delete(k) }
+  const entry = validateRateMap.get(userId)
+  if (!entry || now > entry.resetAt) {
+    validateRateMap.set(userId, { count: 1, resetAt: now + 60_000 })
+    return true
+  }
+  if (entry.count >= 10) return false
+  entry.count++
+  return true
+}
+
+
+
 // Vision-capable models tried in order — stops at first definitive result
 const CANDIDATE_MODELS = [
   "gemini-2.0-flash",
@@ -21,6 +38,9 @@ function isInvalidKeyError(errMessage: string, errStatus: string): boolean {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user) return new Response("Unauthorized", { status: 401 })
+  if (!checkValidateRateLimit(session.user.id!)) {
+    return new Response("Muitas tentativas. Aguarde um momento.", { status: 429 })
+  }
 
   const body = await req.json() as { apiKey?: string; provider?: string }
   const key = body.apiKey?.trim()

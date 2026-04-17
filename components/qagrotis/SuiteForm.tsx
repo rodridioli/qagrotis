@@ -153,6 +153,14 @@ export function SuiteForm({
   function handleExportarJira() {
     const selected = sortedHistorico.filter((h) => selectedHistorico.has(h._originalIdx))
     if (selected.length === 0) return
+    // Check Jira credentials before opening modal
+    const creds = getJiraCredentials()
+    if (!creds.jiraUrl || !creds.email || !creds.apiToken) {
+      toast.error("Configure a Integração Jira em Configurações antes de exportar.", {
+        action: { label: "Configurar", onClick: () => router.push("/configuracoes") },
+      })
+      return
+    }
     // Build content and open modal
 
     const resultIcon = (r: string) => r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : "⏳"
@@ -297,6 +305,7 @@ export function SuiteForm({
   const [jiraIssueInput, setJiraIssueInput] = useState("")  // URL completa ou chave
   const [jiraLoading, setJiraLoading] = useState(false)
   const [jiraContent, setJiraContent] = useState("")
+  const [jiraInputTouched, setJiraInputTouched] = useState(false)
   const [jiraExisting, setJiraExisting] = useState<{ summary: string; descText: string; hasContent: boolean } | null>(null)
   const [jiraMode, setJiraMode] = useState<"replace" | "append">("replace")
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
@@ -1033,7 +1042,7 @@ export function SuiteForm({
       />
 
       {/* ── Jira Modal — Passo 1: URL/Chave ── */}
-      <Dialog open={jiraModalOpen && !jiraExisting} onOpenChange={(v) => { if (!v) { setJiraModalOpen(false); setJiraIssueInput("") } }}>
+      <Dialog open={jiraModalOpen && !jiraExisting} onOpenChange={(v) => { if (!v) { setJiraModalOpen(false); setJiraIssueInput(""); setJiraInputTouched(false) } }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Exportar para o Jira</DialogTitle>
@@ -1047,10 +1056,11 @@ export function SuiteForm({
                 placeholder="https://agrotis.atlassian.net/browse/UX-951 ou UX-951"
                 value={jiraIssueInput}
                 onChange={(e) => setJiraIssueInput(e.target.value)}
+                onBlur={() => setJiraInputTouched(true)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !jiraLoading) handleJiraExport() }}
                 autoFocus
               />
-              {!jiraIssueInput.trim() && (
+              {jiraInputTouched && !jiraIssueInput.trim() && (
                 <p className="text-xs text-destructive">Campo obrigatório.</p>
               )}
             </div>

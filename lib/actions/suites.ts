@@ -88,6 +88,7 @@ export interface SuiteListRecord extends Omit<SuiteRecord, "historico"> {
 export async function getSuites(): Promise<SuiteListRecord[]> {
   const rows = await prisma.suite.findMany({
     orderBy: { createdAt: "asc" },
+    take: 1000,
     select: {
       id: true, suiteName: true, versao: true, sistema: true,
       modulo: true, cliente: true, tipo: true, objetivo: true,

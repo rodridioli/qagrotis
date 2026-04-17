@@ -56,7 +56,9 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   const [contexto, setContexto] = useState("")
-  const [jiraInput, setJiraInput] = useState("")
+  const [jiraInput, setJiraInput] = useState(() =>
+    typeof window !== "undefined" ? sessionStorage.getItem("gerador-jira-input") ?? "" : ""
+  )
   const [jiraConfigured, setJiraConfigured] = useState(false)
 
   // Check if Jira is configured in localStorage
@@ -86,6 +88,10 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   useEffect(() => {
     if (aiProvider) localStorage.setItem("gerador-ai-provider", aiProvider)
   }, [aiProvider])
+
+  useEffect(() => {
+    sessionStorage.setItem("gerador-jira-input", jiraInput)
+  }, [jiraInput])
 
   const [output, setOutput] = useState("")
   const [apiError, setApiError] = useState<string | null>(null)
