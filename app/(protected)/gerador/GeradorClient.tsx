@@ -933,7 +933,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       <Dialog open={intModalOpen} onOpenChange={(open) => { if (!open) setIntModalOpen(false) }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Adicionar Integração</DialogTitle>
+            <DialogTitle>Adicionar Modelo</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

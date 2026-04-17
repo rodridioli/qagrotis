@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.6.5",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "perf+security: rate limit gerador (30/h), cleanup mapas rate limit, remove console.log debug, DB indexes",
+      "security: token criptográfico, rate limit forgot-password, Jira token em body POST, security headers, indexes Prisma",
+      "ícones Play e More — gap-4 (16px) correto + coluna de ações expandida para w-24 (96px)",
+      "build erro JSX parent element + changelog v1.6.1",
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT"
+    ]
+  },
+  {
     "version": "1.6.4",
     "commit": "deploy-vercel",
     "date": "2026-04-17",
