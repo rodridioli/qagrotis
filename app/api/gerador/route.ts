@@ -2,6 +2,21 @@ import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 import { getIntegracao } from "@/lib/actions/integracoes"
 
+// Rate limit: max 30 AI generations per user per hour
+const geradorRateMap = new Map<string, { count: number; resetAt: number }>()
+function checkGeradorRateLimit(userId: string): boolean {
+  const now = Date.now()
+  for (const [k, v] of geradorRateMap) { if (now > v.resetAt) geradorRateMap.delete(k) }
+  const entry = geradorRateMap.get(userId)
+  if (!entry || now > entry.resetAt) {
+    geradorRateMap.set(userId, { count: 1, resetAt: now + 60 * 60_000 })
+    return true
+  }
+  if (entry.count >= 30) return false
+  entry.count++
+  return true
+}
+
 const SYSTEM_PROMPT = `Aja como um QA Engineer Sênior especialista em testes funcionais, testes manuais e BDD.
 
 ## REGRA ABSOLUTA — SAÍDA
@@ -580,6 +595,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { jira, imagens, integrationId } = body
+
+  if (!checkGeradorRateLimit(session.user.id!)) {
+    return new Response("Limite de geração atingido (30/hora). Aguarde antes de tentar novamente.", { status: 429 })
+  }
 
   if (!integrationId) {
     return new Response("Nenhum modelo de IA selecionado. Recarregue a página e tente novamente.", { status: 400 })

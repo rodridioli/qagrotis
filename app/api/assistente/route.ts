@@ -11,6 +11,8 @@ const GITBOOK_PRIVATE_KEY = process.env.GITBOOK_PRIVATE_KEY ?? ""
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 function checkRateLimit(userId: string): boolean {
   const now = Date.now()
+  // Cleanup expired entries to prevent memory leak
+  for (const [k, v] of rateLimitMap) { if (now > v.resetAt) rateLimitMap.delete(k) }
   const entry = rateLimitMap.get(userId)
   if (!entry || now > entry.resetAt) {
     rateLimitMap.set(userId, { count: 1, resetAt: now + 60_000 })
@@ -126,8 +128,6 @@ function parseGitBookSSE(rawText: string): { answer: string; sources: string[] }
       // Format 3: answer.answer.document (rich document format)
       else if (a?.answer?.document) {
         const md = extractTextFromDocument(a.answer.document).trim()
-        console.log("[assistente] doc->md (first 300):", md.slice(0, 300))
-        console.log("[assistente] raw doc (first 400):", JSON.stringify(a.answer.document).slice(0, 400))
         answer = md
       }
 
@@ -174,7 +174,6 @@ async function askGitBook(question: string, sistema: string): Promise<string> {
   )
 
   const raw = await res.text()
-  console.log("[assistente] status:", res.status, "| raw:", raw.slice(0, 400))
 
   if (!res.ok) throw new Error(`GitBook API ${res.status}: ${raw.slice(0, 200)}`)
 

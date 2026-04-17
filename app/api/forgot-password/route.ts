@@ -10,6 +10,8 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 const ipRateMap = new Map<string, { count: number; resetAt: number }>()
 function checkIpRateLimit(ip: string): boolean {
   const now = Date.now()
+  // Cleanup expired entries to prevent memory leak
+  for (const [k, v] of ipRateMap) { if (now > v.resetAt) ipRateMap.delete(k) }
   const entry = ipRateMap.get(ip)
   if (!entry || now > entry.resetAt) {
     ipRateMap.set(ip, { count: 1, resetAt: now + 15 * 60_000 })
