@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.6.12",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "/api/test-mail adicionado ao proxy.ts (middleware real)",
+      "/api/test-mail adicionado às rotas públicas do auth",
+      "SMTP usa SMTP_USER como remetente — Gmail rejeita from diferente da conta autenticada",
+      "e-mail via Gmail SMTP funcionando + remove endpoint de debug",
+      "test-mail usa sendMail com fallback SMTP",
+      "mail.ts retorna erro real do Resend em vez de mensagem genérica",
+      "trim EMAIL_FROM e RESEND_API_KEY para remover newline invisível que quebrava o envio",
+      "cenário removido da suíte aparece como Removido no histórico + email via domínio verificado + remove envio de senha em texto puro",
+      "limpar registros invalida cache do menu lateral — itens ficam desabilitados imediatamente",
+      "remove prisma db seed do build — seed estava apagando dados reais a cada deploy",
+      "gerador — prompt reescrito com exemplo concreto + parser mais tolerante + normaliza bold de modelos que ignoram instrução",
+      "menu lateral — Gerador e Assistente exigem sistema+módulo E modelo de IA; Painel/Suítes/Cenários exigem sistema+módulo",
+      "gráfico pizza Cenários por Módulo no dashboard + menu lateral com pré-requisitos + Adicionar Modelo + suite abre em Cadastro",
+      "menu lateral desabilita itens por pré-requisitos + Adicionar Modelo + limpar registros preserva usuários e modelos de IA",
+      "perf+security: rate limit gerador (30/h), cleanup mapas rate limit, remove console.log debug, DB indexes"
+    ]
+  },
+  {
     "version": "1.6.11",
     "commit": "deploy-vercel",
     "date": "2026-04-17",
