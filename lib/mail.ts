@@ -20,8 +20,8 @@ export interface MailOptions {
  * Enquanto não tiver domínio verificado, use SMTP como fallback (Gmail, SendGrid etc.)
  */
 export async function sendMail({ to, subject, html }: MailOptions): Promise<{ success: boolean; error?: string }> {
-  const RESEND_API_KEY = process.env.RESEND_API_KEY
-  const FROM = process.env.EMAIL_FROM
+  const RESEND_API_KEY = process.env.RESEND_API_KEY?.trim()
+  const FROM = process.env.EMAIL_FROM?.trim()
 
   // ── Resend ──────────────────────────────────────────────────────────────────
   if (RESEND_API_KEY && FROM && !FROM.includes("resend.dev")) {
@@ -29,9 +29,8 @@ export async function sendMail({ to, subject, html }: MailOptions): Promise<{ su
       const resend = new Resend(RESEND_API_KEY)
       const { data, error } = await resend.emails.send({ from: FROM, to, subject, html })
       if (error) {
-        // Resend retorna 403 quando o domínio não está verificado ou em sandbox
         console.error("[mail] Resend error:", JSON.stringify(error))
-        // Não retorna aqui — cai para o fallback SMTP
+        // Cai para SMTP como fallback
       } else {
         return { success: true }
       }
