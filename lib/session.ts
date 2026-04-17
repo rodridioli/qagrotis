@@ -23,7 +23,17 @@ async function getUserType(email: string): Promise<string | null> {
 
   // Fall back to MOCK_USERS constants
   const mockUser = MOCK_USERS.find((u) => u.email.toLowerCase() === normalized)
-  return mockUser?.type ?? null
+  if (mockUser) return mockUser.type
+
+  // Check NextAuth User table (Google OAuth users from external domains)
+  // These users are always "Padrão" unless explicitly promoted via UserProfile
+  const oauthUser = await prisma.user.findFirst({
+    where: { email: { equals: normalized, mode: "insensitive" } },
+    select: { id: true },
+  })
+  if (oauthUser) return "Padrão"
+
+  return null
 }
 
 /**
