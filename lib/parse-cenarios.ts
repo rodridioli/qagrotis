@@ -78,6 +78,10 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
     .replace(/\\([*#\-`![\](){}|>])/g, "$1")
+    // Strip bold markers from field labels so **Descrição:** → Descrição:
+    // This handles models that ignore the "no bold" instruction
+    .replace(/^\*\*(Cenário|Descrição|Descricao|Regra de neg[oó]cio|Pré-condições|Pre-condicoes|BDD(\s*\(Gherkin\))?|Resultado esperado|Resultados esperados)\*\*\s*:/gim, "$1:")
+    .replace(/^\*\*(Cenário|Descrição|Descricao|Regra de neg[oó]cio|Pré-condições|Pre-condicoes|BDD(\s*\(Gherkin\))?|Resultado esperado|Resultados esperados):\s*\*\*/gim, "$1:")
 
   // Primary split on --- separators
   const rawBlocks = normalized.split(/\n---+\n?/)
@@ -247,13 +251,13 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
       risco,
       tipo,
       // Use labeled **Descrição:** if present; otherwise first plain paragraph after title
-      descricao:         getField(["descrição", "descricao", "description", "objetivo"]) || descriptionFallback,
+      descricao:         getField(["descrição", "descricao", "description", "description:", "objetivo", "descr"]) || descriptionFallback,
       caminhoTela:       getField(["caminho da tela", "caminho", "screen path", "path"]),
       regraDeNegocio:    getField(["regra de negócio", "regra de negocio", "regra", "business rule"]),
       preCondicoes:      getField(["pré-condições", "pré condições", "pre-condições", "pre-condicoes", "preconditions"]),
       // Removed "cenário"/"cenario"/"scenario" to avoid collision with title labels
       bdd:               getField(["bdd (gherkin)", "bdd", "gherkin"]),
-      resultadoEsperado: getField(["resultados esperados", "resultado esperado", "resultado", "resultados", "expected result"]),
+      resultadoEsperado: getField(["resultados esperados", "resultado esperado", "resultado esperado:", "resultados", "resultado", "expected result", "expected results"]),
     })
   }
 
@@ -297,9 +301,12 @@ export function buildImportItems(
       ) ?? null
 
     let error: string | undefined
-    // Required: scenarioName (already checked), descricao, resultadoEsperado
-    if (!pFinal.descricao || !pFinal.resultadoEsperado) {
-      error = "Campos obrigatórios ausentes: Descrição e/ou Resultado esperado"
+    // Allow import if at least scenarioName is present.
+    // descricao falls back to bdd (handled in import handler),
+    // resultadoEsperado falls back to "-" (handled in import handler).
+    // Only block if truly nothing useful was parsed.
+    if (!pFinal.descricao && !pFinal.bdd && !pFinal.resultadoEsperado) {
+      error = "Cenário sem conteúdo: nenhum campo foi identificado no texto gerado"
     }
 
     return {
