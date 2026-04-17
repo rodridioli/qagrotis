@@ -49,7 +49,17 @@ export async function POST(request: Request) {
     })
 
     if (!user) {
-      // Security: don't reveal whether email exists
+      // Check if it's a Google OAuth user — they can't reset password through the app
+      const googleUser = await prisma.account.findFirst({
+        where: { user: { email: email.toLowerCase() }, provider: "google" },
+        select: { provider: true },
+      })
+      if (googleUser) {
+        return NextResponse.json({
+          error: "Esta conta usa login com Google. Para redefinir sua senha, acesse google.com/account.",
+        }, { status: 400 })
+      }
+      // Security: don't reveal whether other emails exist
       return NextResponse.json({ ok: true })
     }
 
