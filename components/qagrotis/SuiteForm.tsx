@@ -88,9 +88,7 @@ export function SuiteForm({
   const sistemaSelecionado = sistemaSelecionadoCtx || suite?.sistema || initialSistema || ""
   const tabParam = searchParams.get("tab")
   const initialTab = (tabParam === "cenarios" || tabParam === "historico") ? tabParam : "cadastro"
-  const [activeTab, setActiveTab] = useState<"cadastro" | "cenarios" | "historico">(
-    preloadedSuite?.cenarios?.length ? "cenarios" : initialTab
-  )
+  const [activeTab, setActiveTab] = useState<"cadastro" | "cenarios" | "historico">(initialTab)
   const [cenarios, setCenarios] = useState<SuiteCenario[]>(
     suite?.cenarios ?? preloadedSuite?.cenarios?.map(c => ({
       id: c.id, name: c.name, module: c.module, tipo: c.tipo,

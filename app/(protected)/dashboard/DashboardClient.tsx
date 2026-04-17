@@ -265,6 +265,20 @@ export function DashboardClient({
     }
   }, [allCenarios, allModulos, sistemaSelecionado])
 
+  // ── Cenários por módulo (pie chart) ────────────────────────────────────────
+  const cenariosPorModulo = useMemo(() => {
+    const activeModuleNames = new Set(
+      allModulos.filter(m => m.active && m.sistemaName === sistemaSelecionado).map(m => m.name)
+    )
+    const counts: Record<string, number> = {}
+    allCenarios
+      .filter(c => c.active && activeModuleNames.has(c.module))
+      .forEach(c => { counts[c.module] = (counts[c.module] ?? 0) + 1 })
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+  }, [allCenarios, allModulos, sistemaSelecionado])
+
   // ── Suites filtradas ───────────────────────────────────────────────────────
   const suitesFiltradas = useMemo(() =>
     allSuites.filter(s => 
@@ -396,6 +410,7 @@ export function DashboardClient({
         onSucessoModuloChange={setSucessoModulo}
         ultimasAutomacoes={ultimasAutomacoes}
         resolveUser={resolveUser}
+        cenariosPorModulo={cenariosPorModulo}
       />
     </div>
   )

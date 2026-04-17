@@ -510,7 +510,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                   onClick={openIntModal}
                 >
                   <Plus className="size-4" />
-                  Adicionar Integração
+                  Adicionar Modelo
                 </Button>
               </div>
             ) : (
