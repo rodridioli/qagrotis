@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.6.17",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "bug de segurança — usuário OAuth externo era tratado como admin quando currentUser=null + getUserType sempre retorna Padrão para OAuth externos",
+      "usuários Google OAuth externos agora aparecem em /configuracoes/usuarios + Sprint 1-3 QA audit (error.tsx, loading.tsx, rate limiting, perf indexes, Jira httpOnly cookies)",
+      "jira GET handler retorna 405 em vez de 404 + stories faltantes criadas",
+      "forgot-password detecta conta Google e exibe mensagem orientando reset pelo Google",
+      "e-mail via Gmail SMTP funcionando — remove endpoint de debug",
+      "/api/test-mail adicionado ao proxy.ts (middleware real)",
+      "/api/test-mail adicionado às rotas públicas do auth",
+      "SMTP usa SMTP_USER como remetente — Gmail rejeita from diferente da conta autenticada",
+      "e-mail via Gmail SMTP funcionando + remove endpoint de debug",
+      "test-mail usa sendMail com fallback SMTP",
+      "mail.ts retorna erro real do Resend em vez de mensagem genérica",
+      "trim EMAIL_FROM e RESEND_API_KEY para remover newline invisível que quebrava o envio",
+      "cenário removido da suíte aparece como Removido no histórico + email via domínio verificado + remove envio de senha em texto puro",
+      "limpar registros invalida cache do menu lateral — itens ficam desabilitados imediatamente",
+      "remove prisma db seed do build — seed estava apagando dados reais a cada deploy"
+    ]
+  },
+  {
     "version": "1.6.16",
     "commit": "deploy-vercel",
     "date": "2026-04-17",

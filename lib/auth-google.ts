@@ -5,9 +5,12 @@ export type GoogleAccessResult =
   | { allow: false; redirect: string }
 
 /**
- * Pure decision function for Google OAuth access.
- * Checks both prisma.createdUser and MOCK_USERS so that seed/prototype
- * users (e.g. rodridioli@gmail.com / U-00) can log in without a DB record.
+ * Access rules for Google OAuth login:
+ *
+ * 1. @agrotis.com → always allowed; auto-registered as "Padrão" if first login
+ * 2. Other domains → only allowed if an admin pre-registered the email in createdUser
+ *    (or if it's a MOCK_USER like the master admin account)
+ * 3. Inactive users → always blocked
  */
 export function resolveGoogleAccess(
   email: string,
@@ -17,33 +20,26 @@ export function resolveGoogleAccess(
   const isAgroTis = email.endsWith("@agrotis.com")
   const mockUser = MOCK_USERS.find((u) => u.email.toLowerCase() === email)
 
-  // Inactive DB user → block for externals; for @agrotis.com create a fresh active account
+  // Block inactive users (DB or mock)
   if (existingCreated && inactiveIds.has(existingCreated.id)) {
-    if (isAgroTis) return { allow: true, autoRegister: true }
     return { allow: false, redirect: "/login?error=GoogleInactive" }
   }
-
-  // Inactive mock user (inactive flag tracked via prisma.inactiveUser) → block
   if (mockUser && inactiveIds.has(mockUser.id)) {
     return { allow: false, redirect: "/login?error=GoogleInactive" }
   }
 
-  // Unknown externally — not in DB, not a mock user, not @agrotis.com → block
-  if (!existingCreated && !mockUser && !isAgroTis) {
-    return { allow: false, redirect: "/login?error=UnauthorizedDomain" }
+  // @agrotis.com: auto-register on first login as Padrão
+  if (isAgroTis) {
+    return { allow: true, autoRegister: !existingCreated && !mockUser, internalId: existingCreated?.id ?? mockUser?.id }
   }
 
-  // @agrotis.com first-time login → auto-register
-  if (!existingCreated && !mockUser && isAgroTis) {
-    return { allow: true, autoRegister: true }
+  // Other domains: only allow if pre-registered by admin (exists in createdUser or MOCK_USERS)
+  if (existingCreated || mockUser) {
+    return { allow: true, autoRegister: false, internalId: existingCreated?.id ?? mockUser?.id }
   }
 
-  // Registered (DB or mock) and active → allow; carry the internal ID
-  return {
-    allow: true,
-    autoRegister: false,
-    internalId: existingCreated?.id ?? mockUser?.id,
-  }
+  // Unknown external user → block
+  return { allow: false, redirect: "/login?error=UnauthorizedDomain" }
 }
 
 /**
