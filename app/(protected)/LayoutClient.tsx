@@ -123,20 +123,17 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3">
           <TooltipProvider>
             {NAV_ITEMS.map(({ href, icon: Icon, label, alwaysEnabled }) => {
-              // Compute disabled state dynamically based on system/module/cenario availability
+              // Compute disabled state dynamically based on system/module/AI model availability
               let disabled = false
               if (!alwaysEnabled) {
-                if (href === "/gerador") {
-                  // Gerador: requires only AI model (integração)
-                  disabled = !hasIntegracoes
-                } else if (href === "/assistente") {
-                  // Assistente: requires only AI model (integração)
-                  disabled = !hasIntegracoes
+                if (href === "/documentos") {
+                  disabled = true
+                } else if (href === "/gerador" || href === "/assistente") {
+                  // Gerador + Assistente: require sistema+módulo AND modelo de IA
+                  disabled = !hasSistemaModulo || !hasIntegracoes
                 } else if (href === "/dashboard" || href === "/suites" || href === "/cenarios") {
                   // Painel, Suítes, Cenários: require sistema with módulo linked
                   disabled = !hasSistemaModulo
-                } else if (href === "/documentos") {
-                  disabled = true // always disabled
                 }
               }
 
