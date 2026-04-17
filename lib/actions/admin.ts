@@ -1,8 +1,9 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { requireAdmin } from "@/lib/session"
 import { prisma } from "@/lib/prisma"
+import { LAYOUT_CACHE_TAG } from "@/lib/layout-cache"
 
 export interface LimparResult {
   cenarios: number
@@ -42,12 +43,14 @@ export async function limparRegistrosInativos(): Promise<LimparResult> {
   const { count: deletedClientes } = await prisma.cliente.deleteMany({})
 
   // ── Revalidate ───────────────────────────────────────────────────────────────
+  revalidateTag(LAYOUT_CACHE_TAG)   // invalidate sidebar menu cache immediately
   revalidatePath("/cenarios")
   revalidatePath("/suites")
   revalidatePath("/configuracoes/sistemas")
   revalidatePath("/configuracoes/modulos")
   revalidatePath("/configuracoes/clientes")
   revalidatePath("/dashboard")
+  revalidatePath("/configuracoes")
 
   return {
     cenarios: deletedCenarios,
