@@ -55,7 +55,8 @@ export async function sendMail({ to, subject, html }: MailOptions): Promise<{ su
   const smtpHost = process.env.SMTP_HOST
   const smtpUser = process.env.SMTP_USER
   const smtpPass = process.env.SMTP_PASS
-  const smtpFrom = FROM || smtpUser
+  // Gmail SMTP requires "from" to match the authenticated account exactly
+  const smtpFrom = smtpUser
 
   if (smtpHost && smtpUser && smtpPass) {
     try {
