@@ -243,8 +243,11 @@ export function SuiteForm({
     setJiraLoading(true)
     setJiraExisting(null)
     try {
-      const params = new URLSearchParams({ jiraUrl: creds.jiraUrl, issueKey, email: creds.email, apiToken: creds.apiToken })
-      const res = await fetch(`/api/jira?${params}`)
+      const res = await fetch("/api/jira", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "fetch", jiraUrl: creds.jiraUrl, issueKey, email: creds.email, apiToken: creds.apiToken }),
+      })
       if (!res.ok) {
         const err = await res.text()
         toast.error(`Erro ao buscar issue: ${err.slice(0, 150)}`)

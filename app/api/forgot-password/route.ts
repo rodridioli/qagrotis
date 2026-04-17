@@ -1,11 +1,30 @@
 
 import { NextResponse } from "next/server"
+import { randomBytes } from "crypto"
 import { sendMail } from "@/lib/mail"
 import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
+// Rate limit: max 5 requests per IP per 15 minutes
+const ipRateMap = new Map<string, { count: number; resetAt: number }>()
+function checkIpRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = ipRateMap.get(ip)
+  if (!entry || now > entry.resetAt) {
+    ipRateMap.set(ip, { count: 1, resetAt: now + 15 * 60_000 })
+    return true
+  }
+  if (entry.count >= 5) return false
+  entry.count++
+  return true
+}
+
 export async function POST(request: Request) {
+  const ip = (request.headers.get("x-forwarded-for") ?? "unknown").split(",")[0].trim()
+  if (!checkIpRateLimit(ip)) {
+    return NextResponse.json({ error: "Muitas tentativas. Aguarde 15 minutos." }, { status: 429 })
+  }
   let email: string | undefined
 
   try {
@@ -47,7 +66,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true })
     }
 
-    const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+    const token = randomBytes(32).toString("hex")
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 1) // 1 hour
 
     await prisma.inviteToken.create({

@@ -47,13 +47,11 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
     }
     setSaving(true)
     try {
-      const params = new URLSearchParams({
-        jiraUrl: jiraUrl.trim(),
-        issueKey: "TEST-1",
-        email: email.trim(),
-        apiToken: token.trim(),
+      const res = await fetch("/api/jira", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "fetch", jiraUrl: jiraUrl.trim(), issueKey: "TEST-1", email: email.trim(), apiToken: token.trim() }),
       })
-      const res = await fetch(`/api/jira?${params}`)
       if (!res.ok && res.status !== 404 && (res.status === 401 || res.status === 403)) {
         toast.error("Credenciais inválidas. Verifique o e-mail e o API Token.")
         return

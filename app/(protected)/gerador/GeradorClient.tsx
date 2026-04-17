@@ -218,8 +218,11 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         const issueKey = jiraInput.trim().includes("/")
           ? jiraInput.trim().split("/").pop() ?? jiraInput.trim()
           : jiraInput.trim()
-        const params = new URLSearchParams({ jiraUrl, issueKey, email: jiraEmail, apiToken: jiraToken })
-        const jiraRes = await fetch(`/api/jira?${params}`)
+        const jiraRes = await fetch("/api/jira", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "fetch", jiraUrl, issueKey, email: jiraEmail, apiToken: jiraToken }),
+        })
         if (jiraRes.ok) {
           const jiraData = await jiraRes.json() as {
             summary?: string

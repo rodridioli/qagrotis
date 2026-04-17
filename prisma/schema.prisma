@@ -157,6 +157,11 @@ model Cenario {
   moduleId          String?
   sistema           Sistema? @relation(fields: [systemId], references: [id])
   modulo            Modulo?  @relation(fields: [moduleId], references: [id])
+
+  @@index([active])
+  @@index([system])
+  @@index([active, system])
+  @@index([createdBy])
 }
 
 // Suite stores cenarios and historico as embedded JSON arrays (denormalized)
@@ -179,6 +184,8 @@ model Suite {
   moduloId  String?
   sistemaRef Sistema? @relation(fields: [sistemaId], references: [id])
   moduloRef  Modulo?  @relation(fields: [moduloId], references: [id])
+
+  @@index([active])
 }
 
 // ── Auth / user management ────────────────────────────────────────────────────

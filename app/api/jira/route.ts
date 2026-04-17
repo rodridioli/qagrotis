@@ -1,29 +1,103 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 
-// Fetch current issue description
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
 
-  const { searchParams } = new URL(req.url)
-  const jiraUrl = searchParams.get("jiraUrl") ?? ""
-  const issueKey = searchParams.get("issueKey") ?? ""
-  const email = searchParams.get("email") ?? ""
-  const apiToken = searchParams.get("apiToken") ?? ""
+  let body: {
+    action?: "fetch" | "update"
+    jiraUrl: string
+    issueKey: string
+    apiToken: string
+    email: string
+    content?: string
+    mode?: "replace" | "append"
+  }
+  try { body = await req.json() }
+  catch { return new Response("JSON inválido.", { status: 400 }) }
 
-  if (!jiraUrl || !issueKey || !email || !apiToken) {
+  const { action = "update", jiraUrl, issueKey, apiToken, email } = body
+  if (!jiraUrl || !issueKey || !apiToken || !email) {
     return new Response("Campos obrigatórios ausentes.", { status: 400 })
   }
 
   const base = jiraUrl.replace(/\/$/, "")
   const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64")
 
-  const res = await fetch(`${base}/rest/api/3/issue/${issueKey}?fields=description,summary,attachment`, {
-    headers: {
-      "Authorization": `Basic ${credentials}`,
-      "Accept": "application/json",
-    },
+  // ── action: fetch — get current description ──────────────────────────────
+  if (action === "fetch") {
+    const res = await fetch(`${base}/rest/api/3/issue/${issueKey}?fields=description,summary,attachment`, {
+      headers: { "Authorization": `Basic ${credentials}`, "Accept": "application/json" },
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      return new Response(`Erro Jira ${res.status}: ${err.slice(0, 300)}`, { status: res.status })
+    }
+
+    const data = await res.json() as {
+      fields?: {
+        summary?: string
+        description?: { content?: unknown[] } | null
+        attachment?: { id: string; filename: string; mimeType: string; content: string; size: number }[]
+      }
+    }
+
+    const summary = data.fields?.summary ?? ""
+    const descAdf = data.fields?.description
+    const descText = descAdf ? adfToText(descAdf) : ""
+
+    const attachments = data.fields?.attachment ?? []
+    const supported = attachments.filter(a =>
+      a.size < 5 * 1024 * 1024 &&
+      (a.mimeType.startsWith("image/") || a.mimeType === "application/pdf")
+    ).slice(0, 5)
+
+    const attachmentData: { name: string; mimeType: string; dataUrl: string }[] = []
+    for (const att of supported) {
+      try {
+        const attRes = await fetch(att.content, { headers: { "Authorization": `Basic ${credentials}` } })
+        if (attRes.ok) {
+          const buf = await attRes.arrayBuffer()
+          const base64 = Buffer.from(buf).toString("base64")
+          attachmentData.push({ name: att.filename, mimeType: att.mimeType, dataUrl: `data:${att.mimeType};base64,${base64}` })
+        }
+      } catch { /* skip */ }
+    }
+
+    return Response.json({ summary, descText, hasContent: descText.trim().length > 0, attachments: attachmentData })
+  }
+
+  // ── action: update — write description ───────────────────────────────────
+  const { content, mode } = body
+  if (!content) return new Response("Conteúdo obrigatório.", { status: 400 })
+
+  let adf: object
+  if (mode === "append") {
+    const getRes = await fetch(`${base}/rest/api/3/issue/${issueKey}?fields=description`, {
+      headers: { "Authorization": `Basic ${credentials}`, "Accept": "application/json" },
+    })
+    if (getRes.ok) {
+      const existing = await getRes.json() as { fields?: { description?: { version: number; type: string; content: unknown[] } | null } }
+      const existingAdf = existing.fields?.description
+      if (existingAdf?.content) {
+        const newAdf = markdownToADF(content) as { version: number; type: string; content: unknown[] }
+        adf = { version: 1, type: "doc", content: [...existingAdf.content, { type: "rule" }, ...newAdf.content] }
+      } else {
+        adf = markdownToADF(content)
+      }
+    } else {
+      adf = markdownToADF(content)
+    }
+  } else {
+    adf = markdownToADF(content)
+  }
+
+  const res = await fetch(`${base}/rest/api/3/issue/${issueKey}`, {
+    method: "PUT",
+    headers: { "Authorization": `Basic ${credentials}`, "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({ fields: { description: adf } }),
   })
 
   if (!res.ok) {
@@ -31,53 +105,13 @@ export async function GET(req: NextRequest) {
     return new Response(`Erro Jira ${res.status}: ${err.slice(0, 300)}`, { status: res.status })
   }
 
-  const data = await res.json() as {
-    fields?: {
-      summary?: string
-      description?: { content?: unknown[] } | null
-      attachment?: { id: string; filename: string; mimeType: string; content: string; size: number }[]
-    }
-  }
-
-  // Extract plain text from ADF description
-  const summary = data.fields?.summary ?? ""
-  const descAdf = data.fields?.description
-  const descText = descAdf ? adfToText(descAdf) : ""
-
-  // Fetch attachments (images and PDFs, up to 5, max 5MB each)
-  const attachments = data.fields?.attachment ?? []
-  const supported = attachments.filter(a =>
-    a.size < 5 * 1024 * 1024 &&
-    (a.mimeType.startsWith("image/") || a.mimeType === "application/pdf")
-  ).slice(0, 5)
-
-  const attachmentData: { name: string; mimeType: string; dataUrl: string }[] = []
-  for (const att of supported) {
-    try {
-      const attRes = await fetch(att.content, {
-        headers: { "Authorization": `Basic ${credentials}` },
-      })
-      if (attRes.ok) {
-        const buf = await attRes.arrayBuffer()
-        const base64 = Buffer.from(buf).toString("base64")
-        attachmentData.push({
-          name: att.filename,
-          mimeType: att.mimeType,
-          dataUrl: `data:${att.mimeType};base64,${base64}`,
-        })
-      }
-    } catch { /* skip failed attachment */ }
-  }
-
-  return Response.json({
-    summary,
-    descText,
-    hasContent: descText.trim().length > 0,
-    attachments: attachmentData,
+  return new Response(JSON.stringify({ success: true, url: `${base}/browse/${issueKey}` }), {
+    headers: { "Content-Type": "application/json" },
   })
 }
 
-// Convert ADF back to plain text for preview
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 function adfToText(node: unknown): string {
   if (!node || typeof node !== "object") return ""
   const n = node as Record<string, unknown>
@@ -91,80 +125,6 @@ function adfToText(node: unknown): string {
     return children
   }
   return ""
-}
-
-export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
-
-  let body: {
-    jiraUrl: string
-    issueKey: string
-    apiToken: string
-    email: string
-    content: string
-  }
-  try { body = await req.json() }
-  catch { return new Response("JSON inválido.", { status: 400 }) }
-
-  const { jiraUrl, issueKey, apiToken, email, content, mode } = body as typeof body & { mode?: "replace" | "append" }
-  if (!jiraUrl || !issueKey || !apiToken || !email) {
-    return new Response("Campos obrigatórios ausentes.", { status: 400 })
-  }
-
-  const base = jiraUrl.replace(/\/$/, "")
-  const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64")
-
-  // Build the final ADF document
-  let adf: object
-  if (mode === "append") {
-    // Fetch existing ADF and append new content as ADF nodes (preserves original formatting)
-    const getRes = await fetch(`${base}/rest/api/3/issue/${issueKey}?fields=description`, {
-      headers: { "Authorization": `Basic ${credentials}`, "Accept": "application/json" },
-    })
-    if (getRes.ok) {
-      const existing = await getRes.json() as { fields?: { description?: { version: number; type: string; content: unknown[] } | null } }
-      const existingAdf = existing.fields?.description
-      if (existingAdf?.content) {
-        const newAdf = markdownToADF(content) as { version: number; type: string; content: unknown[] }
-        // Merge: existing nodes + divider + new nodes
-        adf = {
-          version: 1,
-          type: "doc",
-          content: [
-            ...existingAdf.content,
-            { type: "rule" },
-            ...newAdf.content,
-          ],
-        }
-      } else {
-        adf = markdownToADF(content)
-      }
-    } else {
-      adf = markdownToADF(content)
-    }
-  } else {
-    adf = markdownToADF(content)
-  }
-
-  const res = await fetch(`${base}/rest/api/3/issue/${issueKey}`, {
-    method: "PUT",
-    headers: {
-      "Authorization": `Basic ${credentials}`,
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-    },
-    body: JSON.stringify({ fields: { description: adf } }),
-  })
-
-  if (!res.ok) {
-    const err = await res.text()
-    return new Response(`Erro Jira ${res.status}: ${err.slice(0, 300)}`, { status: res.status })
-  }
-
-  return new Response(JSON.stringify({ success: true, url: `${base}/browse/${issueKey}` }), {
-    headers: { "Content-Type": "application/json" },
-  })
 }
 
 function inlineToADF(text: string): object[] {
@@ -196,9 +156,7 @@ function markdownToADF(markdown: string): object {
       content.push({ type: "heading", attrs: { level: Math.min(heading[1].length, 6) }, content: [{ type: "text", text: stripMd(heading[2]) }] })
       i++; continue
     }
-    if (/^---+$/.test(line.trim())) {
-      content.push({ type: "rule" }); i++; continue
-    }
+    if (/^---+$/.test(line.trim())) { content.push({ type: "rule" }); i++; continue }
     if (line.startsWith("|")) {
       const rows: string[][] = []
       while (i < lines.length && lines[i].startsWith("|")) {
