@@ -432,16 +432,16 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                   <Copy className="size-4" />
                   Copiar
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={openImportSetup} disabled={isImporting}>
-                  <Upload className="size-4" />
-                  {isImporting ? "Importando…" : "Importar"}
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleReset}>
                   <RotateCcw className="size-4" />
                   Limpar
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button variant="outline" onClick={openImportSetup} disabled={isImporting} className="gap-2">
+              <Upload className="size-4" />
+              {isImporting ? "Importando…" : "Importar"}
+            </Button>
           )}
           <Button
             onClick={generate}
