@@ -1,5 +1,25 @@
 [
   {
+    "version": "1.6.10",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "limpar registros invalida cache do menu lateral — itens ficam desabilitados imediatamente",
+      "remove prisma db seed do build — seed estava apagando dados reais a cada deploy",
+      "gerador — prompt reescrito com exemplo concreto + parser mais tolerante + normaliza bold de modelos que ignoram instrução",
+      "menu lateral — Gerador e Assistente exigem sistema+módulo E modelo de IA; Painel/Suítes/Cenários exigem sistema+módulo",
+      "gráfico pizza Cenários por Módulo no dashboard + menu lateral com pré-requisitos + Adicionar Modelo + suite abre em Cadastro",
+      "menu lateral desabilita itens por pré-requisitos + Adicionar Modelo + limpar registros preserva usuários e modelos de IA",
+      "perf+security: rate limit gerador (30/h), cleanup mapas rate limit, remove console.log debug, DB indexes",
+      "security: token criptográfico, rate limit forgot-password, Jira token em body POST, security headers, indexes Prisma",
+      "ícones Play e More — gap-4 (16px) correto + coluna de ações expandida para w-24 (96px)",
+      "build erro JSX parent element + changelog v1.6.1",
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT"
+    ]
+  },
+  {
     "version": "1.6.9",
     "commit": "deploy-vercel",
     "date": "2026-04-17",

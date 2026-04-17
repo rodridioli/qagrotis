@@ -2,7 +2,6 @@
 import { NextResponse } from "next/server"
 import { randomBytes } from "crypto"
 import { sendMail } from "@/lib/mail"
-import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
@@ -40,22 +39,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "E-mail inválido." }, { status: 400 })
   }
 
-  // Case 1: prototype credential user — send credentials directly
-  const prototypePassword = PROTOTYPE_USERS[email]
-  if (prototypePassword) {
-    const { success, error: sendError } = await sendMail({
-      to: email,
-      subject: "Acesso ao QAgrotis",
-      html: buildCredentialsHtml(email, prototypePassword)
-    })
-    
-    if (!success) {
-      return NextResponse.json({ error: sendError }, { status: 500 })
-    }
-    return NextResponse.json({ ok: true })
-  }
-
-  // Case 2: created user — generate reset link
+  // All users use token-based reset (never send passwords in plain text)
+  // Case: created user — generate reset link
   try {
     const { prisma } = await import("@/lib/prisma")
     const user = await prisma.createdUser.findFirst({

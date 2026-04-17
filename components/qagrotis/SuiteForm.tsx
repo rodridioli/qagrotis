@@ -862,7 +862,8 @@ export function SuiteForm({
                 </thead>
                 <tbody>
                   {sortedHistorico.map((h) => {
-                    const hAtivo2 = isCenarioAtivoFn(h.id)
+                    // Inativo no histórico se: removido da suíte OU inativo no banco
+                    const hAtivo2 = existingIds.has(h.id) && isCenarioAtivoFn(h.id)
                     return (
                     <tr key={`${h.id}-${h._originalIdx}`} className={`border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50${!hAtivo2 ? " opacity-60" : ""}`}>
                       <td className="px-4 py-3">
@@ -893,13 +894,19 @@ export function SuiteForm({
                             >{h.id}</Link>
                           )
                         })() : (
+                          // Cenário removido da suíte: exibe ID sem link mas como texto
                           <span className="font-medium text-text-secondary">{h.id}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-text-primary">
                         <span className="flex items-center gap-2">
                           {h.cenario}
-                          {!hAtivo2 && (
+                          {!existingIds.has(h.id) && (
+                            <span className="shrink-0 rounded-full bg-neutral-grey-200 px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
+                              Removido
+                            </span>
+                          )}
+                          {existingIds.has(h.id) && !isCenarioAtivoFn(h.id) && (
                             <span className="shrink-0 rounded-full bg-neutral-grey-200 px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
                               Inativo
                             </span>
