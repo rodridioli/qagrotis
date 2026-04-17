@@ -29,17 +29,26 @@ export async function sendMail({ to, subject, html }: MailOptions): Promise<{ su
       const resend = new Resend(RESEND_API_KEY)
       const { data, error } = await resend.emails.send({ from: FROM, to, subject, html })
       if (error) {
-        console.error("[mail] Resend error:", JSON.stringify(error))
-        // Cai para SMTP como fallback
+        const resendMsg = typeof error === "object" && error !== null
+          ? ((error as Record<string, unknown>).message as string ?? JSON.stringify(error))
+          : String(error)
+        console.error("[mail] Resend error:", resendMsg)
+        // Only fall through to SMTP if configured; otherwise return Resend error
+        if (!process.env.SMTP_HOST) {
+          return { success: false, error: `Resend: ${resendMsg}` }
+        }
       } else {
         return { success: true }
       }
     } catch (err) {
-      console.error("[mail] Resend exception:", err)
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error("[mail] Resend exception:", msg)
+      if (!process.env.SMTP_HOST) {
+        return { success: false, error: `Resend exception: ${msg}` }
+      }
     }
   } else if (RESEND_API_KEY && (!FROM || FROM.includes("resend.dev"))) {
-    // Aviso explícito: domínio sandbox restringe destinatários
-    console.warn("[mail] Resend em modo sandbox (resend.dev). Configure EMAIL_FROM com seu domínio verificado para enviar a qualquer endereço.")
+    console.warn("[mail] Resend em modo sandbox. Configure EMAIL_FROM com domínio verificado.")
   }
 
   // ── SMTP (fallback) ─────────────────────────────────────────────────────────
