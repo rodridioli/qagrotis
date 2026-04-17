@@ -19,7 +19,8 @@ export const authConfig: NextAuthConfig = {
         pathname.startsWith("/login") ||
         pathname.startsWith("/definir-senha") ||
         pathname.startsWith("/api/auth") ||
-        pathname.startsWith("/api/stripe")
+        pathname.startsWith("/api/stripe") ||
+        pathname.startsWith("/api/test-mail")
       if (isPublic) return true
       return isLoggedIn
     },
