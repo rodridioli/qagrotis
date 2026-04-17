@@ -25,3 +25,4 @@ export async function GET(req: NextRequest) {
     SMTP_PASS: process.env.SMTP_PASS ? "✅ configurado" : "❌ não configurado",
   })
 }
+// force 1776399624
