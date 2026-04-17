@@ -668,7 +668,7 @@ export function SuiteForm({
                   <col className="w-24" />
                   <col className="w-16" />
                   <col className="w-32" />
-                  <col className="w-16" />
+                  <col className="w-24" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -750,7 +750,7 @@ export function SuiteForm({
                           const cenarioAtivo = isCenarioAtivoFn(c.id)
                           const href = suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`
                           return (
-                            <div className="flex items-center justify-end gap-1">
+                            <div className="flex items-center justify-end gap-4">
                               {cenarioAtivo && (
                                 <Link
                                   href={href}
