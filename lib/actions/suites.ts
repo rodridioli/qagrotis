@@ -16,6 +16,7 @@ export interface SuiteRecord {
   tipo: string
   objetivo: string | null
   active: boolean
+  encerrada: boolean
   createdAt: number
   cenarios: {
     id: string
@@ -72,6 +73,7 @@ function toRecord(row: any): SuiteRecord {
     tipo:      row.tipo ?? "Sprint",
     objetivo:  row.objetivo,
     active:    row.active,
+    encerrada: row.encerrada ?? false,
     createdAt: row.createdAt instanceof Date ? row.createdAt.getTime() : row.createdAt,
     cenarios:  (row.cenarios as unknown as SuiteRecord["cenarios"]) ?? [],
     historico: (row.historico as unknown as SuiteRecord["historico"]) ?? [],
@@ -92,7 +94,7 @@ export async function getSuites(): Promise<SuiteListRecord[]> {
     select: {
       id: true, suiteName: true, versao: true, sistema: true,
       modulo: true, cliente: true, tipo: true, objetivo: true,
-      active: true, createdAt: true, cenarios: true, historico: true,
+      active: true, encerrada: true, createdAt: true, cenarios: true, historico: true,
     },
   })
   return rows.map((row) => {
@@ -151,8 +153,9 @@ export async function atualizarSuite(id: string, data: unknown): Promise<SuiteRe
   if (!id || typeof id !== "string") throw new Error("ID inválido")
   const parsed = suiteSchema.parse(data)
 
-  const existing = await prisma.suite.findUnique({ where: { id }, select: { historico: true } })
+  const existing = await prisma.suite.findUnique({ where: { id }, select: { historico: true, encerrada: true } })
   if (!existing) throw new Error("Suíte não encontrada")
+  if (existing.encerrada) throw new Error("Suíte encerrada, edição não permitida")
 
   // Lookup IDs by name for data integrity update
   const [sysRow, modRow] = await Promise.all([
@@ -239,6 +242,26 @@ export async function inativarSuites(ids: string[]): Promise<void> {
   if (!Array.isArray(ids) || ids.length === 0) return
   await prisma.suite.updateMany({ where: { id: { in: ids } }, data: { active: false } })
   revalidatePath("/suites")
+}
+
+export async function encerrarSuite(id: string): Promise<void> {
+  await requireSession()
+  if (!id || typeof id !== "string") throw new Error("ID inválido")
+  const existing = await prisma.suite.findUnique({ where: { id }, select: { encerrada: true } })
+  if (!existing) throw new Error("Suíte não encontrada")
+  await prisma.suite.update({ where: { id }, data: { encerrada: true } })
+  revalidatePath("/suites")
+  revalidatePath(`/suites/${id}`)
+}
+
+export async function reabrirSuite(id: string): Promise<void> {
+  await requireSession()
+  if (!id || typeof id !== "string") throw new Error("ID inválido")
+  const existing = await prisma.suite.findUnique({ where: { id }, select: { encerrada: true } })
+  if (!existing) throw new Error("Suíte não encontrada")
+  await prisma.suite.update({ where: { id }, data: { encerrada: false } })
+  revalidatePath("/suites")
+  revalidatePath(`/suites/${id}`)
 }
 
 export async function removerHistoricoSuite(suiteId: string, indices: number[]): Promise<void> {

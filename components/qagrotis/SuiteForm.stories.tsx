@@ -53,6 +53,7 @@ export const EditMode: Story = {
       cliente: "Agrotis",
       objetivo: "Validar regressão geral",
       active: true,
+      encerrada: false,
       createdAt: Date.now(),
       cenarios: [
         { id: "CT-001", name: "Login básico", module: "PRO - Produtor Rural", tipo: "Manual", execucoes: 10, erros: 2, deps: 1 }
