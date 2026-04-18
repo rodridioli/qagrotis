@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, X, Filter, Power } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -32,7 +32,7 @@ import { UserTipoBadge } from "@/components/qagrotis/StatusBadge"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { inativarQaUsers, getQaUsers, type QaUserRecord } from "@/lib/actions/usuarios"
+import { inativarQaUsers, ativarQaUser, getQaUsers, type QaUserRecord } from "@/lib/actions/usuarios"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -91,6 +91,8 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
   const [filterOpen, setFilterOpen] = useState(false)
   const [inativarOpen, setInativarOpen] = useState(false)
   const [inativarIds, setInativarIds] = useState<string[]>([])
+  const [ativarId, setAtivarId] = useState<string | null>(null)
+  const [ativarOpen, setAtivarOpen] = useState(false)
   const [filters, setFilters] = useState<FilterState>({ tipo: "", apenasInativos: false })
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
 
@@ -167,6 +169,22 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
     if (u && isLastActiveAdmin(u)) return
     setInativarIds([id])
     setInativarOpen(true)
+  }
+
+  async function handleAtivar() {
+    if (!ativarId) return
+    try {
+      const result = await ativarQaUser(ativarId)
+      if (result?.error) { toast.error(result.error); return }
+      setUsers((prev) => prev.filter((u) => u.id !== ativarId))
+      toast.success("Cadastro ativado com sucesso.")
+      router.refresh()
+    } catch {
+      toast.error("Erro ao ativar. Tente novamente.")
+    } finally {
+      setAtivarOpen(false)
+      setAtivarId(null)
+    }
   }
 
   function confirmInativar() {
@@ -366,7 +384,16 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                         <td className="px-4 py-3 text-text-secondary truncate transition-colors group-hover:bg-neutral-grey-50" title={u.email}>{u.email}</td>
                         <td className="px-4 py-3 transition-colors group-hover:bg-neutral-grey-50"><UserTipoBadge tipo={u.type} /></td>
                         <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
-                          {isSelf ? (
+                          {filters.apenasInativos && !isSelf ? (
+                            <button
+                              type="button"
+                              aria-label="Ativar"
+                              onClick={() => { setAtivarId(u.id); setAtivarOpen(true) }}
+                              className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                            >
+                              <RotateCcw className="size-4" />
+                            </button>
+                          ) : isSelf ? (
                             <Link
                               href={`/configuracoes/usuarios/${u.id}/editar`}
                               title="Editar meu cadastro"
@@ -482,6 +509,15 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
         description={confirmDescription}
         confirmLabel="Inativar"
         onConfirm={confirmInativar}
+      />
+
+      <ConfirmDialog
+        open={ativarOpen}
+        onOpenChange={setAtivarOpen}
+        title="Deseja ativar?"
+        description="Este cadastro voltará a aparecer na listagem de ativos."
+        confirmLabel="Ativar"
+        onConfirm={handleAtivar}
       />
     </div>
   )

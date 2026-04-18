@@ -426,42 +426,51 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       {/* ── Header actions ── */}
       <div className="flex flex-wrap items-center justify-end gap-2">
           {output && !loading && (
-            <>
-            <DropdownMenu>
-              <DropdownMenuTrigger render={
-                <Button variant="outline" className="gap-2">
-                  <MoreVertical className="size-4" />
+            isEditing ? (
+              <Button onClick={() => setIsEditing(false)} className="gap-2">
+                <Check className="size-4" />
+                Concluir Edição
+              </Button>
+            ) : (
+              <>
+                <DropdownMenu>
+                  <DropdownMenuTrigger render={
+                    <Button variant="outline" className="gap-2">
+                      <MoreVertical className="size-4" />
+                    </Button>
+                  } />
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                      <Pencil className="size-4" />
+                      Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleCopyMarkdown}>
+                      <Copy className="size-4" />
+                      Copiar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleReset}>
+                      <RotateCcw className="size-4" />
+                      Limpar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button variant="outline" onClick={openImportSetup} disabled={isImporting} className="gap-2">
+                  <Upload className="size-4" />
+                  {isImporting ? "Importando…" : "Importar"}
                 </Button>
-              } />
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setIsEditing((v) => !v)}>
-                  {isEditing ? <Check className="size-4" /> : <Pencil className="size-4" />}
-                  {isEditing ? "Concluir edição" : "Editar"}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleCopyMarkdown}>
-                  <Copy className="size-4" />
-                  Copiar
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleReset}>
-                  <RotateCcw className="size-4" />
-                  Limpar
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button variant="outline" onClick={openImportSetup} disabled={isImporting} className="gap-2">
-              <Upload className="size-4" />
-              {isImporting ? "Importando…" : "Importar"}
-            </Button>
-            </>
+              </>
+            )
           )}
-          <Button
-            onClick={generate}
-            disabled={loading}
-            className="gap-2"
-          >
-            <Sparkles className="size-4" />
-            {loading ? "Gerando..." : "Gerar CT"}
-          </Button>
+          {!isEditing && (
+            <Button
+              onClick={generate}
+              disabled={loading}
+              className="gap-2"
+            >
+              <Sparkles className="size-4" />
+              {loading ? "Gerando..." : "Gerar CT"}
+            </Button>
+          )}
       </div>
 
       {/* ── Body — tabbed card ── */}

@@ -151,12 +151,14 @@ model Cenario {
   senhaFalsa        String?
   steps             Json      @default("[]")
   deps              String[]  @default([])
+  credencialId      String?
 
   // Relationships
   systemId          String?
   moduleId          String?
-  sistema           Sistema? @relation(fields: [systemId], references: [id])
-  modulo            Modulo?  @relation(fields: [moduleId], references: [id])
+  sistema           Sistema?    @relation(fields: [systemId], references: [id])
+  modulo            Modulo?     @relation(fields: [moduleId], references: [id])
+  credencial        Credencial? @relation(fields: [credencialId], references: [id])
 
   @@index([active])
   @@index([system])
@@ -225,6 +227,21 @@ model InviteToken {
   email     String
   expiresAt DateTime
   used      Boolean  @default(false)
+}
+
+// Test environment credentials (URL, username, password) reusable across scenarios
+model Credencial {
+  id          String    @id
+  nome        String
+  urlAmbiente String?
+  usuario     String
+  senha       String
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  cenarios    Cenario[]
+
+  @@index([active])
+  @@index([createdAt])
 }
 
 // AI provider integrations (Google, OpenAI, Anthropic, Groq, OpenRouter)

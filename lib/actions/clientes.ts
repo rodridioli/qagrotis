@@ -120,6 +120,15 @@ export async function atualizarCliente(
   revalidatePath("/gerador")
 }
 
+export async function ativarCliente(id: string): Promise<void> {
+  await requireAdmin()
+  idSchema.parse(id)
+  await prisma.cliente.update({ where: { id }, data: { active: true } })
+  revalidatePath("/configuracoes/clientes")
+  revalidatePath("/cenarios")
+  revalidatePath("/cenarios/novo")
+}
+
 export async function inativarClientes(ids: string[]): Promise<void> {
   await requireAdmin()
   if (ids.length === 0) return

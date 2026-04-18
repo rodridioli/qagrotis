@@ -408,20 +408,20 @@ export function SuiteForm({
     return stats
   }, [historico])
 
-  // Historico sorted ascending by timestamp (or parsed date)
+  // Historico sorted descending by timestamp (or parsed date)
   const sortedHistorico = useMemo((): SortedHistoricoItem[] => {
     const parseDate = (s: string): number => {
       const parts = s.split("/")
       if (parts.length !== 3) return 0
-      return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime()
+      return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00Z`).getTime()
     }
     return historico
       .map((h, i) => ({ ...h, _originalIdx: i }))
       .sort((a, b) => {
-        if (a.timestamp !== undefined && b.timestamp !== undefined) return a.timestamp - b.timestamp
-        if (a.timestamp !== undefined) return 1
-        if (b.timestamp !== undefined) return -1
-        return parseDate(a.data) - parseDate(b.data)
+        if (a.timestamp !== undefined && b.timestamp !== undefined) return b.timestamp - a.timestamp
+        if (a.timestamp !== undefined) return -1
+        if (b.timestamp !== undefined) return 1
+        return parseDate(b.data) - parseDate(a.data)
       })
   }, [historico])
 

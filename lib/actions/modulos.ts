@@ -142,3 +142,9 @@ export async function inativarModulos(ids: string[]): Promise<void> {
   revalidatePath("/suites/nova")
   revalidatePath("/gerador")
 }
+
+export async function ativarModulo(id: string): Promise<void> {
+  await requireAdmin()
+  await prisma.modulo.update({ where: { id }, data: { active: true } })
+  revalidatePath("/configuracoes/modulos")
+}
