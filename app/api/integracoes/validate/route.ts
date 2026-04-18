@@ -16,8 +16,6 @@ function checkValidateRateLimit(userId: string): boolean {
   return true
 }
 
-
-
 // Vision-capable models tried in order — stops at first definitive result
 const CANDIDATE_MODELS = [
   "gemini-2.0-flash",
@@ -96,15 +94,11 @@ export async function POST(req: NextRequest) {
     } catch { /* ignore */ }
   } else if (provider === "openrouter") {
     try {
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-        body: JSON.stringify({ model: "google/gemini-2.0-flash-exp:free", messages: [{ role: "user", content: "hi" }], max_tokens: 1 }),
+      const res = await fetch("https://openrouter.ai/api/v1/auth/key", {
+        headers: { "Authorization": `Bearer ${key}` },
       })
-      if (res.ok || res.status === 429 || res.status === 422) return new Response("ok", { status: 200 })
+      if (res.ok) return new Response("ok", { status: 200 })
       if (res.status === 401 || res.status === 403) return new Response("Chave inválida.", { status: 401 })
-      // Any other status still means the key is probably valid
-      return new Response("ok", { status: 200 })
     } catch { /* ignore */ }
   }
 
