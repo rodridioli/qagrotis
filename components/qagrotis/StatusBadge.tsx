@@ -28,8 +28,8 @@ function CenarioTipoBadge({ tipo }: { tipo: CenarioTipo }) {
 
 function SuiteSituacaoBadge({ situacao }: { situacao: SuiteSituacao }) {
   const styles: Record<SuiteSituacao, string> = {
-    "Planejada":    "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
-    "Em andamento": "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
+    "Planejada":    "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
+    "Em andamento": "border-orange-500/30 bg-orange-500/10 text-orange-600 dark:border-orange-400/30 dark:bg-orange-400/10 dark:text-orange-400",
     "Concluída":    "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400",
   }
   return badge(styles[situacao], situacao)

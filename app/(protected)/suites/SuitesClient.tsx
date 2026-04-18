@@ -274,7 +274,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                   <col className="w-32" />
                   <col className="w-16" />
                   <col className="w-16" />
-                  <col className="w-24" />
+                  <col className="w-36" />
                   <col className="w-16" />
                 </colgroup>
                 <thead>
