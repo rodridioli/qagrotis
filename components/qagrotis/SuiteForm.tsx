@@ -1146,7 +1146,7 @@ export function SuiteForm({
             <DialogTitle>Encerrar suíte?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-text-secondary">
-            Ao encerrar, a suíte não poderá ser editada. Para retomar a edição, use o botão{" "}
+            A suíte ficará <strong>Concluída</strong> e bloqueada para edição. Para reabrir, use{" "}
             <strong>Editar Suíte</strong>.
           </p>
           <DialogFooter showCloseButton={false}>
