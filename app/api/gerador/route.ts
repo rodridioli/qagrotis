@@ -2,106 +2,89 @@ import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 import { getIntegracao } from "@/lib/actions/integracoes"
 
-const SYSTEM_PROMPT = `Aja como um QA Engineer Sênior especialista em testes funcionais, testes manuais e BDD.
+// Rate limit: max 30 AI generations per user per hour
+const geradorRateMap = new Map<string, { count: number; resetAt: number }>()
+function checkGeradorRateLimit(userId: string): boolean {
+  const now = Date.now()
+  for (const [k, v] of geradorRateMap) { if (now > v.resetAt) geradorRateMap.delete(k) }
+  const entry = geradorRateMap.get(userId)
+  if (!entry || now > entry.resetAt) {
+    geradorRateMap.set(userId, { count: 1, resetAt: now + 60 * 60_000 })
+    return true
+  }
+  if (entry.count >= 30) return false
+  entry.count++
+  return true
+}
 
-## REGRA ABSOLUTA — SAÍDA
-Sua resposta deve conter APENAS os cenários no formato exato abaixo.
-NÃO escreva nenhum texto antes do primeiro cenário (sem introdução, sem "Aqui estão os cenários", sem títulos, sem comentários).
-NÃO escreva nenhum texto depois do último cenário (sem conclusão, sem resumo).
-Comece DIRETAMENTE com "**Cenário:**" e termine com "---" após o último cenário.
+const SYSTEM_PROMPT = `Você é um QA Engineer Sênior. Gere casos de teste no formato EXATO abaixo. Qualquer desvio tornará os cenários inutilizáveis.
 
-## OBJETIVO
-Gerar casos de teste estruturados no formato QA (CTs) com base nas informações fornecidas.
+## FORMATO OBRIGATÓRIO — reproduza EXATAMENTE para cada cenário
 
-## LIMITAÇÕES
-- NÃO acessar URLs externas
-- Trabalhar apenas com o conteúdo fornecido
-- Se faltar informação, usar "Não informado" no campo correspondente
-
-## FORMATO OBRIGATÓRIO — copie EXATAMENTE esta estrutura para cada cenário
-
-**Cenário:** [nome do cenário — sem colchetes, escreva o nome real]
-
-**Módulo:** [nome do módulo funcional em que o cenário se encaixa. Ex: Cadastro de Propriedades, Financeiro, Estoque, Lançamentos, etc. Se não houver contexto, escreva exatamente: Não informado]
-
-**Tipo:** Manual
-
-**Descrição:** [descrição do cenário]
-
-**Caminho da Tela:** [caminho de navegação para chegar na tela. Ex: Menu > Cadastros > Propriedades > Nova. Se não houver, escreva: Não informado]
-
-**Regra de negócio**: [detalhamento da regra de negócio. Se não houver, escreva exatamente: Não informado]
-
-**Pré-condições**:
-- [pré-condição 1]
-- [pré-condição 2]
-- [adicione quantas forem necessárias]
-
-**BDD (Gherkin)**:
-DADO que o usuário [contexto inicial]
-E [condição adicional, se houver]
-QUANDO ele [ação executada]
-ENTÃO o sistema deve [resultado esperado principal]
-E [resultado adicional, se houver]
-
-**Resultado esperado:**
-- [resultado esperado 1]
-- [resultado esperado 2]
-- [resultado esperado 3]
-- [adicione quantos forem necessários]
+Cenário: Nome do cenário aqui
+Descrição: Texto descrevendo o que o cenário valida (obrigatório, escreva na mesma linha)
+Regra de negócio: Regra relevante ou "Não informado"
+Pré-condições:
+- Pré-condição 1
+- Pré-condição 2
+BDD (Gherkin):
+DADO que o usuário está na tela
+QUANDO ele executa a ação
+ENTÃO o sistema deve responder
+Resultado esperado:
+- Resultado 1
+- Resultado 2
 
 ---
 
-## REGRAS INVIOLÁVEIS
+## REGRAS CRÍTICAS — violá-las gera erro de importação
 
-1. Cada cenário DEVE conter EXATAMENTE estes 9 campos na ordem acima:
-   - **Cenário:**
-   - **Módulo:**
-   - **Tipo:**
-   - **Descrição:**
-   - **Caminho da Tela:**
-   - **Regra de negócio**:
-   - **Pré-condições**:
-   - **BDD (Gherkin)**:
-   - **Resultado esperado:**
+1. SEMPRE escreva "Descrição:" com o texto NA MESMA LINHA. Exemplo:
+   CORRETO:   Descrição: O sistema valida o campo obrigatório
+   INCORRETO: Descrição:
+              O sistema valida o campo obrigatório
 
-2. O campo **Tipo:** DEVE ser um destes valores: Manual, Automatizado, Man./Auto.
-   - Use "Manual" como padrão quando não especificado pelo contexto
+2. SEMPRE escreva "Resultado esperado:" seguido dos bullets na linha de baixo. Exemplo:
+   CORRETO:   Resultado esperado:
+              - O sistema exibe mensagem de sucesso
+   INCORRETO: Resultado esperado: O sistema exibe mensagem de sucesso
 
-3. O BDD DEVE seguir a estrutura Gherkin com palavras-chave em MAIÚSCULAS: DADO, E, QUANDO, ENTÃO
-   - Use "E" para adicionar condições ao DADO ou resultados ao ENTÃO
-   - NÃO use colchetes, placeholders ou texto entre [ ] no BDD — escreva o conteúdo real
+3. NÃO use asteriscos, negrito ou markdown em nenhum rótulo. Escreva texto puro.
+   INCORRETO: **Descrição:** texto  |  **Resultado esperado:**
+   CORRETO:   Descrição: texto      |  Resultado esperado:
 
-4. Separar cada cenário com "---" (inclusive após o último)
+4. Os 6 campos na ordem exata: Cenário → Descrição → Regra de negócio → Pré-condições → BDD (Gherkin) → Resultado esperado
 
-5. NUNCA adicionar campos extras fora da estrutura acima
+5. Separar CADA cenário com "---" (inclusive o último)
 
-6. Linguagem clara, objetiva e testável — evitar termos vagos
+6. NÃO escreva nenhum texto fora dos cenários (sem introdução, sem conclusão, sem numeração, sem headings)
 
-7. NÃO use formatação markdown de heading (# ou ##) nos cenários — use APENAS **bold** para os rótulos dos campos
+7. Comece DIRETAMENTE com "Cenário:" — a primeira palavra da resposta deve ser "Cenário:"
 
-## COBERTURA MÍNIMA
-
-Incluir cenários para:
+## COBERTURA
 - Fluxo feliz (caminho principal)
 - Validações de campos obrigatórios
 - Regra de negócio crítica
-- Cenário de erro relevante
-- Edge case (se aplicável)
+- Cenário de erro
 
-## CHECKLIST FINAL — valide CADA cenário antes de gerar a saída
+## EXEMPLO COMPLETO
 
-✓ Começa com **Cenário:** seguido do nome (sem colchetes)?
-✓ Tem **Módulo:** com texto real (ou "Não informado")?
-✓ Tem **Tipo:** com valor "Manual", "Automatizado" ou "Man./Auto."?
-✓ Tem **Descrição:** com texto real na mesma linha?
-✓ Tem **Caminho da Tela:** com o caminho de navegação (ou "Não informado")?
-✓ Tem **Regra de negócio**: com texto real (ou "Não informado")?
-✓ Tem **Pré-condições**: com bullets abaixo?
-✓ Tem **BDD (Gherkin)**: com DADO/QUANDO/ENTÃO sem colchetes?
-✓ Tem **Resultado esperado:** com bullets abaixo?
-✓ Termina com "---"?
-✓ NÃO há texto introdutório antes do primeiro **Cenário:**?`
+Cenário: Usuário realiza login com credenciais válidas
+Descrição: Verifica que o sistema autentica o usuário e redireciona para o painel
+Regra de negócio: Somente usuários ativos podem acessar o sistema
+Pré-condições:
+- Usuário cadastrado e ativo no sistema
+- Navegador com acesso à aplicação
+BDD (Gherkin):
+DADO que o usuário está na tela de login
+QUANDO ele informa e-mail e senha válidos e clica em Entrar
+ENTÃO o sistema deve autenticar e redirecionar para o painel principal
+Resultado esperado:
+- O login é realizado com sucesso
+- O usuário é redirecionado para o painel
+- O nome do usuário é exibido no cabeçalho
+
+---`
 
 // ── Provider routing ──────────────────────────────────────────────────────────
 
@@ -319,7 +302,19 @@ async function streamGemini(
 const OPENROUTER_MODEL_ALIASES: Record<string, string> = {
   "google/gemini-2.0-flash-lite:free": "google/gemini-2.0-flash-lite-preview-02-05:free",
   "google/gemini-flash-lite:free": "google/gemini-2.0-flash-lite-preview-02-05:free",
+  "openrouter/free": "openrouter/auto",
+  "free": "openrouter/auto",
 }
+
+// Fallback models to try in order when the configured model is unavailable
+const OPENROUTER_FALLBACK_MODELS = [
+  "openrouter/auto",                             // let OpenRouter pick best available
+  "mistralai/mistral-7b-instruct:free",
+  "meta-llama/llama-3.1-8b-instruct:free",
+  "meta-llama/llama-3.2-3b-instruct:free",
+  "nousresearch/hermes-3-llama-3.1-8b:free",
+  "google/gemma-3-4b-it:free",
+]
 
 function normalizeOpenRouterModel(model: string): string {
   return OPENROUTER_MODEL_ALIASES[model.toLowerCase()] ?? model
@@ -363,6 +358,70 @@ async function streamOpenRouter(
       ],
     }),
   })
+
+  // Helper to attempt a single model
+  async function tryModel(mdl: string): Promise<Response> {
+    const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+        "X-Title": "QAgrotis",
+      },
+      body: JSON.stringify({
+        model: mdl,
+        max_tokens: 8192,
+        stream: true,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: contentParts },
+        ],
+      }),
+    })
+    return r
+  }
+
+  // Try fallback models if the primary is unavailable (503/502/529)
+  if (!res.ok && (res.status === 503 || res.status === 502 || res.status === 529)) {
+    const fallbacks = OPENROUTER_FALLBACK_MODELS.filter((m) => m !== resolvedModel)
+    for (const fallbackModel of fallbacks) {
+      const fallbackRes = await tryModel(fallbackModel)
+      if (fallbackRes.ok) {
+        // Stream the fallback response
+        const { provider: _p, ...rest } = { provider: "openrouter" }
+        void rest
+        const enc2 = new TextEncoder()
+        const readable2 = new ReadableStream({
+          async start(controller) {
+            const reader = fallbackRes.body!.getReader()
+            const decoder = new TextDecoder()
+            let buf = ""
+            try {
+              while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                buf += decoder.decode(value, { stream: true })
+                const lines = buf.split("\n")
+                buf = lines.pop() ?? ""
+                for (const line of lines) {
+                  if (!line.startsWith("data:")) continue
+                  const data = line.slice(5).trim()
+                  if (data === "[DONE]") continue
+                  try {
+                    const parsed = JSON.parse(data)
+                    const text = parsed.choices?.[0]?.delta?.content ?? ""
+                    if (text) controller.enqueue(enc2.encode(text))
+                  } catch { /* ignore */ }
+                }
+              }
+            } finally { controller.close() }
+          },
+        })
+        return new Response(readable2, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
+      }
+    }
+  }
 
   if (!res.ok) {
     const err = await res.text()
@@ -518,8 +577,12 @@ export async function POST(req: NextRequest) {
 
   const { jira, imagens, integrationId } = body
 
+  if (!checkGeradorRateLimit(session.user.id!)) {
+    return new Response("Limite de geração atingido (30/hora). Aguarde antes de tentar novamente.", { status: 429 })
+  }
+
   if (!integrationId) {
-    return new Response("Selecione um Motor de IA antes de gerar.", { status: 400 })
+    return new Response("Nenhum modelo de IA selecionado. Recarregue a página e tente novamente.", { status: 400 })
   }
 
   if (!jira && (!imagens || imagens.length === 0)) {
@@ -527,8 +590,15 @@ export async function POST(req: NextRequest) {
   }
 
   const integracao = await getIntegracao(integrationId)
-  if (!integracao || !integracao.active) {
-    return new Response("Integração não encontrada ou inativa.", { status: 404 })
+  if (!integracao) {
+    return new Response(
+      `Modelo de IA não encontrado (ID: ${integrationId}). ` +
+      "Pode ter sido removido ou inativado. Recarregue a página e selecione outro modelo.",
+      { status: 404 }
+    )
+  }
+  if (!integracao.active) {
+    return new Response("O modelo de IA selecionado está inativo. Selecione outro nas Configurações.", { status: 404 })
   }
 
   const hasImages = imagens && imagens.length > 0
@@ -537,7 +607,9 @@ export async function POST(req: NextRequest) {
   if (jira) textParts.push(`## Contexto / Requisitos\n${jira}`)
   if (hasImages) textParts.push(`## Imagens anexadas\n${imagens.map((img, i) => `${i + 1}. ${img.name}`).join("\n")}`)
   const userMessage = textParts.join("\n\n")
-  const { provider, model, apiKey } = integracao
+  const { model, apiKey } = integracao
+  // Normalize provider to lowercase to handle values saved as "OpenRouter", "Google", etc.
+  const provider = integracao.provider.toLowerCase().trim()
 
   switch (provider) {
     case "google":

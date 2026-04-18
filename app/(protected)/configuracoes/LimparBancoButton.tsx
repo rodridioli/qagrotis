@@ -13,17 +13,14 @@ export default function LimparBancoButton() {
   const [confirmando, setConfirmando] = useState(false)
 
   function buildMessage(res: LimparResult): string {
-    const total = res.cenarios + res.suites + res.modulos + res.sistemas +
-      res.clientes + res.integracoes + res.usuarios
-    if (total === 0) return "Nenhum registro inativo encontrado."
+    const total = res.cenarios + res.suites + res.modulos + res.sistemas + res.clientes
+    if (total === 0) return "Nenhum registro encontrado para remover."
     const partes = [
-      res.cenarios   > 0 && `${res.cenarios} cenário${res.cenarios !== 1 ? "s" : ""}`,
-      res.suites     > 0 && `${res.suites} suíte${res.suites !== 1 ? "s" : ""}`,
-      res.modulos    > 0 && `${res.modulos} módulo${res.modulos !== 1 ? "s" : ""}`,
-      res.sistemas   > 0 && `${res.sistemas} sistema${res.sistemas !== 1 ? "s" : ""}`,
-      res.clientes   > 0 && `${res.clientes} cliente${res.clientes !== 1 ? "s" : ""}`,
-      res.integracoes > 0 && `${res.integracoes} integração${res.integracoes !== 1 ? "ões" : ""}`,
-      res.usuarios   > 0 && `${res.usuarios} usuário${res.usuarios !== 1 ? "s" : ""}`,
+      res.cenarios > 0 && `${res.cenarios} cenário${res.cenarios !== 1 ? "s" : ""}`,
+      res.suites   > 0 && `${res.suites} suíte${res.suites !== 1 ? "s" : ""}`,
+      res.modulos  > 0 && `${res.modulos} módulo${res.modulos !== 1 ? "s" : ""}`,
+      res.sistemas > 0 && `${res.sistemas} sistema${res.sistemas !== 1 ? "s" : ""}`,
+      res.clientes > 0 && `${res.clientes} cliente${res.clientes !== 1 ? "s" : ""}`,
     ].filter(Boolean).join(", ")
     return `${total} registro${total !== 1 ? "s" : ""} removido${total !== 1 ? "s" : ""}: ${partes}.`
   }
@@ -51,7 +48,7 @@ export default function LimparBancoButton() {
         {!confirmando ? (
           <Button variant="outline" onClick={handleClick} disabled={isPending}>
             <Trash2 />
-            {isPending ? "Limpando..." : "Limpar registros inativos"}
+            {isPending ? "Limpando..." : "Limpar registros"}
           </Button>
         ) : (
           <>
@@ -67,7 +64,7 @@ export default function LimparBancoButton() {
       </div>
       {confirmando && (
         <p className="text-xs text-red-600">
-          Atenção: esta ação é irreversível. Os registros inativos serão excluídos permanentemente.
+          Atenção: esta ação é irreversível. Todos os sistemas, módulos, cenários, suítes e clientes serão removidos. Usuários, Modelos de IA e Integração Jira serão mantidos.
         </p>
       )}
     </div>

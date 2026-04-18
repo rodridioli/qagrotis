@@ -70,8 +70,8 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
           apiKey: apiKey.trim()
         })
 
-        toast.success("Integração atualizada com sucesso.")
-        router.push("/configuracoes/integracoes")
+        toast.success("Modelo de IA atualizado com sucesso.")
+        router.push("/configuracoes/modelos-de-ia")
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Erro ao salvar")
       }
@@ -98,7 +98,7 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-sm">
           <Link
-            href="/configuracoes/integracoes"
+            href="/configuracoes/modelos-de-ia"
             title="Voltar"
             aria-label="Voltar"
             className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
@@ -109,8 +109,8 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
             Configurações
           </Link>
           <span className="text-text-secondary">/</span>
-          <Link href="/configuracoes/integracoes" className="text-text-secondary hover:text-brand-primary">
-            Integrações
+          <Link href="/configuracoes/modelos-de-ia" className="text-text-secondary hover:text-brand-primary">
+            Modelos de IA
           </Link>
           <span className="text-text-secondary">/</span>
           <span className="font-medium text-text-primary">Editar — {integracao.id}</span>

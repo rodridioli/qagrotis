@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import {
   Sparkles, Copy, RotateCcw,
   Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2, ExternalLink,
-  FileText, ListChecks, Plus, Eye, EyeOff, ShieldCheck, Loader2
+  FileText, ListChecks, Plus, Eye, EyeOff, ShieldCheck, Loader2, Link2, MoreVertical
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,12 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { criarCenario, atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
 import { parseMarkdownCenarios, buildImportItems, type ParsedCenario, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
@@ -50,17 +56,42 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   const [contexto, setContexto] = useState("")
+  const [jiraInput, setJiraInput] = useState(() =>
+    typeof window !== "undefined" ? sessionStorage.getItem("gerador-jira-input") ?? "" : ""
+  )
+  const [jiraConfigured, setJiraConfigured] = useState(false)
+
+  // Check if Jira is configured in localStorage
+  useEffect(() => {
+    const url = localStorage.getItem("jira_url")
+    const email = localStorage.getItem("jira_email")
+    const token = localStorage.getItem("jira_token")
+    setJiraConfigured(!!(url && email && token))
+  }, [])
   const activeIntegracoes = useMemo(() => integracoes.filter(i => i.active !== false), [integracoes])
   const [aiProvider, setAiProvider] = useState<string>(() => {
-    const fallback = activeIntegracoes[0]?.id ?? ""
-    if (typeof window === "undefined") return fallback
-    const saved = localStorage.getItem("gerador-ai-provider")
-    return (saved && activeIntegracoes.some((i) => i.id === saved)) ? saved : fallback
+    // Safe: activeIntegracoes is derived from server props, stable on first render
+    return activeIntegracoes[0]?.id ?? ""
   })
+
+  // On mount: restore saved preference if still valid, else keep first available
+  useEffect(() => {
+    const saved = localStorage.getItem("gerador-ai-provider")
+    if (saved && activeIntegracoes.some((i) => i.id === saved)) {
+      setAiProvider(saved)
+    } else if (activeIntegracoes.length > 0) {
+      setAiProvider(activeIntegracoes[0].id)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (aiProvider) localStorage.setItem("gerador-ai-provider", aiProvider)
   }, [aiProvider])
+
+  useEffect(() => {
+    sessionStorage.setItem("gerador-jira-input", jiraInput)
+  }, [jiraInput])
 
   const [output, setOutput] = useState("")
   const [apiError, setApiError] = useState<string | null>(null)
@@ -80,6 +111,8 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
   const [importProgressOpen, setImportProgressOpen] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [importedIds, setImportedIds] = useState<string[]>([])
+  const [suitePromptOpen, setSuitePromptOpen] = useState(false)
 
   // ── Inline integration modal state ─────────────────────────────────────────
   type KeyStatus = "idle" | "validating" | "valid" | "invalid" | "uncertain"
@@ -162,14 +195,61 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   )
 
   const cenarioCount = useMemo(
-    () => (output ? (output.match(/^\*\*Cenário:\*\*/gim) ?? []).length : 0),
+    () => (output ? (output.match(/^(\*\*Cenário:\*\*|Cenário:)/gim) ?? []).length : 0),
     [output]
   )
 
   async function generate() {
-    if (!contexto.trim() && anexoPreviews.length === 0) {
-      toast.error("Informe ao menos um contexto ou anexo antes de gerar.")
+    const hasInput = contexto.trim() || jiraInput.trim() || anexoPreviews.length > 0
+    if (!aiProvider) {
+      setActiveTab("contexto")
+      toast.error("Selecione um Modelo de IA antes de gerar.")
       return
+    }
+    if (!hasInput) {
+      setActiveTab("contexto")
+      toast.error("Preencha ao menos um campo: URL do Jira, Contexto ou Anexos.")
+      return
+    }
+
+    // Fetch Jira issue content if URL/key provided
+    let jiraContext = contexto.trim()
+    const jiraAttachments: { list: { name: string; dataUrl: string }[] } = { list: [] }
+    if (jiraInput.trim()) {
+      try {
+        const jiraUrl = localStorage.getItem("jira_url") ?? ""
+        const jiraEmail = localStorage.getItem("jira_email") ?? ""
+        const jiraToken = localStorage.getItem("jira_token") ?? ""
+        // Extract issue key from full URL or use as-is
+        const issueKey = jiraInput.trim().includes("/")
+          ? jiraInput.trim().split("/").pop() ?? jiraInput.trim()
+          : jiraInput.trim()
+        const jiraRes = await fetch("/api/jira", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "fetch", jiraUrl, issueKey, email: jiraEmail, apiToken: jiraToken }),
+        })
+        if (jiraRes.ok) {
+          const jiraData = await jiraRes.json() as {
+            summary?: string
+            descText?: string
+            attachments?: { name: string; mimeType: string; dataUrl: string }[]
+          }
+          const jiraContent = [
+            jiraData.summary ? `Issue: ${jiraData.summary}` : "",
+            jiraData.descText ? `Descrição:\n${jiraData.descText}` : "",
+          ].filter(Boolean).join("\n\n")
+          jiraContext = [jiraContent, jiraContext].filter(Boolean).join("\n\n---\n\n")
+          // Merge Jira attachments with existing anexos
+          if (jiraData.attachments && jiraData.attachments.length > 0) {
+            const jiraAnexos = jiraData.attachments.map(a => ({ name: a.name, dataUrl: a.dataUrl }))
+            // Prepend Jira attachments so they get analyzed first
+            const merged = [...jiraAnexos, ...anexoPreviews]
+            // Temporarily override for this generate call (we'll pass merged directly)
+            Object.assign(jiraAttachments, { list: merged })
+          }
+        }
+      } catch { /* continue without Jira data */ }
     }
 
     abortRef.current?.abort()
@@ -187,8 +267,8 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          jira: contexto || undefined,
-          imagens: anexoPreviews.length > 0 ? anexoPreviews : undefined,
+          jira: jiraContext || undefined,
+          imagens: jiraAttachments.list.length > 0 ? jiraAttachments.list : (anexoPreviews.length > 0 ? anexoPreviews : undefined),
           integrationId: aiProvider,
         }),
         signal: controller.signal,
@@ -221,8 +301,22 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     }
   }
 
+  // Convert plain output to rich Markdown for Jira/display
+  function formatOutputAsMarkdown(raw: string): string {
+    return raw
+      // Add bold + newlines before field labels
+      .replace(
+        /^(Cenário:|Descrição:|Regra de negócio:|Pré-condições:|BDD \(Gherkin\):|Resultado esperado:)/gim,
+        (_, label) => `\n\n**${label}**`
+      )
+      // Ensure --- separators have blank lines around them
+      .replace(/\n?---\n?/g, "\n\n---\n\n")
+      .trim()
+  }
+
   function handleCopyMarkdown() {
-    navigator.clipboard.writeText(output)
+    const markdown = formatOutputAsMarkdown(output)
+    navigator.clipboard.writeText(markdown)
     toast.success("Markdown copiado! Cole diretamente no Jira.")
   }
 
@@ -273,6 +367,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     setIsImporting(true)
 
     let success = 0
+    const createdIds: string[] = []
     try {
       for (let i = 0; i < toImport.length; i++) {
         const item = toImport[i]
@@ -301,8 +396,10 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         try {
           if (item.replace && item.existing) {
             await atualizarCenario(item.existing.id, payload)
+            createdIds.push(item.existing.id)
           } else {
-            await criarCenario(payload)
+            const created = await criarCenario(payload)
+            createdIds.push(created.id)
           }
           success++
         } catch (err) {
@@ -318,6 +415,9 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     if (success > 0) {
       router.refresh()
       toast.success(success === 1 ? "1 cenário importado com sucesso." : `${success} cenários importados com sucesso.`)
+      // Store IDs of newly created cenarios and prompt to create suite
+      setImportedIds(createdIds)
+      setSuitePromptOpen(true)
     }
   }
 
@@ -327,36 +427,36 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       <div className="flex flex-wrap items-center justify-end gap-2">
           {output && !loading && (
             <>
-              <Button
-                variant="outline"
-                onClick={() => setIsEditing((v) => !v)}
-                className="gap-2"
-              >
-                {isEditing ? <Check className="size-4" /> : <Pencil className="size-4" />}
-                {isEditing ? "Concluir edição" : "Editar"}
-              </Button>
-              <Button variant="outline" onClick={handleCopyMarkdown} className="gap-2">
-                <Copy className="size-4" />
-                Copiar Markdown
-              </Button>
-              <Button
-                variant="outline"
-                onClick={openImportSetup}
-                disabled={isImporting}
-                className="gap-2"
-              >
-                <Upload className="size-4" />
-                {isImporting ? "Importando…" : "Importar"}
-              </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={
+                <Button variant="outline" className="gap-2">
+                  <MoreVertical className="size-4" />
+                </Button>
+              } />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsEditing((v) => !v)}>
+                  {isEditing ? <Check className="size-4" /> : <Pencil className="size-4" />}
+                  {isEditing ? "Concluir edição" : "Editar"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopyMarkdown}>
+                  <Copy className="size-4" />
+                  Copiar
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleReset}>
+                  <RotateCcw className="size-4" />
+                  Limpar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="outline" onClick={openImportSetup} disabled={isImporting} className="gap-2">
+              <Upload className="size-4" />
+              {isImporting ? "Importando…" : "Importar"}
+            </Button>
             </>
           )}
-          <Button variant="outline" onClick={handleReset} disabled={loading || !output} className="gap-2">
-            <RotateCcw className="size-4" />
-            Limpar
-          </Button>
           <Button
             onClick={generate}
-            disabled={loading || !aiProvider || (!contexto.trim() && anexoPreviews.length === 0)}
+            disabled={loading}
             className="gap-2"
           >
             <Sparkles className="size-4" />
@@ -416,7 +516,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                   onClick={openIntModal}
                 >
                   <Plus className="size-4" />
-                  Adicionar Integração
+                  Adicionar Modelo
                 </Button>
               </div>
             ) : (
@@ -449,13 +549,31 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             )}
           </div>
 
+          {/* URL do Jira — visible when Jira is configured */}
+          {jiraConfigured && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                <Link2 className="size-3.5" />
+                URL do Jira
+              </label>
+              <Input
+                value={jiraInput}
+                onChange={(e) => setJiraInput(e.target.value)}
+                placeholder="https://agrotis.atlassian.net/browse/AC-1641 ou AC-1641"
+              />
+              <p className="text-xs text-text-secondary">
+                O conteúdo da issue será analisado junto com o contexto e os anexos.
+              </p>
+            </div>
+          )}
+
           {/* Contexto */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">Contexto</label>
             <textarea
               value={contexto}
               onChange={(e) => setContexto(e.target.value)}
-              placeholder="Cole aqui o texto da tarefa do Jira ou especifique o contexto."
+              placeholder="Cole aqui requisitos, regras de negócio ou descrição da funcionalidade."
               rows={10}
               className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 transition-colors"
             />
@@ -489,7 +607,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                 </div>
                 <p className="pl-6 text-sm text-text-primary">{apiError}</p>
                 <a
-                  href="/configuracoes/integracoes"
+                  href="/configuracoes/modelos-de-ia"
                   className="ml-6 inline-flex w-fit items-center gap-1 text-xs text-brand-primary hover:underline"
                 >
                   <ExternalLink className="size-3" />
@@ -523,34 +641,31 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                  h2: ({ children }) => (
-                    <h2 className="mb-1 mt-6 text-base font-bold text-text-primary first:mt-0">
-                      {children}
-                    </h2>
-                  ),
                   p: ({ children }) => (
-                    <p className="text-sm leading-relaxed text-text-primary">{children}</p>
+                    <p className="text-sm leading-[1.7] text-text-primary mb-1">{children}</p>
                   ),
                   strong: ({ children }) => (
                     <strong className="font-semibold text-text-primary">{children}</strong>
                   ),
                   ul: ({ children }) => (
-                    <ul className="ml-4 space-y-0.5 list-disc text-sm text-text-primary">{children}</ul>
+                    <ul className="space-y-0.5 pl-1 text-sm text-text-primary mb-2">{children}</ul>
                   ),
                   li: ({ children }) => (
-                    <li className="text-sm leading-relaxed text-text-primary">{children}</li>
+                    <li className="flex gap-2 text-sm leading-relaxed text-text-primary">
+                      <span className="mt-0.5 shrink-0">•</span>
+                      <span>{children}</span>
+                    </li>
                   ),
                   hr: () => (
-                    <hr className="my-5 border-border-default" />
-                  ),
-                  code: ({ children }) => (
-                    <code className="rounded bg-neutral-grey-100 px-1 py-0.5 font-mono text-xs text-text-primary">
-                      {children}
-                    </code>
+                    <div className="my-8 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border-default" />
+                      <span className="text-[10px] font-medium uppercase tracking-widest text-text-secondary">próximo cenário</span>
+                      <div className="h-px flex-1 bg-border-default" />
+                    </div>
                   ),
                 }}
               >
-                {output}
+                {formatOutputAsMarkdown(output)}
               </ReactMarkdown>
             )}
 
@@ -824,7 +939,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       <Dialog open={intModalOpen} onOpenChange={(open) => { if (!open) setIntModalOpen(false) }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Adicionar Integração</DialogTitle>
+            <DialogTitle>Adicionar Modelo</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -928,6 +1043,30 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             <Button onClick={handleSalvarIntegracao} disabled={isIntModalPending || intKeyStatus === "validating"}>
               <Check className="size-4" />
               {isIntModalPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Suite Prompt Dialog ── */}
+      <Dialog open={suitePromptOpen} onOpenChange={setSuitePromptOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Criar Suíte de Testes?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-text-secondary">
+            {importedIds.length} cenário{importedIds.length !== 1 ? "s" : ""} importado{importedIds.length !== 1 ? "s" : ""} com sucesso.
+            Deseja criar uma nova Suíte de Testes com esses cenários?
+          </p>
+          <DialogFooter showCloseButton={false}>
+            <Button variant="outline" onClick={() => setSuitePromptOpen(false)}>
+              Agora não
+            </Button>
+            <Button onClick={() => {
+              setSuitePromptOpen(false)
+              router.push(`/suites/nova?cenarios=${importedIds.join(",")}`)
+            }}>
+              Criar Suíte
             </Button>
           </DialogFooter>
         </DialogContent>

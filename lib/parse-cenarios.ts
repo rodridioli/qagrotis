@@ -59,7 +59,7 @@ const FIELD_SECTION_RE =
  *   **CT-001 — Title**        (numbered, everything inside bold)
  */
 const BOLD_TITLE_RE =
-  /^\*\*(cenário|título|titulo|ct-?\d*|nome)\s*[:\-–—]\s*\*\*\s*\S|\*\*(cenário|título|titulo|ct-?\d*|nome)\*\*\s*[:\-–—]\s*\S|\*\*(cenário|título|titulo|ct-?\d*|nome)[:\s-–—]+[^*]+\*\*\s*$/i
+  /^\*\*(cenário|título|titulo|ct-?\d*|nome)\s*[:\-–—]\s*\*\*\s*\S|\*\*(cenário|título|titulo|ct-?\d*|nome)\*\*\s*[:\-–—]\s*\S|\*\*(cenário|título|titulo|ct-?\d*|nome)[:\s-–—]+[^*]+\*\*\s*$|^(cenário|título|titulo|nome)\s*:\s*\S/i
 
 /**
  * Parses a markdown string and returns only real scenario blocks.
@@ -78,6 +78,10 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
     .replace(/\\([*#\-`![\](){}|>])/g, "$1")
+    // Strip bold markers from field labels so **Descrição:** → Descrição:
+    // This handles models that ignore the "no bold" instruction
+    .replace(/^\*\*(Cenário|Descrição|Descricao|Regra de neg[oó]cio|Pré-condições|Pre-condicoes|BDD(\s*\(Gherkin\))?|Resultado esperado|Resultados esperados)\*\*\s*:/gim, "$1:")
+    .replace(/^\*\*(Cenário|Descrição|Descricao|Regra de neg[oó]cio|Pré-condições|Pre-condicoes|BDD(\s*\(Gherkin\))?|Resultado esperado|Resultados esperados):\s*\*\*/gim, "$1:")
 
   // Primary split on --- separators
   const rawBlocks = normalized.split(/\n---+\n?/)
@@ -139,9 +143,13 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
         const mB = line.match(/^\*\*(cenário|título|titulo|ct-?\d*|nome)\*\*\s*[:\-–—]\s*(.+)/i)
         // Pattern C: **Label: Title**   (everything inside bold)
         const mC = line.match(/^\*\*(cenário|título|titulo|ct-?\d*|nome)[:\s-–—]+([^*]+)\*\*\s*$/i)
-        const m = mA ?? mB ?? mC
+        // Pattern D: Cenário: Title  (plain text, no bold/markdown)
+        const mD = !mA && !mB && !mC
+          ? line.match(/^(?:cenário|título|titulo|nome)\s*:\s*(.+)/i)
+          : null
+        const m = mA ?? mB ?? mC ?? mD
         if (m) {
-          name = m[2].replace(/^ct-?\d+\s*[-–—:]\s*/i, "").trim()
+          name = (m[2] ?? m[1]).replace(/^ct-?\d+\s*[-–—:]\s*/i, "").trim()
           nameLineIdx = i
           break
         }
@@ -158,9 +166,10 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
       // H1-H4 headings
       if (/^#{1,4}\s/.test(line)) return true
       // Inline bold label on same line: **Field:** value or **Field**: value
-      // (used in the new format for Cenário, Descrição, Regra de negócio)
       if (/^\s*\*\*(?:cenário|título|titulo|descri[çc][aã]o|descricao|regra\s+de\s+neg[oó]cio|m[oó]dulo|cliente|risco|tipo)[:\s]+\*\*\s*\S/.test(line)) return true
       if (/^\s*\*\*(?:cenário|título|titulo|descri[çc][aã]o|descricao|regra\s+de\s+neg[oó]cio|m[oó]dulo|cliente|risco|tipo)\*\*[:\s]+\S/.test(line)) return true
+      // Plain text label: "Descrição: value" or "Pré-condições:" or "BDD (Gherkin):" etc.
+      if (/^(?:cenário|descrição|descricao|regra\s+de\s+neg[oó]cio|pré-condições|pre-condicoes|bdd(?:\s*\(gherkin\))?|resultado\s+esperado|resultados?\s+esperados?)\s*:/i.test(line)) return true
       return false
     }
 
@@ -192,6 +201,10 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
       // **Field**:  alone — colon outside bold, block below
       const reHeaderExt = new RegExp(`^\\s*\\*\\*(${kp})\\*\\*\\s*:\\s*$`, "i")
       const reHeading   = new RegExp(`^#{2,4}\\s+(${kp})\\s*$`, "i")
+      // Plain text inline: "Field: value"  (no bold, no heading)
+      const rePlainInline = new RegExp(`^\\s*(${kp})\\s*:\\s*(\\S.*)$`, "i")
+      // Plain text block: "Field:" alone, content on following lines
+      const rePlainBlock  = new RegExp(`^\\s*(${kp})\\s*:\\s*$`, "i")
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i]
@@ -203,7 +216,18 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
             if (isHeader(lines[j])) break
             buf.push(lines[j])
           }
-          // Preserve multi-line content (BDD, lists, etc.)
+          return buf.join("\n").trim()
+        }
+        // Plain text inline match
+        const mPlain = line.match(rePlainInline)
+        if (mPlain) return (mPlain[2] ?? "").trim()
+        // Plain text block match
+        if (rePlainBlock.test(line)) {
+          const buf: string[] = []
+          for (let j = i + 1; j < lines.length; j++) {
+            if (isHeader(lines[j])) break
+            buf.push(lines[j])
+          }
           return buf.join("\n").trim()
         }
       }
@@ -227,13 +251,13 @@ export function parseMarkdownCenarios(text: string): ParsedCenario[] {
       risco,
       tipo,
       // Use labeled **Descrição:** if present; otherwise first plain paragraph after title
-      descricao:         getField(["descrição", "descricao", "description", "objetivo"]) || descriptionFallback,
+      descricao:         getField(["descrição", "descricao", "description", "description:", "objetivo", "descr"]) || descriptionFallback,
       caminhoTela:       getField(["caminho da tela", "caminho", "screen path", "path"]),
       regraDeNegocio:    getField(["regra de negócio", "regra de negocio", "regra", "business rule"]),
       preCondicoes:      getField(["pré-condições", "pré condições", "pre-condições", "pre-condicoes", "preconditions"]),
       // Removed "cenário"/"cenario"/"scenario" to avoid collision with title labels
       bdd:               getField(["bdd (gherkin)", "bdd", "gherkin"]),
-      resultadoEsperado: getField(["resultados esperados", "resultado esperado", "resultado", "resultados", "expected result"]),
+      resultadoEsperado: getField(["resultados esperados", "resultado esperado", "resultado esperado:", "resultados", "resultado", "expected result", "expected results"]),
     })
   }
 
@@ -277,9 +301,12 @@ export function buildImportItems(
       ) ?? null
 
     let error: string | undefined
-    // Required: scenarioName (already checked), descricao, resultadoEsperado
-    if (!pFinal.descricao || !pFinal.resultadoEsperado) {
-      error = "Campos obrigatórios ausentes: Descrição e/ou Resultado esperado"
+    // Allow import if at least scenarioName is present.
+    // descricao falls back to bdd (handled in import handler),
+    // resultadoEsperado falls back to "-" (handled in import handler).
+    // Only block if truly nothing useful was parsed.
+    if (!pFinal.descricao && !pFinal.bdd && !pFinal.resultadoEsperado) {
+      error = "Cenário sem conteúdo: nenhum campo foi identificado no texto gerado"
     }
 
     return {

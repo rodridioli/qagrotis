@@ -109,7 +109,7 @@ function toRecord(row: any): CenarioRecord {
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getCenarios(): Promise<CenarioRecord[]> {
-  const rows = await prisma.cenario.findMany({ orderBy: { createdAt: "asc" } })
+  const rows = await prisma.cenario.findMany({ orderBy: { createdAt: "asc" }, take: 2000 })
   return rows.map(toRecord)
 }
 
@@ -143,7 +143,7 @@ export async function criarCenario(data: {
   deps: string[]
 }): Promise<CenarioRecord> {
   const session = await requireSession()
-  const createdBy = session?.user?.name ?? session?.user?.email ?? undefined
+  const createdBy = session?.user?.email ?? session?.user?.name ?? undefined
 
   let parsed: z.infer<typeof cenarioCreateSchema>
   try {
@@ -182,6 +182,7 @@ export async function criarCenario(data: {
   const row = await prisma.cenario.create({
     data: {
       id,
+      createdAt:         new Date(),
       scenarioName:      parsed.scenarioName,
       system:            parsed.system,
       module:            parsed.module,

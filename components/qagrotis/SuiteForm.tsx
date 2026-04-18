@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink } from "lucide-react"
+import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -45,6 +45,7 @@ export interface SuiteFormProps {
   initialSistema?: string
   allModulos?: ModuloRecord[]
   allCenarios?: CenarioRecord[]
+  preloadedSuite?: { cenarios: { id: string; name: string; module: string; tipo: string; execucoes: number; erros: number }[] }
 }
 
 interface SuiteCenario {
@@ -77,7 +78,8 @@ export function SuiteForm({
   systemList = SYSTEM_LIST,
   initialSistema,
   allModulos = [],
-  allCenarios = []
+  allCenarios = [],
+  preloadedSuite,
 }: SuiteFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -87,7 +89,12 @@ export function SuiteForm({
   const tabParam = searchParams.get("tab")
   const initialTab = (tabParam === "cenarios" || tabParam === "historico") ? tabParam : "cadastro"
   const [activeTab, setActiveTab] = useState<"cadastro" | "cenarios" | "historico">(initialTab)
-  const [cenarios, setCenarios] = useState<SuiteCenario[]>(suite?.cenarios ?? [])
+  const [cenarios, setCenarios] = useState<SuiteCenario[]>(
+    suite?.cenarios ?? preloadedSuite?.cenarios?.map(c => ({
+      id: c.id, name: c.name, module: c.module, tipo: c.tipo,
+      execucoes: c.execucoes, erros: c.erros, deps: 0,
+    })) ?? []
+  )
   const [historico, setHistorico] = useState<HistoricoItem[]>(() => {
     const raw = (suite?.historico ?? []) as HistoricoItem[]
     // Sort by timestamp descending (newest first)
@@ -100,6 +107,7 @@ export function SuiteForm({
   }, [])
 
   const [addCenarioOpen, setAddCenarioOpen] = useState(false)
+  const [selectedCenarios, setSelectedCenarios] = useState<Set<string>>(new Set())
   const [suiteName, setSuiteName] = useState(suite?.suiteName || "")
   const [versao, setVersao] = useState(suite?.versao || "")
   const [selectedModule, setSelectedModule] = useState(suite?.modulo || "")
@@ -110,9 +118,50 @@ export function SuiteForm({
   const [isSaving, setIsSaving] = useState(false)
   const [selectedHistorico, setSelectedHistorico] = useState<Set<number>>(new Set())
 
+  function buildCenariosJiraContent(ids: Set<string>): string {
+    const selected = cenarios.filter(c => ids.has(c.id))
+    if (selected.length === 0) return ""
+    const resultIcon = (r: string) => r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : "⏳"
+    const fieldOrDash = (v: string | undefined | null) => (v && v.trim()) ? v.trim() : "—"
+    const details = selected.map((c) => {
+      const cenario = allCenarios.find((ac) => ac.id === c.id)
+      return [
+        `### ${c.id} — ${c.name}`,
+        ``,
+        `- **Sistema:** ${fieldOrDash(cenario?.system ?? suite?.sistema)}`,
+        `- **Módulo:** ${fieldOrDash(c.module)}`,
+        `- **Tipo:** ${fieldOrDash(c.tipo)}`,
+        `- **Descrição:** ${fieldOrDash(cenario?.descricao)}`,
+        `- **Regra de Negócio:** ${fieldOrDash(cenario?.regraDeNegocio)}`,
+        `- **Pré-condições:** ${fieldOrDash(cenario?.preCondicoes)}`,
+        `- **BDD (Gherkin):** ${fieldOrDash(cenario?.bdd)}`,
+        `- **Resultado esperado:** ${fieldOrDash(cenario?.resultadoEsperado)}`,
+        `- **Testes:** ${historicoStats[c.id]?.execucoes ?? 0} | **Erros:** ${historicoStats[c.id]?.erros ?? 0}`,
+      ].join("\n")
+    }).join("\n---\n\n")
+    const exportDate = new Date().toLocaleDateString("pt-BR")
+    return [
+      `## Cenários de Teste — ${suite?.suiteName ?? "Suíte"}`,
+      `*Exportado em ${exportDate}*`,
+      ``,
+      `---`,
+      ``,
+      details,
+    ].join("\n")
+  }
+
   function handleExportarJira() {
     const selected = sortedHistorico.filter((h) => selectedHistorico.has(h._originalIdx))
     if (selected.length === 0) return
+    // Check Jira credentials before opening modal
+    const creds = getJiraCredentials()
+    if (!creds.jiraUrl || !creds.email || !creds.apiToken) {
+      toast.error("Configure a Integração Jira em Configurações antes de exportar.", {
+        action: { label: "Configurar", onClick: () => router.push("/configuracoes") },
+      })
+      return
+    }
+    // Build content and open modal
 
     const resultIcon = (r: string) => r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : "⏳"
     const fieldOrDash = (v: string | undefined | null) => (v && v.trim()) ? v.trim() : "—"
@@ -170,12 +219,95 @@ export function SuiteForm({
       summary,
     ].join("\n")
 
-    navigator.clipboard.writeText(content)
-    toast.success("Cole o conteúdo selecionado no Jira.", {
-      description: `${selected.length} cenário${selected.length !== 1 ? "s" : ""} copiado${selected.length !== 1 ? "s" : ""} para a área de transferência.`,
-    })
+    setJiraContent(content)
+    setJiraModalOpen(true)
+  }
+
+  function getJiraCredentials() {
+    return {
+      jiraUrl: localStorage.getItem("jira_url") ?? "",
+      email: localStorage.getItem("jira_email") ?? "",
+      apiToken: localStorage.getItem("jira_token") ?? "",
+    }
+  }
+
+  function parseIssueKey(input: string): string {
+    // Accept full URL or bare key
+    const trimmed = input.trim()
+    if (trimmed.includes("/")) return trimmed.split("/").pop() ?? trimmed
+    return trimmed
+  }
+
+  async function handleJiraExport() {
+    const issueKey = parseIssueKey(jiraIssueInput)
+    if (!issueKey) { toast.error("Informe a URL ou chave da issue."); return }
+    const creds = getJiraCredentials()
+    if (!creds.jiraUrl || !creds.email || !creds.apiToken) {
+      toast.error("Configure a Integração Jira em Configurações antes de exportar.")
+      return
+    }
+    setJiraLoading(true)
+    setJiraExisting(null)
+    try {
+      const res = await fetch("/api/jira", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "fetch", jiraUrl: creds.jiraUrl, issueKey, email: creds.email, apiToken: creds.apiToken }),
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        toast.error(`Erro ao buscar issue: ${err.slice(0, 150)}`)
+        return
+      }
+      const data = await res.json() as { summary: string; descText: string; hasContent: boolean }
+      if (data.hasContent) {
+        // Show step 2 with existing content
+        setJiraExisting(data)
+        setJiraMode("append")
+      } else {
+        // No existing content — send directly
+        await sendToJira(issueKey, creds, "replace")
+      }
+    } catch {
+      toast.error("Não foi possível conectar ao Jira.")
+    } finally {
+      setJiraLoading(false)
+    }
+  }
+
+  async function sendToJira(issueKey: string, creds: { jiraUrl: string; email: string; apiToken: string }, mode: "replace" | "append") {
+    setJiraLoading(true)
+    try {
+      const res = await fetch("/api/jira", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jiraUrl: creds.jiraUrl, issueKey, apiToken: creds.apiToken, email: creds.email, content: jiraContent, mode }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error((data as string) || "Erro ao enviar para o Jira.")
+      toast.success("Exportado para o Jira com sucesso!", {
+        description: `Issue ${issueKey} atualizada.`,
+        action: { label: "Abrir no Jira", onClick: () => window.open(data.url, "_blank") },
+      })
+      setJiraModalOpen(false)
+      setJiraIssueInput("")
+      setJiraExisting(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao conectar com o Jira.")
+    } finally {
+      setJiraLoading(false)
+    }
   }
   const [removerHistoricoOpen, setRemoverHistoricoOpen] = useState(false)
+
+  // ── Jira export modal ─────────────────────────────────────────────────────
+  const [jiraModalOpen, setJiraModalOpen] = useState(false)
+  const [jiraIssueInput, setJiraIssueInput] = useState("")  // URL completa ou chave
+  const [jiraLoading, setJiraLoading] = useState(false)
+  const [jiraContent, setJiraContent] = useState("")
+  const [jiraInputTouched, setJiraInputTouched] = useState(false)
+  const [jiraExisting, setJiraExisting] = useState<{ summary: string; descText: string; hasContent: boolean } | null>(null)
+  const [jiraMode, setJiraMode] = useState<"replace" | "append">("replace")
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
   const [addSearch, setAddSearch] = useState("")
   const [addModuloFilter, setAddModuloFilter] = useState("")
@@ -313,6 +445,48 @@ export function SuiteForm({
     setSelectedAddIds(new Set())
     setAddCenarioOpen(false)
   }
+
+  // ── Auto-save when cenarios change (only for existing suites with ID) ────────
+  const isFirstRender = React.useRef(true)
+  const autoSaveTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    // Skip on first render — we don't want to save immediately on mount
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    // Only auto-save for existing suites (edit mode with an ID)
+    if (mode !== "edit" || !suite?.id) return
+
+    // Debounce to avoid multiple rapid saves
+    if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current)
+    autoSaveTimeout.current = setTimeout(async () => {
+      try {
+        await atualizarSuite(suite.id, {
+          suiteName,
+          versao,
+          sistema: sistemaSelecionado,
+          modulo: selectedModule,
+          tipo,
+          cliente: "",
+          objetivo: null,
+          cenarios: cenarios.map((c) => ({
+            id: c.id, name: c.name, module: c.module,
+            execucoes: c.execucoes, erros: c.erros, deps: c.deps, tipo: c.tipo,
+          })),
+        })
+        toast.success("Suíte salva automaticamente.", { duration: 2000 })
+      } catch {
+        // Silent fail — user can still save manually
+      }
+    }, 600)
+
+    return () => {
+      if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cenarios])
 
   async function confirmRemoverHistorico() {
     if (!suite?.id) return
@@ -471,6 +645,18 @@ export function SuiteForm({
         {/* ── Cenários ── */}
         <div className={activeTab !== "cenarios" ? "hidden" : ""}>
           <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border-default px-5 py-3">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={selectedCenarios.size === 0}
+              onClick={() => {
+                setJiraContent(buildCenariosJiraContent(selectedCenarios))
+                setJiraModalOpen(true)
+              }}
+            >
+              <ExternalLink className="size-4" />
+              Exportar para o Jira
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setAddCenarioOpen(true)}>
               <Plus className="size-4" />
               Adicionar Cenário
@@ -485,16 +671,26 @@ export function SuiteForm({
             <div className="overflow-x-auto">
               <table className="w-full table-fixed text-sm">
                 <colgroup>
+                  <col className="w-10" />
                   <col className="w-24" />
                   <col />
                   <col className="w-32" />
                   <col className="w-24" />
                   <col className="w-16" />
                   <col className="w-32" />
-                  <col className="w-16" />
+                  <col className="w-24" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
+                    <th className="px-4 py-3 text-left">
+                      <Checkbox
+                        checked={cenarios.length > 0 && selectedCenarios.size === cenarios.length}
+                        onChange={() => {
+                          if (selectedCenarios.size === cenarios.length) setSelectedCenarios(new Set())
+                          else setSelectedCenarios(new Set(cenarios.map(c => c.id)))
+                        }}
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
@@ -509,6 +705,19 @@ export function SuiteForm({
                     const isCenarioAtivo = isCenarioAtivoFn(c.id)
                     return (
                     <tr key={c.id} className={`border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50${!isCenarioAtivo ? " opacity-60" : ""}`}>
+                      <td className="px-4 py-3">
+                        <Checkbox
+                          checked={selectedCenarios.has(c.id)}
+                          onChange={() => {
+                            setSelectedCenarios(prev => {
+                              const next = new Set(prev)
+                              if (next.has(c.id)) next.delete(c.id)
+                              else next.add(c.id)
+                              return next
+                            })
+                          }}
+                        />
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {isCenarioAtivo ? (
                           <Link
@@ -517,9 +726,7 @@ export function SuiteForm({
                           >{c.id}</Link>
                         ) : (
                           <Link
-                            href={`/cenarios/${c.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
                             className="font-medium text-text-secondary hover:underline"
                           >{c.id}</Link>
                         )}
@@ -551,42 +758,43 @@ export function SuiteForm({
                           </button>
                         ) : (() => {
                           const cenarioAtivo = isCenarioAtivoFn(c.id)
+                          const href = suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`
                           return (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                render={
-                                  <button type="button" className="flex size-9 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100" />
-                                }
-                              >
-                                <MoreVertical className="size-4" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" side="bottom">
-                                {cenarioAtivo ? (
-                                  <DropdownMenuItem>
-                                    <Link
-                                      href={suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`}
-                                      className="w-full"
-                                    >
-                                      Testar
-                                    </Link>
+                            <div className="flex items-center justify-end gap-4">
+                              {cenarioAtivo && (
+                                <Link
+                                  href={href}
+                                  aria-label="Testar Cenário"
+                                  title="Testar Cenário"
+                                  className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                >
+                                  <Play className="size-4" />
+                                </Link>
+                              )}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  render={
+                                    <button
+                                      type="button"
+                                      aria-label="Mais ações"
+                                      className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                    />
+                                  }
+                                >
+                                  <MoreVertical className="size-4" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" side="bottom">
+                                  {!cenarioAtivo && (
+                                    <DropdownMenuItem>
+                                      <Link href={href} className="w-full">Visualizar</Link>
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
+                                    Remover
                                   </DropdownMenuItem>
-                                ) : (
-                                  <DropdownMenuItem>
-                                    <Link
-                                      href={`/cenarios/${c.id}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="w-full"
-                                    >
-                                      Visualizar
-                                    </Link>
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
-                                  Remover
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           )
                         })()}
                       </td>
@@ -662,8 +870,11 @@ export function SuiteForm({
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedHistorico.map((h) => (
-                    <tr key={`${h.id}-${h._originalIdx}`} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
+                  {sortedHistorico.map((h) => {
+                    // Inativo no histórico se: removido da suíte OU inativo no banco
+                    const hAtivo2 = existingIds.has(h.id) && isCenarioAtivoFn(h.id)
+                    return (
+                    <tr key={`${h.id}-${h._originalIdx}`} className={`border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50${!hAtivo2 ? " opacity-60" : ""}`}>
                       <td className="px-4 py-3">
                         <Checkbox
                           checked={selectedHistorico.has(h._originalIdx)}
@@ -692,10 +903,25 @@ export function SuiteForm({
                             >{h.id}</Link>
                           )
                         })() : (
+                          // Cenário removido da suíte: exibe ID sem link mas como texto
                           <span className="font-medium text-text-secondary">{h.id}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-text-primary">{h.cenario}</td>
+                      <td className="px-4 py-3 text-text-primary">
+                        <span className="flex items-center gap-2">
+                          {h.cenario}
+                          {!existingIds.has(h.id) && (
+                            <span className="shrink-0 rounded-full bg-neutral-grey-200 px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
+                              Removido
+                            </span>
+                          )}
+                          {existingIds.has(h.id) && !isCenarioAtivoFn(h.id) && (
+                            <span className="shrink-0 rounded-full bg-neutral-grey-200 px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
+                              Inativo
+                            </span>
+                          )}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-text-secondary max-w-0">
                         <span className="block truncate" title={h.module}>
                           {h.module && h.module.length > 16 ? `${h.module.slice(0, 16)}…` : (h.module || "—")}
@@ -706,7 +932,7 @@ export function SuiteForm({
                       <td className="px-4 py-3 text-text-secondary">{h.hora ?? "—"}</td>
                       <td className="px-4 py-3"><ResultadoBadge resultado={h.resultado} /></td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
@@ -814,6 +1040,80 @@ export function SuiteForm({
         confirmLabel="Remover"
         onConfirm={confirmRemoverHistorico}
       />
+
+      {/* ── Jira Modal — Passo 1: URL/Chave ── */}
+      <Dialog open={jiraModalOpen && !jiraExisting} onOpenChange={(v) => { if (!v) { setJiraModalOpen(false); setJiraIssueInput(""); setJiraInputTouched(false) } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Exportar para o Jira</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                URL ou chave da issue <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="https://agrotis.atlassian.net/browse/UX-951 ou UX-951"
+                value={jiraIssueInput}
+                onChange={(e) => setJiraIssueInput(e.target.value)}
+                onBlur={() => setJiraInputTouched(true)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !jiraLoading) handleJiraExport() }}
+                autoFocus
+              />
+              {jiraInputTouched && !jiraIssueInput.trim() && (
+                <p className="text-xs text-destructive">Campo obrigatório.</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <Button variant="outline" onClick={() => { setJiraModalOpen(false); setJiraIssueInput("") }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleJiraExport} disabled={jiraLoading || !jiraIssueInput.trim()}>
+              {jiraLoading ? "Verificando..." : "Exportar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Jira Modal — Passo 2: Conteúdo existente ── */}
+      <Dialog open={jiraModalOpen && jiraExisting !== null} onOpenChange={(v) => { if (!v) { setJiraExisting(null) } }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{jiraExisting?.summary || parseIssueKey(jiraIssueInput)}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-2">
+            <p className="text-sm text-text-secondary">
+              Esta issue já possui conteúdo na descrição. Como deseja prosseguir?
+            </p>
+            <div className="max-h-40 overflow-y-auto rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2">
+              <pre className="whitespace-pre-wrap text-xs leading-relaxed text-text-secondary">
+                {(jiraExisting?.descText ?? "").length > 800
+                  ? (jiraExisting?.descText ?? "").slice(0, 800) + "..."
+                  : (jiraExisting?.descText ?? "")}
+              </pre>
+            </div>
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <Button variant="outline" onClick={() => setJiraExisting(null)} disabled={jiraLoading}>
+              Cancelar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => { const creds = getJiraCredentials(); sendToJira(parseIssueKey(jiraIssueInput), creds, "replace") }}
+              disabled={jiraLoading}
+            >
+              {jiraLoading ? "Enviando..." : "Substituir"}
+            </Button>
+            <Button
+              onClick={() => { const creds = getJiraCredentials(); sendToJira(parseIssueKey(jiraIssueInput), creds, "append") }}
+              disabled={jiraLoading}
+            >
+              {jiraLoading ? "Enviando..." : "Acrescentar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

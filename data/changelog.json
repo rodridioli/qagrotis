@@ -1,5 +1,356 @@
 [
   {
+    "version": "1.6.17",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "bug de segurança — usuário OAuth externo era tratado como admin quando currentUser=null + getUserType sempre retorna Padrão para OAuth externos",
+      "usuários Google OAuth externos agora aparecem em /configuracoes/usuarios + Sprint 1-3 QA audit (error.tsx, loading.tsx, rate limiting, perf indexes, Jira httpOnly cookies)",
+      "jira GET handler retorna 405 em vez de 404 + stories faltantes criadas",
+      "forgot-password detecta conta Google e exibe mensagem orientando reset pelo Google",
+      "e-mail via Gmail SMTP funcionando — remove endpoint de debug",
+      "/api/test-mail adicionado ao proxy.ts (middleware real)",
+      "/api/test-mail adicionado às rotas públicas do auth",
+      "SMTP usa SMTP_USER como remetente — Gmail rejeita from diferente da conta autenticada",
+      "e-mail via Gmail SMTP funcionando + remove endpoint de debug",
+      "test-mail usa sendMail com fallback SMTP",
+      "mail.ts retorna erro real do Resend em vez de mensagem genérica",
+      "trim EMAIL_FROM e RESEND_API_KEY para remover newline invisível que quebrava o envio",
+      "cenário removido da suíte aparece como Removido no histórico + email via domínio verificado + remove envio de senha em texto puro",
+      "limpar registros invalida cache do menu lateral — itens ficam desabilitados imediatamente",
+      "remove prisma db seed do build — seed estava apagando dados reais a cada deploy"
+    ]
+  },
+  {
+    "version": "1.6.16",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "usuários Google OAuth externos agora aparecem em /configuracoes/usuarios + Sprint 1-3 QA audit (error.tsx, loading.tsx, rate limiting, perf indexes, Jira httpOnly cookies)",
+      "jira GET handler retorna 405 em vez de 404 + stories faltantes criadas",
+      "forgot-password detecta conta Google e exibe mensagem orientando reset pelo Google",
+      "e-mail via Gmail SMTP funcionando — remove endpoint de debug",
+      "/api/test-mail adicionado ao proxy.ts (middleware real)",
+      "/api/test-mail adicionado às rotas públicas do auth",
+      "SMTP usa SMTP_USER como remetente — Gmail rejeita from diferente da conta autenticada",
+      "e-mail via Gmail SMTP funcionando + remove endpoint de debug",
+      "test-mail usa sendMail com fallback SMTP",
+      "mail.ts retorna erro real do Resend em vez de mensagem genérica",
+      "trim EMAIL_FROM e RESEND_API_KEY para remover newline invisível que quebrava o envio",
+      "cenário removido da suíte aparece como Removido no histórico + email via domínio verificado + remove envio de senha em texto puro",
+      "limpar registros invalida cache do menu lateral — itens ficam desabilitados imediatamente",
+      "remove prisma db seed do build — seed estava apagando dados reais a cada deploy",
+      "gerador — prompt reescrito com exemplo concreto + parser mais tolerante + normaliza bold de modelos que ignoram instrução"
+    ]
+  },
+  {
+    "version": "1.6.15",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "jira GET handler retorna 405 em vez de 404 + stories faltantes criadas",
+      "forgot-password detecta conta Google e exibe mensagem orientando reset pelo Google",
+      "e-mail via Gmail SMTP funcionando — remove endpoint de debug",
+      "/api/test-mail adicionado ao proxy.ts (middleware real)",
+      "/api/test-mail adicionado às rotas públicas do auth",
+      "SMTP usa SMTP_USER como remetente — Gmail rejeita from diferente da conta autenticada",
+      "e-mail via Gmail SMTP funcionando + remove endpoint de debug",
+      "test-mail usa sendMail com fallback SMTP",
+      "mail.ts retorna erro real do Resend em vez de mensagem genérica",
+      "trim EMAIL_FROM e RESEND_API_KEY para remover newline invisível que quebrava o envio",
+      "cenário removido da suíte aparece como Removido no histórico + email via domínio verificado + remove envio de senha em texto puro",
+      "limpar registros invalida cache do menu lateral — itens ficam desabilitados imediatamente",
+      "remove prisma db seed do build — seed estava apagando dados reais a cada deploy",
+      "gerador — prompt reescrito com exemplo concreto + parser mais tolerante + normaliza bold de modelos que ignoram instrução",
+      "menu lateral — Gerador e Assistente exigem sistema+módulo E modelo de IA; Painel/Suítes/Cenários exigem sistema+módulo"
+    ]
+  },
+  {
+    "version": "1.6.14",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "forgot-password detecta conta Google e exibe mensagem orientando reset pelo Google",
+      "e-mail via Gmail SMTP funcionando — remove endpoint de debug",
+      "/api/test-mail adicionado ao proxy.ts (middleware real)",
+      "/api/test-mail adicionado às rotas públicas do auth",
+      "SMTP usa SMTP_USER como remetente — Gmail rejeita from diferente da conta autenticada",
+      "e-mail via Gmail SMTP funcionando + remove endpoint de debug",
+      "test-mail usa sendMail com fallback SMTP",
+      "mail.ts retorna erro real do Resend em vez de mensagem genérica",
+      "trim EMAIL_FROM e RESEND_API_KEY para remover newline invisível que quebrava o envio",
+      "cenário removido da suíte aparece como Removido no histórico + email via domínio verificado + remove envio de senha em texto puro",
+      "limpar registros invalida cache do menu lateral — itens ficam desabilitados imediatamente",
+      "remove prisma db seed do build — seed estava apagando dados reais a cada deploy",
+      "gerador — prompt reescrito com exemplo concreto + parser mais tolerante + normaliza bold de modelos que ignoram instrução",
+      "menu lateral — Gerador e Assistente exigem sistema+módulo E modelo de IA; Painel/Suítes/Cenários exigem sistema+módulo",
+      "gráfico pizza Cenários por Módulo no dashboard + menu lateral com pré-requisitos + Adicionar Modelo + suite abre em Cadastro"
+    ]
+  },
+  {
+    "version": "1.6.13",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "e-mail via Gmail SMTP funcionando — remove endpoint de debug",
+      "/api/test-mail adicionado ao proxy.ts (middleware real)",
+      "/api/test-mail adicionado às rotas públicas do auth",
+      "SMTP usa SMTP_USER como remetente — Gmail rejeita from diferente da conta autenticada",
+      "e-mail via Gmail SMTP funcionando + remove endpoint de debug",
+      "test-mail usa sendMail com fallback SMTP",
+      "mail.ts retorna erro real do Resend em vez de mensagem genérica",
+      "trim EMAIL_FROM e RESEND_API_KEY para remover newline invisível que quebrava o envio",
+      "cenário removido da suíte aparece como Removido no histórico + email via domínio verificado + remove envio de senha em texto puro",
+      "limpar registros invalida cache do menu lateral — itens ficam desabilitados imediatamente",
+      "remove prisma db seed do build — seed estava apagando dados reais a cada deploy",
+      "gerador — prompt reescrito com exemplo concreto + parser mais tolerante + normaliza bold de modelos que ignoram instrução",
+      "menu lateral — Gerador e Assistente exigem sistema+módulo E modelo de IA; Painel/Suítes/Cenários exigem sistema+módulo",
+      "gráfico pizza Cenários por Módulo no dashboard + menu lateral com pré-requisitos + Adicionar Modelo + suite abre em Cadastro",
+      "menu lateral desabilita itens por pré-requisitos + Adicionar Modelo + limpar registros preserva usuários e modelos de IA"
+    ]
+  },
+  {
+    "version": "1.6.12",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "/api/test-mail adicionado ao proxy.ts (middleware real)",
+      "/api/test-mail adicionado às rotas públicas do auth",
+      "SMTP usa SMTP_USER como remetente — Gmail rejeita from diferente da conta autenticada",
+      "e-mail via Gmail SMTP funcionando + remove endpoint de debug",
+      "test-mail usa sendMail com fallback SMTP",
+      "mail.ts retorna erro real do Resend em vez de mensagem genérica",
+      "trim EMAIL_FROM e RESEND_API_KEY para remover newline invisível que quebrava o envio",
+      "cenário removido da suíte aparece como Removido no histórico + email via domínio verificado + remove envio de senha em texto puro",
+      "limpar registros invalida cache do menu lateral — itens ficam desabilitados imediatamente",
+      "remove prisma db seed do build — seed estava apagando dados reais a cada deploy",
+      "gerador — prompt reescrito com exemplo concreto + parser mais tolerante + normaliza bold de modelos que ignoram instrução",
+      "menu lateral — Gerador e Assistente exigem sistema+módulo E modelo de IA; Painel/Suítes/Cenários exigem sistema+módulo",
+      "gráfico pizza Cenários por Módulo no dashboard + menu lateral com pré-requisitos + Adicionar Modelo + suite abre em Cadastro",
+      "menu lateral desabilita itens por pré-requisitos + Adicionar Modelo + limpar registros preserva usuários e modelos de IA",
+      "perf+security: rate limit gerador (30/h), cleanup mapas rate limit, remove console.log debug, DB indexes"
+    ]
+  },
+  {
+    "version": "1.6.11",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "test-mail usa sendMail com fallback SMTP",
+      "mail.ts retorna erro real do Resend em vez de mensagem genérica",
+      "trim EMAIL_FROM e RESEND_API_KEY para remover newline invisível que quebrava o envio",
+      "cenário removido da suíte aparece como Removido no histórico + email via domínio verificado + remove envio de senha em texto puro",
+      "limpar registros invalida cache do menu lateral — itens ficam desabilitados imediatamente",
+      "remove prisma db seed do build — seed estava apagando dados reais a cada deploy",
+      "gerador — prompt reescrito com exemplo concreto + parser mais tolerante + normaliza bold de modelos que ignoram instrução",
+      "menu lateral — Gerador e Assistente exigem sistema+módulo E modelo de IA; Painel/Suítes/Cenários exigem sistema+módulo",
+      "gráfico pizza Cenários por Módulo no dashboard + menu lateral com pré-requisitos + Adicionar Modelo + suite abre em Cadastro",
+      "menu lateral desabilita itens por pré-requisitos + Adicionar Modelo + limpar registros preserva usuários e modelos de IA",
+      "perf+security: rate limit gerador (30/h), cleanup mapas rate limit, remove console.log debug, DB indexes",
+      "security: token criptográfico, rate limit forgot-password, Jira token em body POST, security headers, indexes Prisma",
+      "ícones Play e More — gap-4 (16px) correto + coluna de ações expandida para w-24 (96px)",
+      "build erro JSX parent element + changelog v1.6.1",
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT"
+    ]
+  },
+  {
+    "version": "1.6.10",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "limpar registros invalida cache do menu lateral — itens ficam desabilitados imediatamente",
+      "remove prisma db seed do build — seed estava apagando dados reais a cada deploy",
+      "gerador — prompt reescrito com exemplo concreto + parser mais tolerante + normaliza bold de modelos que ignoram instrução",
+      "menu lateral — Gerador e Assistente exigem sistema+módulo E modelo de IA; Painel/Suítes/Cenários exigem sistema+módulo",
+      "gráfico pizza Cenários por Módulo no dashboard + menu lateral com pré-requisitos + Adicionar Modelo + suite abre em Cadastro",
+      "menu lateral desabilita itens por pré-requisitos + Adicionar Modelo + limpar registros preserva usuários e modelos de IA",
+      "perf+security: rate limit gerador (30/h), cleanup mapas rate limit, remove console.log debug, DB indexes",
+      "security: token criptográfico, rate limit forgot-password, Jira token em body POST, security headers, indexes Prisma",
+      "ícones Play e More — gap-4 (16px) correto + coluna de ações expandida para w-24 (96px)",
+      "build erro JSX parent element + changelog v1.6.1",
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT"
+    ]
+  },
+  {
+    "version": "1.6.9",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "remove prisma db seed do build — seed estava apagando dados reais a cada deploy",
+      "gerador — prompt reescrito com exemplo concreto + parser mais tolerante + normaliza bold de modelos que ignoram instrução",
+      "menu lateral — Gerador e Assistente exigem sistema+módulo E modelo de IA; Painel/Suítes/Cenários exigem sistema+módulo",
+      "gráfico pizza Cenários por Módulo no dashboard + menu lateral com pré-requisitos + Adicionar Modelo + suite abre em Cadastro",
+      "menu lateral desabilita itens por pré-requisitos + Adicionar Modelo + limpar registros preserva usuários e modelos de IA",
+      "perf+security: rate limit gerador (30/h), cleanup mapas rate limit, remove console.log debug, DB indexes",
+      "security: token criptográfico, rate limit forgot-password, Jira token em body POST, security headers, indexes Prisma",
+      "ícones Play e More — gap-4 (16px) correto + coluna de ações expandida para w-24 (96px)",
+      "build erro JSX parent element + changelog v1.6.1",
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT"
+    ]
+  },
+  {
+    "version": "1.6.8",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "menu lateral — Gerador e Assistente exigem sistema+módulo E modelo de IA; Painel/Suítes/Cenários exigem sistema+módulo",
+      "gráfico pizza Cenários por Módulo no dashboard + menu lateral com pré-requisitos + Adicionar Modelo + suite abre em Cadastro",
+      "menu lateral desabilita itens por pré-requisitos + Adicionar Modelo + limpar registros preserva usuários e modelos de IA",
+      "perf+security: rate limit gerador (30/h), cleanup mapas rate limit, remove console.log debug, DB indexes",
+      "security: token criptográfico, rate limit forgot-password, Jira token em body POST, security headers, indexes Prisma",
+      "ícones Play e More — gap-4 (16px) correto + coluna de ações expandida para w-24 (96px)",
+      "build erro JSX parent element + changelog v1.6.1",
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT"
+    ]
+  },
+  {
+    "version": "1.6.7",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "gráfico pizza Cenários por Módulo no dashboard + menu lateral com pré-requisitos + Adicionar Modelo + suite abre em Cadastro",
+      "menu lateral desabilita itens por pré-requisitos + Adicionar Modelo + limpar registros preserva usuários e modelos de IA",
+      "perf+security: rate limit gerador (30/h), cleanup mapas rate limit, remove console.log debug, DB indexes",
+      "security: token criptográfico, rate limit forgot-password, Jira token em body POST, security headers, indexes Prisma",
+      "ícones Play e More — gap-4 (16px) correto + coluna de ações expandida para w-24 (96px)",
+      "build erro JSX parent element + changelog v1.6.1",
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT"
+    ]
+  },
+  {
+    "version": "1.6.6",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "menu lateral desabilita itens por pré-requisitos + Adicionar Modelo + limpar registros preserva usuários e modelos de IA",
+      "perf+security: rate limit gerador (30/h), cleanup mapas rate limit, remove console.log debug, DB indexes",
+      "security: token criptográfico, rate limit forgot-password, Jira token em body POST, security headers, indexes Prisma",
+      "ícones Play e More — gap-4 (16px) correto + coluna de ações expandida para w-24 (96px)",
+      "build erro JSX parent element + changelog v1.6.1",
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT"
+    ]
+  },
+  {
+    "version": "1.6.5",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "perf+security: rate limit gerador (30/h), cleanup mapas rate limit, remove console.log debug, DB indexes",
+      "security: token criptográfico, rate limit forgot-password, Jira token em body POST, security headers, indexes Prisma",
+      "ícones Play e More — gap-4 (16px) correto + coluna de ações expandida para w-24 (96px)",
+      "build erro JSX parent element + changelog v1.6.1",
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT"
+    ]
+  },
+  {
+    "version": "1.6.4",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "security: token criptográfico, rate limit forgot-password, Jira token em body POST, security headers, indexes Prisma",
+      "ícones Play e More — gap-4 (16px) correto + coluna de ações expandida para w-24 (96px)",
+      "build erro JSX parent element + changelog v1.6.1",
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT"
+    ]
+  },
+  {
+    "version": "1.6.3",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "ícones Play e More — gap-4 (16px) correto + coluna de ações expandida para w-24 (96px)",
+      "build erro JSX parent element + changelog v1.6.1",
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT"
+    ]
+  },
+  {
+    "version": "1.6.2",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "build erro JSX parent element + changelog v1.6.1",
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT"
+    ]
+  },
+  {
+    "version": "1.6.1",
+    "commit": "deploy-vercel",
+    "date": "2026-04-17",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Importar removido do more options e adicionado como botão entre o more e Gerar CT",
+      "ícones Play e More seguem exatamente o padrão visual da tabela de Cenários",
+      "ícones Play e More com 32x32px e espaçamento de 16px entre eles",
+      "ícones Play e More com size-8 igual ao padrão da tela de Suítes",
+      "espaçamento entre ícone Play e More na aba Cenários",
+      "botão Exportar para Jira ao lado do Adicionar Cenário na aba Cenários",
+      "aba Cenários — ícone Play (Testar), checkboxes, Exportar para Jira com cenários selecionados",
+      "após registrar Sucesso/Erro redireciona para aba Cenários (não Histórico)",
+      "campo URL/chave da issue marcado como obrigatório com asterisco e mensagem de validação",
+      "Exportar Jira — modal simplificada (só URL/chave), Acrescentar preserva formatação ADF original",
+      "suíte salva automaticamente ao adicionar/remover cenários quando já tem código",
+      "gerador — Copiar (sem Markdown) + Jira busca título, descrição e anexos (imagens/PDF) para análise",
+      "gerador — menu more com opções, prompt criar suíte após importar, suites/nova recebe cenários pré-carregados",
+      "gerador — campo URL do Jira integrado, busca dados da issue, validação com toast e redirect para aba Contexto",
+      "botão Integração Jira na tela de configurações + ícone Sparkles para Modelos de IA"
+    ]
+  },
+  {
+    "version": "1.6.0",
+    "commit": "deploy-vercel",
+    "date": "2026-04-16",
+    "tag": "Melhoria",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Assistente de IA: integração com GitBook via JWT (Visitor Auth) — respostas diretas da Base de Conhecimento.",
+      "Assistente de IA: subtítulo alterado para 'Base de Conhecimento', sugestões removidas da tela inicial.",
+      "Assistente de IA: formatação rica nas respostas — negrito, itálico, bullets, links clicáveis em nova aba.",
+      "Gerador CT: template sem asteriscos, compatível com importação direta após geração.",
+      "Gerador CT: botão Copiar gera Markdown formatado para colar no Jira com negrito e estrutura correta.",
+      "Gerador CT: separador visual 'próximo cenário' entre os CTs gerados.",
+      "Gerador CT: fallback automático entre modelos gratuitos do OpenRouter quando indisponível.",
+      "Suítes: cenários inativos abrem na mesma aba (não em nova aba), com opção de voltar.",
+      "Suítes: aba Histórico com visual de inativo (opacidade + badge 'Inativo') igual à aba Cenários.",
+      "Dashboard: ranking de cenários gerados corrigido por usuário único (email), com foto de perfil.",
+      "Dashboard: cenários sem data de criação tratados como recentes e incluídos nos filtros corretamente.",
+      "Configurações: título 'Administração' removido, resultado da limpeza exibido via toast.",
+      "Performance: Sidebar e Topbar com React.memo, memoized Map para lookup de cenários ativos."
+    ]
+  },
+  {
     "version": "1.5.0",
     "commit": "deploy-vercel",
     "date": "2026-04-14",

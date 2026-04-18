@@ -45,7 +45,7 @@ function toRecord(row: { id: string; nomeFantasia: string; razaoSocial: string |
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getClientes(): Promise<ClienteRecord[]> {
-  const rows = await prisma.cliente.findMany({ orderBy: { createdAt: "asc" } })
+  const rows = await prisma.cliente.findMany({ orderBy: { createdAt: "asc" }, take: 500 })
   return rows.map(toRecord)
 }
 

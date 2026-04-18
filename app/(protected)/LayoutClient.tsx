@@ -123,21 +123,17 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3">
           <TooltipProvider>
             {NAV_ITEMS.map(({ href, icon: Icon, label, alwaysEnabled }) => {
-              // Compute disabled state dynamically based on system/module/cenario availability
+              // Compute disabled state dynamically based on system/module/AI model availability
               let disabled = false
               if (!alwaysEnabled) {
-                if (!hasActiveSistema) {
+                if (href === "/documentos") {
                   disabled = true
-                } else if (REQUIRES_CENARIO.has(href)) {
-                  disabled = !hasSistemaCenario
-                } else if (REQUIRES_SISTEMA_MODULO.has(href)) {
+                } else if (href === "/gerador" || href === "/assistente") {
+                  // Gerador + Assistente: require sistema+módulo AND modelo de IA
+                  disabled = !hasSistemaModulo || !hasIntegracoes
+                } else if (href === "/dashboard" || href === "/suites" || href === "/cenarios") {
+                  // Painel, Suítes, Cenários: require sistema with módulo linked
                   disabled = !hasSistemaModulo
-                  // Gerador also requires at least one integration
-                  if (href === "/gerador" && !hasIntegracoes) {
-                    disabled = true
-                  }
-                } else if (href === "/documentos") {
-                  disabled = true // always disabled
                 }
               }
 
@@ -395,12 +391,14 @@ interface Props {
   children: React.ReactNode
   sistemaNames: string[]
   integracoes?: IntegracaoRecord[]
+  hasSistemaComModulo?: boolean
 }
 
 export default function LayoutClient({
   children,
   sistemaNames: sistemaNamesProp,
   integracoes: integracoesProp = [],
+  hasSistemaComModulo: hasSistemaComModuloProp = false,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -414,13 +412,13 @@ export default function LayoutClient({
   // ── Preserve last-known-good menu data ──────────────────────────────────────
   const [stableNames, setStableNames] = useState(sistemaNamesProp)
   const [stableIntegracoes, setStableIntegracoes] = useState(integracoesProp)
+  const [stableHasSistemaComModulo, setStableHasSistemaComModulo] = useState(hasSistemaComModuloProp)
 
   useEffect(() => {
-    // sistemaNames: only update with non-empty to avoid blank menu flash during refresh
     if (sistemaNamesProp.length > 0) setStableNames(sistemaNamesProp)
-    // integracoes: always update — user may have inactivated all, menu must reflect it
     setStableIntegracoes(integracoesProp)
-  }, [sistemaNamesProp, integracoesProp])
+    setStableHasSistemaComModulo(hasSistemaComModuloProp)
+  }, [sistemaNamesProp, integracoesProp, hasSistemaComModuloProp])
 
   const sistemaNames = stableNames
   const integracoes = stableIntegracoes
@@ -451,11 +449,11 @@ export default function LayoutClient({
   }, [sistemaNames])
 
   // ── Computed flags ────────────────────────────────────────────────────────────
-  // Menu items depend only on hasActiveSistema — removing module/cenario checks
-  // eliminates stale-cache flicker where the menu shows disabled despite having data.
+  // Painel, Suítes, Cenários: require sistema com módulo vinculado
+  // Gerador, Assistente: require modelo de IA (integração)
   const hasActiveSistema = sistemaNames.length > 0
-  const hasSistemaModulo = hasActiveSistema   // any active system = modules accessible
-  const hasSistemaCenario = hasActiveSistema  // any active system = suites accessible
+  const hasSistemaModulo = stableHasSistemaComModulo   // sistema + módulo vinculado
+  const hasSistemaCenario = stableHasSistemaComModulo  // same requirement for suítes
 
   // ── Theme ─────────────────────────────────────────────────────────────────────
   useEffect(() => {

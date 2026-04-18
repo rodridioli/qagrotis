@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import {
   BarChart, Bar, AreaChart, Area,
+  PieChart, Pie, Cell, Legend,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
 import { cn } from "@/lib/utils"
@@ -58,6 +59,7 @@ interface Props {
   onSucessoModuloChange: (v: string) => void
   ultimasAutomacoes: UltimaAutomacao[]
   resolveUser: (createdBy: string | undefined) => { displayName: string; photoPath: string | null }
+  cenariosPorModulo: { name: string; value: number }[]
 }
 
 // ── Filter options ─────────────────────────────────────────────────────────────
@@ -84,6 +86,19 @@ const CHART_OPTS: { value: ChartFilter; label: string }[] = [
   { value: "mes-atual",    label: "Mês atual" },
   { value: "mes-anterior", label: "Mês anterior" },
   { value: "ano-atual",    label: "Ano" },
+]
+
+// ── Pie chart colors ──────────────────────────────────────────────────────────
+
+const PIE_COLORS = [
+  "var(--brand-primary)",
+  "#6366f1",
+  "#f59e0b",
+  "#0ea5e9",
+  "#10b981",
+  "#f43f5e",
+  "#8b5cf6",
+  "#14b8a6",
 ]
 
 // ── FilterSelect ───────────────────────────────────────────────────────────────
@@ -234,6 +249,7 @@ export function DashboardCharts({
   errosData,     errosFilter,    onErrosFilterChange,    errosModulo,    onErrosModuloChange,
   sucessoData,   sucessoFilter,  onSucessoFilterChange,  sucessoModulo,  onSucessoModuloChange,
   ultimasAutomacoes, resolveUser,
+  cenariosPorModulo,
 }: Props) {
   const totalExecucoes = testesData.reduce((acc, d) => acc + d.value, 0)
   const totalErros = errosData.reduce((acc, d) => acc + d.value, 0)
@@ -330,7 +346,7 @@ export function DashboardCharts({
         </div>
       </div>
 
-      {/* Row 2 — Testes executados + Últimas automações */}
+      {/* Row 2 — Testes executados + Cenários por Módulo */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
 
         {/* Testes executados */}
@@ -365,13 +381,45 @@ export function DashboardCharts({
           </ResponsiveContainer>
         </div>
 
-        {/* Últimas automações */}
+        {/* Cenários por Módulo — pie chart */}
         <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-2">
-          <h2 className="mb-4 text-sm font-semibold text-text-primary">Últimas automações</h2>
-          {ultimasAutomacoes.length === 0 ? (
-            <p className="text-xs text-text-secondary">Nenhum cenário automatizado cadastrado.</p>
+          <h2 className="mb-4 text-sm font-semibold text-text-primary">Cenários por Módulo</h2>
+          {cenariosPorModulo.length === 0 ? (
+            <p className="text-xs text-text-secondary">Nenhum cenário cadastrado para o sistema selecionado.</p>
           ) : (
-            <UltimasAutomacoesPaginado items={ultimasAutomacoes} resolveUser={resolveUser} />
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={cenariosPorModulo}
+                  cx="50%"
+                  cy="45%"
+                  innerRadius={55}
+                  outerRadius={80}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {cenariosPorModulo.map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  formatter={(v, _n, props) => [
+                    `${v} cenário${Number(v) !== 1 ? "s" : ""}`,
+                    props.payload?.name ?? "",
+                  ]}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  formatter={(value) => (
+                    <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+                      {value.length > 18 ? value.slice(0, 17) + "…" : value}
+                    </span>
+                  )}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           )}
         </div>
       </div>
@@ -442,6 +490,16 @@ export function DashboardCharts({
             </AreaChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      {/* Row 4 — Últimas automações */}
+      <div className="rounded-xl bg-surface-card p-5 shadow-card">
+        <h2 className="mb-4 text-sm font-semibold text-text-primary">Últimas automações</h2>
+        {ultimasAutomacoes.length === 0 ? (
+          <p className="text-xs text-text-secondary">Nenhum cenário automatizado cadastrado.</p>
+        ) : (
+          <UltimasAutomacoesPaginado items={ultimasAutomacoes} resolveUser={resolveUser} />
+        )}
       </div>
 
     </div>

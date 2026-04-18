@@ -72,7 +72,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
   const [filters, setFilters] = useState<FilterState>({ apenasInativos: false })
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
 
-  // ── Integração modal (criar / editar) ─────────────────────────────────────
+  // ── Modelo de IA modal (criar / editar) ─────────────────────────────────────
   const [integracaoModalOpen, setIntegracaoModalOpen] = useState(false)
   const [integracaoEditando, setIntegracaoEditando] = useState<IntegracaoRecord | null>(null)
   const [intProvider, setIntProvider] = useState("OpenRouter")
@@ -135,14 +135,14 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
             model: intModel.trim(),
             apiKey: intApiKey.trim(),
           })
-          toast.success("Integração atualizada com sucesso.")
+          toast.success("Modelo de IA atualizado com sucesso.")
         } else {
           await criarIntegracao({
             provider: intProvider,
             model: intModel.trim(),
             apiKey: intApiKey.trim(),
           })
-          toast.success("Integração criada com sucesso.")
+          toast.success("Modelo de IA criado com sucesso.")
         }
         setIntegracaoModalOpen(false)
         setIntegracaoEditando(null)
@@ -235,7 +235,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
         setLocalIntegracoes((prev) => prev.map((i) => idSet.has(i.id) ? { ...i, active: false } : i))
         setIsInativando(false)
         router.refresh()
-        toast.success(count === 1 ? "Integração inativada com sucesso." : `${count} integrações inativadas com sucesso.`)
+        toast.success(count === 1 ? "Modelo de IA inativado com sucesso." : `${count} modelos de IA inativados com sucesso.`)
       } catch {
         setIsInativando(false)
         router.refresh()
@@ -258,12 +258,12 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
 
   const confirmDescription =
     inativarIds.length === 1
-      ? `A integração ${inativarIds[0]} será inativada. Esta ação não pode ser desfeita.`
-      : `${inativarIds.length} integrações serão inativadas. Esta ação não pode ser desfeita.`
+      ? `A modelo de IA ${inativarIds[0]} será inativada. Esta ação não pode ser desfeita.`
+      : `${inativarIds.length} modelos de IA serão inativadas. Esta ação não pode ser desfeita.`
 
   return (
     <div className="space-y-4">
-      <LoadingOverlay visible={isInativando} label="Inativando integrações..." />
+      <LoadingOverlay visible={isInativando} label="Inativando modelos de IA..." />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-sm">
@@ -279,7 +279,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
             Configurações
           </Link>
           <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">Integrações</span>
+          <span className="font-medium text-text-primary">Modelos de IA</span>
         </div>
 
         {isAdmin && (
@@ -296,7 +296,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
             )}
             <Button onClick={openAdicionarIntegracao}>
               <Plus className="size-4" />
-              Adicionar Integração
+              Adicionar Modelo
             </Button>
           </div>
         )}
@@ -307,17 +307,17 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
         <TableToolbar
           search={search}
           onSearchChange={(v) => { setSearch(v); setCurrentPage(1) }}
-          searchPlaceholder="Buscar integração..."
+          searchPlaceholder="Buscar Modelo..."
           activeFilterCount={activeFilterCount}
           onFilterOpen={() => { setPendingFilters(filters); setFilterOpen(true) }}
-          totalLabel="Total de integrações"
+          totalLabel="Total de modelos de IA"
           totalCount={filtered.length}
           baseCount={localIntegracoes.length}
         />
 
         {pageItems.length === 0 ? (
           <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-            Nenhuma integração cadastrada.
+            Nenhuma modelo de IA cadastrada.
           </div>
         ) : (
           <>
@@ -481,11 +481,11 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
         onConfirm={confirmInativar}
       />
 
-      {/* ── Modal criar / editar integração ── */}
+      {/* ── Modal criar / editar modelo de IA ── */}
       <Dialog open={integracaoModalOpen} onOpenChange={(open) => { if (!open) { setIntegracaoModalOpen(false); setIntegracaoEditando(null) } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{integracaoEditando ? `Editar — ${integracaoEditando.id}` : "Adicionar Integração"}</DialogTitle>
+            <DialogTitle>{integracaoEditando ? `Editar — ${integracaoEditando.id}` : "Adicionar Modelo"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

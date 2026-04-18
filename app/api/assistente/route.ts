@@ -1,342 +1,245 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
-import { getIntegracoes } from "@/lib/actions/integracoes"
+import * as jose from "jose"
 
-// ── GitBook content cache ─────────────────────────────────────────────────────
+const GITBOOK_ORG_ID = process.env.GITBOOK_ORG_ID ?? "YJL6kpwzoMMhtvwRrmNt"
+const GITBOOK_SITE_ID = process.env.GITBOOK_SITE_ID ?? "site_YbjJD"
+const GITBOOK_API_TOKEN = process.env.GITBOOK_API_TOKEN ?? ""
+const GITBOOK_PRIVATE_KEY = process.env.GITBOOK_PRIVATE_KEY ?? ""
 
-const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
-const GITBOOK_CONTENT_URL =
-  process.env.GITBOOK_CONTENT_URL ??
-  "https://openapi.gitbook.com/o/YJL6kpwzoMMhtvwRrmNt/spec/agrotis-base-de-conhecimento-api.txt"
-
-let cachedContent: string | null = null
-let cacheExpiry = 0
-
-async function fetchGitBookContent(): Promise<string> {
-  const now = Date.now()
-  if (cachedContent && now < cacheExpiry) return cachedContent
-
-  const headers: HeadersInit = {}
-  const token = process.env.GITBOOK_API_TOKEN
-  if (token) headers["Authorization"] = `Bearer ${token}`
-
-  const res = await fetch(GITBOOK_CONTENT_URL, { headers })
-  if (!res.ok) throw new Error(`GitBook fetch failed: ${res.status} ${res.statusText}`)
-
-  const text = await res.text()
-  cachedContent = text
-  cacheExpiry = now + CACHE_TTL_MS
-  return text
-}
-
-// ── Keyword-based retrieval (RAG sem embeddings) ──────────────────────────────
-
-function findRelevantSections(content: string, query: string, sistema: string): string {
-  const stopWords = new Set([
-    "o", "a", "os", "as", "um", "uma", "de", "do", "da", "dos", "das",
-    "em", "no", "na", "nos", "nas", "para", "por", "com", "que", "se",
-    "e", "ou", "the", "is", "in", "of", "to", "a", "and", "for",
-  ])
-
-  const keywords = [
-    ...query.toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w)),
-    ...sistema.toLowerCase().split(/\s+/).filter((w) => w.length > 2),
-  ]
-
-  if (keywords.length === 0) return content.slice(0, 6000)
-
-  const lines = content.split("\n")
-
-  // Score each line
-  const scored = lines.map((line, i) => {
-    const lower = line.toLowerCase()
-    const score = keywords.reduce((acc, kw) => acc + (lower.includes(kw) ? 1 : 0), 0)
-    return { score, i }
-  })
-
-  // Collect indices of high-score lines + surrounding context
-  const relevant = new Set<number>()
-  for (const { score, i } of scored) {
-    if (score > 0) {
-      for (let j = Math.max(0, i - 2); j <= Math.min(lines.length - 1, i + 12); j++) {
-        relevant.add(j)
-      }
-    }
-  }
-
-  if (relevant.size === 0) {
-    // Fallback: first chunk of the document
-    return lines.slice(0, 120).join("\n")
-  }
-
-  const sections = [...relevant]
-    .sort((a, b) => a - b)
-    .map((i) => lines[i])
-    .join("\n")
-
-  // Cap at ~8000 chars to stay within token budget
-  return sections.length > 8000 ? sections.slice(0, 8000) : sections
-}
-
-// ── System prompt ─────────────────────────────────────────────────────────────
-
-const SYSTEM_PROMPT = `Você é um assistente de suporte técnico especializado na documentação do sistema Agrotis.
-
-## Diretrizes de comportamento
-- Responda SOMENTE com base no conteúdo da documentação fornecida abaixo
-- Use linguagem clara, objetiva e amigável (pt-BR)
-- Se a pergunta não puder ser respondida com o conteúdo disponível, responda: "Não encontrei informações sobre isso na documentação disponível. Tente reformular sua pergunta ou entre em contato com o suporte técnico."
-- Nunca invente informações que não estão na documentação
-- Use formatação Markdown quando ajudar na clareza (listas, negrito, blocos de código)
-- Seja conciso mas completo — evite respostas genéricas
-
-## Sistema selecionado
-O usuário está trabalhando no módulo: **{sistema}**
-Priorize conteúdo relacionado a este módulo quando relevante.
-
-## Documentação de referência
-{contexto}`
-
-// ── Provider call (mirrors gerador/route.ts patterns) ────────────────────────
-
-async function callProvider(
-  provider: string,
-  model: string,
-  apiKey: string,
-  systemPrompt: string,
-  messages: { role: string; content: string }[]
-): Promise<Response> {
-  switch (provider) {
-    case "anthropic": {
-      return fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: model || "claude-haiku-4-5-20251001",
-          max_tokens: 2048,
-          stream: true,
-          system: systemPrompt,
-          messages,
-        }),
-      })
-    }
-    case "openai": {
-      return fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 2048,
-          stream: true,
-          messages: [{ role: "system", content: systemPrompt }, ...messages],
-        }),
-      })
-    }
-    case "google": {
-      return fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: messages.map((m) => ({
-              role: m.role === "assistant" ? "model" : "user",
-              parts: [{ text: m.content }],
-            })),
-            generationConfig: { maxOutputTokens: 2048 },
-          }),
-        }
-      )
-    }
-    case "groq": {
-      return fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 2048,
-          stream: true,
-          messages: [{ role: "system", content: systemPrompt }, ...messages],
-        }),
-      })
-    }
-    case "openrouter": {
-      return fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-          "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-          "X-Title": "QAgrotis",
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 2048,
-          stream: true,
-          messages: [{ role: "system", content: systemPrompt }, ...messages],
-        }),
-      })
-    }
-    default:
-      return new Response("Provedor não suportado.", { status: 400 })
-  }
-}
-
-// ── Stream delta extractor per provider ──────────────────────────────────────
-
-function extractDelta(provider: string, parsed: unknown): string {
-  const p = parsed as Record<string, unknown>
-  if (provider === "anthropic") {
-    if (p.type === "content_block_delta") {
-      const delta = p.delta as Record<string, unknown>
-      return (delta?.text as string) ?? ""
-    }
-    return ""
-  }
-  if (provider === "google") {
-    const candidates = p.candidates as { content?: { parts?: { text?: string }[] } }[] | undefined
-    return candidates?.[0]?.content?.parts?.[0]?.text ?? ""
-  }
-  // openai / groq / openrouter
-  const choices = p.choices as { delta?: { content?: string } }[] | undefined
-  return choices?.[0]?.delta?.content ?? ""
-}
-
-// ── Simple in-memory rate limiter ─────────────────────────────────────────────
-
+// ── Rate limiter ──────────────────────────────────────────────────────────────
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-const RATE_LIMIT_WINDOW_MS = 60_000 // 1 minute
-const RATE_LIMIT_MAX = 20 // requests per window per user
-
 function checkRateLimit(userId: string): boolean {
   const now = Date.now()
+  // Cleanup expired entries to prevent memory leak
+  for (const [k, v] of rateLimitMap) { if (now > v.resetAt) rateLimitMap.delete(k) }
   const entry = rateLimitMap.get(userId)
   if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+    rateLimitMap.set(userId, { count: 1, resetAt: now + 60_000 })
     return true
   }
-  if (entry.count >= RATE_LIMIT_MAX) return false
+  if (entry.count >= 20) return false
   entry.count++
   return true
 }
 
-// ── Handler ───────────────────────────────────────────────────────────────────
+// ── Generate visitor JWT signed with GitBook Private Key ──────────────────────
+async function generateVisitorJWT(): Promise<string> {
+  const secret = new TextEncoder().encode(GITBOOK_PRIVATE_KEY)
+  return new jose.SignJWT({})
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("2h")
+    .sign(secret)
+}
 
+// ── Convert GitBook document nodes to Markdown ───────────────────────────────
+function docToMarkdown(node: unknown, listDepth = 0): string {
+  if (!node || typeof node !== "object") return ""
+  const n = node as Record<string, unknown>
+
+  // Leaf node — has text + marks
+  if (n.object === "leaf") {
+    let text = (n.text as string) ?? ""
+    if (!text) return ""
+    const marks = (n.marks as { type: string }[]) ?? []
+    if (marks.some((m) => m.type === "bold"))   text = `**${text}**`
+    if (marks.some((m) => m.type === "italic"))  text = `*${text}*`
+    if (marks.some((m) => m.type === "code"))    text = `\`${text}\``
+    return text
+  }
+
+  // Text node — wraps leaves array (object: "text")
+  if (n.object === "text") {
+    if (Array.isArray(n.leaves)) {
+      return (n.leaves as unknown[]).map((l) => docToMarkdown(l, listDepth)).join("")
+    }
+    // Fallback: plain text field
+    return (n.text as string) ?? ""
+  }
+
+  // Inline node (links, etc.)
+  if (n.object === "inline") {
+    const inner = Array.isArray(n.nodes)
+      ? (n.nodes as unknown[]).map((c) => docToMarkdown(c, listDepth)).join("")
+      : Array.isArray(n.leaves)
+        ? (n.leaves as unknown[]).map((c) => docToMarkdown(c, listDepth)).join("")
+        : ""
+    if (n.type === "link") {
+      const href = (n.data as Record<string, string>)?.href ?? ""
+      return href ? `[${inner}](${href})` : inner
+    }
+    return inner
+  }
+
+  // Block/document nodes — children come from nodes array
+  const childNodes = Array.isArray(n.nodes) ? (n.nodes as unknown[]) : []
+  const children = childNodes.map((c) => docToMarkdown(c, listDepth)).join("")
+  const type = (n.type as string) ?? (n.object as string) ?? ""
+
+  switch (type) {
+    case "document":        return children
+    case "paragraph":       return children ? `${children}\n\n` : ""
+    case "heading-one":     return `# ${children.trim()}\n\n`
+    case "heading-two":     return `## ${children.trim()}\n\n`
+    case "heading-three":   return `### ${children.trim()}\n\n`
+    case "heading-four":    return `#### ${children.trim()}\n\n`
+    case "bulleted-list":
+    case "unordered-list":  return childNodes.map((c) => docToMarkdown(c, listDepth + 1)).join("") + "\n"
+    case "ordered-list": {
+      let idx = 0
+      return childNodes.map((c) => {
+        idx++
+        return docToMarkdown(c, listDepth).replace(/^- /, `${idx}. `)
+      }).join("") + "\n"
+    }
+    case "list-item":       return `- ${children.trim()}\n`
+    case "list-item-child": return children
+    case "blockquote":      return `> ${children.trim()}\n\n`
+    case "code-block":      return `\`\`\`\n${children}\n\`\`\`\n\n`
+    case "divider":         return `---\n\n`
+    default:                return children
+  }
+}
+
+function extractTextFromDocument(doc: unknown): string {
+  return docToMarkdown(doc).trim()
+}
+
+// ── Parse GitBook SSE stream ──────────────────────────────────────────────────
+function parseGitBookSSE(rawText: string): { answer: string; sources: string[] } {
+  const lines = rawText.split("\n").filter((l) => l.startsWith("data:"))
+  let answer = ""
+  const sources: string[] = []
+
+  for (const line of lines) {
+    const payload = line.slice(5).trim()
+    if (payload === "done" || payload === "") continue
+    try {
+      const parsed = JSON.parse(payload)
+      const a = parsed.answer
+
+      // Format 1: answer.text or answer.markdown (plain string)
+      if (a?.text) answer = a.text
+      else if (a?.markdown) answer = a.markdown
+      // Format 2: answer.answer.markdown or answer.answer.text
+      else if (a?.answer?.markdown) answer = a.answer.markdown
+      else if (a?.answer?.text) answer = a.answer.text
+      // Format 3: answer.answer.document (rich document format)
+      else if (a?.answer?.document) {
+        const md = extractTextFromDocument(a.answer.document).trim()
+        answer = md
+      }
+
+      // Sources — capture title + URL when available
+      const srcArr = a?.sources ?? parsed.sources ?? []
+      for (const s of srcArr) {
+        const title = s.page?.title ?? s.title ?? ""
+        const path = s.page?.path ?? s.path ?? ""
+        if (!title) continue
+        // Build URL: use path if available, else slug from title
+        const slug = path || title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+        const url = `https://agrotis-1.gitbook.io/agrotis/${slug}`
+        const entry = `[${title}](${url})`
+        if (!sources.includes(entry)) sources.push(entry)
+      }
+    } catch { /* skip */ }
+  }
+  return { answer, sources }
+}
+
+// ── GitBook Ask ───────────────────────────────────────────────────────────────
+async function askGitBook(question: string, sistema: string): Promise<string> {
+  if (!GITBOOK_API_TOKEN) throw new Error("GITBOOK_API_TOKEN não configurado.")
+  if (!GITBOOK_PRIVATE_KEY) throw new Error("GITBOOK_PRIVATE_KEY não configurada.")
+
+  const visitorJWT = await generateVisitorJWT()
+  const queryText = sistema && sistema !== "Geral" ? `[${sistema}] ${question}` : question
+
+  const res = await fetch(
+    `https://api.gitbook.com/v1/orgs/${GITBOOK_ORG_ID}/sites/${GITBOOK_SITE_ID}/ask`,
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GITBOOK_API_TOKEN}`,
+        "Content-Type": "application/json",
+        "X-GitBook-Token": visitorJWT,
+      },
+      body: JSON.stringify({
+        question: queryText,
+        scope: { mode: "default" },
+        visitor: { jwtToken: visitorJWT },
+      }),
+    }
+  )
+
+  const raw = await res.text()
+
+  if (!res.ok) throw new Error(`GitBook API ${res.status}: ${raw.slice(0, 200)}`)
+
+  const { answer, sources } = parseGitBookSSE(raw)
+
+  if (!answer) throw new Error(`Resposta vazia do GitBook. Raw: ${raw.slice(0, 300)}`)
+
+  // Build a title→url map for linkification
+  const titleUrlMap = new Map<string, string>()
+  for (const s of sources) {
+    const m = s.match(/^\[(.+?)\]\((.+?)\)$/)
+    if (m) titleUrlMap.set(m[1].toLowerCase(), m[2])
+  }
+
+  // Linkify "Veja ... em [Title]" and "Acesse [Title]" patterns in the answer text
+  let processedAnswer = answer
+  for (const [title, url] of titleUrlMap.entries()) {
+    // Match the title text in the answer (case-insensitive) if not already a link
+    const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const re = new RegExp(`(?<!\\]\\()(?<!\\[)(${escapedTitle})(?!\\])`, "gi")
+    processedAnswer = processedAnswer.replace(re, `[$1](${url})`)
+  }
+
+  const cleanSources = sources
+    .filter((s) => s.length < 300)
+    .slice(0, 4)
+
+  if (cleanSources.length > 0) {
+    const srcBlock = cleanSources.map((s) => `- ${s}`).join("\n")
+    return `${processedAnswer}\n\n---\n**Fontes:**\n${srcBlock}`
+  }
+  return processedAnswer
+}
+
+// ── Handler ───────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session?.user?.id) {
-    return new Response("Unauthorized", { status: 401 })
-  }
+  if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
 
   if (!checkRateLimit(session.user.id)) {
-    return new Response("Muitas requisições. Aguarde um momento antes de continuar.", { status: 429 })
+    return new Response("Muitas requisições. Aguarde um momento.", { status: 429 })
   }
 
-  let body: {
-    pergunta: string
-    sistema: string
-    integracaoId?: string
-    historico?: { role: "user" | "assistant"; content: string }[]
-  }
+  let body: { pergunta: string; sistema: string }
+  try { body = await req.json() }
+  catch { return new Response("JSON inválido.", { status: 400 }) }
+
+  const { pergunta, sistema = "Geral" } = body
+  if (!pergunta?.trim()) return new Response("Pergunta vazia.", { status: 400 })
+  if (pergunta.length > 600) return new Response("Pergunta muito longa.", { status: 400 })
+
   try {
-    body = await req.json()
-  } catch {
-    return new Response("JSON inválido.", { status: 400 })
-  }
-
-  const { pergunta, sistema = "Geral", integracaoId, historico = [] } = body
-
-  if (!pergunta?.trim()) {
-    return new Response("A pergunta não pode ser vazia.", { status: 400 })
-  }
-  if (pergunta.length > 600) {
-    return new Response("Pergunta muito longa (máximo 600 caracteres).", { status: 400 })
-  }
-
-  // Pick integration: prefer the one selected by user, then first Anthropic, then any active
-  const integracoes = await getIntegracoes()
-  const integracao = integracaoId
-    ? (integracoes.find((i) => i.active && i.id === integracaoId) ?? integracoes.find((i) => i.active))
-    : (integracoes.find((i) => i.active && i.provider === "anthropic") ?? integracoes.find((i) => i.active))
-
-  if (!integracao) {
+    const answer = await askGitBook(pergunta, sistema)
+    const encoder = new TextEncoder()
     return new Response(
-      "Nenhuma integração de IA ativa encontrada. Configure uma integração em Configurações → Integrações.",
-      { status: 503 }
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(answer))
+          controller.close()
+        },
+      }),
+      { headers: { "Content-Type": "text/plain; charset=utf-8" } }
     )
-  }
-
-  // Fetch and cache GitBook content
-  let gitbookContent = ""
-  try {
-    gitbookContent = await fetchGitBookContent()
   } catch (err) {
-    console.warn("[assistente] GitBook fetch error (falling back to empty):", err)
-    gitbookContent = "Informação não disponível no momento."
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error("[assistente] error:", msg)
+    return new Response(`⚠️ ${msg}`, { status: 503 })
   }
-
-  const relevantContext = findRelevantSections(gitbookContent, pergunta, sistema)
-  const systemPrompt = SYSTEM_PROMPT
-    .replace("{sistema}", sistema)
-    .replace("{contexto}", relevantContext)
-
-  // Build conversation history (last 8 exchanges = 16 messages)
-  const messages: { role: string; content: string }[] = [
-    ...historico.slice(-16),
-    { role: "user", content: pergunta },
-  ]
-
-  const res = await callProvider(integracao.provider, integracao.model, integracao.apiKey, systemPrompt, messages)
-  if (!res.ok) {
-    const err = await res.text()
-    console.error("[assistente] Provider error:", integracao.provider, err)
-    return new Response(`Erro na IA (${integracao.provider}): ${res.status}. Tente novamente.`, { status: 502 })
-  }
-
-  // Stream the response through — provider-agnostic delta extraction
-  const { provider } = integracao
-  const encoder = new TextEncoder()
-  const readable = new ReadableStream({
-    async start(controller) {
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ""
-      try {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split("\n")
-          buffer = lines.pop() ?? ""
-          for (const line of lines) {
-            if (!line.startsWith("data:")) continue
-            const data = line.slice(5).trim()
-            if (data === "[DONE]") continue
-            try {
-              const parsed = JSON.parse(data)
-              const text = extractDelta(provider, parsed)
-              if (text) controller.enqueue(encoder.encode(text))
-            } catch { /* ignore parse errors */ }
-          }
-        }
-      } finally {
-        controller.close()
-      }
-    },
-  })
-
-  return new Response(readable, {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
-  })
 }

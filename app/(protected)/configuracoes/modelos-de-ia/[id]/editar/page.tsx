@@ -11,6 +11,6 @@ export default async function EditarIntegracaoPage({
   const { id } = await params
   const [integracao, isAdmin] = await Promise.all([getIntegracao(id), checkIsAdmin()])
   if (!integracao) notFound()
-  if (!isAdmin) redirect("/configuracoes/integracoes")
+  if (!isAdmin) redirect("/configuracoes/modelos-de-ia")
   return <EditarIntegracaoClient integracao={integracao} />
 }

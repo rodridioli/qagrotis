@@ -180,22 +180,37 @@ export function DashboardClient({
   const userMap = useMemo(() => {
     const map = new Map<string, { displayName: string; photoPath: string | null }>()
     for (const u of allUsers) {
-      if (u.name)  map.set(u.name,  { displayName: u.name,  photoPath: u.photoPath ?? null })
-      if (u.email) map.set(u.email, { displayName: u.name,  photoPath: u.photoPath ?? null })
-    }
-    if (currentUser && currentUserPhotoPath) {
-      map.set(currentUser, { displayName: currentUser, photoPath: currentUserPhotoPath })
+      const display = u.name || (u.email ? u.email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase()) : "Usuário")
+      // Key by email (primary, unique) AND name for backward compat
+      if (u.email) map.set(u.email, { displayName: display, photoPath: u.photoPath ?? null })
+      if (u.name && u.name !== u.email) map.set(u.name, { displayName: display, photoPath: u.photoPath ?? null })
     }
     return map
-  }, [allUsers, currentUser, currentUserPhotoPath])
+  }, [allUsers])
 
   function resolveUser(createdBy: string | undefined): { displayName: string; photoPath: string | null } {
     if (!createdBy) return { displayName: "Desconhecido", photoPath: null }
+    // Try exact match (email or name)
     const found = userMap.get(createdBy)
     if (found) return found
+    // Try case-insensitive match
+    const lower = createdBy.toLowerCase()
+    for (const [key, val] of userMap.entries()) {
+      if (key.toLowerCase() === lower) return val
+    }
+    // Try partial name match (first + last name)
+    for (const u of allUsers) {
+      if (u.name && u.name.toLowerCase().includes(lower)) {
+        const display = u.name
+        return { displayName: display, photoPath: u.photoPath ?? null }
+      }
+    }
+    // Fallback: format email as name
     if (createdBy.includes("@")) {
-      const name = createdBy.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase())
-      return { displayName: name, photoPath: null }
+      const name = createdBy.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase())
+      // Try to find user by email to get photo
+      const byEmail = allUsers.find(u => u.email === createdBy)
+      return { displayName: byEmail?.name || name, photoPath: byEmail?.photoPath ?? null }
     }
     return { displayName: createdBy, photoPath: null }
   }
@@ -233,7 +248,7 @@ export function DashboardClient({
 
     const ultimasAutomacoes: UltimaAutomacao[] = cenariosFiltrados
       .filter(c => c.tipo === "Automatizado" || c.tipo === "Man./Auto.")
-      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+      .sort((a, b) => (b.createdAt ?? Date.now()) - (a.createdAt ?? Date.now()))
       .slice(0, 20)
       .map(c => ({
         id: c.id,
@@ -248,6 +263,20 @@ export function DashboardClient({
       totalModulos, totalCenarios, totalManuais, totalAutomatizados,
       pctManuais, pctAuto, automationData, ultimasAutomacoes, cenariosFiltrados, activeModuleNames,
     }
+  }, [allCenarios, allModulos, sistemaSelecionado])
+
+  // ── Cenários por módulo (pie chart) ────────────────────────────────────────
+  const cenariosPorModulo = useMemo(() => {
+    const activeModuleNames = new Set(
+      allModulos.filter(m => m.active && m.sistemaName === sistemaSelecionado).map(m => m.name)
+    )
+    const counts: Record<string, number> = {}
+    allCenarios
+      .filter(c => c.active && activeModuleNames.has(c.module))
+      .forEach(c => { counts[c.module] = (counts[c.module] ?? 0) + 1 })
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
   }, [allCenarios, allModulos, sistemaSelecionado])
 
   // ── Suites filtradas ───────────────────────────────────────────────────────
@@ -279,12 +308,25 @@ export function DashboardClient({
   // ── Ranking ────────────────────────────────────────────────────────────────
   const rankingData = useMemo((): RankingItem[] => {
     const { start, end } = getDateRange(rankingFilter)
+    // Normalize: map any createdBy value to a canonical key (prefer email)
+    const normalizeKey = (cb: string | undefined): string => {
+      if (!cb) return "Desconhecido"
+      if (userMap.has(cb)) return cb
+      for (const u of allUsers) {
+        if (u.name && u.name === cb && u.email) return u.email
+      }
+      return cb
+    }
     const countByUser = new Map<string, number>()
-    for (const c of cenariosFiltrados) {
+    // Use ALL cenarios (active) — not filtered by system/module to show all users
+    const source = allCenarios.filter(c => c.active)
+    for (const c of source) {
       if (rankingModulo && c.module !== rankingModulo) continue
-      const ts = c.createdAt ?? 0
+      if (sistemaSelecionado && c.system !== sistemaSelecionado) continue
+      // If createdAt is missing (imported cenarios), treat as current time so they always appear
+      const ts = c.createdAt ?? Date.now()
       if (ts >= start && ts <= end) {
-        const key = c.createdBy ?? "Desconhecido"
+        const key = normalizeKey(c.createdBy)
         countByUser.set(key, (countByUser.get(key) ?? 0) + 1)
       }
     }
@@ -292,7 +334,7 @@ export function DashboardClient({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([createdBy, count]) => ({ createdBy, count }))
-  }, [cenariosFiltrados, rankingFilter, rankingModulo])
+  }, [allCenarios, rankingFilter, rankingModulo, sistemaSelecionado, userMap, allUsers])
 
   // ── Testes chart ───────────────────────────────────────────────────────────
   const testesData = useMemo((): DataPoint[] => {
@@ -368,6 +410,7 @@ export function DashboardClient({
         onSucessoModuloChange={setSucessoModulo}
         ultimasAutomacoes={ultimasAutomacoes}
         resolveUser={resolveUser}
+        cenariosPorModulo={cenariosPorModulo}
       />
     </div>
   )

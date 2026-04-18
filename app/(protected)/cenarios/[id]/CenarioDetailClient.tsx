@@ -161,7 +161,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     try {
       await registrarResultadoSuite(suite.id, cenario.id, resultado)
       toast.success("Teste registrado com sucesso!")
-      router.push(`/suites/${suite.id}?tab=historico`)
+      router.push(`/suites/${suite.id}?tab=cenarios`)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro ao registrar o resultado")
     } finally {
