@@ -11,8 +11,9 @@ function badge(colorClass: string, label: React.ReactNode) {
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-type CenarioTipo = "Automatizado" | "Manual" | "Man./Auto."
-type SuiteTipo   = "Sprint" | "Kanban" | "Outro"
+type CenarioTipo    = "Automatizado" | "Manual" | "Man./Auto."
+type SuiteTipo      = "Sprint" | "Kanban" | "Outro"
+type SuiteSituacao  = "Planejada" | "Em andamento" | "Concluída"
 type ChangelogTag = "Novidade" | "Melhoria" | "Correção"
 
 // ─── Components ──────────────────────────────────────────────────────────────
@@ -23,6 +24,15 @@ function CenarioTipoBadge({ tipo }: { tipo: CenarioTipo }) {
     "Man./Auto.":   "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
   }
   return badge(styles[tipo] ?? "border-border-default bg-neutral-grey-50 text-text-secondary", tipo)
+}
+
+function SuiteSituacaoBadge({ situacao }: { situacao: SuiteSituacao }) {
+  const styles: Record<SuiteSituacao, string> = {
+    "Planejada":    "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
+    "Em andamento": "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
+    "Concluída":    "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400",
+  }
+  return badge(styles[situacao], situacao)
 }
 
 function SuiteTipoBadge({ tipo }: { tipo: SuiteTipo }) {
@@ -88,9 +98,10 @@ export {
   ResultadoBadge,
   CenarioTipoBadge,
   SuiteTipoBadge,
+  SuiteSituacaoBadge,
   AutomacaoBadge,
   UserTipoBadge,
   PriorityBadge,
   ChangelogTagBadge,
 }
-export type { CenarioTipo, SuiteTipo, ChangelogTag, ResultadoTipo }
+export type { CenarioTipo, SuiteTipo, SuiteSituacao, ChangelogTag, ResultadoTipo }

@@ -176,6 +176,7 @@ model Suite {
   tipo      String
   objetivo  String?
   active    Boolean  @default(true)
+  encerrada Boolean  @default(false)
   createdAt DateTime @default(now())
   cenarios  Json     @default("[]")
   historico Json     @default("[]")

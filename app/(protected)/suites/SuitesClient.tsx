@@ -28,8 +28,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { SuiteTipoBadge } from "@/components/qagrotis/StatusBadge"
-import type { SuiteTipo } from "@/lib/qagrotis-constants"
+import { SuiteSituacaoBadge } from "@/components/qagrotis/StatusBadge"
+import type { SuiteSituacao } from "@/components/qagrotis/StatusBadge"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
@@ -48,11 +48,17 @@ function numericId(id: string): number {
 
 interface FilterState {
   modulo: string
-  tipo: string
+  situacao: string
   apenasInativos: boolean
 }
 
-const EMPTY_FILTERS: FilterState = { modulo: "", tipo: "", apenasInativos: false }
+const EMPTY_FILTERS: FilterState = { modulo: "", situacao: "", apenasInativos: false }
+
+function derivarSituacao(s: { encerrada: boolean; historicoCount: number }): SuiteSituacao {
+  if (s.encerrada) return "Concluída"
+  if (s.historicoCount > 0) return "Em andamento"
+  return "Planejada"
+}
 
 function AutomacaoBar({ pct }: { pct: number }) {
   const fillClass =
@@ -120,9 +126,9 @@ export default function SuitesClient({ allModulos, suites }: Props) {
         s.id.toLowerCase().includes(search.toLowerCase()) ||
         s.suiteName.toLowerCase().includes(search.toLowerCase())
       const matchModulo = !filters.modulo || s.modulo === filters.modulo
-      const matchTipo = !filters.tipo || s.tipo === filters.tipo
+      const matchSituacao = !filters.situacao || derivarSituacao(s) === filters.situacao
       const matchAtivo = filters.apenasInativos ? !s.active : s.active
-      return matchSistema && matchSearch && matchModulo && matchTipo && matchAtivo
+      return matchSistema && matchSearch && matchModulo && matchSituacao && matchAtivo
     })
     return [...result].sort((a, b) => {
       const diff = numericId(a.id) - numericId(b.id)
@@ -138,7 +144,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
 
   const activeFilterCount = [
     filters.modulo,
-    filters.tipo,
+    filters.situacao,
     filters.apenasInativos ? "1" : "",
   ].filter(Boolean).length
 
@@ -301,7 +307,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Automação</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Erros</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">CT</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Situação</th>
                     <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
@@ -342,7 +348,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                       </td>
                       <td className="px-4 py-3 text-center tabular-nums text-text-secondary">{s.cenarios.length}</td>
                       <td className="px-4 py-3">
-                        <SuiteTipoBadge tipo={s.tipo as SuiteTipo} />
+                        <SuiteSituacaoBadge situacao={derivarSituacao(s)} />
                       </td>
                       <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
                         {showBulkActions && (
@@ -413,19 +419,19 @@ export default function SuitesClient({ allModulos, suites }: Props) {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Tipo</label>
+              <label className="text-sm font-medium text-text-primary">Situação</label>
               <Select
-                value={pendingFilters.tipo}
+                value={pendingFilters.situacao}
                 onValueChange={(v: string | null) =>
-                  setPendingFilters((p) => ({ ...p, tipo: v ?? "" }))
+                  setPendingFilters((p) => ({ ...p, situacao: v ?? "" }))
                 }
               >
-                <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
                 <SelectPopup>
-                  <SelectItem value="">Todos</SelectItem>
-                  <SelectItem value="Sprint">Sprint</SelectItem>
-                  <SelectItem value="Kanban">Kanban</SelectItem>
-                  <SelectItem value="Outro">Outro</SelectItem>
+                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="Planejada">Planejada</SelectItem>
+                  <SelectItem value="Em andamento">Em andamento</SelectItem>
+                  <SelectItem value="Concluída">Concluída</SelectItem>
                 </SelectPopup>
               </Select>
             </div>

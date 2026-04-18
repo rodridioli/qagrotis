@@ -35,7 +35,7 @@ import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
-import { criarSuite, atualizarSuite, removerHistoricoSuite, type SuiteRecord } from "@/lib/actions/suites"
+import { criarSuite, atualizarSuite, removerHistoricoSuite, encerrarSuite, reabrirSuite, type SuiteRecord } from "@/lib/actions/suites"
 import { toast } from "sonner"
 
 export interface SuiteFormProps {
@@ -116,6 +116,9 @@ export function SuiteForm({
   const [removeOpen, setRemoveOpen] = useState(false)
   const [removeId, setRemoveId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isEncerrandoOuReabrindo, setIsEncerrandoOuReabrindo] = useState(false)
+  const [encerrarOpen, setEncerrarOpen] = useState(false)
+  const [encerrada, setEncerrada] = useState(suite?.encerrada ?? false)
   const [selectedHistorico, setSelectedHistorico] = useState<Set<number>>(new Set())
 
   function buildCenariosJiraContent(ids: Set<string>): string {
@@ -480,6 +483,35 @@ export function SuiteForm({
     }
   }
 
+  async function handleConfirmarEncerrar() {
+    if (!suite?.id) return
+    setEncerrarOpen(false)
+    setIsEncerrandoOuReabrindo(true)
+    try {
+      await encerrarSuite(suite.id)
+      setEncerrada(true)
+      toast.success("Suíte encerrada.")
+    } catch {
+      toast.error("Não foi possível encerrar a suíte. Tente novamente.")
+    } finally {
+      setIsEncerrandoOuReabrindo(false)
+    }
+  }
+
+  async function handleReabrir() {
+    if (!suite?.id) return
+    setIsEncerrandoOuReabrindo(true)
+    try {
+      await reabrirSuite(suite.id)
+      setEncerrada(false)
+      toast.success("Suíte reaberta.")
+    } catch {
+      toast.error("Não foi possível reabrir a suíte. Tente novamente.")
+    } finally {
+      setIsEncerrandoOuReabrindo(false)
+    }
+  }
+
   function addCenarios() {
     const toAdd = allCenarios.filter((c) => selectedAddIds.has(c.id)).map((c) => ({
       id: c.id,
@@ -508,8 +540,8 @@ export function SuiteForm({
       isFirstRender.current = false
       return
     }
-    // Only auto-save for existing suites (edit mode with an ID)
-    if (mode !== "edit" || !suite?.id) return
+    // Only auto-save for existing suites (edit mode with an ID) that are not encerrada
+    if (mode !== "edit" || !suite?.id || encerrada) return
 
     // Debounce to avoid multiple rapid saves
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current)
@@ -585,10 +617,31 @@ export function SuiteForm({
             {mode === "create" ? "Nova Suíte" : (suite?.id ?? "Editar")}
           </span>
         </div>
-        <Button onClick={handleSave} disabled={isSaving}>
-          <Check className="size-4" />
-          {isSaving ? "Salvando..." : "Salvar Suíte"}
-        </Button>
+        {encerrada ? (
+          <Button
+            variant="outline"
+            onClick={handleReabrir}
+            disabled={isEncerrandoOuReabrindo}
+          >
+            {isEncerrandoOuReabrindo ? "Reabrindo..." : "Editar Suíte"}
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2">
+            {mode === "edit" && suite?.id && (
+              <Button
+                variant="destructive"
+                onClick={() => setEncerrarOpen(true)}
+                disabled={isSaving || isEncerrandoOuReabrindo}
+              >
+                Encerrar Suíte
+              </Button>
+            )}
+            <Button onClick={handleSave} disabled={isSaving || isEncerrandoOuReabrindo}>
+              <Check className="size-4" />
+              {isSaving ? "Salvando..." : "Salvar Suíte"}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Tab container */}
@@ -632,7 +685,7 @@ export function SuiteForm({
               <label className="text-sm font-medium text-text-primary">
                 Suíte <span className="text-destructive">*</span>
               </label>
-              <Input value={suiteName} onChange={(e) => setSuiteName(e.target.value)} />
+              <Input value={suiteName} onChange={(e) => setSuiteName(e.target.value)} disabled={encerrada} />
             </div>
 
             {/* Linha 2: Sistema, Versão, Tipo, Módulo */}
@@ -641,7 +694,7 @@ export function SuiteForm({
                 <label className="text-sm font-medium text-text-primary">
                   Sistema <span className="text-destructive">*</span>
                 </label>
-                <Select value={sistemaSelecionado} disabled>
+                <Select value={sistemaSelecionado} disabled={true}>
                   <SelectTrigger>
                     <SelectValue placeholder={systemList.length === 0 ? "Nenhum sistema cadastrado" : "Selecionar"} />
                   </SelectTrigger>
@@ -654,13 +707,13 @@ export function SuiteForm({
                 <label className="text-sm font-medium text-text-primary">
                   Versão <span className="text-destructive">*</span>
                 </label>
-                <Input value={versao} onChange={(e) => setVersao(e.target.value)} />
+                <Input value={versao} onChange={(e) => setVersao(e.target.value)} disabled={encerrada} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-primary">
                   Tipo <span className="text-destructive">*</span>
                 </label>
-                <Select value={tipo} onValueChange={(v) => setTipo(v || "")}>
+                <Select value={tipo} onValueChange={(v) => setTipo(v || "")} disabled={encerrada}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectPopup>
                     <SelectItem value="Sprint">Sprint</SelectItem>
@@ -673,7 +726,7 @@ export function SuiteForm({
                 <label className="text-sm font-medium text-text-primary">
                   Módulo <span className="text-destructive">*</span>
                 </label>
-                <Select value={selectedModule} onValueChange={(v) => setSelectedModule(v || "")}>
+                <Select value={selectedModule} onValueChange={(v) => setSelectedModule(v || "")} disabled={encerrada}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectPopup>
                     {filteredModules.map((m) => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
@@ -688,7 +741,8 @@ export function SuiteForm({
               <textarea
                 rows={3}
                 placeholder="Observações..."
-                className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none"
+                disabled={encerrada}
+                className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
           </div>
@@ -709,10 +763,12 @@ export function SuiteForm({
               <ExternalLink className="size-4" />
               Exportar para o Jira
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setAddCenarioOpen(true)}>
-              <Plus className="size-4" />
-              Adicionar Cenário
-            </Button>
+            {!encerrada && (
+              <Button variant="outline" size="sm" onClick={() => setAddCenarioOpen(true)}>
+                <Plus className="size-4" />
+                Adicionar Cenário
+              </Button>
+            )}
           </div>
 
           {cenarios.length === 0 ? (
@@ -813,7 +869,7 @@ export function SuiteForm({
                           const href = suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`
                           return (
                             <div className="flex items-center justify-end gap-4">
-                              {cenarioAtivo && (
+                              {cenarioAtivo && !encerrada && (
                                 <Link
                                   href={href}
                                   aria-label="Testar Cenário"
@@ -823,29 +879,33 @@ export function SuiteForm({
                                   <Play className="size-4" />
                                 </Link>
                               )}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger
-                                  render={
-                                    <button
-                                      type="button"
-                                      aria-label="Mais ações"
-                                      className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
-                                    />
-                                  }
-                                >
-                                  <MoreVertical className="size-4" />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" side="bottom">
-                                  {!cenarioAtivo && (
-                                    <DropdownMenuItem>
-                                      <Link href={href} className="w-full">Visualizar</Link>
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
-                                    Remover
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              {(!encerrada || !cenarioAtivo) && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger
+                                    render={
+                                      <button
+                                        type="button"
+                                        aria-label="Mais ações"
+                                        className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                      />
+                                    }
+                                  >
+                                    <MoreVertical className="size-4" />
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" side="bottom">
+                                    {!cenarioAtivo && (
+                                      <DropdownMenuItem>
+                                        <Link href={href} className="w-full">Visualizar</Link>
+                                      </DropdownMenuItem>
+                                    )}
+                                    {!encerrada && (
+                                      <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
+                                        Remover
+                                      </DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
                             </div>
                           )
                         })()}
@@ -1075,6 +1135,30 @@ export function SuiteForm({
             <Button variant="outline" onClick={() => setRemoveOpen(false)}>Cancelar</Button>
             <Button variant="destructive" onClick={confirmRemove}>
               Remover
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={encerrarOpen} onOpenChange={setEncerrarOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Encerrar suíte?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-text-secondary">
+            Ao encerrar, a suíte não poderá ser editada. Para retomar a edição, use o botão{" "}
+            <strong>Editar Suíte</strong>.
+          </p>
+          <DialogFooter showCloseButton={false}>
+            <Button variant="outline" autoFocus onClick={() => setEncerrarOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmarEncerrar}
+              disabled={isEncerrandoOuReabrindo}
+            >
+              {isEncerrandoOuReabrindo ? "Encerrando..." : "Encerrar"}
             </Button>
           </DialogFooter>
         </DialogContent>
