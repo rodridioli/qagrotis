@@ -45,7 +45,7 @@ const suiteSchema = z.object({
   versao: z.string().min(1, "Versão é obrigatória").max(100),
   sistema: z.string().min(1, "Sistema é obrigatório").max(200),
   modulo: z.string().min(1, "Módulo é obrigatório").max(200),
-  tipo: z.enum(["Sprint", "Kanban", "Outro"], { message: "Tipo é obrigatório" }),
+  tipo: z.enum(["Sprint", "Kanban", "Outro"]).optional().or(z.literal("")),
   cliente: z.string().max(200),
   objetivo: z.string().max(2000).nullable(),
   cenarios: z.array(z.object({
@@ -135,7 +135,7 @@ export async function criarSuite(data: unknown): Promise<SuiteRecord> {
       modulo:    parsed.modulo,
       sistemaId: sysRow?.id,
       moduloId:  modRow?.id,
-      tipo:      parsed.tipo,
+      tipo:      parsed.tipo ?? "",
       cliente:   parsed.cliente,
       objetivo:  parsed.objetivo,
       active:    true,

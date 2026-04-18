@@ -441,8 +441,7 @@ export function SuiteForm({
     if (!versao.trim()) { toast.error("A Versão é obrigatória."); return }
     if (!selectedModule.trim()) { toast.error("O Módulo é obrigatório."); return }
     if (!sistemaSelecionado.trim()) { toast.error("O Sistema é obrigatório."); return }
-    if (!tipo) { toast.error("O Tipo é obrigatório."); return }
-    if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um cenário."); return }
+if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um cenário."); return }
 
     setIsSaving(true)
     try {
@@ -710,9 +709,7 @@ export function SuiteForm({
                 <Input value={versao} onChange={(e) => setVersao(e.target.value)} disabled={encerrada} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-primary">
-                  Tipo <span className="text-destructive">*</span>
-                </label>
+                <label className="text-sm font-medium text-text-primary">Tipo</label>
                 <Select value={tipo} onValueChange={(v) => setTipo(v || "")} disabled={encerrada}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectPopup>
