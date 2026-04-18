@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { ArrowLeft, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, ExternalLink, Check, X } from "lucide-react"
+import { ArrowLeft, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, ExternalLink, Check, X, Paperclip, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { SuiteRecord } from "@/lib/actions/suites"
@@ -12,6 +12,7 @@ import { registrarResultadoSuite } from "@/lib/actions/suites"
 import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
+import { JiraExportModal } from "@/components/qagrotis/JiraExportModal"
 
 interface Props {
   cenario: CenarioRecord
@@ -148,6 +149,23 @@ function BlockCard({
 export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }: Props) {
   const router = useRouter()
   const [isRegistering, setIsRegistering] = useState(false)
+  const [manualAttachments, setManualAttachments] = useState<File[]>([])
+  const [autoAttachments, setAutoAttachments] = useState<File[]>([])
+  const [jiraModalOpen, setJiraModalOpen] = useState(false)
+  const manualInputRef = useRef<HTMLInputElement>(null)
+  const autoInputRef = useRef<HTMLInputElement>(null)
+
+  function handleManualFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    setManualAttachments((prev) => [...prev, ...files])
+    e.target.value = ""
+  }
+
+  function handleAutoFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    setAutoAttachments((prev) => [...prev, ...files])
+    e.target.value = ""
+  }
 
   const steps = cenario.steps ?? []
   const depIds = cenario.deps ?? []
@@ -211,6 +229,10 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
               Somente visualização — cenário inativo
             </span>
           )}
+          <Button variant="outline" onClick={() => setJiraModalOpen(true)}>
+            <Upload className="size-4" />
+            Exportar para o Jira
+          </Button>
           {suite && !viewOnly && (
             <>
               <Button
@@ -288,6 +310,49 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
         <Field label="Resultado Esperado">
           <DisabledTextarea value={cenario.resultadoEsperado} />
         </Field>
+
+        {/* ── Evidências Teste Manual ── */}
+        <div className="border-t border-border-default pt-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-text-secondary">
+              Evidências{manualAttachments.length > 0 ? ` (${manualAttachments.length})` : ""}
+            </span>
+            <Button variant="outline" onClick={() => manualInputRef.current?.click()}>
+              <Paperclip className="size-4" />
+              Anexar Evidências
+            </Button>
+            <input
+              ref={manualInputRef}
+              type="file"
+              multiple
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={handleManualFiles}
+            />
+          </div>
+          {manualAttachments.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {manualAttachments.map((f, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-neutral-grey-50 px-2.5 py-1 text-xs text-text-primary"
+                >
+                  <Paperclip className="size-3 shrink-0 text-text-secondary" />
+                  <span className="max-w-40 truncate">{f.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setManualAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="text-text-secondary hover:text-destructive transition-colors"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-text-secondary italic">Nenhuma evidência anexada.</p>
+          )}
+        </div>
       </BlockCard>
 
       {/* ── Bloco 3: Automação ── */}
@@ -364,6 +429,49 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
               </div>
             </div>
 
+            {/* ── Evidências Automação ── */}
+            <div className="border-t border-border-default pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-text-secondary">
+                  Evidências{autoAttachments.length > 0 ? ` (${autoAttachments.length})` : ""}
+                </span>
+                <Button variant="outline" onClick={() => autoInputRef.current?.click()}>
+                  <Paperclip className="size-4" />
+                  Anexar Evidências
+                </Button>
+                <input
+                  ref={autoInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={handleAutoFiles}
+                />
+              </div>
+              {autoAttachments.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {autoAttachments.map((f, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-neutral-grey-50 px-2.5 py-1 text-xs text-text-primary"
+                    >
+                      <Paperclip className="size-3 shrink-0 text-text-secondary" />
+                      <span className="max-w-40 truncate">{f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setAutoAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="text-text-secondary hover:text-destructive transition-colors"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-text-secondary italic">Nenhuma evidência anexada.</p>
+              )}
+            </div>
+
           </div>
       </BlockCard>}
 
@@ -422,6 +530,14 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
             </table>
           </div>
       </BlockCard>}
+
+      <JiraExportModal
+        open={jiraModalOpen}
+        onClose={() => setJiraModalOpen(false)}
+        cenario={cenario}
+        manualAttachments={manualAttachments}
+        autoAttachments={autoAttachments}
+      />
 
     </div>
   )
