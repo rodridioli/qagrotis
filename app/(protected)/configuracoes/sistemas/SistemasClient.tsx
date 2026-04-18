@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, X, Filter, Power, Check } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, RotateCcw, X, Filter, Power, Check } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -25,7 +25,7 @@ import {
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { inativarSistemas, criarSistema, atualizarSistema, type SistemaRecord } from "@/lib/actions/sistemas"
+import { inativarSistemas, ativarSistema, criarSistema, atualizarSistema, type SistemaRecord } from "@/lib/actions/sistemas"
 import { type ModuloRecord } from "@/lib/actions/modulos"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -61,6 +61,8 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
   const [filterOpen, setFilterOpen] = useState(false)
   const [inativarOpen, setInativarOpen] = useState(false)
   const [inativarIds, setInativarIds] = useState<string[]>([])
+  const [ativarId, setAtivarId] = useState<string | null>(null)
+  const [ativarOpen, setAtivarOpen] = useState(false)
   const [filters, setFilters] = useState<FilterState>({ apenasInativos: false })
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
   const [modulosModalSistema, setModulosModalSistema] = useState<SistemaRecord | null>(null)
@@ -162,6 +164,21 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
   function handleInativarSingle(id: string) {
     setInativarIds([id])
     setInativarOpen(true)
+  }
+
+  async function handleAtivar() {
+    if (!ativarId) return
+    try {
+      await ativarSistema(ativarId)
+      setLocalSistemas((prev) => prev.filter((s) => s.id !== ativarId))
+      toast.success("Cadastro ativado com sucesso.")
+      router.refresh()
+    } catch {
+      toast.error("Erro ao ativar. Tente novamente.")
+    } finally {
+      setAtivarOpen(false)
+      setAtivarId(null)
+    }
   }
 
   function confirmInativar() {
@@ -358,7 +375,16 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                           )}
                         </td>
                         <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
-                          {showBulkActions && s.active ? (
+                          {filters.apenasInativos ? (
+                            <button
+                              type="button"
+                              aria-label="Ativar"
+                              onClick={() => { setAtivarId(s.id); setAtivarOpen(true) }}
+                              className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                            >
+                              <RotateCcw className="size-4" />
+                            </button>
+                          ) : showBulkActions && s.active ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger
                                 render={
@@ -446,6 +472,15 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
         description={confirmDescription}
         confirmLabel="Inativar"
         onConfirm={confirmInativar}
+      />
+
+      <ConfirmDialog
+        open={ativarOpen}
+        onOpenChange={setAtivarOpen}
+        title="Deseja ativar?"
+        description="Este cadastro voltará a aparecer na listagem de ativos."
+        confirmLabel="Ativar"
+        onConfirm={handleAtivar}
       />
 
       {/* ── Módulos do sistema ── */}

@@ -152,6 +152,36 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
   }
 }
 
+export async function ativarQaUser(id: string): Promise<{ error?: string }> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { error: "Não autorizado." }
+  }
+  const result = idSchema.safeParse(id)
+  if (!result.success) return { error: "ID inválido." }
+
+  try {
+    const isInactive = await prisma.inactiveUser.findUnique({ where: { userId: id } })
+    if (!isInactive) return { error: "Usuário não está inativo." }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.inactiveUser.delete({ where: { userId: id } })
+      // For QaUser records (DB-stored), ensure active flag is set
+      const qaUser = await tx.qaUser.findUnique({ where: { id } })
+      if (qaUser) {
+        await tx.qaUser.update({ where: { id }, data: { active: true } })
+      }
+    })
+
+    revalidatePath("/configuracoes/usuarios")
+    return {}
+  } catch (e) {
+    console.error("[ativarQaUser]", e)
+    return { error: "Erro ao ativar usuário." }
+  }
+}
+
 export async function inativarQaUsers(ids: string[]): Promise<{ error?: string }> {
   try {
     await requireAdmin()

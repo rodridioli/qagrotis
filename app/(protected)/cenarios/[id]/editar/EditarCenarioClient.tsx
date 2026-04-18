@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowDown, ArrowLeft, ArrowUp, Bot, Check, Circle, ClipboardList, FileDown, GripVertical, LayoutList, Network, Plus, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowLeft, ArrowUp, Bot, Check, Circle, ClipboardList, Eye, EyeOff, FileDown, GripVertical, LayoutList, Network, Plus, Trash2 } from "lucide-react"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,7 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 import { ClienteCombobox } from "@/components/qagrotis/ClienteCombobox"
+import { CredencialCombobox } from "@/components/qagrotis/CredencialCombobox"
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { criarModulo, type ModuloRecord } from "@/lib/actions/modulos"
 import { criarCliente, type ClienteRecord } from "@/lib/actions/clientes"
+import { criarCredencial, type CredencialRecord } from "@/lib/actions/credenciais"
 import type { SistemaRecord } from "@/lib/actions/sistemas"
 import { atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
@@ -55,6 +57,7 @@ interface Props {
   allSistemas?: SistemaRecord[]
   initialClientes?: ClienteRecord[]
   allCenarios?: CenarioRecord[]
+  initialCredenciais?: CredencialRecord[]
 }
 
 interface Step {
@@ -77,6 +80,7 @@ export default function EditarCenarioClient({
   allSistemas = [],
   initialClientes = [],
   allCenarios = [],
+  initialCredenciais = [],
 }: Props) {
   const { sistemaSelecionado } = useSistemaSelecionado()
   const router = useRouter()
@@ -112,10 +116,21 @@ export default function EditarCenarioClient({
   const [bdd, setBdd] = useState(cenario.bdd ?? "")
   const [resultadoEsperado, setResultadoEsperado] = useState(cenario.resultadoEsperado ?? "")
 
+  // ── Credencial ───────────────────────────────────────────────────────────────
+  const [credenciais, setCredenciais] = useState<CredencialRecord[]>(initialCredenciais)
+  const [credencialId, setCredencialId] = useState(cenario.credencialId ?? "")
+  const [addCredencialOpen, setAddCredencialOpen] = useState(false)
+  const [newCredNome, setNewCredNome] = useState("")
+  const [newCredUrl, setNewCredUrl] = useState("")
+  const [newCredUsuario, setNewCredUsuario] = useState("")
+  const [newCredSenha, setNewCredSenha] = useState("")
+  const [showCredSenha, setShowCredSenha] = useState(false)
+  const [isCredencialPending, startCredencialTransition] = useTransition()
+
   // ── Teste Automatizado fields ────────────────────────────────────────────────
-  const [urlAmbiente, setUrlAmbiente] = useState(cenario.urlAmbiente ?? "")
-  const [usuarioTeste, setUsuarioTeste] = useState(cenario.usuarioTeste ?? "")
-  const [senhaTeste, setSenhaTeste] = useState(cenario.senhaTeste ?? "")
+  const [urlAmbiente] = useState(cenario.urlAmbiente ?? "")
+  const [usuarioTeste] = useState(cenario.usuarioTeste ?? "")
+  const [senhaTeste] = useState(cenario.senhaTeste ?? "")
   const [objetivo, setObjetivo] = useState(cenario.objetivo ?? "")
   const [urlScript, setUrlScript] = useState(cenario.urlScript ?? "")
   const [steps, setSteps] = useState<Step[]>(
@@ -285,9 +300,6 @@ export default function EditarCenarioClient({
     }
 
     if (automatizado) {
-      if (!urlAmbiente.trim()) { toast.error("URL do Ambiente é obrigatória."); setActiveTab("automatizado"); return false }
-      if (!usuarioTeste.trim()) { toast.error("Usuário é obrigatório."); setActiveTab("automatizado"); return false }
-      if (!senhaTeste.trim()) { toast.error("Senha é obrigatória."); setActiveTab("automatizado"); return false }
       if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); setActiveTab("automatizado"); return false }
       if (steps.filter((s) => s.acao.trim() && s.resultado.trim()).length === 0) {
         toast.error("Adicione pelo menos 1 passo com ação e resultado.")
@@ -321,6 +333,7 @@ export default function EditarCenarioClient({
             usuarioTeste: usuarioTeste.trim(),
             senhaTeste: senhaTeste.trim(),
             senhaFalsa: cenario.senhaFalsa ?? "",
+            credencialId: credencialId || null,
             steps: steps
               .map((s) => ({ acao: s.acao.trim(), resultado: s.resultado.trim() }))
               .filter((s) => s.acao.length > 0 && s.resultado.length > 0),
@@ -404,9 +417,7 @@ export default function EditarCenarioClient({
   const showPromptBtn =
     hasSaved &&
     automatizado &&
-    urlAmbiente.trim() !== "" &&
-    usuarioTeste.trim() !== "" &&
-    senhaTeste.trim() !== "" &&
+    credencialId !== "" &&
     resultadoEsperado.trim() !== "" &&
     steps.some((s) => s.acao.trim() && s.resultado.trim())
 
@@ -699,41 +710,14 @@ export default function EditarCenarioClient({
             )}
 
             {/* Credentials */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Credenciais</h3>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 rounded-lg border border-border-default bg-neutral-grey-50 p-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text-primary">
-                    URL do Ambiente <span className="text-destructive">*</span>
-                  </label>
-                  <Input
-                    value={urlAmbiente}
-                    onChange={(e) => { setUrlAmbiente(e.target.value); setHasSaved(false) }}
-                    placeholder="https://app.exemplo.com"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text-primary">
-                    Usuário <span className="text-destructive">*</span>
-                  </label>
-                  <Input
-                    value={usuarioTeste}
-                    onChange={(e) => { setUsuarioTeste(e.target.value); setHasSaved(false) }}
-                    placeholder="usuario@exemplo.com"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text-primary">
-                    Senha <span className="text-destructive">*</span>
-                  </label>
-                  <Input
-                    type="password"
-                    value={senhaTeste}
-                    onChange={(e) => { setSenhaTeste(e.target.value); setHasSaved(false) }}
-                    placeholder="Senha de acesso"
-                  />
-                </div>
-              </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Credenciais</label>
+              <CredencialCombobox
+                credenciais={credenciais}
+                value={credencialId}
+                onChange={(v) => { setCredencialId(v); setHasSaved(false) }}
+                onAddCredencial={() => setAddCredencialOpen(true)}
+              />
             </div>
 
             <div className="border-t border-border-default" />
@@ -1090,6 +1074,101 @@ export default function EditarCenarioClient({
               }}
             >
               {isClientePending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog: Adicionar Credencial ── */}
+      <Dialog open={addCredencialOpen} onOpenChange={(open) => {
+        setAddCredencialOpen(open)
+        if (!open) { setNewCredNome(""); setNewCredUrl(""); setNewCredUsuario(""); setNewCredSenha(""); setShowCredSenha(false) }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Adicionar Credencial</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Credencial <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={newCredNome}
+                onChange={(e) => setNewCredNome(e.target.value)}
+                placeholder="Ex.: Staging, Produção..."
+                disabled={isCredencialPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">URL do Ambiente</label>
+              <Input
+                value={newCredUrl}
+                onChange={(e) => setNewCredUrl(e.target.value)}
+                placeholder="https://app.example.com"
+                disabled={isCredencialPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Usuário <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={newCredUsuario}
+                onChange={(e) => setNewCredUsuario(e.target.value)}
+                placeholder="usuario@exemplo.com"
+                disabled={isCredencialPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Senha <span className="text-destructive">*</span>
+              </label>
+              <div className="relative">
+                <Input
+                  type={showCredSenha ? "text" : "password"}
+                  value={newCredSenha}
+                  onChange={(e) => setNewCredSenha(e.target.value)}
+                  placeholder="••••••••"
+                  className="pr-10"
+                  disabled={isCredencialPending}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCredSenha((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-text-secondary transition-colors hover:text-text-primary"
+                  aria-label={showCredSenha ? "Ocultar senha" : "Exibir senha"}
+                >
+                  {showCredSenha ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <Button variant="outline" onClick={() => setAddCredencialOpen(false)} disabled={isCredencialPending}>Cancelar</Button>
+            <Button
+              disabled={isCredencialPending}
+              onClick={() => {
+                if (!newCredNome.trim()) { toast.error("Credencial é obrigatório."); return }
+                if (!newCredUsuario.trim()) { toast.error("Usuário é obrigatório."); return }
+                if (!newCredSenha) { toast.error("Senha é obrigatória."); return }
+                startCredencialTransition(async () => {
+                  try {
+                    const nova = await criarCredencial({
+                      nome: newCredNome.trim(),
+                      urlAmbiente: newCredUrl.trim() || null,
+                      usuario: newCredUsuario.trim(),
+                      senha: newCredSenha,
+                    })
+                    setCredenciais((prev) => [nova, ...prev])
+                    setCredencialId(nova.id)
+                    setAddCredencialOpen(false)
+                    router.refresh()
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Erro ao adicionar credencial.")
+                  }
+                })
+              }}
+            >
+              {isCredencialPending ? "Salvando…" : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useTransition, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertCircle, ArrowRightLeft, ChevronDown, ChevronUp, FileText, Filter, MoreVertical, Plus, Power, Upload, X } from "lucide-react"
+import { AlertCircle, ArrowRightLeft, ChevronDown, ChevronUp, FileText, Filter, MoreVertical, Plus, Power, RotateCcw, Upload, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,7 +33,7 @@ import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { criarCenario, atualizarCenario, inativarCenarios, type CenarioRecord } from "@/lib/actions/cenarios"
+import { criarCenario, atualizarCenario, inativarCenarios, ativarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
 import { parseMarkdownCenarios, buildImportItems, type ParsedCenario, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
 import { cn } from "@/lib/utils"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
@@ -78,6 +78,8 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
   const [filterOpen, setFilterOpen] = useState(false)
   const [inativarOpen, setInativarOpen] = useState(false)
   const [inativarIds, setInativarIds] = useState<string[]>([])
+  const [ativarId, setAtivarId] = useState<string | null>(null)
+  const [ativarOpen, setAtivarOpen] = useState(false)
   // Setup modal
   const [importSetupOpen, setImportSetupOpen] = useState(false)
   const [importSetupModule, setImportSetupModule] = useState("")
@@ -168,6 +170,21 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
   function handleInativarSingle(id: string) {
     setInativarIds([id])
     setInativarOpen(true)
+  }
+
+  async function handleAtivar() {
+    if (!ativarId) return
+    try {
+      await ativarCenario(ativarId)
+      setInitialCenarios((prev) => prev.filter((c) => c.id !== ativarId))
+      toast.success("Cadastro ativado com sucesso.")
+      router.refresh()
+    } catch {
+      toast.error("Erro ao ativar. Tente novamente.")
+    } finally {
+      setAtivarOpen(false)
+      setAtivarId(null)
+    }
   }
 
   function confirmInativar() {
@@ -439,7 +456,16 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
                         <CenarioTipoBadge tipo={c.tipo as "Automatizado" | "Manual" | "Man./Auto."} />
                       </td>
                       <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
-                        {showBulkActions && c.active ? (
+                        {filters.apenasInativos ? (
+                          <button
+                            type="button"
+                            aria-label="Ativar"
+                            onClick={() => { setAtivarId(c.id); setAtivarOpen(true) }}
+                            className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                          >
+                            <RotateCcw className="size-4" />
+                          </button>
+                        ) : showBulkActions && c.active ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               render={
@@ -581,6 +607,16 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
         description={confirmDescription}
         confirmLabel="Inativar"
         onConfirm={confirmInativar}
+      />
+
+      {/* ── Confirm ativação ── */}
+      <ConfirmDialog
+        open={ativarOpen}
+        onOpenChange={setAtivarOpen}
+        title="Deseja ativar?"
+        description="Este cadastro voltará a aparecer na listagem de ativos."
+        confirmLabel="Ativar"
+        onConfirm={handleAtivar}
       />
 
       {/* ── Import setup modal ── */}

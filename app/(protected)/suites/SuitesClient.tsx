@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Filter, Plus, Power, X, MoreVertical } from "lucide-react"
+import { ChevronDown, ChevronUp, Filter, Plus, Power, RotateCcw, X, MoreVertical } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -35,7 +35,7 @@ import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
-import { inativarSuites, type SuiteListRecord } from "@/lib/actions/suites"
+import { inativarSuites, ativarSuite, type SuiteListRecord } from "@/lib/actions/suites"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -101,6 +101,8 @@ export default function SuitesClient({ allModulos, suites }: Props) {
   const [inativarOpen, setInativarOpen] = useState(false)
   const [inativarIds, setInativarIds] = useState<string[]>([])
   const [inativadosIds, setInativadosIds] = useState<Set<string>>(new Set())
+  const [ativarId, setAtivarId] = useState<string | null>(null)
+  const [ativarOpen, setAtivarOpen] = useState(false)
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [pendingFilters, setPendingFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [isInativando, setIsInativando] = useState(false)
@@ -174,6 +176,21 @@ export default function SuitesClient({ allModulos, suites }: Props) {
   function handleInativarSingle(id: string) {
     setInativarIds([id])
     setInativarOpen(true)
+  }
+
+  async function handleAtivar() {
+    if (!ativarId) return
+    try {
+      await ativarSuite(ativarId)
+      setInativadosIds((prev) => { const n = new Set(prev); n.delete(ativarId); return n })
+      toast.success("Cadastro ativado com sucesso.")
+      router.refresh()
+    } catch {
+      toast.error("Erro ao ativar. Tente novamente.")
+    } finally {
+      setAtivarOpen(false)
+      setAtivarId(null)
+    }
   }
 
   function confirmInativar() {
@@ -351,7 +368,16 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                         <SuiteSituacaoBadge situacao={derivarSituacao(s)} />
                       </td>
                       <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
-                        {showBulkActions && (
+                        {filters.apenasInativos ? (
+                          <button
+                            type="button"
+                            aria-label="Ativar"
+                            onClick={() => { setAtivarId(s.id); setAtivarOpen(true) }}
+                            className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                          >
+                            <RotateCcw className="size-4" />
+                          </button>
+                        ) : showBulkActions ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               render={
@@ -373,7 +399,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -475,6 +501,15 @@ export default function SuitesClient({ allModulos, suites }: Props) {
         }
         confirmLabel="Inativar"
         onConfirm={confirmInativar}
+      />
+
+      <ConfirmDialog
+        open={ativarOpen}
+        onOpenChange={setAtivarOpen}
+        title="Deseja ativar?"
+        description="Este cadastro voltará a aparecer na listagem de ativos."
+        confirmLabel="Ativar"
+        onConfirm={handleAtivar}
       />
     </div>
   )

@@ -142,3 +142,11 @@ export async function inativarSistemas(ids: string[]): Promise<void> {
   revalidatePath("/gerador")
   updateTag(LAYOUT_CACHE_TAG)
 }
+
+export async function ativarSistema(id: string): Promise<void> {
+  await requireAdmin()
+  idSchema.parse(id)
+  await prisma.sistema.update({ where: { id }, data: { active: true } })
+  revalidatePath("/configuracoes/sistemas")
+  updateTag(LAYOUT_CACHE_TAG)
+}

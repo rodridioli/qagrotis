@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { requireSession } from "@/lib/session"
+import { requireSession, requireAdmin } from "@/lib/session"
 import { nextId } from "@/lib/db-utils"
 import { prisma } from "@/lib/prisma"
 
@@ -39,6 +39,7 @@ export interface CenarioRecord {
   senhaFalsa?: string
   steps?: CenarioStep[]
   deps?: string[]
+  credencialId?: string | null
   createdBy?: string
 }
 
@@ -69,6 +70,7 @@ const cenarioCreateSchema = z.object({
   senhaFalsa:        z.string().max(200),
   steps:             z.array(z.object({ acao: z.string().min(1).max(1000), resultado: z.string().min(1).max(1000) })).max(100),
   deps:              z.array(idSchema).max(100),
+  credencialId:      z.string().regex(/^CRD-\d+$/).nullable().optional(),
 })
 
 // ── Mapping helper ──────────────────────────────────────────────────────────
@@ -102,6 +104,7 @@ function toRecord(row: any): CenarioRecord {
     senhaFalsa:        row.senhaFalsa ?? undefined,
     steps:             (row.steps as unknown as CenarioStep[]) ?? [],
     deps:              (row.deps as string[]) ?? [],
+    credencialId:      row.credencialId ?? null,
     createdBy:         row.createdBy ?? undefined,
   }
 }
@@ -240,6 +243,7 @@ export async function atualizarCenario(id: string, data: {
   senhaFalsa: string
   steps: CenarioStep[]
   deps: string[]
+  credencialId?: string | null
 }): Promise<CenarioRecord> {
   const session = await requireSession()
   const parsedId = idSchema.safeParse(id)
@@ -264,6 +268,7 @@ export async function atualizarCenario(id: string, data: {
       usuarioTeste:      (data.usuarioTeste || "").trim(),
       senhaTeste:        (data.senhaTeste || "").trim(),
       senhaFalsa:        (data.senhaFalsa || "").trim(),
+      credencialId:      data.credencialId ?? null,
     })
   } catch (e) {
     if (e instanceof z.ZodError) throw new Error(e.issues[0]?.message ?? "Dados inválidos.")
@@ -306,6 +311,7 @@ export async function atualizarCenario(id: string, data: {
       senhaFalsa:        parsed.senhaFalsa,
       steps:             parsed.steps,
       deps:              parsed.deps,
+      credencialId:      parsed.credencialId ?? null,
       createdBy:         existing.createdBy ?? updatedBy,
     },
   })
@@ -314,6 +320,13 @@ export async function atualizarCenario(id: string, data: {
   revalidatePath(`/cenarios/${id}`)
   revalidatePath(`/cenarios/${id}/editar`)
   return toRecord(row)
+}
+
+export async function ativarCenario(id: string): Promise<void> {
+  await requireAdmin()
+  idSchema.parse(id)
+  await prisma.cenario.update({ where: { id }, data: { active: true } })
+  revalidatePath("/cenarios")
 }
 
 export async function inativarCenarios(ids: string[]): Promise<void> {
