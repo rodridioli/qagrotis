@@ -300,7 +300,8 @@ export function SuiteForm({
   async function sendToJira(issueKey: string, creds: { jiraUrl: string; email: string; apiToken: string }, mode: "replace" | "append") {
     setJiraLoading(true)
     try {
-      // Upload evidence files as Jira attachments
+      // Upload evidence files and replace filenames with inline image markdown
+      let contentToSend = jiraContent
       if (jiraEvidences.length > 0) {
         const fd = new FormData()
         fd.append("issueKey", issueKey)
@@ -308,13 +309,25 @@ export function SuiteForm({
           const blob = await fetch(ev.dataUrl).then((r) => r.blob())
           fd.append("files", new File([blob], ev.name, { type: ev.type }), ev.name)
         }
-        await fetch("/api/jira/attachments", { method: "POST", body: fd })
+        const uploadRes = await fetch("/api/jira/attachments", { method: "POST", body: fd })
+        if (uploadRes.ok) {
+          const { uploaded } = await uploadRes.json() as { uploaded: { name: string; contentUrl: string }[] }
+          for (const att of uploaded) {
+            if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(att.name)) {
+              const escaped = att.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+              contentToSend = contentToSend.replace(
+                new RegExp(`^- ${escaped}$`, "m"),
+                `![${att.name}](${att.contentUrl})`,
+              )
+            }
+          }
+        }
       }
 
       const res = await fetch("/api/jira", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jiraUrl: creds.jiraUrl, issueKey, apiToken: creds.apiToken, email: creds.email, content: jiraContent, mode }),
+        body: JSON.stringify({ jiraUrl: creds.jiraUrl, issueKey, apiToken: creds.apiToken, email: creds.email, content: contentToSend, mode }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error((data as string) || "Erro ao enviar para o Jira.")

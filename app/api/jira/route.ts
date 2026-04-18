@@ -175,6 +175,11 @@ function markdownToADF(markdown: string): object {
       content.push({ type: "heading", attrs: { level: Math.min(heading[1].length, 6) }, content: [{ type: "text", text: stripMd(heading[2]) }] })
       i++; continue
     }
+    const img = line.match(/^!\[(.+?)\]\((.+?)\)$/)
+    if (img) {
+      content.push({ type: "mediaSingle", attrs: { layout: "center" }, content: [{ type: "media", attrs: { type: "external", url: img[2], alt: img[1] } }] })
+      i++; continue
+    }
     if (/^---+$/.test(line.trim())) { content.push({ type: "rule" }); i++; continue }
     if (line.startsWith("|")) {
       const rows: string[][] = []

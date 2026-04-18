@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64")
 
   const files = formData.getAll("files") as File[]
-  const uploaded: string[] = []
+  const uploaded: { name: string; contentUrl: string }[] = []
 
   for (const file of files) {
     try {
@@ -46,7 +46,11 @@ export async function POST(req: NextRequest) {
         body: fd,
       })
 
-      if (res.ok) uploaded.push(file.name)
+      if (res.ok) {
+        const data = await res.json() as Array<{ id: number; content: string }>
+        const contentUrl = data[0]?.content ?? `${base}/rest/api/3/attachment/content/${data[0]?.id}`
+        uploaded.push({ name: file.name, contentUrl })
+      }
     } catch { /* skip individual file failures */ }
   }
 
