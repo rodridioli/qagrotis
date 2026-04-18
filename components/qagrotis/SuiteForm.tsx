@@ -281,7 +281,7 @@ export function SuiteForm({
         toast.error(`Erro ao buscar issue: ${err.slice(0, 150)}`)
         return
       }
-      const data = await res.json() as { summary: string; descText: string; hasContent: boolean }
+      const data = await res.json() as { summary: string; descText: string; hasContent: boolean; attachmentIds?: number[] }
       if (data.hasContent) {
         // Show step 2 with existing content
         setJiraExisting(data)
@@ -324,10 +324,12 @@ export function SuiteForm({
         }
       }
 
+      const deleteAttachmentIds = mode === "replace" ? (jiraExisting?.attachmentIds ?? []) : []
+
       const res = await fetch("/api/jira", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jiraUrl: creds.jiraUrl, issueKey, apiToken: creds.apiToken, email: creds.email, content: contentToSend, mode }),
+        body: JSON.stringify({ jiraUrl: creds.jiraUrl, issueKey, apiToken: creds.apiToken, email: creds.email, content: contentToSend, mode, deleteAttachmentIds }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error((data as string) || "Erro ao enviar para o Jira.")
@@ -356,7 +358,7 @@ export function SuiteForm({
   type EvFile = { name: string; type: string; dataUrl: string }
   const [jiraEvidences, setJiraEvidences] = useState<EvFile[]>([])
   const [jiraInputTouched, setJiraInputTouched] = useState(false)
-  const [jiraExisting, setJiraExisting] = useState<{ summary: string; descText: string; hasContent: boolean } | null>(null)
+  const [jiraExisting, setJiraExisting] = useState<{ summary: string; descText: string; hasContent: boolean; attachmentIds?: number[] } | null>(null)
   const [jiraMode, setJiraMode] = useState<"replace" | "append">("replace")
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
   const [addSearch, setAddSearch] = useState("")

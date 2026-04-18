@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     email: string
     content?: string
     mode?: "replace" | "append"
+    deleteAttachmentIds?: number[]
   }
   try { body = await req.json() }
   catch { return new Response("JSON inválido.", { status: 400 }) }
@@ -68,6 +69,8 @@ export async function POST(req: NextRequest) {
     const descText = descAdf ? adfToText(descAdf) : ""
 
     const attachments = data.fields?.attachment ?? []
+    const attachmentIds = attachments.map(a => Number(a.id))
+
     const supported = attachments.filter(a =>
       a.size < 5 * 1024 * 1024 &&
       (a.mimeType.startsWith("image/") || a.mimeType === "application/pdf")
@@ -85,12 +88,24 @@ export async function POST(req: NextRequest) {
       } catch { /* skip */ }
     }
 
-    return Response.json({ summary, descText, hasContent: descText.trim().length > 0, attachments: attachmentData })
+    return Response.json({ summary, descText, hasContent: descText.trim().length > 0, attachments: attachmentData, attachmentIds })
   }
 
   // ── action: update — write description ───────────────────────────────────
-  const { content, mode } = body
+  const { content, mode, deleteAttachmentIds } = body
   if (!content) return new Response("Conteúdo obrigatório.", { status: 400 })
+
+  // Quando substituindo, remove os anexos existentes indicados pelo cliente
+  if (mode === "replace" && deleteAttachmentIds?.length) {
+    for (const id of deleteAttachmentIds) {
+      try {
+        await fetch(`${base}/rest/api/3/attachment/${id}`, {
+          method: "DELETE",
+          headers: { "Authorization": `Basic ${credentials}` },
+        })
+      } catch { /* skip */ }
+    }
+  }
 
   let adf: object
   if (mode === "append") {
