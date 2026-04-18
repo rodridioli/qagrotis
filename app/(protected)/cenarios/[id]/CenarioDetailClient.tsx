@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { ArrowLeft, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, ExternalLink, Check, X, Paperclip, Upload } from "lucide-react"
+import { ArrowLeft, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, ExternalLink, Check, X, Paperclip } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { SuiteRecord } from "@/lib/actions/suites"
@@ -12,7 +12,20 @@ import { registrarResultadoSuite } from "@/lib/actions/suites"
 import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
-import { JiraExportModal } from "@/components/qagrotis/JiraExportModal"
+
+export type EvFile = { name: string; type: string; dataUrl: string }
+
+export function evStorageKey(cenarioId: string, tipo: "manual" | "auto") {
+  return `qagrotis_ev_${cenarioId}_${tipo}`
+}
+
+async function fileToEvFile(file: File): Promise<EvFile> {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve({ name: file.name, type: file.type, dataUrl: reader.result as string })
+    reader.readAsDataURL(file)
+  })
+}
 
 interface Props {
   cenario: CenarioRecord
@@ -149,21 +162,41 @@ function BlockCard({
 export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }: Props) {
   const router = useRouter()
   const [isRegistering, setIsRegistering] = useState(false)
-  const [manualAttachments, setManualAttachments] = useState<File[]>([])
-  const [autoAttachments, setAutoAttachments] = useState<File[]>([])
-  const [jiraModalOpen, setJiraModalOpen] = useState(false)
+  const [manualEvs, setManualEvs] = useState<EvFile[]>([])
+  const [autoEvs, setAutoEvs] = useState<EvFile[]>([])
   const manualInputRef = useRef<HTMLInputElement>(null)
   const autoInputRef = useRef<HTMLInputElement>(null)
 
-  function handleManualFiles(e: React.ChangeEvent<HTMLInputElement>) {
+  // Carrega evidências salvas na sessão ao abrir o cenário
+  useEffect(() => {
+    try {
+      const m = sessionStorage.getItem(evStorageKey(cenario.id, "manual"))
+      const a = sessionStorage.getItem(evStorageKey(cenario.id, "auto"))
+      if (m) setManualEvs(JSON.parse(m))
+      if (a) setAutoEvs(JSON.parse(a))
+    } catch { /* ignore */ }
+  }, [cenario.id])
+
+  // Persiste evidências na sessão sempre que mudam
+  useEffect(() => {
+    sessionStorage.setItem(evStorageKey(cenario.id, "manual"), JSON.stringify(manualEvs))
+  }, [cenario.id, manualEvs])
+
+  useEffect(() => {
+    sessionStorage.setItem(evStorageKey(cenario.id, "auto"), JSON.stringify(autoEvs))
+  }, [cenario.id, autoEvs])
+
+  async function handleManualFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
-    setManualAttachments((prev) => [...prev, ...files])
+    const evFiles = await Promise.all(files.map(fileToEvFile))
+    setManualEvs((prev) => [...prev, ...evFiles])
     e.target.value = ""
   }
 
-  function handleAutoFiles(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleAutoFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
-    setAutoAttachments((prev) => [...prev, ...files])
+    const evFiles = await Promise.all(files.map(fileToEvFile))
+    setAutoEvs((prev) => [...prev, ...evFiles])
     e.target.value = ""
   }
 
@@ -229,10 +262,6 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
               Somente visualização — cenário inativo
             </span>
           )}
-          <Button variant="outline" onClick={() => setJiraModalOpen(true)}>
-            <Upload className="size-4" />
-            Exportar para o Jira
-          </Button>
           {suite && !viewOnly && (
             <>
               <Button
@@ -315,7 +344,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
         <div className="border-t border-border-default pt-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-text-secondary">
-              Evidências{manualAttachments.length > 0 ? ` (${manualAttachments.length})` : ""}
+              Evidências{manualEvs.length > 0 ? ` (${manualEvs.length})` : ""}
             </span>
             <Button variant="outline" onClick={() => manualInputRef.current?.click()}>
               <Paperclip className="size-4" />
@@ -330,9 +359,9 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
               onChange={handleManualFiles}
             />
           </div>
-          {manualAttachments.length > 0 ? (
+          {manualEvs.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {manualAttachments.map((f, i) => (
+              {manualEvs.map((f, i) => (
                 <span
                   key={i}
                   className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-neutral-grey-50 px-2.5 py-1 text-xs text-text-primary"
@@ -341,7 +370,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                   <span className="max-w-40 truncate">{f.name}</span>
                   <button
                     type="button"
-                    onClick={() => setManualAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                    onClick={() => setManualEvs((prev) => prev.filter((_, idx) => idx !== i))}
                     className="text-text-secondary hover:text-destructive transition-colors"
                   >
                     <X className="size-3" />
@@ -433,7 +462,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
             <div className="border-t border-border-default pt-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-text-secondary">
-                  Evidências{autoAttachments.length > 0 ? ` (${autoAttachments.length})` : ""}
+                  Evidências{autoEvs.length > 0 ? ` (${autoEvs.length})` : ""}
                 </span>
                 <Button variant="outline" onClick={() => autoInputRef.current?.click()}>
                   <Paperclip className="size-4" />
@@ -448,9 +477,9 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                   onChange={handleAutoFiles}
                 />
               </div>
-              {autoAttachments.length > 0 ? (
+              {autoEvs.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {autoAttachments.map((f, i) => (
+                  {autoEvs.map((f, i) => (
                     <span
                       key={i}
                       className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-neutral-grey-50 px-2.5 py-1 text-xs text-text-primary"
@@ -459,7 +488,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                       <span className="max-w-40 truncate">{f.name}</span>
                       <button
                         type="button"
-                        onClick={() => setAutoAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                        onClick={() => setAutoEvs((prev) => prev.filter((_, idx) => idx !== i))}
                         className="text-text-secondary hover:text-destructive transition-colors"
                       >
                         <X className="size-3" />
@@ -530,14 +559,6 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
             </table>
           </div>
       </BlockCard>}
-
-      <JiraExportModal
-        open={jiraModalOpen}
-        onClose={() => setJiraModalOpen(false)}
-        cenario={cenario}
-        manualAttachments={manualAttachments}
-        autoAttachments={autoAttachments}
-      />
 
     </div>
   )

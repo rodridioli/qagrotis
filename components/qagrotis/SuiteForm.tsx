@@ -167,10 +167,20 @@ export function SuiteForm({
     const fieldOrDash = (v: string | undefined | null) => (v && v.trim()) ? v.trim() : "—"
 
     // ── Detailed blocks ───────────────────────────────────────────────────────
+    const allEvidences: EvFile[] = []
     const details = selected.map((h) => {
       const icon = resultIcon(h.resultado)
       const cenario = allCenarios.find((c) => c.id === h.id)
-      return [
+
+      const manualEvs: EvFile[] = (() => {
+        try { return JSON.parse(sessionStorage.getItem(`qagrotis_ev_${h.id}_manual`) ?? "[]") } catch { return [] }
+      })()
+      const autoEvs: EvFile[] = (() => {
+        try { return JSON.parse(sessionStorage.getItem(`qagrotis_ev_${h.id}_auto`) ?? "[]") } catch { return [] }
+      })()
+      allEvidences.push(...manualEvs, ...autoEvs)
+
+      const lines = [
         `### ${h.id} — ${h.cenario}  ${icon} ${h.resultado}`,
         ``,
         `- **Sistema:** ${fieldOrDash(cenario?.system ?? suite?.sistema)}`,
@@ -183,7 +193,18 @@ export function SuiteForm({
         `- **Resultado esperado:** ${fieldOrDash(cenario?.resultadoEsperado)}`,
         `- **Execução:** ${h.data}${h.hora ? ` às ${h.hora}` : ""}`,
         `- **Resultado:** ${icon} ${h.resultado}`,
-      ].join("\n")
+      ]
+
+      if (manualEvs.length > 0) {
+        lines.push(``, `**Evidências — Teste Manual:**`)
+        manualEvs.forEach((ev) => lines.push(`- ${ev.name}`))
+      }
+      if (autoEvs.length > 0) {
+        lines.push(``, `**Evidências — Automação:**`)
+        autoEvs.forEach((ev) => lines.push(`- ${ev.name}`))
+      }
+
+      return lines.join("\n")
     }).join("\n---\n\n")
 
     // ── Summary table ─────────────────────────────────────────────────────────
@@ -220,6 +241,7 @@ export function SuiteForm({
     ].join("\n")
 
     setJiraContent(content)
+    setJiraEvidences(allEvidences)
     setJiraModalOpen(true)
   }
 
@@ -278,6 +300,17 @@ export function SuiteForm({
   async function sendToJira(issueKey: string, creds: { jiraUrl: string; email: string; apiToken: string }, mode: "replace" | "append") {
     setJiraLoading(true)
     try {
+      // Upload evidence files as Jira attachments
+      if (jiraEvidences.length > 0) {
+        const fd = new FormData()
+        fd.append("issueKey", issueKey)
+        for (const ev of jiraEvidences) {
+          const blob = await fetch(ev.dataUrl).then((r) => r.blob())
+          fd.append("files", new File([blob], ev.name, { type: ev.type }), ev.name)
+        }
+        await fetch("/api/jira/attachments", { method: "POST", body: fd })
+      }
+
       const res = await fetch("/api/jira", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -285,13 +318,15 @@ export function SuiteForm({
       })
       const data = await res.json()
       if (!res.ok) throw new Error((data as string) || "Erro ao enviar para o Jira.")
+      const evMsg = jiraEvidences.length > 0 ? ` ${jiraEvidences.length} evidência(s) anexada(s).` : ""
       toast.success("Exportado para o Jira com sucesso!", {
-        description: `Issue ${issueKey} atualizada.`,
-        action: { label: "Abrir no Jira", onClick: () => window.open(data.url, "_blank") },
+        description: `Issue ${issueKey} atualizada.${evMsg}`,
+        action: { label: "Abrir no Jira", onClick: () => window.open((data as { url: string }).url, "_blank") },
       })
       setJiraModalOpen(false)
       setJiraIssueInput("")
       setJiraExisting(null)
+      setJiraEvidences([])
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao conectar com o Jira.")
     } finally {
@@ -305,6 +340,8 @@ export function SuiteForm({
   const [jiraIssueInput, setJiraIssueInput] = useState("")  // URL completa ou chave
   const [jiraLoading, setJiraLoading] = useState(false)
   const [jiraContent, setJiraContent] = useState("")
+  type EvFile = { name: string; type: string; dataUrl: string }
+  const [jiraEvidences, setJiraEvidences] = useState<EvFile[]>([])
   const [jiraInputTouched, setJiraInputTouched] = useState(false)
   const [jiraExisting, setJiraExisting] = useState<{ summary: string; descText: string; hasContent: boolean } | null>(null)
   const [jiraMode, setJiraMode] = useState<"replace" | "append">("replace")
