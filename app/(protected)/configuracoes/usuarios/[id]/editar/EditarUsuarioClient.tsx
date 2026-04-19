@@ -30,6 +30,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
   const [nome, setNome] = useState(initialProfile.name)
   const [email, setEmail] = useState(initialProfile.email)
   const [tipo, setTipo] = useState(initialProfile.type)
+  const [classificacao, setClassificacao] = useState<string>(initialProfile.classificacao ?? "")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(
     initialProfile.photoPath ?? null
@@ -88,6 +89,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
         name: nome,
         email,
         type: tipo,
+        classificacao: classificacao || null,
         photoPath: resolvedPhotoPath,
       })
 
@@ -171,6 +173,21 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
               </Select>
             </div>
           )}
+
+          <div className="space-y-1.5">
+            <label htmlFor="classificacao" className="text-sm font-medium text-text-primary">
+              Classificação
+            </label>
+            <Select value={classificacao} onValueChange={(v) => setClassificacao(v ?? "")} disabled={isPending}>
+              <SelectTrigger id="classificacao"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+              <SelectPopup>
+                <SelectItem value="Colaborador">Colaborador</SelectItem>
+                <SelectItem value="Líder">Líder</SelectItem>
+                <SelectItem value="Coordenador">Coordenador</SelectItem>
+                <SelectItem value="Outro">Outro</SelectItem>
+              </SelectPopup>
+            </Select>
+          </div>
 
           {/* ── Password section ── */}
           <div className="border-t border-border-default pt-4 space-y-4">

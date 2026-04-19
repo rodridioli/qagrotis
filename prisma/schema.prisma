@@ -197,22 +197,24 @@ model Suite {
 
 // Users created by admins (have passwords, managed manually)
 model CreatedUser {
-  id        String   @id
-  name      String
-  email     String   @unique
-  type      String   @default("Padrão")
-  photoPath String?
-  password  String   @default("")
-  createdAt DateTime @default(now())
+  id            String   @id
+  name          String
+  email         String   @unique
+  type          String   @default("Padrão")
+  classificacao String?
+  photoPath     String?
+  password      String   @default("")
+  createdAt     DateTime @default(now())
 }
 
 // Profile overrides for both mock and created users (name, email, type, photo)
 model UserProfile {
-  userId    String  @id
-  name      String?
-  email     String?
-  type      String?
-  photoPath String?
+  userId        String  @id
+  name          String?
+  email         String?
+  type          String?
+  classificacao String?
+  photoPath     String?
 }
 
 // Soft-delete registry for mock users (mock users cannot be deleted from constants)

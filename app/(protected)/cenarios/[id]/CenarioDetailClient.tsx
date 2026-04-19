@@ -506,7 +506,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
 
       {/* ── Bloco 4: Dependências ── */}
       {depIds.length > 0 && <BlockCard title={`Dependências (${depIds.length})`}>
-          <div className="overflow-x-auto rounded-lg border border-border-default">
+          <div className="overflow-x-auto lg:overflow-visible rounded-lg border border-border-default">
             <table className="w-full table-fixed text-sm">
               <colgroup>
                 <col className="w-24" />
@@ -542,10 +542,10 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                         {dep.id}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-text-primary truncate">{"scenarioName" in dep ? dep.scenarioName : "—"}</td>
-                    <td className="px-4 py-3 text-text-secondary truncate">{"system" in dep ? dep.system : "—"}</td>
-                    <td className="px-4 py-3 text-text-secondary truncate">{"module" in dep ? dep.module : "—"}</td>
-                    <td className="px-4 py-3 text-text-secondary truncate">{"client" in dep ? dep.client : "—"}</td>
+                    <td className="max-w-0 truncate px-4 py-3 text-text-primary" title={"scenarioName" in dep ? dep.scenarioName : undefined}>{"scenarioName" in dep ? dep.scenarioName : "—"}</td>
+                    <td className="max-w-0 truncate px-4 py-3 text-text-secondary" title={"system" in dep ? dep.system : undefined}>{"system" in dep ? dep.system : "—"}</td>
+                    <td className="max-w-0 truncate px-4 py-3 text-text-secondary" title={"module" in dep ? dep.module : undefined}>{"module" in dep ? dep.module : "—"}</td>
+                    <td className="max-w-0 truncate px-4 py-3 text-text-secondary" title={"client" in dep ? dep.client : undefined}>{"client" in dep ? dep.client : "—"}</td>
                     <td className="px-4 py-3">
                       {"tipo" in dep && dep.tipo && dep.tipo !== "—" ? (
                         <CenarioTipoBadge tipo={dep.tipo as CenarioTipo} />

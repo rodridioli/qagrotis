@@ -844,7 +844,7 @@ export default function NovoCenarioClient({
                 Nenhuma dependência adicionada.
               </div>
             ) : (
-              <div>
+              <div className="overflow-x-auto lg:overflow-visible">
                 <table className="w-full table-fixed text-sm">
                   <colgroup>
                     <col className="w-24" /><col /><col className="w-24" /><col className="w-28" /><col className="w-28" /><col className="w-10" />
@@ -865,14 +865,15 @@ export default function NovoCenarioClient({
                         <td className="px-4 py-3">
                           <Link href={`/cenarios/${d.id}/editar`} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-primary hover:underline">{d.id}</Link>
                         </td>
-                        <td className="px-4 py-3 text-text-primary truncate">{d.name}</td>
+                        <td className="max-w-0 truncate px-4 py-3 text-text-primary" title={d.name}>{d.name}</td>
                         <td className="px-4 py-3"><CenarioTipoBadge tipo={d.tipo as CenarioTipo} /></td>
-                        <td className="px-4 py-3 text-text-secondary truncate">{d.system}</td>
-                        <td className="px-4 py-3 text-text-secondary truncate">{d.module}</td>
+                        <td className="max-w-0 truncate px-4 py-3 text-text-secondary" title={d.system}>{d.system}</td>
+                        <td className="max-w-0 truncate px-4 py-3 text-text-secondary" title={d.module}>{d.module}</td>
                         <td className="py-3 pl-2 pr-4">
                           <button
                             type="button"
                             onClick={() => setDeps((prev) => prev.filter((x) => x.id !== d.id))}
+                            aria-label={`Remover dependência ${d.id}`}
                             className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                           >
                             <Trash2 className="size-4" />

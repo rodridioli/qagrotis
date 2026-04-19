@@ -14,6 +14,7 @@ export interface QaUserRecord {
   name: string
   email: string
   type: string
+  classificacao?: string | null
   active: boolean
   photoPath: string | null
   createdAt?: number
@@ -23,6 +24,7 @@ export interface QaUserProfile {
   name: string
   email: string
   type: string
+  classificacao?: string | null
   photoPath: string | null
 }
 
@@ -33,6 +35,14 @@ const userInputSchema = z.object({
   email: z.string().email("E-mail inválido").max(254),
   type: z.enum(["Padrão", "Administrador"]),
 })
+
+const CLASSIFICACOES_VALIDAS = ["Colaborador", "Líder", "Coordenador", "Outro"] as const
+type ClassificacaoValida = typeof CLASSIFICACOES_VALIDAS[number]
+
+function sanitizeClassificacao(value: string | null | undefined): string | null {
+  if (!value) return null
+  return (CLASSIFICACOES_VALIDAS as readonly string[]).includes(value) ? value : null
+}
 
 const idSchema = z.string().regex(/^U-\d+$/, "ID inválido")
 const idsArraySchema = z.array(idSchema).max(1000)
@@ -89,25 +99,27 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
   const mockRecords: QaUserRecord[] = MOCK_USERS.map((u) => {
     const p = profileMap.get(u.id)
     return {
-      id:        u.id,
-      name:      p?.name ?? u.name,
-      email:     p?.email ?? u.email,
-      type:      p?.type ?? u.type,
-      active:    !inactiveIds.has(u.id) && u.active,
-      photoPath: p?.photoPath ?? null,
+      id:            u.id,
+      name:          p?.name ?? u.name,
+      email:         p?.email ?? u.email,
+      type:          p?.type ?? u.type,
+      classificacao: p?.classificacao ?? null,
+      active:        !inactiveIds.has(u.id) && u.active,
+      photoPath:     p?.photoPath ?? null,
     }
   })
 
   const createdRecords: QaUserRecord[] = createdUsers.map((u) => {
     const p = profileMap.get(u.id)
     return {
-      id:        u.id,
-      name:      p?.name ?? u.name,
-      email:     p?.email ?? u.email,
-      type:      p?.type ?? u.type,
-      active:    !inactiveIds.has(u.id),
-      photoPath: p?.photoPath ?? u.photoPath,
-      createdAt: u.createdAt.getTime(),
+      id:            u.id,
+      name:          p?.name ?? u.name,
+      email:         p?.email ?? u.email,
+      type:          p?.type ?? u.type,
+      classificacao: p?.classificacao ?? u.classificacao ?? null,
+      active:        !inactiveIds.has(u.id),
+      photoPath:     p?.photoPath ?? u.photoPath,
+      createdAt:     u.createdAt.getTime(),
     }
   })
 
@@ -117,13 +129,14 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
     .map((u) => {
       const p = profileMap.get(u.id)
       return {
-        id:        u.id,
-        name:      p?.name ?? u.name ?? u.email ?? "",
-        email:     p?.email ?? u.email ?? "",
-        type:      p?.type ?? "Padrão",
-        active:    !inactiveIds.has(u.id),
-        photoPath: p?.photoPath ?? u.image ?? null,
-        createdAt: u.createdAt.getTime(),
+        id:            u.id,
+        name:          p?.name ?? u.name ?? u.email ?? "",
+        email:         p?.email ?? u.email ?? "",
+        type:          p?.type ?? "Padrão",
+        classificacao: p?.classificacao ?? null,
+        active:        !inactiveIds.has(u.id),
+        photoPath:     p?.photoPath ?? u.image ?? null,
+        createdAt:     u.createdAt.getTime(),
       }
     })
 
@@ -145,10 +158,11 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
   if (!base) return null
 
   return {
-    name:      savedProfile?.name ?? base.name,
-    email:     savedProfile?.email ?? base.email,
-    type:      savedProfile?.type ?? base.type,
-    photoPath: savedProfile?.photoPath ?? (createdUser?.photoPath ?? null),
+    name:          savedProfile?.name ?? base.name,
+    email:         savedProfile?.email ?? base.email,
+    type:          savedProfile?.type ?? base.type,
+    classificacao: savedProfile?.classificacao ?? (createdUser?.classificacao ?? null),
+    photoPath:     savedProfile?.photoPath ?? (createdUser?.photoPath ?? null),
   }
 }
 
@@ -218,6 +232,7 @@ export async function criarQaUser(data: {
   name: string
   email: string
   type: string
+  classificacao?: string | null
   password: string
   photoPath?: string | null
 }): Promise<{ id?: string; error?: string; emailEnviado?: boolean }> {
@@ -267,6 +282,7 @@ export async function criarQaUser(data: {
     if (existingCreated && !inactiveIds.has(existingCreated.id)) return { error: "E-mail já cadastrado." }
 
     const hashedPassword = hashPassword(data.password)
+    const classificacaoValida = sanitizeClassificacao(data.classificacao)
 
     let createdId = ""
     if (existingCreated && inactiveIds.has(existingCreated.id)) {
@@ -274,7 +290,7 @@ export async function criarQaUser(data: {
       await prisma.$transaction([
         prisma.createdUser.update({
           where: { id: existingCreated.id },
-          data: { name: parsed.name, type: parsed.type, password: hashedPassword, photoPath: data.photoPath ?? null },
+          data: { name: parsed.name, type: parsed.type, classificacao: classificacaoValida, password: hashedPassword, photoPath: data.photoPath ?? null },
         }),
         prisma.inactiveUser.delete({ where: { userId: existingCreated.id } }),
       ])
@@ -284,7 +300,7 @@ export async function criarQaUser(data: {
       const allIds = [...MOCK_USERS.map((u) => u.id), ...createdIds.map((u) => u.id)]
       const id = nextId(allIds, "U")
       await prisma.createdUser.create({
-        data: { id, name: parsed.name, email: parsed.email, type: parsed.type, photoPath: data.photoPath ?? null, password: hashedPassword },
+        data: { id, name: parsed.name, email: parsed.email, type: parsed.type, classificacao: classificacaoValida, photoPath: data.photoPath ?? null, password: hashedPassword },
       })
       createdId = id
     }
@@ -345,7 +361,7 @@ export async function validateLogin(
 
 export async function atualizarQaUser(
   id: string,
-  data: { name: string; email: string; type: string; photoPath?: string | null }
+  data: { name: string; email: string; type: string; classificacao?: string | null; photoPath?: string | null }
 ): Promise<{ error?: string }> {
   let session: Awaited<ReturnType<typeof requireSession>>
   try {
@@ -392,16 +408,19 @@ export async function atualizarQaUser(
       return { error: "Caminho de foto inválido." }
     }
 
-    const profileData: { name: string; email: string; type: string; photoPath?: string | null } = {
-      name:  parsed.name,
-      email: parsed.email,
-      type:  parsed.type,
+    const classificacaoValida = sanitizeClassificacao(data.classificacao)
+
+    const profileData: { name: string; email: string; type: string; classificacao: string | null; photoPath?: string | null } = {
+      name:          parsed.name,
+      email:         parsed.email,
+      type:          parsed.type,
+      classificacao: classificacaoValida,
     }
     if (safePhotoPath !== undefined) profileData.photoPath = safePhotoPath
 
     await prisma.userProfile.upsert({
       where:  { userId: id },
-      create: { userId: id, name: parsed.name, email: parsed.email, type: parsed.type, photoPath: safePhotoPath ?? null },
+      create: { userId: id, name: parsed.name, email: parsed.email, type: parsed.type, classificacao: classificacaoValida, photoPath: safePhotoPath ?? null },
       update: profileData,
     })
 
