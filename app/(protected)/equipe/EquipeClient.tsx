@@ -247,7 +247,7 @@ function FilterModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Filtros de Performance</DialogTitle>
+          <DialogTitle>Filtros</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-4 py-2">
@@ -255,7 +255,9 @@ function FilterModal({
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">Sistema</label>
             <Select value={draft.sistema} onValueChange={(v) => setSistema(v ?? "todos")}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full">
+                <span className="truncate">{draft.sistema === "todos" ? "Todos" : draft.sistema}</span>
+              </SelectTrigger>
               <SelectPopup>
                 <SelectItem value="todos">Todos</SelectItem>
                 {sistemas.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -267,7 +269,9 @@ function FilterModal({
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">Módulo</label>
             <Select value={draft.modulo} onValueChange={(v) => onDraftChange({ ...draft, modulo: v ?? "todos" })}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full">
+                <span className="truncate">{draft.modulo === "todos" ? "Todos" : draft.modulo}</span>
+              </SelectTrigger>
               <SelectPopup>
                 <SelectItem value="todos">Todos</SelectItem>
                 {modulosDisponiveis.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
@@ -279,7 +283,11 @@ function FilterModal({
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">Período</label>
             <Select value={draft.periodo} onValueChange={(v) => onDraftChange({ ...draft, periodo: v ?? "mes-atual" })}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full">
+                <span className="truncate">
+                  {PERIODOS.find((p) => p.value === draft.periodo)?.label ?? draft.periodo}
+                </span>
+              </SelectTrigger>
               <SelectPopup>
                 {PERIODOS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
               </SelectPopup>
