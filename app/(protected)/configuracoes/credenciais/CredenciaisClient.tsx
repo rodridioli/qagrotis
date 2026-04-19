@@ -204,7 +204,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cód.</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Credencial</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">URL do Ambiente</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
@@ -214,7 +214,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                 <tbody>
                   {paginated.map((c) => (
                     <tr key={c.id} className="group border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
-                      <td className="px-4 py-3 font-mono text-xs">
+                      <td className="px-4 py-3 font-medium whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => openEditar(c)}
