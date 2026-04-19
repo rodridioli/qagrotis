@@ -295,14 +295,10 @@ function FilterModal({
           </div>
         </div>
 
-        <DialogFooter className="flex-row items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={onReset}
-            className="text-sm text-text-secondary hover:text-text-primary transition-colors"
-          >
+        <DialogFooter showCloseButton={false}>
+          <DialogClose render={<Button variant="ghost" onClick={onReset} />}>
             Limpar filtros
-          </button>
+          </DialogClose>
           <div className="flex gap-2">
             <DialogClose render={<Button variant="outline" />}>Cancelar</DialogClose>
             <Button onClick={() => { onApply(); onOpenChange(false) }} disabled={pending}>
