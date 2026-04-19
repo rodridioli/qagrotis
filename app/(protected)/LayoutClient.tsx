@@ -162,13 +162,13 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                 "group flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium transition-all duration-150",
                 collapsed ? "lg:justify-center" : "",
                 isActive
-                  ? "bg-brand-primary"
+                  ? "bg-brand-primary text-white"
                   : "text-text-secondary hover:bg-neutral-grey-100 hover:text-text-primary hover:translate-x-0.5"
               )
               const itemStyle = isActive ? { color: "#ffffff" } : undefined
               const itemChildren = (
                 <>
-                  <Icon className="size-4.5 shrink-0 transition-transform duration-150 group-hover:scale-110" />
+                  <Icon className={cn("size-4.5 shrink-0 transition-transform duration-150 group-hover:scale-110", isActive ? "text-white" : "")} />
                   {showLabel && <span className="truncate">{label}</span>}
                 </>
               )

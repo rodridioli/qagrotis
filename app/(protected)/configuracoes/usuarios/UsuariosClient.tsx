@@ -307,6 +307,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                   <col className="w-44" />
                   <col />
                   <col className="w-44" />
+                  <col className="w-32" />
                   <col className="w-16" />
                 </colgroup>
                 <thead>
@@ -335,6 +336,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">E-mail</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Classificação</th>
                     <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
@@ -383,6 +385,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                         </td>
                         <td className="px-4 py-3 text-text-secondary truncate transition-colors group-hover:bg-neutral-grey-50" title={u.email}>{u.email}</td>
                         <td className="px-4 py-3 transition-colors group-hover:bg-neutral-grey-50"><UserTipoBadge tipo={u.type} /></td>
+                        <td className="px-4 py-3 text-text-secondary transition-colors group-hover:bg-neutral-grey-50">{u.classificacao ?? "—"}</td>
                         <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
                           {filters.apenasInativos && !isSelf ? (
                             <button

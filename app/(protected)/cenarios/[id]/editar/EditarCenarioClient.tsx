@@ -856,7 +856,7 @@ export default function EditarCenarioClient({
                 Nenhuma dependência adicionada.
               </div>
             ) : (
-              <div>
+              <div className="overflow-x-auto lg:overflow-visible">
                 <table className="w-full table-fixed text-sm">
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -873,15 +873,16 @@ export default function EditarCenarioClient({
                         <td className="px-4 py-3">
                           <Link href={`/cenarios/${d.id}/editar`} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-primary hover:underline">{d.id}</Link>
                         </td>
-                        <td className="px-4 py-3 min-w-0">
+                        <td className="max-w-0 truncate px-4 py-3" title={d.name}>
                           <span className="block truncate text-text-primary">{d.name}</span>
                         </td>
-                        <td className="px-4 py-3 truncate text-text-secondary">{d.system}</td>
-                        <td className="px-4 py-3 truncate text-text-secondary">{d.module}</td>
+                        <td className="max-w-0 truncate px-4 py-3 text-text-secondary" title={d.system}>{d.system}</td>
+                        <td className="max-w-0 truncate px-4 py-3 text-text-secondary" title={d.module}>{d.module}</td>
                         <td className="py-3 pl-2 pr-4">
                           <button
                             type="button"
                             onClick={() => setDeps((prev) => prev.filter((x) => x.id !== d.id))}
+                            aria-label={`Remover dependência ${d.id}`}
                             className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                           >
                             <Trash2 className="size-4" />
