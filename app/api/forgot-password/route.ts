@@ -121,28 +121,3 @@ function buildResetHtml(email: string, resetUrl: string): string {
 </html>`
 }
 
-function buildCredentialsHtml(email: string, password: string): string {
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: sans-serif; color: #333; }
-    .container { padding: 20px; border: 1px solid #eee; border-radius: 8px; max-width: 600px; }
-    .box { background: #f9f9f9; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #008a5d; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h2>Acesso ao QAgrotis</h2>
-    <p>Olá,</p>
-    <p>Aqui estão as suas credenciais de acesso solicitadas para a conta <strong>${email}</strong>:</p>
-    <div class="box">
-      <strong>Senha atual:</strong> <code>${password}</code>
-    </div>
-    <p>Recomendamos que você altere sua senha após o primeiro acesso.</p>
-    <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
-    <p style="font-size: 12px; color: #888;">&copy; ${new Date().getFullYear()} QAgrotis — Gestão de Qualidade</p>
-  </div>
-</body>
-</html>`
-}

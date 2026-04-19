@@ -1,10 +1,13 @@
 "use server"
 
+import { cache } from "react"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 
-async function getUserType(email: string): Promise<string | null> {
+// Memoized per-request — avoids redundant DB lookups when multiple server
+// components/actions call requireAdmin() or checkIsAdmin() in the same request.
+const getUserType = cache(async (email: string): Promise<string | null> => {
   const normalized = email.toLowerCase()
 
   // Check UserProfile overrides (keyed by userId, but email field enables lookup by email)
@@ -34,7 +37,7 @@ async function getUserType(email: string): Promise<string | null> {
   if (oauthUser) return "Padrão"
 
   return null
-}
+})
 
 /**
  * Asserts the request has a valid session. Throws if not authenticated.

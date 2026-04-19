@@ -7,7 +7,7 @@ const COOKIE_OPTS = {
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,
   path: "/",
-  maxAge: 60 * 60 * 24 * 365, // 1 year
+  maxAge: 60 * 60 * 24 * 30, // 30 days
 }
 
 // GET — return whether credentials are configured (without exposing the token)

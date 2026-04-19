@@ -13,6 +13,23 @@ const ALLOWED_TYPES: Record<string, string> = {
   gif:  "image/gif",
 }
 
+// Magic byte signatures — validated against actual file content, not filename
+const MAGIC_SIGNATURES: Array<{ mime: string; bytes: number[]; offset?: number }> = [
+  { mime: "image/jpeg", bytes: [0xFF, 0xD8, 0xFF] },
+  { mime: "image/png",  bytes: [0x89, 0x50, 0x4E, 0x47] },
+  { mime: "image/gif",  bytes: [0x47, 0x49, 0x46] },
+  { mime: "image/webp", bytes: [0x57, 0x45, 0x42, 0x50], offset: 8 },
+]
+
+function detectMimeFromBytes(buf: Buffer): string | null {
+  for (const sig of MAGIC_SIGNATURES) {
+    const offset = sig.offset ?? 0
+    if (buf.length < offset + sig.bytes.length) continue
+    if (sig.bytes.every((b, i) => buf[offset + i] === b)) return sig.mime
+  }
+  return null
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -58,13 +75,20 @@ export async function PUT(
   }
 
   const ext = (photo.name.split(".").pop() ?? "").toLowerCase()
-  const mimeType = ALLOWED_TYPES[ext]
-  if (!mimeType) {
+  if (!ALLOWED_TYPES[ext]) {
     return NextResponse.json({ error: "Formato não permitido. Use JPG, PNG, WebP ou GIF." }, { status: 415 })
   }
 
   try {
     const buffer = Buffer.from(await photo.arrayBuffer())
+
+    // Validate actual file content via magic bytes — prevents disguised uploads
+    const detectedMime = detectMimeFromBytes(buffer)
+    if (!detectedMime || !Object.values(ALLOWED_TYPES).includes(detectedMime)) {
+      return NextResponse.json({ error: "Conteúdo do arquivo não corresponde ao formato declarado." }, { status: 415 })
+    }
+    const mimeType = detectedMime
+
     const base64 = buffer.toString("base64")
     const photoPath = `data:${mimeType};base64,${base64}`
 

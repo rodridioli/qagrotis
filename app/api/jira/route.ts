@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
+import { isSafeExternalUrl } from "@/lib/security"
 
 // GET is no longer supported - all Jira calls use POST with action field
 // This handler prevents 404 errors from cached old code
@@ -43,6 +44,10 @@ export async function POST(req: NextRequest) {
   }
 
   const base = jiraUrl.replace(/\/$/, "")
+
+  if (!isSafeExternalUrl(base)) {
+    return new Response("URL Jira inválida. Use uma URL HTTPS pública (ex: https://sua-empresa.atlassian.net).", { status: 400 })
+  }
   const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64")
 
   // ── action: fetch — get current description ──────────────────────────────
@@ -79,6 +84,7 @@ export async function POST(req: NextRequest) {
     const attachmentData: { name: string; mimeType: string; dataUrl: string }[] = []
     for (const att of supported) {
       try {
+        if (!isSafeExternalUrl(att.content)) continue
         const attRes = await fetch(att.content, { headers: { "Authorization": `Basic ${credentials}` } })
         if (attRes.ok) {
           const buf = await attRes.arrayBuffer()

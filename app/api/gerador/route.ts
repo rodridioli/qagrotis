@@ -2,6 +2,49 @@ import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 import { getIntegracao } from "@/lib/actions/integracoes"
 
+// ── SSE streaming helper ──────────────────────────────────────────────────────
+
+/**
+ * Pipes an SSE/streaming response from an AI provider into a plain text stream.
+ * `extractor` receives each parsed JSON event and returns the text chunk to emit
+ * (or empty string to skip).
+ */
+function pipeSSE(
+  res: globalThis.Response,
+  extractor: (parsed: unknown) => string
+): Response {
+  const encoder = new TextEncoder()
+  const readable = new ReadableStream({
+    async start(controller) {
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split("\n")
+          buffer = lines.pop() ?? ""
+          for (const line of lines) {
+            if (!line.startsWith("data:")) continue
+            const data = line.slice(5).trim()
+            if (data === "[DONE]") continue
+            try {
+              const parsed = JSON.parse(data)
+              const text = extractor(parsed)
+              if (text) controller.enqueue(encoder.encode(text))
+            } catch { /* skip malformed SSE frame */ }
+          }
+        }
+      } finally {
+        controller.close()
+      }
+    },
+  })
+  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
+}
+
 // Rate limit: max 30 AI generations per user per hour
 const geradorRateMap = new Map<string, { count: number; resetAt: number }>()
 function checkGeradorRateLimit(userId: string): boolean {
@@ -91,7 +134,8 @@ Resultado esperado:
 async function streamAnthropic(
   userMessage: string,
   images?: { dataUrl: string; name: string }[],
-  keyOverride?: string
+  keyOverride?: string,
+  model = "claude-sonnet-4-6"
 ): Promise<Response> {
   const apiKey = keyOverride || process.env.ANTHROPIC_API_KEY
   if (!apiKey) return new Response("Informe sua ANTHROPIC_API_KEY no campo de API Key.", { status: 500 })
@@ -122,7 +166,7 @@ async function streamAnthropic(
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-3-5-sonnet-20241022",
+      model,
       max_tokens: 8192,
       stream: true,
       system: SYSTEM_PROMPT,
@@ -135,34 +179,10 @@ async function streamAnthropic(
     return new Response(`Erro na API Anthropic: ${err}`, { status: 502 })
   }
 
-  const encoder = new TextEncoder()
-  const readable = new ReadableStream({
-    async start(controller) {
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ""
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() ?? ""
-        for (const line of lines) {
-          if (!line.startsWith("data:")) continue
-          const data = line.slice(5).trim()
-          if (data === "[DONE]") continue
-          try {
-            const parsed = JSON.parse(data)
-            if (parsed.type === "content_block_delta" && parsed.delta?.text) {
-              controller.enqueue(encoder.encode(parsed.delta.text))
-            }
-          } catch { /* ignore */ }
-        }
-      }
-      controller.close()
-    },
+  return pipeSSE(res, (parsed) => {
+    const p = parsed as { type?: string; delta?: { text?: string } }
+    return p.type === "content_block_delta" ? (p.delta?.text ?? "") : ""
   })
-  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
 }
 
 async function streamOpenAI(userMessage: string, model = "gpt-4o", keyOverride?: string): Promise<Response> {
@@ -191,33 +211,10 @@ async function streamOpenAI(userMessage: string, model = "gpt-4o", keyOverride?:
     return new Response(`Erro na API OpenAI: ${err}`, { status: 502 })
   }
 
-  const encoder = new TextEncoder()
-  const readable = new ReadableStream({
-    async start(controller) {
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ""
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() ?? ""
-        for (const line of lines) {
-          if (!line.startsWith("data:")) continue
-          const data = line.slice(5).trim()
-          if (data === "[DONE]") continue
-          try {
-            const parsed = JSON.parse(data)
-            const delta = parsed.choices?.[0]?.delta?.content
-            if (delta) controller.enqueue(encoder.encode(delta))
-          } catch { /* ignore */ }
-        }
-      }
-      controller.close()
-    },
+  return pipeSSE(res, (parsed) => {
+    const p = parsed as { choices?: Array<{ delta?: { content?: string } }> }
+    return p.choices?.[0]?.delta?.content ?? ""
   })
-  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
 }
 
 async function streamGemini(
@@ -270,32 +267,10 @@ async function streamGemini(
     }
   }
 
-  const encoder = new TextEncoder()
-  const readable = new ReadableStream({
-    async start(controller) {
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ""
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() ?? ""
-        for (const line of lines) {
-          if (!line.startsWith("data:")) continue
-          const data = line.slice(5).trim()
-          try {
-            const parsed = JSON.parse(data)
-            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text
-            if (text) controller.enqueue(encoder.encode(text))
-          } catch { /* ignore */ }
-        }
-      }
-      controller.close()
-    },
+  return pipeSSE(res, (parsed) => {
+    const p = parsed as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+    return p.candidates?.[0]?.content?.parts?.[0]?.text ?? ""
   })
-  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
 }
 
 // Common OpenRouter model ID aliases to correct typical mistakes
@@ -388,37 +363,10 @@ async function streamOpenRouter(
     for (const fallbackModel of fallbacks) {
       const fallbackRes = await tryModel(fallbackModel)
       if (fallbackRes.ok) {
-        // Stream the fallback response
-        const { provider: _p, ...rest } = { provider: "openrouter" }
-        void rest
-        const enc2 = new TextEncoder()
-        const readable2 = new ReadableStream({
-          async start(controller) {
-            const reader = fallbackRes.body!.getReader()
-            const decoder = new TextDecoder()
-            let buf = ""
-            try {
-              while (true) {
-                const { done, value } = await reader.read()
-                if (done) break
-                buf += decoder.decode(value, { stream: true })
-                const lines = buf.split("\n")
-                buf = lines.pop() ?? ""
-                for (const line of lines) {
-                  if (!line.startsWith("data:")) continue
-                  const data = line.slice(5).trim()
-                  if (data === "[DONE]") continue
-                  try {
-                    const parsed = JSON.parse(data)
-                    const text = parsed.choices?.[0]?.delta?.content ?? ""
-                    if (text) controller.enqueue(enc2.encode(text))
-                  } catch { /* ignore */ }
-                }
-              }
-            } finally { controller.close() }
-          },
+        return pipeSSE(fallbackRes, (p) => {
+          const parsed = p as { choices?: Array<{ delta?: { content?: string } }> }
+          return parsed.choices?.[0]?.delta?.content ?? ""
         })
-        return new Response(readable2, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
       }
     }
   }
@@ -458,33 +406,10 @@ async function streamOpenRouter(
     }
   }
 
-  const encoder = new TextEncoder()
-  const readable = new ReadableStream({
-    async start(controller) {
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ""
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() ?? ""
-        for (const line of lines) {
-          if (!line.startsWith("data:")) continue
-          const data = line.slice(5).trim()
-          if (data === "[DONE]") continue
-          try {
-            const parsed = JSON.parse(data)
-            const delta = parsed.choices?.[0]?.delta?.content
-            if (delta) controller.enqueue(encoder.encode(delta))
-          } catch { /* ignore */ }
-        }
-      }
-      controller.close()
-    },
+  return pipeSSE(res, (p) => {
+    const parsed = p as { choices?: Array<{ delta?: { content?: string } }> }
+    return parsed.choices?.[0]?.delta?.content ?? ""
   })
-  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
 }
 
 async function streamGroq(userMessage: string, model: string, keyOverride?: string): Promise<Response> {
@@ -513,33 +438,10 @@ async function streamGroq(userMessage: string, model: string, keyOverride?: stri
     return new Response(`Erro na API Groq: ${err}`, { status: 502 })
   }
 
-  const encoder = new TextEncoder()
-  const readable = new ReadableStream({
-    async start(controller) {
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ""
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() ?? ""
-        for (const line of lines) {
-          if (!line.startsWith("data:")) continue
-          const data = line.slice(5).trim()
-          if (data === "[DONE]") continue
-          try {
-            const parsed = JSON.parse(data)
-            const delta = parsed.choices?.[0]?.delta?.content
-            if (delta) controller.enqueue(encoder.encode(delta))
-          } catch { /* ignore */ }
-        }
-      }
-      controller.close()
-    },
+  return pipeSSE(res, (p) => {
+    const parsed = p as { choices?: Array<{ delta?: { content?: string } }> }
+    return parsed.choices?.[0]?.delta?.content ?? ""
   })
-  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } })
 }
 
 // ── Vision-specific instruction injected when images are present ───────────────
@@ -619,7 +521,7 @@ export async function POST(req: NextRequest) {
     case "openai":
       return streamOpenAI(userMessage, model, apiKey)
     case "anthropic":
-      return streamAnthropic(userMessage, imagens, apiKey)
+      return streamAnthropic(userMessage, imagens, apiKey, model)
     case "openrouter":
       return streamOpenRouter(userMessage, model, imagens, apiKey)
     default:

@@ -33,7 +33,7 @@ export default function LimparBancoButton() {
     setConfirmando(false)
     startTransition(async () => {
       try {
-        const res = await limparRegistrosInativos()
+        const res = await limparRegistrosInativos(true)
         toast.success(buildMessage(res))
         router.refresh()
       } catch (e) {

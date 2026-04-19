@@ -13,13 +13,44 @@ export interface LimparResult {
   clientes: number
 }
 
+export interface LimparPreview {
+  cenarios: number
+  suites: number
+  modulos: number
+  sistemas: number
+  clientes: number
+}
+
+/**
+ * Returns record counts without deleting anything — used to show a confirmation
+ * dialog before the destructive limparRegistrosInativos action.
+ */
+export async function previewLimparRegistros(): Promise<LimparPreview> {
+  await requireAdmin()
+  const [cenarios, suites, modulos, sistemas, clientes] = await Promise.all([
+    prisma.cenario.count(),
+    prisma.suite.count(),
+    prisma.modulo.count(),
+    prisma.sistema.count(),
+    prisma.cliente.count(),
+  ])
+  return { cenarios, suites, modulos, sistemas, clientes }
+}
+
 /**
  * Deletes ALL cenarios, suites, modulos, sistemas and clientes (active + inactive).
  * KEEPS: usuários (todos), modelos de IA (integracoes), configuração Jira (localStorage).
  * Admin-only. Runs in FK-safe order.
+ *
+ * Requires `confirmed: true` to prevent accidental calls — callers must obtain
+ * this value from the user explicitly (e.g. confirmation dialog).
  */
-export async function limparRegistrosInativos(): Promise<LimparResult> {
+export async function limparRegistrosInativos(confirmed?: boolean): Promise<LimparResult> {
   await requireAdmin()
+
+  if (!confirmed) {
+    throw new Error("Confirmação explícita necessária para limpar os registros.")
+  }
 
   // ── Step 1: NULL FK refs on cenarios/suites before deleting modulos/sistemas ─
   await prisma.$transaction([

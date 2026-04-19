@@ -229,6 +229,10 @@ model InviteToken {
   email     String
   expiresAt DateTime
   used      Boolean  @default(false)
+
+  @@index([userId])
+  @@index([email])
+  @@index([expiresAt])
 }
 
 // Test environment credentials (URL, username, password) reusable across scenarios
