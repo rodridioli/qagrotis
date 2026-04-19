@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.6.18",
+    "commit": "deploy-vercel",
+    "date": "2026-04-19",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "logo animado na sidebar — ícone Q revela com efeito twist em loop infinito com pausa, adaptado ao tema claro e escuro",
+      "campo Classificação restrito a administradores na tela de edição de usuário — usuários padrão visualizam somente",
+      "nova página Equipe com 4 abas: Performance (cards por usuário com ranking, filtros de sistema/módulo/período), Chapters, Horários e Férias e Ausências",
+      "aba Performance ordena usuários por produção (execuções + automação), destaca top-3 com medalhas ouro/prata/bronze",
+      "cards de performance exibem sistemas, módulos, cenários criados, testes executados, erros, sucessos e percentual de automação"
+    ]
+  },
+  {
     "version": "1.6.17",
     "commit": "deploy-vercel",
     "date": "2026-04-17",

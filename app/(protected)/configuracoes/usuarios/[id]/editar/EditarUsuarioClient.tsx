@@ -178,15 +178,24 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
             <label htmlFor="classificacao" className="text-sm font-medium text-text-primary">
               Classificação
             </label>
-            <Select value={classificacao} onValueChange={(v) => setClassificacao(v ?? "")} disabled={isPending}>
-              <SelectTrigger id="classificacao"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-              <SelectPopup>
-                <SelectItem value="Colaborador">Colaborador</SelectItem>
-                <SelectItem value="Líder">Líder</SelectItem>
-                <SelectItem value="Coordenador">Coordenador</SelectItem>
-                <SelectItem value="Outro">Outro</SelectItem>
-              </SelectPopup>
-            </Select>
+            {isAdmin ? (
+              <Select value={classificacao} onValueChange={(v) => setClassificacao(v ?? "")} disabled={isPending}>
+                <SelectTrigger id="classificacao"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectPopup>
+                  <SelectItem value="Colaborador">Colaborador</SelectItem>
+                  <SelectItem value="Líder">Líder</SelectItem>
+                  <SelectItem value="Coordenador">Coordenador</SelectItem>
+                  <SelectItem value="Outro">Outro</SelectItem>
+                </SelectPopup>
+              </Select>
+            ) : (
+              <div
+                id="classificacao"
+                className="flex h-9 items-center rounded-custom border border-border-default bg-surface-input px-3 text-sm text-text-secondary"
+              >
+                {classificacao || "—"}
+              </div>
+            )}
           </div>
 
           {/* ── Password section ── */}

@@ -6,7 +6,8 @@
       "Bash(ls -la .env*)",
       "Bash(cat prisma/prisma.config.ts)",
       "Bash(cat prisma.config.ts)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(xargs grep *)"
     ]
   }
 }

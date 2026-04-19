@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, FileText, Rocket, BookOpen,
   Settings, Bot, LogOut, ChevronLeft,
-  ChevronRight, Menu, Moon, Sun, Sparkles, History,
+  ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
 } from "lucide-react"
 import {
   Select,
@@ -24,6 +24,7 @@ import {
 import { cn } from "@/lib/utils"
 import { QAgrotisLogo } from "@/components/qagrotis/QAgrotisLogo"
 import { QAgrotisIcon } from "@/components/qagrotis/QAgrotisIcon"
+import { QALogoSidebar } from "@/components/qagrotis/QALogoSidebar"
 import { signOut, useSession } from "next-auth/react"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { SistemaContext } from "@/lib/modulo-context"
@@ -45,6 +46,7 @@ const NAV_ITEMS = [
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false },
   { href: "/documentos",    icon: BookOpen,        label: "Documentos",       alwaysEnabled: false },
   { href: "/assistente",    icon: Bot,             label: "Assistente de IA", alwaysEnabled: false },
+  { href: "/equipe",        icon: Users,           label: "Equipe",           alwaysEnabled: true  },
   { href: "/configuracoes", icon: Settings,        label: "Configurações",    alwaysEnabled: true  },
   { href: "/atualizacoes",  icon: History,         label: "Atualizações",     alwaysEnabled: false },
 ]
@@ -58,6 +60,7 @@ const TITLE_MAP: Record<string, string> = {
   "/configuracoes": "Configurações",
   "/assistente":    "Assistente de IA",
   "/atualizacoes":  "Atualizações",
+  "/equipe":        "Equipe",
 }
 
 function getTitle(pathname: string): string {
@@ -121,6 +124,11 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
         </div>
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3">
+          {expanded && (
+            <div className="flex justify-center pb-3 pt-1">
+              <QALogoSidebar isDark={isDark} size={68} />
+            </div>
+          )}
           <TooltipProvider>
             {NAV_ITEMS.map(({ href, icon: Icon, label, alwaysEnabled }) => {
               // Compute disabled state dynamically based on system/module/AI model availability
@@ -466,7 +474,7 @@ export default function LayoutClient({
 
   // ── Redirect if no systems ────────────────────────────────────────────────────
   useEffect(() => {
-    if (!hasActiveSistema && !pathname.startsWith("/configuracoes/sistemas")) {
+    if (!hasActiveSistema && !pathname.startsWith("/configuracoes/sistemas") && !pathname.startsWith("/equipe")) {
       router.push("/configuracoes/sistemas")
     }
   }, [hasActiveSistema, pathname, router])
@@ -537,7 +545,7 @@ export default function LayoutClient({
                 </div>
               </div>
             )}
-            {(hasActiveSistema || pathname.startsWith("/configuracoes/sistemas")) ? children : null}
+            {(hasActiveSistema || pathname.startsWith("/configuracoes/sistemas") || pathname.startsWith("/equipe")) ? children : null}
           </main>
         </div>
       </div>
