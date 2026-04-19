@@ -1,17 +1,20 @@
 "use client"
 
 import React, { useState, useEffect, useTransition, useMemo } from "react"
-import { BarChart3, Users, Clock, Calendar, Bot, CheckCircle2, XCircle, Layers, Trophy } from "lucide-react"
+import {
+  BarChart3, Users, Clock, Calendar,
+  Bot, CheckCircle2, XCircle, Layers, Trophy, SlidersHorizontal,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPerformanceData, type UserPerformanceData } from "@/lib/actions/equipe"
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectPopup,
-  SelectItem,
+  Select, SelectTrigger, SelectValue, SelectPopup, SelectItem,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogFooter, DialogClose,
+} from "@/components/ui/dialog"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,17 +26,17 @@ interface Props {
 type TabId = "performance" | "chapters" | "horarios" | "ferias"
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
-  { id: "performance", label: "Performance",        icon: BarChart3 },
-  { id: "chapters",   label: "Chapters",            icon: Users     },
-  { id: "horarios",   label: "Horários",            icon: Clock     },
-  { id: "ferias",     label: "Férias e Ausências",  icon: Calendar  },
+  { id: "performance", label: "Performance",       icon: BarChart3 },
+  { id: "chapters",   label: "Chapters",           icon: Users     },
+  { id: "horarios",   label: "Horários",           icon: Clock     },
+  { id: "ferias",     label: "Férias e Ausências", icon: Calendar  },
 ]
 
 const PERIODOS = [
-  { value: "hoje",        label: "Hoje"          },
-  { value: "mes-atual",   label: "Mês Atual"     },
-  { value: "mes-anterior",label: "Mês Anterior"  },
-  { value: "ano",         label: "Ano"           },
+  { value: "hoje",         label: "Hoje"          },
+  { value: "mes-atual",    label: "Mês Atual"     },
+  { value: "mes-anterior", label: "Mês Anterior"  },
+  { value: "ano",          label: "Ano"           },
 ]
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
@@ -43,10 +46,8 @@ function getDateRange(periodo: string): { dataInicio?: string; dataFim?: string 
   const pad = (n: number) => String(n).padStart(2, "0")
   const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
   const today = fmt(now)
-
   switch (periodo) {
-    case "hoje":
-      return { dataInicio: today, dataFim: today }
+    case "hoje":         return { dataInicio: today, dataFim: today }
     case "mes-atual": {
       const first = new Date(now.getFullYear(), now.getMonth(), 1)
       return { dataInicio: fmt(first), dataFim: today }
@@ -60,48 +61,27 @@ function getDateRange(periodo: string): { dataInicio?: string; dataFim?: string 
       const first = new Date(now.getFullYear(), 0, 1)
       return { dataInicio: fmt(first), dataFim: today }
     }
-    default:
-      return {}
+    default: return {}
   }
 }
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 
 function UserAvatar({
-  name,
-  photoPath,
-  size,
-  ringClass,
-}: {
-  name: string
-  photoPath: string | null
-  size: number
-  ringClass?: string
-}) {
-  const initials = name
-    .split(" ")
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-
-  const base = `rounded-full flex-shrink-0 ${ringClass ?? ""}`
-
+  name, photoPath, size, ringClass,
+}: { name: string; photoPath: string | null; size: number; ringClass?: string }) {
+  const initials = name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()
+  const cls = cn("rounded-full flex-shrink-0", ringClass)
   if (photoPath) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={photoPath}
-        alt={name}
-        className={cn(base, "object-cover")}
-        style={{ width: size, height: size }}
-      />
+      <img src={photoPath} alt={name} className={cn(cls, "object-cover")}
+        style={{ width: size, height: size }} />
     )
   }
-
   return (
     <div
-      className={cn(base, "flex items-center justify-center bg-brand-primary text-white font-semibold")}
+      className={cn(cls, "flex items-center justify-center bg-brand-primary text-white font-semibold")}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.33) }}
     >
       {initials}
@@ -112,47 +92,38 @@ function UserAvatar({
 // ── Medal config ─────────────────────────────────────────────────────────────
 
 const MEDALS = [
-  {
-    cardBorder:  "border-2 border-amber-400",
-    cardShadow:  "shadow-[0_4px_24px_0_rgb(251_191_36_/_0.25)]",
-    headerBg:    "bg-amber-50 dark:bg-amber-950/20",
-    badgeBg:     "bg-amber-400",
-    ringClass:   "ring-4 ring-amber-400 ring-offset-2",
-    emoji:       "🥇",
-    label:       "1º lugar",
-    avatarSize:  80,
-  },
-  {
-    cardBorder:  "border-2 border-slate-300",
-    cardShadow:  "shadow-[0_4px_16px_0_rgb(148_163_184_/_0.20)]",
-    headerBg:    "bg-slate-50 dark:bg-slate-800/30",
-    badgeBg:     "bg-slate-400",
-    ringClass:   "ring-4 ring-slate-300 ring-offset-2",
-    emoji:       "🥈",
-    label:       "2º lugar",
-    avatarSize:  72,
-  },
-  {
-    cardBorder:  "border-2 border-orange-400",
-    cardShadow:  "shadow-[0_4px_16px_0_rgb(251_146_60_/_0.20)]",
-    headerBg:    "bg-orange-50 dark:bg-orange-950/20",
-    badgeBg:     "bg-orange-500",
-    ringClass:   "ring-4 ring-orange-400 ring-offset-2",
-    emoji:       "🥉",
-    label:       "3º lugar",
-    avatarSize:  68,
-  },
+  { headerBg: "bg-amber-50 dark:bg-amber-950/20",  cardBorder: "border-amber-300",  cardShadow: "shadow-[0_4px_24px_0_rgb(251_191_36_/_0.20)]", badgeBg: "bg-amber-400",  ring: "ring-4 ring-amber-400 ring-offset-2 ring-offset-amber-50",  emoji: "🥇", label: "1º lugar", avatarSize: 96 },
+  { headerBg: "bg-slate-50 dark:bg-slate-800/30",  cardBorder: "border-slate-300",  cardShadow: "shadow-[0_4px_16px_0_rgb(148_163_184_/_0.18)]", badgeBg: "bg-slate-400",  ring: "ring-4 ring-slate-300 ring-offset-2 ring-offset-slate-50",  emoji: "🥈", label: "2º lugar", avatarSize: 80 },
+  { headerBg: "bg-orange-50 dark:bg-orange-950/20", cardBorder: "border-orange-300", cardShadow: "shadow-[0_4px_16px_0_rgb(251_146_60_/_0.18)]",  badgeBg: "bg-orange-500", ring: "ring-4 ring-orange-400 ring-offset-2 ring-offset-orange-50", emoji: "🥉", label: "3º lugar", avatarSize: 72 },
 ]
+
+// ── Stat cell (ícone com círculo colorido, inspirado na referência) ───────────
+
+function StatCell({ icon, label, value, iconBg, iconColor, valueColor }: {
+  icon: React.ElementType; label: string; value: number | string
+  iconBg: string; iconColor: string; valueColor?: string
+}) {
+  const Icon = icon
+  return (
+    <div className="flex flex-col items-center gap-2 px-3 py-4">
+      <div className={cn("flex items-center justify-center size-10 rounded-full", iconBg)}>
+        <Icon className={cn("size-5", iconColor)} />
+      </div>
+      <div className="text-center">
+        <p className={cn("text-2xl font-bold leading-none text-text-primary", valueColor)}>{value}</p>
+        <p className="text-xs text-text-secondary mt-1">{label}</p>
+      </div>
+    </div>
+  )
+}
 
 // ── Progress bar ─────────────────────────────────────────────────────────────
 
 function ProgressBar({ value }: { value: number }) {
   return (
     <div className="h-1.5 w-full rounded-full bg-surface-input overflow-hidden">
-      <div
-        className="h-full rounded-full bg-brand-primary transition-all duration-500"
-        style={{ width: `${Math.min(100, value)}%` }}
-      />
+      <div className="h-full rounded-full bg-brand-primary transition-all duration-500"
+        style={{ width: `${Math.min(100, value)}%` }} />
     </div>
   )
 }
@@ -161,138 +132,82 @@ function ProgressBar({ value }: { value: number }) {
 
 function PerformanceCard({ user, rank }: { user: UserPerformanceData; rank: number }) {
   const medal = rank <= 3 ? MEDALS[rank - 1]! : null
-  const avatarSize = medal?.avatarSize ?? 56
 
   return (
-    <div
-      className={cn(
-        "relative flex flex-col rounded-xl bg-surface-card border overflow-hidden",
-        medal
-          ? `${medal.cardBorder} ${medal.cardShadow}`
-          : "border-border-default shadow-card",
-      )}
-    >
-      {/* Rank badge — acima do card, bem visível */}
-      {medal && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold text-white shadow-md",
-              medal.badgeBg,
-            )}
-          >
+    <div className={cn(
+      "flex flex-col rounded-xl bg-surface-card border overflow-hidden",
+      medal
+        ? `border-2 ${medal.cardBorder} ${medal.cardShadow}`
+        : "border-border-default shadow-card",
+    )}>
+      {/* Header — colorido para top-3, neutro para demais */}
+      <div className={cn(
+        "flex flex-col items-center gap-3 px-5 pt-5 pb-5",
+        medal ? medal.headerBg : "bg-surface-card",
+      )}>
+        {/* Rank badge — dentro do fluxo, nunca absoluto */}
+        {medal ? (
+          <span className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-bold text-white shadow",
+            medal.badgeBg,
+          )}>
             {medal.emoji} {medal.label}
           </span>
-        </div>
-      )}
-
-      {/* Header com avatar + identidade */}
-      <div
-        className={cn(
-          "flex flex-col items-center gap-3 px-4 pb-4 border-b border-border-default",
-          medal ? `${medal.headerBg} pt-8` : "pt-5",
-        )}
-      >
-        {!medal && (
-          <span className="self-end -mt-1 mb-1 inline-flex items-center rounded-full border border-border-default bg-surface-input px-2 py-0.5 text-xs font-medium text-text-secondary">
-            {rank}º
+        ) : (
+          <span className="inline-flex items-center rounded-full border border-border-default bg-surface-input px-2.5 py-1 text-xs font-medium text-text-secondary">
+            {rank}º lugar
           </span>
         )}
+
+        {/* Avatar */}
         <UserAvatar
           name={user.name}
           photoPath={user.photoPath}
-          size={avatarSize}
-          ringClass={medal?.ringClass}
+          size={medal?.avatarSize ?? 64}
+          ringClass={medal?.ring}
         />
+
+        {/* Nome + classificação */}
         <div className="text-center space-y-0.5">
-          <p className="text-base font-semibold text-text-primary leading-tight">{user.name}</p>
-          {user.classificacao ? (
-            <p className="text-sm text-text-secondary">{user.classificacao}</p>
-          ) : (
-            <p className="text-sm text-text-secondary/40 italic">Sem classificação</p>
-          )}
+          <p className="text-base font-bold text-text-primary leading-snug">{user.name}</p>
+          <p className="text-sm text-text-secondary">
+            {user.classificacao ?? <span className="italic opacity-50">Sem classificação</span>}
+          </p>
         </div>
       </div>
 
-      {/* Sistemas + Módulos */}
-      <div className="px-4 py-3 border-b border-border-default space-y-2.5">
-        {user.sistemas.length > 0 && (
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">Sistemas</p>
-            <div className="flex flex-wrap gap-1">
-              {user.sistemas.map((s) => (
-                <span
-                  key={s}
-                  className="inline-flex items-center rounded-full bg-primary-50 text-brand-primary px-2 py-0.5 text-xs font-medium"
-                >
-                  {s}
-                </span>
-              ))}
-            </div>
+      {/* Sistemas */}
+      {user.sistemas.length > 0 && (
+        <div className="px-4 pt-3 pb-2 border-t border-border-default">
+          <p className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Sistemas</p>
+          <div className="flex flex-wrap gap-1">
+            {user.sistemas.map((s) => (
+              <span key={s} className="rounded-full bg-primary-50 text-brand-primary px-2 py-0.5 text-xs font-medium">
+                {s}
+              </span>
+            ))}
           </div>
-        )}
-        {user.modulos.length > 0 && (
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">Módulos</p>
-            <div className="flex flex-wrap gap-1">
-              {user.modulos.slice(0, 5).map((m) => (
-                <span
-                  key={m}
-                  className="rounded-full border border-border-default bg-surface-input px-2 py-0.5 text-xs text-text-secondary"
-                >
-                  {m}
-                </span>
-              ))}
-              {user.modulos.length > 5 && (
-                <span className="rounded-full border border-border-default bg-surface-input px-2 py-0.5 text-xs text-text-secondary">
-                  +{user.modulos.length - 5}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Métricas — grid 2×2 com números grandes */}
-      <div className="grid grid-cols-2 divide-x divide-y divide-border-default border-b border-border-default">
-        <MetricCell
-          icon={<Layers className="size-3.5 text-text-secondary" />}
-          label="Cenários"
-          value={user.cenariosCriados}
-        />
-        <MetricCell
-          icon={<Trophy className="size-3.5 text-text-secondary" />}
-          label="Executados"
-          value={user.testesExecutados}
-        />
-        <MetricCell
-          icon={<CheckCircle2 className="size-3.5 text-green-500" />}
-          label="Sucessos"
-          value={user.sucessos}
-          valueClass="text-green-600 dark:text-green-400"
-        />
-        <MetricCell
-          icon={<XCircle className="size-3.5 text-destructive" />}
-          label="Erros"
-          value={user.errosEncontrados}
-          valueClass="text-destructive"
-        />
+      {/* Métricas 2×2 */}
+      <div className="grid grid-cols-2 divide-x divide-y divide-border-default border-t border-border-default">
+        <StatCell icon={Layers}        label="Cenários"   value={user.cenariosCriados}    iconBg="bg-purple-100 dark:bg-purple-900/30" iconColor="text-purple-600 dark:text-purple-400" />
+        <StatCell icon={Trophy}        label="Executados" value={user.testesExecutados}    iconBg="bg-blue-100 dark:bg-blue-900/30"   iconColor="text-blue-600 dark:text-blue-400"   />
+        <StatCell icon={CheckCircle2}  label="Sucessos"   value={user.sucessos}            iconBg="bg-green-100 dark:bg-green-900/30" iconColor="text-green-600 dark:text-green-400" valueColor="text-green-600 dark:text-green-400" />
+        <StatCell icon={XCircle}       label="Erros"      value={user.errosEncontrados}    iconBg="bg-red-100 dark:bg-red-900/30"     iconColor="text-red-500"                       valueColor="text-destructive" />
       </div>
 
       {/* Automação */}
-      <div className="px-4 py-3 space-y-2">
+      <div className="px-4 py-3 border-t border-border-default space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <Bot className="size-3.5 text-brand-primary" />
-            <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">
-              Automatizados
-            </span>
+            <Bot className="size-4 text-brand-primary" />
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Automatizados</span>
           </div>
-          <span className="text-sm font-semibold text-text-primary">
+          <span className="text-sm font-bold text-text-primary">
             {user.testesAutomatizados}{" "}
-            <span className="text-xs font-medium text-text-secondary">
-              ({user.percentualAutomatizado}%)
-            </span>
+            <span className="text-xs font-normal text-text-secondary">({user.percentualAutomatizado}%)</span>
           </span>
         </div>
         <ProgressBar value={user.percentualAutomatizado} />
@@ -301,67 +216,128 @@ function PerformanceCard({ user, rank }: { user: UserPerformanceData; rank: numb
   )
 }
 
-function MetricCell({
-  icon,
-  label,
-  value,
-  valueClass,
+// ── Filter Modal ─────────────────────────────────────────────────────────────
+
+function FilterModal({
+  open, onOpenChange, sistemas, modulosPorSistema,
+  pending,
+  draft, onDraftChange,
+  onApply, onReset,
 }: {
-  icon: React.ReactNode
-  label: string
-  value: number
-  valueClass?: string
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  sistemas: string[]
+  modulosPorSistema: Record<string, string[]>
+  pending: boolean
+  draft: { sistema: string; modulo: string; periodo: string }
+  onDraftChange: (v: { sistema: string; modulo: string; periodo: string }) => void
+  onApply: () => void
+  onReset: () => void
 }) {
+  const modulosDisponiveis = useMemo<string[]>(() => {
+    if (draft.sistema === "todos") return [...new Set(Object.values(modulosPorSistema).flat())]
+    return modulosPorSistema[draft.sistema] ?? []
+  }, [draft.sistema, modulosPorSistema])
+
+  function setSistema(v: string) {
+    onDraftChange({ ...draft, sistema: v, modulo: "todos" })
+  }
+
   return (
-    <div className="flex flex-col items-center gap-0.5 px-3 py-3">
-      <div className="flex items-center gap-1 text-text-secondary mb-0.5">
-        {icon}
-        <span className="text-xs uppercase tracking-wide">{label}</span>
-      </div>
-      <span className={cn("text-2xl font-bold text-text-primary", valueClass)}>
-        {value}
-      </span>
-    </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent showCloseButton className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Filtros de Performance</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-4 py-2">
+          {/* Sistema */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">Sistema</label>
+            <Select value={draft.sistema} onValueChange={(v) => setSistema(v ?? "todos")}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectPopup>
+                <SelectItem value="todos">Todos</SelectItem>
+                {sistemas.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectPopup>
+            </Select>
+          </div>
+
+          {/* Módulo */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">Módulo</label>
+            <Select value={draft.modulo} onValueChange={(v) => onDraftChange({ ...draft, modulo: v ?? "todos" })}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectPopup>
+                <SelectItem value="todos">Todos</SelectItem>
+                {modulosDisponiveis.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectPopup>
+            </Select>
+          </div>
+
+          {/* Período */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">Período</label>
+            <Select value={draft.periodo} onValueChange={(v) => onDraftChange({ ...draft, periodo: v ?? "mes-atual" })}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectPopup>
+                {PERIODOS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+              </SelectPopup>
+            </Select>
+          </div>
+        </div>
+
+        <DialogFooter className="flex-row items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={onReset}
+            className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+          >
+            Limpar filtros
+          </button>
+          <div className="flex gap-2">
+            <DialogClose render={<Button variant="outline" />}>Cancelar</DialogClose>
+            <Button onClick={() => { onApply(); onOpenChange(false) }} disabled={pending}>
+              {pending ? "Aplicando…" : "Aplicar"}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
 
+const DEFAULT_FILTERS = { sistema: "todos", modulo: "todos", periodo: "mes-atual" }
+
 export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("performance")
+  const [filterOpen, setFilterOpen] = useState(false)
 
-  // Filter state
-  const [sistemaSel, setSistemaSel] = useState("__todos__")
-  const [moduloSel,  setModuloSel]  = useState("__todos__")
-  const [periodoSel, setPeriodoSel] = useState("mes-atual")
-
-  // Applied filter (only updates on click Filtrar)
-  const [applied, setApplied] = useState({ sistema: "__todos__", modulo: "__todos__", periodo: "mes-atual" })
+  // Draft = o que está no modal ainda não aplicado
+  const [draft, setDraft] = useState(DEFAULT_FILTERS)
+  // Applied = filtros efetivamente aplicados
+  const [applied, setApplied] = useState(DEFAULT_FILTERS)
 
   const [users, setUsers] = useState<UserPerformanceData[]>([])
   const [isPending, startTransition] = useTransition()
 
-  // Derived modulos list based on selected sistema
-  const modulosDisponiveis = useMemo<string[]>(() => {
-    if (sistemaSel === "__todos__") {
-      return [...new Set(Object.values(modulosPorSistema).flat())]
-    }
-    return modulosPorSistema[sistemaSel] ?? []
-  }, [sistemaSel, modulosPorSistema])
+  // Badge de filtros ativos
+  const activeFilterCount = [
+    applied.sistema !== "todos",
+    applied.modulo  !== "todos",
+    applied.periodo !== "mes-atual",
+  ].filter(Boolean).length
 
-  // Reset módulo when sistema changes
-  useEffect(() => {
-    setModuloSel("__todos__")
-  }, [sistemaSel])
-
-  // Fetch on applied change
+  // Fetch ao mudar applied ou aba
   useEffect(() => {
     if (activeTab !== "performance") return
     const { dataInicio, dataFim } = getDateRange(applied.periodo)
     startTransition(async () => {
       const data = await getPerformanceData({
-        sistema:    applied.sistema === "__todos__" ? undefined : applied.sistema,
-        modulo:     applied.modulo  === "__todos__" ? undefined : applied.modulo,
+        sistema:    applied.sistema === "todos" ? undefined : applied.sistema,
+        modulo:     applied.modulo  === "todos" ? undefined : applied.modulo,
         dataInicio,
         dataFim,
       })
@@ -370,8 +346,20 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applied, activeTab])
 
-  function handleFiltrar() {
-    setApplied({ sistema: sistemaSel, modulo: moduloSel, periodo: periodoSel })
+  // Ao abrir o modal, sincronizar draft com applied
+  function handleOpenFilter() {
+    setDraft(applied)
+    setFilterOpen(true)
+  }
+
+  function handleApply() {
+    setApplied(draft)
+  }
+
+  function handleReset() {
+    setDraft(DEFAULT_FILTERS)
+    setApplied(DEFAULT_FILTERS)
+    setFilterOpen(false)
   }
 
   return (
@@ -396,63 +384,39 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
         ))}
       </div>
 
-      {/* ── Performance tab ── */}
+      {/* ── Performance ── */}
       {activeTab === "performance" && (
         <div className="space-y-5">
-          {/* Filtros — linha única */}
-          <div className="flex flex-wrap items-end gap-3 rounded-xl bg-surface-card border border-border-default shadow-card px-5 py-4">
-            {/* Sistema */}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-text-secondary">Sistema</label>
-              <Select value={sistemaSel} onValueChange={(v) => setSistemaSel(v ?? "__todos__")}>
-                <SelectTrigger className="h-9 min-w-40 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectPopup>
-                  <SelectItem value="__todos__">Todos os sistemas</SelectItem>
-                  {sistemas.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-            </div>
-
-            {/* Módulo — dependente do sistema */}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-text-secondary">Módulo</label>
-              <Select value={moduloSel} onValueChange={(v) => setModuloSel(v ?? "__todos__")}>
-                <SelectTrigger className="h-9 min-w-40 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectPopup>
-                  <SelectItem value="__todos__">Todos os módulos</SelectItem>
-                  {modulosDisponiveis.map((m) => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-            </div>
-
-            {/* Período */}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-text-secondary">Período</label>
-              <Select value={periodoSel} onValueChange={(v) => setPeriodoSel(v ?? "mes-atual")}>
-                <SelectTrigger className="h-9 min-w-36 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectPopup>
-                  {PERIODOS.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-            </div>
-
-            {/* Botão */}
-            <Button onClick={handleFiltrar} disabled={isPending} className="h-9 self-end">
-              {isPending ? "Filtrando…" : "Filtrar"}
-            </Button>
+          {/* Cabeçalho com botão de filtro */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-text-primary">Performance</h2>
+            <button
+              type="button"
+              onClick={handleOpenFilter}
+              className="relative flex items-center gap-2 rounded-lg border border-border-default bg-surface-card px-3 py-2 text-sm font-medium text-text-secondary shadow-card transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+            >
+              <SlidersHorizontal className="size-4" />
+              Filtros
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-brand-primary text-[10px] font-bold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
           </div>
+
+          {/* Modal de filtros */}
+          <FilterModal
+            open={filterOpen}
+            onOpenChange={setFilterOpen}
+            sistemas={sistemas}
+            modulosPorSistema={modulosPorSistema}
+            pending={isPending}
+            draft={draft}
+            onDraftChange={setDraft}
+            onApply={handleApply}
+            onReset={handleReset}
+          />
 
           {/* Cards */}
           {isPending ? (
@@ -466,7 +430,7 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {users.map((u, idx) => (
                 <PerformanceCard key={u.userId} user={u} rank={idx + 1} />
               ))}
