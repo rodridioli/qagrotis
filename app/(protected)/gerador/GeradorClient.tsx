@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm"
 import { useRouter } from "next/navigation"
 import {
   Sparkles, Copy, RotateCcw,
-  Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, CloudUpload, Trash2, ExternalLink,
+  Pencil, Check, Upload, X, ArrowRightLeft, AlertCircle, ExternalLink,
   FileText, ListChecks, Plus, Eye, EyeOff, ShieldCheck, Loader2, Link2, MoreVertical
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -38,6 +38,8 @@ import { parseMarkdownCenarios, buildImportItems, type ParsedCenario, type Impor
 import { criarIntegracao, type IntegracaoRecord } from "@/lib/actions/integracoes"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
+import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
+import { FileUploadButton, type UploadFile } from "@/components/qagrotis/FileUploadButton"
 
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -100,7 +102,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
-  const [anexoPreviews, setAnexoPreviews] = useState<{ name: string; dataUrl: string }[]>([])
+  const [anexoPreviews, setAnexoPreviews] = useState<UploadFile[]>([])
 
   // Import state
   const [importSetupOpen, setImportSetupOpen] = useState(false)
@@ -579,28 +581,27 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
           {/* Contexto */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">Contexto</label>
-            <textarea
+            <AutoResizeTextarea
               value={contexto}
               onChange={(e) => setContexto(e.target.value)}
               placeholder="Cole aqui requisitos, regras de negócio ou descrição da funcionalidade."
-              rows={10}
-              className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 transition-colors"
+              className="min-h-[200px]"
             />
           </div>
 
           {/* Anexos */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary flex items-center justify-between">
-              <span>Anexos</span>
+            <label className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+              Anexos
               {anexoPreviews.length > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center rounded-full bg-brand-primary/15 px-2 py-0.5 text-xs font-semibold text-brand-primary">
+                <span className="inline-flex items-center justify-center rounded-full bg-brand-primary/15 px-2 py-0.5 text-xs font-semibold text-brand-primary">
                   {anexoPreviews.length}
                 </span>
               )}
             </label>
-            <ScreenshotUploader
-              previews={anexoPreviews}
-              onChangePreviews={setAnexoPreviews}
+            <FileUploadButton
+              files={anexoPreviews}
+              onChangeFiles={setAnexoPreviews}
             />
           </div>
         </div>
@@ -679,10 +680,10 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             )}
 
             {output && isEditing && (
-              <textarea
+              <AutoResizeTextarea
                 value={output}
                 onChange={(e) => setOutput(e.target.value)}
-                className="h-full min-h-100 w-full resize-none bg-transparent font-sans text-sm leading-relaxed text-text-primary outline-none"
+                className="min-h-[400px] h-full bg-transparent font-sans text-sm leading-relaxed text-text-primary outline-none border-none focus-visible:ring-0 focus-visible:border-transparent"
               />
             )}
           </div>
@@ -1084,95 +1085,3 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   )
 }
 
-// ── Screenshot / Annexo uploader ─────────────────────────────────────────────
-
-interface ScreenshotUploaderProps {
-  previews: { name: string; dataUrl: string }[]
-  onChangePreviews: (v: { name: string; dataUrl: string }[]) => void
-}
-
-function ScreenshotUploader({ previews, onChangePreviews }: ScreenshotUploaderProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  function handleFiles(files: FileList | null) {
-    if (!files) return
-    const allowed = Array.from(files).filter(
-      (f) => f.type.startsWith("image/") || f.type === "application/pdf"
-    )
-    if (allowed.length === 0) { toast.error("Selecione arquivos de imagem (PNG, JPG, etc.) ou PDF."); return }
-
-    const readers = allowed.map(
-      (file) =>
-        new Promise<{ name: string; dataUrl: string }>((resolve) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve({ name: file.name, dataUrl: reader.result as string })
-          reader.readAsDataURL(file)
-        })
-    )
-
-    Promise.all(readers).then((results) => {
-      onChangePreviews([...previews, ...results])
-    })
-  }
-
-  function removePreview(index: number) {
-    onChangePreviews(previews.filter((_, i) => i !== index))
-  }
-
-  return (
-    <div className="space-y-3">
-      <div
-        className="flex h-48 w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-custom border-2 border-dashed border-border-default bg-surface-input text-text-secondary transition-colors hover:border-brand-primary/50 hover:bg-neutral-grey-100"
-        onClick={() => inputRef.current?.click()}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files) }}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
-        aria-label="Clique ou arraste imagens ou PDFs para anexar"
-      >
-        <CloudUpload className="size-8" />
-        <div className="text-center">
-          <p className="text-sm font-medium text-text-primary">Upload de imagem ou PDF</p>
-          <p className="text-xs text-text-secondary">PNG, JPG, WebP, PDF — múltiplos arquivos</p>
-        </div>
-      </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*,application/pdf"
-        multiple
-        className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
-      />
-      {previews.length > 0 && (
-        <div className="flex flex-wrap gap-4">
-          {previews.map((p, i) => (
-            <div key={i} className="group relative">
-              {p.dataUrl.startsWith("data:application/pdf") ? (
-                <div className="flex h-20 w-20 items-center justify-center rounded-md border border-border-default bg-neutral-grey-100">
-                  <FileText className="size-8 text-text-secondary" />
-                </div>
-              ) : (
-                <img
-                  src={p.dataUrl}
-                  alt={p.name}
-                  className="h-20 w-20 rounded-md border border-border-default object-cover"
-                />
-              )}
-              <button
-                type="button"
-                onClick={() => removePreview(i)}
-                aria-label={`Remover ${p.name}`}
-                className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-destructive text-white shadow-sm ring-1 ring-white/30 transition-transform hover:scale-110"
-              >
-                <Trash2 size={14} color="white" strokeWidth={2.5} />
-              </button>
-              <p className="mt-1 max-w-20 truncate text-[10px] text-text-secondary">{p.name}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}

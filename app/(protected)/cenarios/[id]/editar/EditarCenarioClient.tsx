@@ -119,6 +119,7 @@ export default function EditarCenarioClient({
   // ── Credencial ───────────────────────────────────────────────────────────────
   const [credenciais, setCredenciais] = useState<CredencialRecord[]>(initialCredenciais)
   const [credencialId, setCredencialId] = useState(cenario.credencialId ?? "")
+  const [credencialError, setCredencialError] = useState("")
   const [addCredencialOpen, setAddCredencialOpen] = useState(false)
   const [newCredNome, setNewCredNome] = useState("")
   const [newCredUrl, setNewCredUrl] = useState("")
@@ -300,6 +301,11 @@ export default function EditarCenarioClient({
     }
 
     if (automatizado) {
+      if (!credencialId) {
+        setCredencialError("Credenciais é obrigatório.")
+        setActiveTab("automatizado")
+        return false
+      }
       if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); setActiveTab("automatizado"); return false }
       if (steps.filter((s) => s.acao.trim() && s.resultado.trim()).length === 0) {
         toast.error("Adicione pelo menos 1 passo com ação e resultado.")
@@ -711,13 +717,22 @@ export default function EditarCenarioClient({
 
             {/* Credentials */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Credenciais</label>
+              <label className="text-sm font-medium text-text-primary">
+                Credenciais <span className="text-destructive">*</span>
+              </label>
               <CredencialCombobox
                 credenciais={credenciais}
                 value={credencialId}
-                onChange={(v) => { setCredencialId(v); setHasSaved(false) }}
+                onChange={(v) => {
+                  setCredencialId(v)
+                  setHasSaved(false)
+                  if (v) setCredencialError("")
+                }}
                 onAddCredencial={() => setAddCredencialOpen(true)}
               />
+              {credencialError && (
+                <p className="text-sm text-destructive" role="alert">{credencialError}</p>
+              )}
             </div>
 
             <div className="border-t border-border-default" />

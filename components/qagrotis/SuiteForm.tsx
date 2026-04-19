@@ -37,6 +37,7 @@ import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import { criarSuite, atualizarSuite, removerHistoricoSuite, encerrarSuite, reabrirSuite, type SuiteRecord } from "@/lib/actions/suites"
 import { toast } from "sonner"
+import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 
 export interface SuiteFormProps {
   mode: "create" | "edit"
@@ -735,11 +736,10 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             {/* Linha 3: Observações */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Observações</label>
-              <textarea
-                rows={3}
+              <AutoResizeTextarea
                 placeholder="Observações..."
                 disabled={encerrada}
-                className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-[80px]"
               />
             </div>
           </div>
@@ -1037,8 +1037,14 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                         </span>
                       </td>
                       <td className="px-4 py-3"><CenarioTipoBadge tipo={h.tipo as CenarioTipo} /></td>
-                      <td className="px-4 py-3 text-text-secondary">{h.data}</td>
-                      <td className="px-4 py-3 text-text-secondary">{h.hora ?? "—"}</td>
+                      <td className="px-4 py-3 text-text-secondary">
+                        {h.timestamp ? new Date(h.timestamp).toLocaleDateString("pt-BR") : h.data}
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary">
+                        {h.timestamp
+                          ? new Date(h.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+                          : (h.hora ?? "—")}
+                      </td>
                       <td className="px-4 py-3"><ResultadoBadge resultado={h.resultado} /></td>
                     </tr>
                   )})}
