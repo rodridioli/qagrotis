@@ -200,13 +200,16 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   )
 
   async function generate() {
+    setLoading(true)
     const hasInput = contexto.trim() || jiraInput.trim() || anexoPreviews.length > 0
     if (!aiProvider) {
+      setLoading(false)
       setActiveTab("contexto")
       toast.error("Selecione um Modelo de IA antes de gerar.")
       return
     }
     if (!hasInput) {
+      setLoading(false)
       setActiveTab("contexto")
       toast.error("Preencha ao menos um campo: URL do Jira, Contexto ou Anexos.")
       return
@@ -259,7 +262,6 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     setOutput("")
     setApiError(null)
     setIsEditing(false)
-    setLoading(true)
     setActiveTab("cenarios")
 
     try {

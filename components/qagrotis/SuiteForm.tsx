@@ -345,12 +345,15 @@ export function SuiteForm({
       setJiraIssueInput("")
       setJiraExisting(null)
       setJiraEvidences([])
+      setSelectedCenarios(new Set())
+      setSelectedHistorico(new Set())
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao conectar com o Jira.")
     } finally {
       setJiraLoading(false)
     }
   }
+  const [removerCenariosOpen, setRemoverCenariosOpen] = useState(false)
   const [removerHistoricoOpen, setRemoverHistoricoOpen] = useState(false)
 
   // ── Jira export modal ─────────────────────────────────────────────────────
@@ -488,8 +491,8 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
     setIsEncerrandoOuReabrindo(true)
     try {
       await encerrarSuite(suite.id)
-      setEncerrada(true)
-      toast.success("Suíte encerrada.")
+      toast.success("Suíte encerrada com sucesso!")
+      router.push("/suites")
     } catch {
       toast.error("Não foi possível encerrar a suíte. Tente novamente.")
     } finally {
@@ -593,6 +596,14 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
       setHistorico(previousHistorico)
       toast.error("Erro ao remover registros do histórico.")
     }
+  }
+
+  function confirmRemoverCenarios() {
+    const ids = new Set(selectedCenarios)
+    setCenarios(prev => prev.filter(c => !ids.has(c.id)))
+    setSelectedCenarios(new Set())
+    setRemoverCenariosOpen(false)
+    toast.success(ids.size === 1 ? "Cenário removido da suíte." : `${ids.size} cenários removidos da suíte.`)
   }
 
   const TABS = [
@@ -748,6 +759,16 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
         {/* ── Cenários ── */}
         <div className={activeTab !== "cenarios" ? "hidden" : ""}>
           <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border-default px-5 py-3">
+            {selectedCenarios.size > 0 && !encerrada && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRemoverCenariosOpen(true)}
+              >
+                <Trash2 className="size-4" />
+                Remover
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -809,7 +830,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                   {cenarios.map((c) => {
                     const isCenarioAtivo = isCenarioAtivoFn(c.id)
                     return (
-                    <tr key={c.id} className={`border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50${!isCenarioAtivo ? " opacity-60" : ""}`}>
+                    <tr key={c.id} className={`h-14 border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50${!isCenarioAtivo ? " opacity-60" : ""}`}>
                       <td className="px-4 py-3">
                         <Checkbox
                           checked={selectedCenarios.has(c.id)}
@@ -857,7 +878,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                           <button
                             type="button"
                             onClick={() => handleRemove(c.id)}
-                            className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                            className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                           >
                             <Trash2 className="size-4" />
                           </button>
@@ -983,7 +1004,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                     // Inativo no histórico se: removido da suíte OU inativo no banco
                     const hAtivo2 = existingIds.has(h.id) && isCenarioAtivoFn(h.id)
                     return (
-                    <tr key={`${h.id}-${h._originalIdx}`} className={`border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50${!hAtivo2 ? " opacity-60" : ""}`}>
+                    <tr key={`${h.id}-${h._originalIdx}`} className={`h-14 border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50${!hAtivo2 ? " opacity-60" : ""}`}>
                       <td className="px-4 py-3">
                         <Checkbox
                           checked={selectedHistorico.has(h._originalIdx)}
@@ -1160,6 +1181,19 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={removerCenariosOpen}
+        onOpenChange={setRemoverCenariosOpen}
+        title="Remover da suíte?"
+        description={
+          selectedCenarios.size === 1
+            ? "1 cenário será removido desta suíte. Essa ação não pode ser desfeita."
+            : `${selectedCenarios.size} cenários serão removidos desta suíte. Essa ação não pode ser desfeita.`
+        }
+        confirmLabel="Remover"
+        onConfirm={confirmRemoverCenarios}
+      />
 
       <ConfirmDialog
         open={removerHistoricoOpen}
