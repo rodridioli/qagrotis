@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useTransition, useMemo } from "react"
 import {
   BarChart3, Users, Clock, Calendar,
-  Bot, SlidersHorizontal,
+  SlidersHorizontal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPerformanceData, type UserPerformanceData } from "@/lib/actions/equipe"
@@ -68,10 +68,11 @@ function getDateRange(periodo: string): { dataInicio?: string; dataFim?: string 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 
 function UserAvatar({
-  name, photoPath, size, ringClass,
-}: { name: string; photoPath: string | null; size: number; ringClass?: string }) {
+  name, photoPath, size, ringClass, shape = "circle",
+}: { name: string; photoPath: string | null; size: number; ringClass?: string; shape?: "circle" | "square" }) {
   const initials = name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()
-  const cls = cn("rounded-full flex-shrink-0", ringClass)
+  const radius = shape === "square" ? "rounded-xl" : "rounded-full"
+  const cls = cn(radius, "flex-shrink-0", ringClass)
   if (photoPath) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -81,7 +82,7 @@ function UserAvatar({
   }
   return (
     <div
-      className={cn(cls, "flex items-center justify-center bg-brand-primary text-white font-semibold")}
+      className={cn(cls, "flex items-center justify-center bg-white/20 text-white font-semibold")}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}
     >
       {initials}
@@ -92,9 +93,9 @@ function UserAvatar({
 // ── Medal config ─────────────────────────────────────────────────────────────
 
 const MEDALS = [
-  { stripBg: "bg-amber-400",  cardBorder: "border-amber-300",  cardShadow: "shadow-[0_4px_20px_0_rgb(251_191_36_/_0.22)]", badgeBg: "bg-amber-400",  ring: "ring-2 ring-amber-400 ring-offset-1", emoji: "🥇", avatarSize: 52 },
-  { stripBg: "bg-slate-400",  cardBorder: "border-slate-300",  cardShadow: "shadow-[0_4px_14px_0_rgb(148_163_184_/_0.20)]", badgeBg: "bg-slate-400",  ring: "ring-2 ring-slate-300 ring-offset-1",  emoji: "🥈", avatarSize: 48 },
-  { stripBg: "bg-orange-400", cardBorder: "border-orange-300", cardShadow: "shadow-[0_4px_14px_0_rgb(251_146_60_/_0.20)]",  badgeBg: "bg-orange-500", ring: "ring-2 ring-orange-400 ring-offset-1", emoji: "🥉", avatarSize: 44 },
+  { cardShadow: "shadow-[0_4px_20px_0_rgb(251_191_36_/_0.25)]", rankBadge: "bg-amber-400 text-white" },
+  { cardShadow: "shadow-[0_4px_14px_0_rgb(148_163_184_/_0.22)]", rankBadge: "bg-slate-400 text-white"  },
+  { cardShadow: "shadow-[0_4px_14px_0_rgb(251_146_60_/_0.22)]",  rankBadge: "bg-orange-400 text-white" },
 ]
 
 // ── Compact stat cell ─────────────────────────────────────────────────────────
@@ -119,84 +120,76 @@ function ProgressBar({ value }: { value: number }) {
   )
 }
 
-// ── Performance Card — compact Padlet-style ───────────────────────────────────
+// ── Performance Card ──────────────────────────────────────────────────────────
 
 function PerformanceCard({ user, rank }: { user: UserPerformanceData; rank: number }) {
   const medal = rank <= 3 ? MEDALS[rank - 1]! : null
 
   return (
     <div className={cn(
-      "flex flex-col rounded-xl bg-surface-card border overflow-hidden",
-      medal
-        ? `border-2 ${medal.cardBorder} ${medal.cardShadow}`
-        : "border-border-default shadow-card",
+      "flex flex-col rounded-xl bg-surface-card border border-border-default overflow-hidden",
+      medal ? medal.cardShadow : "shadow-card",
     )}>
-      {/* Colored top strip for top-3 */}
-      {medal && <div className={cn("h-1 w-full", medal.stripBg)} />}
 
-      {/* Avatar + name row */}
-      <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+      {/* ── Header teal ── */}
+      <div className="relative px-4 pt-4 pb-3 bg-brand-primary">
+        {/* Rank badge — top-right absolute */}
+        <span className={cn(
+          "absolute right-3 top-3 rounded-full px-2.5 py-0.5 text-xs font-bold leading-none",
+          medal ? medal.rankBadge : "bg-white/20 text-white",
+        )}>
+          #{rank}
+        </span>
+
+        {/* Avatar — rounded-xl (square-ish) */}
         <UserAvatar
           name={user.name}
           photoPath={user.photoPath}
-          size={medal?.avatarSize ?? 40}
-          ringClass={medal?.ring}
+          size={56}
+          shape="square"
         />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 min-w-0">
-            {medal && <span className="text-sm shrink-0">{medal.emoji}</span>}
-            <p className="truncate text-sm font-semibold text-text-primary">{user.name}</p>
-          </div>
-          <p className="text-xs text-text-secondary truncate">
-            {user.classificacao ?? <span className="italic opacity-50">Sem classificação</span>}
+
+        {/* Name + role — white on teal */}
+        <div className="mt-2.5 pr-10">
+          <p className="text-sm font-bold text-white leading-tight truncate">{user.name}</p>
+          <p className="text-xs text-white/70 truncate mt-0.5">
+            {user.classificacao ?? <span className="italic opacity-60">Sem classificação</span>}
           </p>
         </div>
-        <span className={cn(
-          "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
-          medal
-            ? `${medal.badgeBg} text-white`
-            : "bg-surface-input text-text-secondary border border-border-default",
-        )}>
-          {rank}º
-        </span>
       </div>
 
-      {/* Sistema chips */}
-      {user.sistemas.length > 0 && (
-        <div className="px-4 pb-2.5">
-          <div className="flex flex-wrap gap-1">
-            {user.sistemas.slice(0, 3).map((s) => (
-              <span key={s} className="rounded-full bg-primary-50 text-brand-primary px-2 py-0.5 text-[10px] font-medium">
-                {s}
-              </span>
-            ))}
-            {user.sistemas.length > 3 && (
-              <span className="rounded-full bg-surface-input text-text-secondary px-2 py-0.5 text-[10px] border border-border-default">
-                +{user.sistemas.length - 3}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Stats 4-column compact */}
-      <div className="grid grid-cols-4 border-t border-border-default divide-x divide-border-default">
-        <StatMini label="Cenários"   value={user.cenariosCriados}   />
-        <StatMini label="Executados" value={user.testesExecutados}  />
-        <StatMini label="Sucessos"   value={user.sucessos}          color="text-green-600 dark:text-green-400" />
-        <StatMini label="Erros"      value={user.errosEncontrados}  color="text-destructive" />
+      {/* ── Classification badge ── */}
+      <div className="px-4 py-2.5 border-b border-border-default">
+        {user.classificacao ? (
+          <span className="inline-flex items-center rounded-full bg-primary-50 text-brand-primary border border-brand-primary/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+            {user.classificacao}
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-full bg-surface-input text-text-secondary border border-border-default px-2.5 py-0.5 text-[10px] italic">
+            Sem classificação
+          </span>
+        )}
       </div>
 
-      {/* Automation bar */}
+      {/* ── Stats 4-column ── */}
+      <div className="grid grid-cols-4 divide-x divide-border-default">
+        <StatMini label="Cenários" value={user.cenariosCriados}  />
+        <StatMini label="Exec."    value={user.testesExecutados} />
+        <StatMini label="OK"       value={user.sucessos}         color="text-green-600 dark:text-green-400" />
+        <StatMini label="Erros"    value={user.errosEncontrados} color="text-destructive" />
+      </div>
+
+      {/* ── Automation bar ── */}
       <div className="px-4 py-2.5 border-t border-border-default">
         <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-1.5">
-            <Bot className="size-3.5 text-brand-primary" />
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">Automatizados</span>
-          </div>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
+            Automatizados
+          </span>
           <span className="text-xs font-bold text-text-primary">
-            {user.testesAutomatizados}{" "}
-            <span className="text-[10px] font-normal text-text-secondary">({user.percentualAutomatizado}%)</span>
+            {user.testesAutomatizados} de {user.cenariosCriados}{" "}
+            <span className="text-[10px] font-normal text-text-secondary">
+              ({user.percentualAutomatizado}%)
+            </span>
           </span>
         </div>
         <ProgressBar value={user.percentualAutomatizado} />
