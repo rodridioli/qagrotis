@@ -73,6 +73,42 @@ export async function criarCredencial(data: {
   return toRecord(row)
 }
 
+export async function atualizarCredencial(
+  id: string,
+  data: { nome: string; urlAmbiente?: string | null; usuario: string; senha?: string }
+): Promise<CredencialRecord> {
+  await requireSession()
+  idSchema.parse(id)
+  const parsed = z.object({
+    nome:        z.string().min(1).max(200),
+    urlAmbiente: z.string().max(1000).nullable().optional(),
+    usuario:     z.string().min(1).max(200),
+    senha:       z.string().min(1).max(500).optional(),
+  }).parse({
+    nome:        data.nome.trim(),
+    urlAmbiente: data.urlAmbiente?.trim() || null,
+    usuario:     data.usuario.trim(),
+    senha:       data.senha || undefined,
+  })
+
+  const updateData: Record<string, unknown> = {
+    nome: parsed.nome,
+    urlAmbiente: parsed.urlAmbiente ?? null,
+    usuario: parsed.usuario,
+  }
+  if (parsed.senha) updateData.senha = parsed.senha
+
+  const row = await prisma.credencial.update({
+    where: { id },
+    data: updateData,
+    select: { id: true, nome: true, urlAmbiente: true, usuario: true, active: true, createdAt: true },
+  })
+
+  revalidatePath("/configuracoes/credenciais")
+  revalidatePath("/cenarios")
+  return toRecord(row)
+}
+
 export async function inativarCredencial(id: string): Promise<void> {
   await requireSession()
   idSchema.parse(id)

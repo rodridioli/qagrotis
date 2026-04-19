@@ -24,7 +24,7 @@ import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { toast } from "sonner"
-import { criarCredencial, inativarCredencial, type CredencialRecord } from "@/lib/actions/credenciais"
+import { criarCredencial, atualizarCredencial, inativarCredencial, type CredencialRecord } from "@/lib/actions/credenciais"
 
 const ITEMS_PER_PAGE = 20
 
@@ -47,6 +47,16 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
   const [showSenha, setShowSenha] = useState(false)
   const [isPending, startTransition] = useTransition()
 
+  // Edit modal
+  const [editOpen, setEditOpen] = useState(false)
+  const [editItem, setEditItem] = useState<CredencialRecord | null>(null)
+  const [editNome, setEditNome] = useState("")
+  const [editUrlAmbiente, setEditUrlAmbiente] = useState("")
+  const [editUsuario, setEditUsuario] = useState("")
+  const [editSenha, setEditSenha] = useState("")
+  const [showEditSenha, setShowEditSenha] = useState(false)
+  const [isEditPending, startEditTransition] = useTransition()
+
   // Inativar
   const [inativarId, setInativarId] = useState<string | null>(null)
   const [inativarOpen, setInativarOpen] = useState(false)
@@ -65,6 +75,16 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
     setUsuario("")
     setSenha("")
     setShowSenha(false)
+  }
+
+  function openEditar(c: CredencialRecord) {
+    setEditItem(c)
+    setEditNome(c.nome)
+    setEditUrlAmbiente(c.urlAmbiente ?? "")
+    setEditUsuario(c.usuario)
+    setEditSenha("")
+    setShowEditSenha(false)
+    setEditOpen(true)
   }
 
   function handleSalvar() {
@@ -86,6 +106,28 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
         router.refresh()
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Erro ao salvar.")
+      }
+    })
+  }
+
+  function handleEditar() {
+    if (!editItem) return
+    if (!editNome.trim()) { toast.error("Credencial é obrigatório."); return }
+    if (!editUsuario.trim()) { toast.error("Usuário é obrigatório."); return }
+    startEditTransition(async () => {
+      try {
+        const updated = await atualizarCredencial(editItem.id, {
+          nome: editNome.trim(),
+          urlAmbiente: editUrlAmbiente.trim() || null,
+          usuario: editUsuario.trim(),
+          senha: editSenha || undefined,
+        })
+        setItems((prev) => prev.map((c) => c.id === updated.id ? updated : c))
+        toast.success("Credencial atualizada com sucesso.")
+        setEditOpen(false)
+        router.refresh()
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Erro ao atualizar.")
       }
     })
   }
@@ -145,7 +187,13 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
         {filtered.length === 0 ? (
           <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
             {items.length === 0 ? (
-              <p>Nenhum registro encontrado.</p>
+              <div className="space-y-3">
+                <p>Nenhuma credencial cadastrada.</p>
+                <Button variant="outline" onClick={() => setAddOpen(true)} className="gap-2">
+                  <Plus className="size-4" />
+                  Adicionar Credencial
+                </Button>
+              </div>
             ) : (
               "Nenhum resultado para a busca."
             )}
@@ -156,7 +204,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cód.</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Credencial</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">URL do Ambiente</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
@@ -166,13 +214,21 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                 <tbody>
                   {paginated.map((c) => (
                     <tr key={c.id} className="group border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
-                      <td className="px-4 py-3 text-text-secondary">{c.id}</td>
+                      <td className="px-4 py-3 font-mono text-xs">
+                        <button
+                          type="button"
+                          onClick={() => openEditar(c)}
+                          className="text-brand-primary hover:underline"
+                        >
+                          {c.id}
+                        </button>
+                      </td>
                       <td className="px-4 py-3 font-medium text-text-primary">{c.nome}</td>
                       <td className="max-w-xs truncate px-4 py-3 text-text-secondary" title={c.urlAmbiente ?? undefined}>
                         {c.urlAmbiente ?? <span className="italic text-text-secondary/60">—</span>}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">{c.usuario}</td>
-                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50 flex items-center justify-end">
+                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             render={
@@ -186,6 +242,9 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                             <MoreVertical className="size-4" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditar(c)}>
+                              Editar
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="destructive"
                               onClick={() => { setInativarId(c.id); setInativarOpen(true) }}
@@ -284,6 +343,81 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
             <Button onClick={handleSalvar} disabled={isPending} className="gap-2">
               <Check className="size-4" />
               {isPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal editar ── */}
+      <Dialog open={editOpen} onOpenChange={(o) => { if (!o) setEditOpen(false) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Credencial</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Credencial <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={editNome}
+                onChange={(e) => setEditNome(e.target.value)}
+                placeholder="Ex.: Staging, Produção..."
+                disabled={isEditPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">URL do Ambiente</label>
+              <Input
+                value={editUrlAmbiente}
+                onChange={(e) => setEditUrlAmbiente(e.target.value)}
+                placeholder="https://app.example.com"
+                type="url"
+                disabled={isEditPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Usuário <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={editUsuario}
+                onChange={(e) => setEditUsuario(e.target.value)}
+                placeholder="usuario@exemplo.com"
+                disabled={isEditPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Nova Senha</label>
+              <div className="relative">
+                <Input
+                  type={showEditSenha ? "text" : "password"}
+                  value={editSenha}
+                  onChange={(e) => setEditSenha(e.target.value)}
+                  placeholder="Deixe em branco para manter a atual"
+                  className="pr-10"
+                  disabled={isEditPending}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowEditSenha((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-text-secondary transition-colors hover:text-text-primary"
+                  aria-label={showEditSenha ? "Ocultar senha" : "Exibir senha"}
+                >
+                  {showEditSenha ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-text-secondary">Deixe em branco para manter a senha atual.</p>
+            </div>
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <DialogClose render={<Button variant="outline" disabled={isEditPending} />}>
+              <X className="size-4" />
+              Cancelar
+            </DialogClose>
+            <Button onClick={handleEditar} disabled={isEditPending} className="gap-2">
+              <Check className="size-4" />
+              {isEditPending ? "Salvando…" : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>
