@@ -24,7 +24,6 @@ import {
 import { cn } from "@/lib/utils"
 import { QAgrotisLogo } from "@/components/qagrotis/QAgrotisLogo"
 import { QAgrotisIcon } from "@/components/qagrotis/QAgrotisIcon"
-import { QALogoSidebar } from "@/components/qagrotis/QALogoSidebar"
 import { signOut, useSession } from "next-auth/react"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { SistemaContext } from "@/lib/modulo-context"
@@ -124,11 +123,6 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
         </div>
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3">
-          {expanded && (
-            <div className="flex justify-center pb-3 pt-1">
-              <QALogoSidebar isDark={isDark} size={68} />
-            </div>
-          )}
           <TooltipProvider>
             {NAV_ITEMS.map(({ href, icon: Icon, label, alwaysEnabled }) => {
               // Compute disabled state dynamically based on system/module/AI model availability

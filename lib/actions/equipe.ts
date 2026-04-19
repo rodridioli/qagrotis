@@ -127,13 +127,29 @@ export async function getPerformanceData(filters: {
   return result.sort((a, b) => b.score - a.score)
 }
 
-export async function getSistemasEModulos(): Promise<{ sistemas: string[]; modulos: string[] }> {
+export async function getSistemasEModulos(): Promise<{
+  sistemas: string[]
+  modulosPorSistema: Record<string, string[]>
+}> {
   const [sistemas, modulos] = await Promise.all([
     prisma.sistema.findMany({ where: { active: true }, select: { name: true }, orderBy: { name: "asc" } }),
-    prisma.modulo.findMany({ where: { active: true }, select: { name: true }, orderBy: { name: "asc" } }),
+    prisma.modulo.findMany({
+      where: { active: true },
+      select: { name: true, sistemaName: true },
+      orderBy: { name: "asc" },
+    }),
   ])
+
+  const modulosPorSistema: Record<string, string[]> = {}
+  for (const m of modulos) {
+    if (!modulosPorSistema[m.sistemaName]) modulosPorSistema[m.sistemaName] = []
+    if (!modulosPorSistema[m.sistemaName]!.includes(m.name)) {
+      modulosPorSistema[m.sistemaName]!.push(m.name)
+    }
+  }
+
   return {
     sistemas: [...new Set(sistemas.map((s) => s.name))],
-    modulos: [...new Set(modulos.map((m) => m.name))],
+    modulosPorSistema,
   }
 }
