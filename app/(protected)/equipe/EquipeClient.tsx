@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useTransition, useMemo } from "react"
 import {
   BarChart3, Users, Clock, Calendar,
-  Bot, CheckCircle2, XCircle, Layers, Trophy, SlidersHorizontal,
+  Bot, SlidersHorizontal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPerformanceData, type UserPerformanceData } from "@/lib/actions/equipe"
 import {
-  Select, SelectTrigger, SelectValue, SelectPopup, SelectItem,
+  Select, SelectTrigger, SelectPopup, SelectItem,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import {
@@ -82,7 +82,7 @@ function UserAvatar({
   return (
     <div
       className={cn(cls, "flex items-center justify-center bg-brand-primary text-white font-semibold")}
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.33) }}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}
     >
       {initials}
     </div>
@@ -92,27 +92,18 @@ function UserAvatar({
 // ── Medal config ─────────────────────────────────────────────────────────────
 
 const MEDALS = [
-  { headerBg: "bg-amber-50 dark:bg-amber-950/20",  cardBorder: "border-amber-300",  cardShadow: "shadow-[0_4px_24px_0_rgb(251_191_36_/_0.20)]", badgeBg: "bg-amber-400",  ring: "ring-4 ring-amber-400 ring-offset-2 ring-offset-amber-50",  emoji: "🥇", label: "1º lugar", avatarSize: 96 },
-  { headerBg: "bg-slate-50 dark:bg-slate-800/30",  cardBorder: "border-slate-300",  cardShadow: "shadow-[0_4px_16px_0_rgb(148_163_184_/_0.18)]", badgeBg: "bg-slate-400",  ring: "ring-4 ring-slate-300 ring-offset-2 ring-offset-slate-50",  emoji: "🥈", label: "2º lugar", avatarSize: 80 },
-  { headerBg: "bg-orange-50 dark:bg-orange-950/20", cardBorder: "border-orange-300", cardShadow: "shadow-[0_4px_16px_0_rgb(251_146_60_/_0.18)]",  badgeBg: "bg-orange-500", ring: "ring-4 ring-orange-400 ring-offset-2 ring-offset-orange-50", emoji: "🥉", label: "3º lugar", avatarSize: 72 },
+  { stripBg: "bg-amber-400",  cardBorder: "border-amber-300",  cardShadow: "shadow-[0_4px_20px_0_rgb(251_191_36_/_0.22)]", badgeBg: "bg-amber-400",  ring: "ring-2 ring-amber-400 ring-offset-1", emoji: "🥇", avatarSize: 52 },
+  { stripBg: "bg-slate-400",  cardBorder: "border-slate-300",  cardShadow: "shadow-[0_4px_14px_0_rgb(148_163_184_/_0.20)]", badgeBg: "bg-slate-400",  ring: "ring-2 ring-slate-300 ring-offset-1",  emoji: "🥈", avatarSize: 48 },
+  { stripBg: "bg-orange-400", cardBorder: "border-orange-300", cardShadow: "shadow-[0_4px_14px_0_rgb(251_146_60_/_0.20)]",  badgeBg: "bg-orange-500", ring: "ring-2 ring-orange-400 ring-offset-1", emoji: "🥉", avatarSize: 44 },
 ]
 
-// ── Stat cell (ícone com círculo colorido, inspirado na referência) ───────────
+// ── Compact stat cell ─────────────────────────────────────────────────────────
 
-function StatCell({ icon, label, value, iconBg, iconColor, valueColor }: {
-  icon: React.ElementType; label: string; value: number | string
-  iconBg: string; iconColor: string; valueColor?: string
-}) {
-  const Icon = icon
+function StatMini({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
-    <div className="flex flex-col items-center gap-2 px-3 py-4">
-      <div className={cn("flex items-center justify-center size-10 rounded-full", iconBg)}>
-        <Icon className={cn("size-5", iconColor)} />
-      </div>
-      <div className="text-center">
-        <p className={cn("text-2xl font-bold leading-none text-text-primary", valueColor)}>{value}</p>
-        <p className="text-xs text-text-secondary mt-1">{label}</p>
-      </div>
+    <div className="flex flex-col items-center justify-center py-2.5 px-1 gap-0.5">
+      <span className={cn("text-base font-bold leading-none text-text-primary", color)}>{value}</span>
+      <span className="text-[10px] text-text-secondary text-center leading-tight mt-0.5">{label}</span>
     </div>
   )
 }
@@ -121,14 +112,14 @@ function StatCell({ icon, label, value, iconBg, iconColor, valueColor }: {
 
 function ProgressBar({ value }: { value: number }) {
   return (
-    <div className="h-1.5 w-full rounded-full bg-surface-input overflow-hidden">
+    <div className="h-1 w-full rounded-full bg-surface-input overflow-hidden">
       <div className="h-full rounded-full bg-brand-primary transition-all duration-500"
         style={{ width: `${Math.min(100, value)}%` }} />
     </div>
   )
 }
 
-// ── Performance Card ─────────────────────────────────────────────────────────
+// ── Performance Card — compact Padlet-style ───────────────────────────────────
 
 function PerformanceCard({ user, rank }: { user: UserPerformanceData; rank: number }) {
   const medal = rank <= 3 ? MEDALS[rank - 1]! : null
@@ -140,74 +131,72 @@ function PerformanceCard({ user, rank }: { user: UserPerformanceData; rank: numb
         ? `border-2 ${medal.cardBorder} ${medal.cardShadow}`
         : "border-border-default shadow-card",
     )}>
-      {/* Header — colorido para top-3, neutro para demais */}
-      <div className={cn(
-        "flex flex-col items-center gap-3 px-5 pt-5 pb-5",
-        medal ? medal.headerBg : "bg-surface-card",
-      )}>
-        {/* Rank badge — dentro do fluxo, nunca absoluto */}
-        {medal ? (
-          <span className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-bold text-white shadow",
-            medal.badgeBg,
-          )}>
-            {medal.emoji} {medal.label}
-          </span>
-        ) : (
-          <span className="inline-flex items-center rounded-full border border-border-default bg-surface-input px-2.5 py-1 text-xs font-medium text-text-secondary">
-            {rank}º lugar
-          </span>
-        )}
+      {/* Colored top strip for top-3 */}
+      {medal && <div className={cn("h-1 w-full", medal.stripBg)} />}
 
-        {/* Avatar */}
+      {/* Avatar + name row */}
+      <div className="flex items-center gap-3 px-4 pt-3 pb-2">
         <UserAvatar
           name={user.name}
           photoPath={user.photoPath}
-          size={medal?.avatarSize ?? 64}
+          size={medal?.avatarSize ?? 40}
           ringClass={medal?.ring}
         />
-
-        {/* Nome + classificação */}
-        <div className="text-center space-y-0.5">
-          <p className="text-base font-bold text-text-primary leading-snug">{user.name}</p>
-          <p className="text-sm text-text-secondary">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {medal && <span className="text-sm shrink-0">{medal.emoji}</span>}
+            <p className="truncate text-sm font-semibold text-text-primary">{user.name}</p>
+          </div>
+          <p className="text-xs text-text-secondary truncate">
             {user.classificacao ?? <span className="italic opacity-50">Sem classificação</span>}
           </p>
         </div>
+        <span className={cn(
+          "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
+          medal
+            ? `${medal.badgeBg} text-white`
+            : "bg-surface-input text-text-secondary border border-border-default",
+        )}>
+          {rank}º
+        </span>
       </div>
 
-      {/* Sistemas */}
+      {/* Sistema chips */}
       {user.sistemas.length > 0 && (
-        <div className="px-4 pt-3 pb-2 border-t border-border-default">
-          <p className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider mb-1.5">Sistemas</p>
+        <div className="px-4 pb-2.5">
           <div className="flex flex-wrap gap-1">
-            {user.sistemas.map((s) => (
-              <span key={s} className="rounded-full bg-primary-50 text-brand-primary px-2 py-0.5 text-xs font-medium">
+            {user.sistemas.slice(0, 3).map((s) => (
+              <span key={s} className="rounded-full bg-primary-50 text-brand-primary px-2 py-0.5 text-[10px] font-medium">
                 {s}
               </span>
             ))}
+            {user.sistemas.length > 3 && (
+              <span className="rounded-full bg-surface-input text-text-secondary px-2 py-0.5 text-[10px] border border-border-default">
+                +{user.sistemas.length - 3}
+              </span>
+            )}
           </div>
         </div>
       )}
 
-      {/* Métricas 2×2 */}
-      <div className="grid grid-cols-2 divide-x divide-y divide-border-default border-t border-border-default">
-        <StatCell icon={Layers}        label="Cenários"   value={user.cenariosCriados}    iconBg="bg-purple-100 dark:bg-purple-900/30" iconColor="text-purple-600 dark:text-purple-400" />
-        <StatCell icon={Trophy}        label="Executados" value={user.testesExecutados}    iconBg="bg-blue-100 dark:bg-blue-900/30"   iconColor="text-blue-600 dark:text-blue-400"   />
-        <StatCell icon={CheckCircle2}  label="Sucessos"   value={user.sucessos}            iconBg="bg-green-100 dark:bg-green-900/30" iconColor="text-green-600 dark:text-green-400" valueColor="text-green-600 dark:text-green-400" />
-        <StatCell icon={XCircle}       label="Erros"      value={user.errosEncontrados}    iconBg="bg-red-100 dark:bg-red-900/30"     iconColor="text-red-500"                       valueColor="text-destructive" />
+      {/* Stats 4-column compact */}
+      <div className="grid grid-cols-4 border-t border-border-default divide-x divide-border-default">
+        <StatMini label="Cenários"   value={user.cenariosCriados}   />
+        <StatMini label="Executados" value={user.testesExecutados}  />
+        <StatMini label="Sucessos"   value={user.sucessos}          color="text-green-600 dark:text-green-400" />
+        <StatMini label="Erros"      value={user.errosEncontrados}  color="text-destructive" />
       </div>
 
-      {/* Automação */}
-      <div className="px-4 py-3 border-t border-border-default space-y-2">
-        <div className="flex items-center justify-between">
+      {/* Automation bar */}
+      <div className="px-4 py-2.5 border-t border-border-default">
+        <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-1.5">
-            <Bot className="size-4 text-brand-primary" />
-            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Automatizados</span>
+            <Bot className="size-3.5 text-brand-primary" />
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">Automatizados</span>
           </div>
-          <span className="text-sm font-bold text-text-primary">
+          <span className="text-xs font-bold text-text-primary">
             {user.testesAutomatizados}{" "}
-            <span className="text-xs font-normal text-text-secondary">({user.percentualAutomatizado}%)</span>
+            <span className="text-[10px] font-normal text-text-secondary">({user.percentualAutomatizado}%)</span>
           </span>
         </div>
         <ProgressBar value={user.percentualAutomatizado} />
@@ -220,9 +209,7 @@ function PerformanceCard({ user, rank }: { user: UserPerformanceData; rank: numb
 
 function FilterModal({
   open, onOpenChange, sistemas, modulosPorSistema,
-  pending,
-  draft, onDraftChange,
-  onApply, onReset,
+  pending, draft, onDraftChange, onApply, onReset,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
@@ -251,7 +238,6 @@ function FilterModal({
         </DialogHeader>
 
         <div className="flex flex-col gap-4 py-2">
-          {/* Sistema */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">Sistema</label>
             <Select value={draft.sistema} onValueChange={(v) => setSistema(v ?? "todos")}>
@@ -265,7 +251,6 @@ function FilterModal({
             </Select>
           </div>
 
-          {/* Módulo */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">Módulo</label>
             <Select value={draft.modulo} onValueChange={(v) => onDraftChange({ ...draft, modulo: v ?? "todos" })}>
@@ -279,7 +264,6 @@ function FilterModal({
             </Select>
           </div>
 
-          {/* Período */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">Período</label>
             <Select value={draft.periodo} onValueChange={(v) => onDraftChange({ ...draft, periodo: v ?? "mes-atual" })}>
@@ -319,22 +303,18 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("performance")
   const [filterOpen, setFilterOpen] = useState(false)
 
-  // Draft = o que está no modal ainda não aplicado
   const [draft, setDraft] = useState(DEFAULT_FILTERS)
-  // Applied = filtros efetivamente aplicados
   const [applied, setApplied] = useState(DEFAULT_FILTERS)
 
   const [users, setUsers] = useState<UserPerformanceData[]>([])
   const [isPending, startTransition] = useTransition()
 
-  // Badge de filtros ativos
   const activeFilterCount = [
     applied.sistema !== "todos",
     applied.modulo  !== "todos",
     applied.periodo !== "mes-atual",
   ].filter(Boolean).length
 
-  // Fetch ao mudar applied ou aba
   useEffect(() => {
     if (activeTab !== "performance") return
     const { dataInicio, dataFim } = getDateRange(applied.periodo)
@@ -350,7 +330,6 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applied, activeTab])
 
-  // Ao abrir o modal, sincronizar draft com applied
   function handleOpenFilter() {
     setDraft(applied)
     setFilterOpen(true)
@@ -368,48 +347,48 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* Tab bar */}
-      <div className="flex flex-wrap gap-0.5 rounded-xl bg-surface-card border border-border-default shadow-card p-1 w-fit">
-        {TABS.map(({ id, label, icon: Icon }) => (
+      {/* Tab bar + filter button inline */}
+      <div className="flex items-center gap-2">
+        <div className="flex flex-wrap gap-0.5 rounded-xl bg-surface-card border border-border-default shadow-card p-1">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150",
+                activeTab === id
+                  ? "bg-brand-primary text-white shadow-sm"
+                  : "text-text-secondary hover:bg-neutral-grey-100 hover:text-text-primary",
+              )}
+            >
+              <Icon className="size-4 shrink-0" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Filter icon — matches TableToolbar pattern exactly */}
+        {activeTab === "performance" && (
           <button
-            key={id}
             type="button"
-            onClick={() => setActiveTab(id)}
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150",
-              activeTab === id
-                ? "bg-brand-primary text-white shadow-sm"
-                : "text-text-secondary hover:bg-neutral-grey-100 hover:text-text-primary",
-            )}
+            onClick={handleOpenFilter}
+            aria-label="Abrir filtros"
+            className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100"
           >
-            <Icon className="size-4 shrink-0" />
-            {label}
+            <SlidersHorizontal className="size-4" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-brand-primary text-primary-foreground text-xs font-bold">
+                {activeFilterCount}
+              </span>
+            )}
           </button>
-        ))}
+        )}
       </div>
 
       {/* ── Performance ── */}
       {activeTab === "performance" && (
-        <div className="space-y-5">
-          {/* Cabeçalho com botão de filtro */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-text-primary">Performance</h2>
-            <button
-              type="button"
-              onClick={handleOpenFilter}
-              className="relative flex items-center gap-2 rounded-lg border border-border-default bg-surface-card px-3 py-2 text-sm font-medium text-text-secondary shadow-card transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
-            >
-              <SlidersHorizontal className="size-4" />
-              Filtros
-              {activeFilterCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-brand-primary text-[10px] font-bold text-white">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Modal de filtros */}
+        <div className="space-y-4">
           <FilterModal
             open={filterOpen}
             onOpenChange={setFilterOpen}
@@ -422,7 +401,6 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
             onReset={handleReset}
           />
 
-          {/* Cards */}
           {isPending ? (
             <div className="flex items-center justify-center py-20">
               <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
@@ -434,7 +412,7 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {users.map((u, idx) => (
                 <PerformanceCard key={u.userId} user={u} rank={idx + 1} />
               ))}
