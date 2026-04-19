@@ -208,7 +208,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Credencial</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">URL do Ambiente</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
-                    <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
+                    <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4 w-12" />
                   </tr>
                 </thead>
                 <tbody>
