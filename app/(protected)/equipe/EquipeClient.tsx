@@ -71,7 +71,7 @@ function UserAvatar({
   name, photoPath, size, ringClass, shape = "circle",
 }: { name: string; photoPath: string | null; size: number; ringClass?: string; shape?: "circle" | "square" }) {
   const initials = name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()
-  const radius = shape === "square" ? "rounded-xl" : "rounded-full"
+  const radius = shape === "square" ? "rounded-custom" : "rounded-full"
   const cls = cn(radius, "flex-shrink-0", ringClass)
   if (photoPath) {
     return (
@@ -102,9 +102,9 @@ const RANK_BADGE_TOP3 = [
 
 function StatMini({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-2.5 px-1 gap-0.5">
-      <span className={cn("text-base font-bold leading-none text-text-primary", color)}>{value}</span>
-      <span className="text-[10px] text-text-secondary text-center leading-tight mt-0.5">{label}</span>
+    <div className="flex flex-col items-center justify-center gap-1 px-1 py-3">
+      <span className={cn("text-lg font-bold leading-none tracking-tight text-text-primary", color)}>{value}</span>
+      <span className="text-center text-[11px] leading-tight text-text-secondary">{label}</span>
     </div>
   )
 }
@@ -113,9 +113,11 @@ function StatMini({ label, value, color }: { label: string; value: number; color
 
 function ProgressBar({ value }: { value: number }) {
   return (
-    <div className="h-1 w-full rounded-full bg-surface-input overflow-hidden">
-      <div className="h-full rounded-full bg-brand-primary transition-all duration-500"
-        style={{ width: `${Math.min(100, value)}%` }} />
+    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+      <div
+        className="h-full rounded-full bg-brand-primary transition-all duration-500"
+        style={{ width: `${Math.min(100, value)}%` }}
+      />
     </div>
   )
 }
@@ -126,67 +128,57 @@ function PerformanceCard({ user, rank }: { user: UserPerformanceData; rank: numb
   const rankBadgeClass = rank <= 3 ? RANK_BADGE_TOP3[rank - 1]! : "bg-white/20 text-white"
 
   return (
-    <div className="flex flex-col rounded-xl bg-surface-card border border-border-default overflow-hidden">
+    <div className="flex flex-col overflow-hidden rounded-custom border border-border-default bg-surface-card shadow-card">
 
-      {/* ── Header teal ── */}
-      <div className="relative px-4 pt-4 pb-3 bg-brand-primary">
-        {/* Rank badge — top-right absolute */}
-        <span className={cn(
-          "absolute right-3 top-3 rounded-full px-2.5 py-0.5 text-xs font-bold leading-none",
-          rankBadgeClass,
-        )}>
+      {/* ── Header: avatar + nome (linha), badge #rank ── */}
+      <div className="relative flex items-center gap-3 bg-brand-primary px-4 pb-3 pt-4">
+        <span
+          className={cn(
+            "absolute right-3 top-3 rounded-full px-2.5 py-0.5 text-xs font-bold leading-none",
+            rankBadgeClass,
+          )}
+        >
           #{rank}
         </span>
 
-        {/* Avatar — rounded-xl (square-ish) */}
-        <UserAvatar
-          name={user.name}
-          photoPath={user.photoPath}
-          size={56}
-          shape="square"
-        />
+        <UserAvatar name={user.name} photoPath={user.photoPath} size={56} shape="square" />
 
-        {/* Name + role — white on teal */}
-        <div className="mt-2.5 pr-10">
-          <p className="text-sm font-bold text-white leading-tight truncate">{user.name}</p>
-          <p className="text-xs text-white/70 truncate mt-0.5">
-            {user.classificacao ?? <span className="italic opacity-60">Sem classificação</span>}
+        <div className="min-w-0 flex-1 pr-10">
+          <p className="truncate text-base font-bold leading-tight text-white">{user.name}</p>
+          <p className="mt-0.5 truncate text-xs text-primary-foreground/85">
+            {user.classificacao ?? <span className="italic text-primary-foreground/55">Sem classificação</span>}
           </p>
         </div>
       </div>
 
-      {/* ── Sistemas / módulos com atividade (classificação só no cabeçalho) ── */}
-      <div className="px-4 py-2.5 border-b border-border-default">
+      {/* ── Sistemas / módulos: **Sistema:** módulos / **Sistema2:** … ── */}
+      <div className="border-b border-border-default px-4 py-2.5">
         {user.atividadePorSistema.length > 0 ? (
-          <ul className="space-y-1.5 text-xs leading-snug">
-            {user.atividadePorSistema.map(({ sistema, modulos }) => (
-              <li key={sistema}>
-                <span className="font-semibold text-text-primary">{sistema}</span>
-                {modulos.length > 0 ? (
-                  <>
-                    <span className="text-text-secondary"> — </span>
-                    <span className="text-text-secondary">{modulos.join(", ")}</span>
-                  </>
-                ) : null}
-              </li>
+          <p className="text-xs leading-snug">
+            {user.atividadePorSistema.map(({ sistema, modulos }, i) => (
+              <span key={sistema}>
+                {i > 0 ? <span className="text-text-secondary"> / </span> : null}
+                <span className="font-semibold text-text-primary">{sistema}:</span>{" "}
+                <span className="text-text-secondary">
+                  {modulos.length > 0 ? modulos.join(", ") : "—"}
+                </span>
+              </span>
             ))}
-          </ul>
+          </p>
         ) : (
-          <p className="text-xs text-text-secondary italic">Nenhum sistema/módulo no período filtrado.</p>
+          <p className="text-xs italic text-text-secondary">Nenhum sistema/módulo no período filtrado.</p>
         )}
       </div>
 
-      {/* ── Stats 4-column ── */}
       <div className="grid grid-cols-4 divide-x divide-border-default">
-        <StatMini label="Cenários" value={user.cenariosCriados}  />
-        <StatMini label="Testes"   value={user.testesExecutados} />
-        <StatMini label="Sucesso"  value={user.sucessos}         color="text-green-600 dark:text-green-400" />
-        <StatMini label="Erros"    value={user.errosEncontrados} color="text-destructive" />
+        <StatMini label="Cenários" value={user.cenariosCriados} />
+        <StatMini label="Testes" value={user.testesExecutados} />
+        <StatMini label="Sucesso" value={user.sucessos} color="text-green-600 dark:text-green-400" />
+        <StatMini label="Erros" value={user.errosEncontrados} color="text-destructive" />
       </div>
 
-      {/* ── Automation bar ── */}
-      <div className="px-4 py-2.5 border-t border-border-default">
-        <div className="flex items-center justify-between mb-1.5">
+      <div className="border-t border-border-default px-4 py-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
             Automatizados
           </span>
@@ -346,7 +338,7 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
     <div className="space-y-5">
       {/* Tab bar + filter button inline */}
       <div className="flex items-center gap-2">
-        <div className="flex flex-wrap gap-0.5 rounded-xl bg-surface-card border border-border-default shadow-card p-1">
+        <div className="flex flex-wrap gap-0.5 rounded-custom border border-border-default bg-surface-card p-1 shadow-card">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -403,7 +395,7 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
               <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
             </div>
           ) : users.length === 0 ? (
-            <div className="flex items-center justify-center rounded-xl bg-surface-card border border-border-default shadow-card py-16">
+            <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card">
               <p className="text-sm text-text-secondary">
                 Nenhum dado encontrado para os filtros selecionados.
               </p>

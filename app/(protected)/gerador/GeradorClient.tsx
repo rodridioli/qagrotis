@@ -216,7 +216,6 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     setApiError(null)
     setIsEditing(false)
     setLoading(true)
-    setActiveTab("cenarios")
 
     // Fetch Jira issue content if URL/key provided
     let jiraContext = contexto.trim()
@@ -254,17 +253,41 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             // Temporarily override for this generate call (we'll pass merged directly)
             Object.assign(jiraAttachments, { list: merged })
           }
+        } else {
+          const errBody = await jiraRes.text().catch(() => "")
+          toast.error(
+            `Jira: não foi possível carregar a issue (${jiraRes.status}). ${errBody.slice(0, 160)}`,
+          )
         }
-      } catch { /* continue without Jira data */ }
+      } catch {
+        toast.error("Falha de rede ao contatar o Jira. Verifique a conexão e as credenciais em Configurações.")
+      }
     }
+
+    const imagensPayload =
+      jiraAttachments.list.length > 0 ? jiraAttachments.list : anexoPreviews.length > 0 ? anexoPreviews : []
+    const textPayload = jiraContext.trim()
+
+    if (!textPayload && imagensPayload.length === 0) {
+      setActiveTab("contexto")
+      setApiError(
+        "É necessário texto em Contexto, anexos ou uma issue do Jira válida (com credenciais configuradas). Se você informou só a URL da issue, confira a integração Jira e a chave do item.",
+      )
+      toast.error("Nenhum dado para enviar ao modelo. Preencha o contexto, anexos ou corrija o Jira.")
+      setLoading(false)
+      return
+    }
+
+    setActiveTab("cenarios")
 
     try {
       const res = await fetch("/api/gerador", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          jira: jiraContext || undefined,
-          imagens: jiraAttachments.list.length > 0 ? jiraAttachments.list : (anexoPreviews.length > 0 ? anexoPreviews : undefined),
+          context: textPayload,
+          jira: textPayload,
+          imagens: imagensPayload.length > 0 ? imagensPayload : undefined,
           integrationId: aiProvider,
         }),
         signal: controller.signal,

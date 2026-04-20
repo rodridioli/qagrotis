@@ -71,6 +71,16 @@ const cenarioCreateSchema = z.object({
   steps:             z.array(z.object({ acao: z.string().min(1).max(1000), resultado: z.string().min(1).max(1000) })).max(100),
   deps:              z.array(idSchema).max(100),
   credencialId:      z.string().regex(/^CRD-\d+$/).nullable().optional(),
+}).superRefine((val, ctx) => {
+  const incluiAutomatizado =
+    val.tipo === "Automatizado" || val.tipo === "Man./Auto."
+  if (incluiAutomatizado && !val.objetivo.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Descrição é obrigatória.",
+      path: ["objetivo"],
+    })
+  }
 })
 
 // ── Mapping helper ──────────────────────────────────────────────────────────

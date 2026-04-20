@@ -568,12 +568,17 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json() as {
+    /** Texto livre (requisitos / contexto). Alias legado: `jira`. */
+    context?: string
     jira?: string
     imagens?: { dataUrl: string; name: string }[]
     integrationId?: string
   }
 
-  const { jira, imagens, integrationId } = body
+  const { imagens, integrationId } = body
+  const ctx = typeof body.context === "string" ? body.context.trim() : ""
+  const leg = typeof body.jira === "string" ? body.jira.trim() : ""
+  const jira = ctx || leg
 
   if (!checkGeradorRateLimit(session.user.id!)) {
     return new Response("Limite de geração atingido (30/hora). Aguarde antes de tentar novamente.", { status: 429 })
@@ -584,7 +589,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (!jira && (!imagens || imagens.length === 0)) {
-    return new Response("Informe ao menos uma entrada.", { status: 400 })
+    return new Response(
+      "Informe ao menos uma entrada: texto em Contexto, anexos (imagens/PDF) ou issue do Jira carregada com sucesso.",
+      { status: 400 },
+    )
   }
 
   const integracao = await getIntegracao(integrationId)

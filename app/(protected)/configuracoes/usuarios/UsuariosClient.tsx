@@ -105,7 +105,8 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
         u.name.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase())
       const matchTipo = !filters.tipo || u.type === filters.tipo
-      const matchAtivo = filters.apenasInativos ? !u.active : u.active
+      // Sem "somente inativos": lista todos (ativos + inativos). Com o filtro: só inativos.
+      const matchAtivo = filters.apenasInativos ? !u.active : true
       return matchSearch && matchTipo && matchAtivo
     })
     return [...result].sort((a, b) => {
@@ -136,7 +137,7 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
 
   // Selectable = current page items excluding own account and the last active admin
   const selectableIds = pageItems
-    .filter((u) => u.id !== currentUserId && !isLastActiveAdmin(u))
+    .filter((u) => u.id !== currentUserId && !isLastActiveAdmin(u) && u.active)
     .map((u) => u.id)
 
   function toggleRow(id: string) {
@@ -177,7 +178,9 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
     try {
       const result = await ativarQaUser(ativarId)
       if (result?.error) { toast.error(result.error); return }
-      setUsers((prev) => prev.filter((u) => u.id !== ativarId))
+      setUsers((prev) =>
+        prev.map((u) => (u.id === ativarId ? { ...u, active: true } : u)),
+      )
       toast.success("Cadastro ativado com sucesso.")
       router.refresh()
     } catch {
@@ -347,7 +350,10 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                     return (
                       <tr
                         key={u.id}
-                        className="group border-b border-border-default last:border-0"
+                        className={cn(
+                          "group border-b border-border-default last:border-0",
+                          !u.active && "bg-neutral-grey-50/90",
+                        )}
                       >
                         {showBulkActions && (
                           <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">

@@ -55,7 +55,8 @@ export default function NovoUsuarioForm() {
   const [nome, setNome] = useState("")
   const [email, setEmail] = useState("")
   const [tipo, setTipo] = useState<string>("Padrão")
-  const [classificacao, setClassificacao] = useState<string>("")
+  const [classificacao, setClassificacao] = useState<string>("Colaborador")
+  const [dataNascimento, setDataNascimento] = useState("")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
@@ -104,7 +105,14 @@ export default function NovoUsuarioForm() {
       let photoPath: string | null = null
 
       // 1. Create user first to get ID
-      const result = await criarQaUser({ name: nome, email, type: tipo, classificacao: classificacao || null, password })
+      const result = await criarQaUser({
+        name: nome,
+        email,
+        type: tipo,
+        classificacao: classificacao || null,
+        dataNascimento: dataNascimento.trim() || null,
+        password,
+      })
       if (result.error || !result.id) {
         toast.error(result.error ?? "Erro ao criar usuário.")
         return
@@ -130,6 +138,7 @@ export default function NovoUsuarioForm() {
             email,
             type: tipo,
             classificacao: classificacao || null,
+            dataNascimento: dataNascimento.trim() || null,
             photoPath,
           })
         } else {
@@ -220,15 +229,32 @@ export default function NovoUsuarioForm() {
             <label htmlFor="classificacao" className="text-sm font-medium text-text-primary">
               Classificação
             </label>
-            <Select value={classificacao} onValueChange={(v) => setClassificacao(v ?? "")} disabled={isPending}>
+            <Select
+              value={classificacao || "Colaborador"}
+              onValueChange={(v) => setClassificacao(v ?? "Colaborador")}
+              disabled={isPending}
+            >
               <SelectTrigger id="classificacao"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
               <SelectPopup>
                 <SelectItem value="Colaborador">Colaborador</SelectItem>
                 <SelectItem value="Líder">Líder</SelectItem>
-                <SelectItem value="Coordenador">Coordenador</SelectItem>
                 <SelectItem value="Outro">Outro</SelectItem>
               </SelectPopup>
             </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="dataNascimento" className="text-sm font-medium text-text-primary">
+              Data de nascimento
+            </label>
+            <Input
+              id="dataNascimento"
+              type="date"
+              value={dataNascimento}
+              onChange={(e) => setDataNascimento(e.target.value)}
+              disabled={isPending}
+              className="max-w-full sm:max-w-xs"
+            />
           </div>
 
           {/* ── Password section ── */}

@@ -23,6 +23,11 @@ interface Props {
   isAdmin: boolean
 }
 
+function normalizeClassificacaoSelect(c: string | null | undefined) {
+  if (!c || c === "Coordenador") return "Colaborador"
+  return c
+}
+
 export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -30,7 +35,10 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
   const [nome, setNome] = useState(initialProfile.name)
   const [email, setEmail] = useState(initialProfile.email)
   const [tipo, setTipo] = useState(initialProfile.type)
-  const [classificacao, setClassificacao] = useState<string>(initialProfile.classificacao ?? "")
+  const [classificacao, setClassificacao] = useState<string>(
+    normalizeClassificacaoSelect(initialProfile.classificacao),
+  )
+  const [dataNascimento, setDataNascimento] = useState(initialProfile.dataNascimento ?? "")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(
     initialProfile.photoPath ?? null
@@ -90,6 +98,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
         email,
         type: tipo,
         classificacao: classificacao || null,
+        dataNascimento: dataNascimento.trim() || null,
         photoPath: resolvedPhotoPath,
       })
 
@@ -179,12 +188,15 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
               Classificação
             </label>
             {isAdmin ? (
-              <Select value={classificacao} onValueChange={(v) => setClassificacao(v ?? "")} disabled={isPending}>
+              <Select
+                value={classificacao || "Colaborador"}
+                onValueChange={(v) => setClassificacao(v ?? "Colaborador")}
+                disabled={isPending}
+              >
                 <SelectTrigger id="classificacao"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                 <SelectPopup>
                   <SelectItem value="Colaborador">Colaborador</SelectItem>
                   <SelectItem value="Líder">Líder</SelectItem>
-                  <SelectItem value="Coordenador">Coordenador</SelectItem>
                   <SelectItem value="Outro">Outro</SelectItem>
                 </SelectPopup>
               </Select>
@@ -196,6 +208,20 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
                 {classificacao || "—"}
               </div>
             )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="dataNascimento" className="text-sm font-medium text-text-primary">
+              Data de nascimento
+            </label>
+            <Input
+              id="dataNascimento"
+              type="date"
+              value={dataNascimento}
+              onChange={(e) => setDataNascimento(e.target.value)}
+              disabled={isPending}
+              className="max-w-full sm:max-w-xs"
+            />
           </div>
 
           {/* ── Password section ── */}

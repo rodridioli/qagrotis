@@ -26,6 +26,8 @@ export interface QaUserProfile {
   type: string
   classificacao?: string | null
   photoPath: string | null
+  /** ISO `yyyy-mm-dd` quando definida */
+  dataNascimento?: string | null
 }
 
 // ── Validation schemas ──────────────────────────────────────────────────────
@@ -36,11 +38,51 @@ const userInputSchema = z.object({
   type: z.enum(["Padrão", "Administrador"]),
 })
 
-const CLASSIFICACOES_VALIDAS = ["Colaborador", "Líder", "Coordenador", "Outro"] as const
+const CLASSIFICACOES_VALIDAS = ["Colaborador", "Líder", "Outro"] as const
 
 function sanitizeClassificacao(value: string | null | undefined): string | null {
   if (!value) return null
-  return (CLASSIFICACOES_VALIDAS as readonly string[]).includes(value) ? value : null
+  const v = value === "Coordenador" ? "Colaborador" : value
+  return (CLASSIFICACOES_VALIDAS as readonly string[]).includes(v) ? v : null
+}
+
+function toDateInputValue(d: Date | null | undefined): string {
+  if (!d) return ""
+  return d.toISOString().slice(0, 10)
+}
+
+function parseDateInput(s: string | null | undefined): Date | null {
+  const t = s?.trim()
+  if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(t)) return null
+  const d = new Date(`${t}T12:00:00.000Z`)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+/** Uma linha por e-mail: prioridade CreatedUser > Mock > OAuth; IDs sem e-mail entram uma vez. */
+function mergeQaUsersByEmail(
+  mockRecords: QaUserRecord[],
+  createdRecords: QaUserRecord[],
+  oauthRecords: QaUserRecord[],
+): QaUserRecord[] {
+  const byEmail = new Map<string, QaUserRecord>()
+  for (const r of oauthRecords) {
+    if (r.email?.trim()) byEmail.set(r.email.toLowerCase(), r)
+  }
+  for (const r of mockRecords) {
+    if (r.email?.trim()) byEmail.set(r.email.toLowerCase(), r)
+  }
+  for (const r of createdRecords) {
+    if (r.email?.trim()) byEmail.set(r.email.toLowerCase(), r)
+  }
+  const merged = [...byEmail.values()]
+  const seenIds = new Set(merged.map((u) => u.id))
+  for (const r of [...mockRecords, ...createdRecords, ...oauthRecords]) {
+    if (!seenIds.has(r.id)) {
+      merged.push(r)
+      seenIds.add(r.id)
+    }
+  }
+  return merged
 }
 
 const idSchema = z.string().regex(/^U-\d+$/, "ID inválido")
@@ -102,7 +144,7 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
       name:          p?.name ?? u.name,
       email:         p?.email ?? u.email,
       type:          p?.type ?? u.type,
-      classificacao: p?.classificacao ?? null,
+      classificacao: sanitizeClassificacao(p?.classificacao ?? null),
       active:        !inactiveIds.has(u.id) && u.active,
       photoPath:     p?.photoPath ?? null,
     }
@@ -115,7 +157,7 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
       name:          p?.name ?? u.name,
       email:         p?.email ?? u.email,
       type:          p?.type ?? u.type,
-      classificacao: p?.classificacao ?? u.classificacao ?? null,
+      classificacao: sanitizeClassificacao(p?.classificacao ?? u.classificacao ?? null),
       active:        !inactiveIds.has(u.id),
       photoPath:     p?.photoPath ?? u.photoPath,
       createdAt:     u.createdAt.getTime(),
@@ -132,14 +174,14 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
         name:          p?.name ?? u.name ?? u.email ?? "",
         email:         p?.email ?? u.email ?? "",
         type:          p?.type ?? "Padrão",
-        classificacao: p?.classificacao ?? null,
+        classificacao: sanitizeClassificacao(p?.classificacao ?? null),
         active:        !inactiveIds.has(u.id),
         photoPath:     p?.photoPath ?? u.image ?? null,
         createdAt:     u.createdAt.getTime(),
       }
     })
 
-  return [...mockRecords, ...createdRecords, ...oauthRecords]
+  return mergeQaUsersByEmail(mockRecords, createdRecords, oauthRecords)
 }
 
 export async function getQaUserProfile(id: string): Promise<QaUserProfile | null> {
@@ -156,12 +198,15 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
   const base = mockUser ?? createdUser
   if (!base) return null
 
+  const dn = savedProfile?.dataNascimento ?? createdUser?.dataNascimento ?? null
+
   return {
-    name:          savedProfile?.name ?? base.name,
-    email:         savedProfile?.email ?? base.email,
-    type:          savedProfile?.type ?? base.type,
-    classificacao: savedProfile?.classificacao ?? (createdUser?.classificacao ?? null),
-    photoPath:     savedProfile?.photoPath ?? (createdUser?.photoPath ?? null),
+    name:            savedProfile?.name ?? base.name,
+    email:           savedProfile?.email ?? base.email,
+    type:            savedProfile?.type ?? base.type,
+    classificacao:   sanitizeClassificacao(savedProfile?.classificacao ?? (createdUser?.classificacao ?? null)),
+    photoPath:       savedProfile?.photoPath ?? (createdUser?.photoPath ?? null),
+    dataNascimento:  dn ? toDateInputValue(dn) : null,
   }
 }
 
@@ -232,6 +277,7 @@ export async function criarQaUser(data: {
   email: string
   type: string
   classificacao?: string | null
+  dataNascimento?: string | null
   password: string
   photoPath?: string | null
 }): Promise<{ id?: string; error?: string; emailEnviado?: boolean }> {
@@ -282,6 +328,7 @@ export async function criarQaUser(data: {
 
     const hashedPassword = hashPassword(data.password)
     const classificacaoValida = sanitizeClassificacao(data.classificacao)
+    const dataNascimento = parseDateInput(data.dataNascimento ?? undefined)
 
     let createdId = ""
     if (existingCreated && inactiveIds.has(existingCreated.id)) {
@@ -289,7 +336,14 @@ export async function criarQaUser(data: {
       await prisma.$transaction([
         prisma.createdUser.update({
           where: { id: existingCreated.id },
-          data: { name: parsed.name, type: parsed.type, classificacao: classificacaoValida, password: hashedPassword, photoPath: data.photoPath ?? null },
+          data: {
+            name: parsed.name,
+            type: parsed.type,
+            classificacao: classificacaoValida,
+            password: hashedPassword,
+            photoPath: data.photoPath ?? null,
+            dataNascimento,
+          },
         }),
         prisma.inactiveUser.delete({ where: { userId: existingCreated.id } }),
       ])
@@ -299,7 +353,16 @@ export async function criarQaUser(data: {
       const allIds = [...MOCK_USERS.map((u) => u.id), ...createdIds.map((u) => u.id)]
       const id = nextId(allIds, "U")
       await prisma.createdUser.create({
-        data: { id, name: parsed.name, email: parsed.email, type: parsed.type, classificacao: classificacaoValida, photoPath: data.photoPath ?? null, password: hashedPassword },
+        data: {
+          id,
+          name: parsed.name,
+          email: parsed.email,
+          type: parsed.type,
+          classificacao: classificacaoValida,
+          photoPath: data.photoPath ?? null,
+          password: hashedPassword,
+          dataNascimento,
+        },
       })
       createdId = id
     }
@@ -360,7 +423,14 @@ export async function validateLogin(
 
 export async function atualizarQaUser(
   id: string,
-  data: { name: string; email: string; type: string; classificacao?: string | null; photoPath?: string | null }
+  data: {
+    name: string
+    email: string
+    type: string
+    classificacao?: string | null
+    dataNascimento?: string | null
+    photoPath?: string | null
+  }
 ): Promise<{ error?: string }> {
   let session: Awaited<ReturnType<typeof requireSession>>
   try {
@@ -408,20 +478,53 @@ export async function atualizarQaUser(
     }
 
     const classificacaoValida = sanitizeClassificacao(data.classificacao)
+    const dataNascimento =
+      data.dataNascimento === undefined ? undefined : parseDateInput(data.dataNascimento)
 
-    const profileData: { name: string; email: string; type: string; classificacao: string | null; photoPath?: string | null } = {
+    const profileData: {
+      name: string
+      email: string
+      type: string
+      classificacao: string | null
+      photoPath?: string | null
+      dataNascimento?: Date | null
+    } = {
       name:          parsed.name,
       email:         parsed.email,
       type:          parsed.type,
       classificacao: classificacaoValida,
     }
     if (safePhotoPath !== undefined) profileData.photoPath = safePhotoPath
+    if (dataNascimento !== undefined) profileData.dataNascimento = dataNascimento
 
     await prisma.userProfile.upsert({
       where:  { userId: id },
-      create: { userId: id, name: parsed.name, email: parsed.email, type: parsed.type, classificacao: classificacaoValida, photoPath: safePhotoPath ?? null },
+      create: {
+        userId: id,
+        name: parsed.name,
+        email: parsed.email,
+        type: parsed.type,
+        classificacao: classificacaoValida,
+        photoPath: safePhotoPath ?? null,
+        dataNascimento: dataNascimento ?? null,
+      },
       update: profileData,
     })
+
+    const createdRow = await prisma.createdUser.findUnique({ where: { id }, select: { id: true } })
+    if (createdRow) {
+      await prisma.createdUser.update({
+        where: { id },
+        data: {
+          name: parsed.name,
+          email: parsed.email,
+          type: parsed.type,
+          classificacao: classificacaoValida,
+          ...(dataNascimento !== undefined ? { dataNascimento } : {}),
+          ...(safePhotoPath !== undefined ? { photoPath: safePhotoPath } : {}),
+        },
+      })
+    }
 
     revalidatePath("/configuracoes/usuarios")
     revalidatePath(`/configuracoes/usuarios/${id}`)

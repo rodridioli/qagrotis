@@ -271,6 +271,7 @@ export default function NovoCenarioClient({
     }
 
     if (automatizado) {
+      if (!objetivo.trim()) { toast.error("Descrição é obrigatória."); setActiveTab("automatizado"); return false }
       if (!credencialId) {
         setCredencialError("Credenciais é obrigatório.")
         setActiveTab("automatizado")
@@ -359,7 +360,7 @@ export default function NovoCenarioClient({
       ``,
       `## **${id}: ${scenarioName}**`,
       ``,
-      `#### **Objetivo**`,
+      `#### **Descrição**`,
       ``,
       objetivo.trim() || "Não informado.",
       ``,
@@ -713,13 +714,15 @@ export default function NovoCenarioClient({
 
             <div className="border-t border-border-default" />
 
-            {/* Objetivo */}
+            {/* Descrição (campo objetivo) */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Objetivo</label>
+              <label className="text-sm font-medium text-text-primary">
+                Descrição <span className="text-destructive">*</span>
+              </label>
               <AutoResizeTextarea
                 value={objetivo}
                 onChange={(e) => { setObjetivo(e.target.value); setHasSaved(false) }}
-                placeholder="Descreva o objetivo do teste..."
+                placeholder="Descrição do cenário de teste..."
                 className="min-h-[100px]"
               />
             </div>
