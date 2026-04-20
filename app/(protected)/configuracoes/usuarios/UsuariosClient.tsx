@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power, AlertCircle, RefreshCw } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -63,9 +63,18 @@ interface Props {
   initialUsers: QaUserRecord[]
   currentUserId: string | null
   isAdmin: boolean
+  /** true quando getQaUsers() falhou no servidor — lista veio vazia por erro, não porque não há cadastros */
+  usersFetchFailed?: boolean
+  usersFetchErrorMessage?: string | null
 }
 
-export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }: Props) {
+export default function UsuariosClient({
+  initialUsers,
+  currentUserId,
+  isAdmin,
+  usersFetchFailed = false,
+  usersFetchErrorMessage = null,
+}: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [users, setUsers] = useState<QaUserRecord[]>(initialUsers)
@@ -96,6 +105,9 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
   const [ativarOpen, setAtivarOpen] = useState(false)
   const [filters, setFilters] = useState<FilterState>({ tipo: "", apenasInativos: false })
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
+  const [reloadBusy, setReloadBusy] = useState(false)
+  /** Após carregar com sucesso no cliente, some o aviso de falha do SSR */
+  const [fetchRecovered, setFetchRecovered] = useState(false)
 
   const filtered = useMemo(() => {
     const result = users.filter((u) => {
@@ -236,6 +248,21 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
     setCurrentPage(1)
   }
 
+  async function handleReloadUsers() {
+    setReloadBusy(true)
+    try {
+      const fresh = await getQaUsers()
+      setUsers(fresh)
+      setFetchRecovered(true)
+      toast.success("Lista de usuários carregada.")
+      router.refresh()
+    } catch {
+      toast.error("Não foi possível carregar a lista. Tente de novo em instantes.")
+    } finally {
+      setReloadBusy(false)
+    }
+  }
+
   const confirmDescription =
     inativarIds.length === 1
       ? `O usuário ${inativarIds[0]} será inativado. Esta ação não pode ser desfeita.`
@@ -284,6 +311,34 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
         )}
       </div>
 
+      {usersFetchFailed && !fetchRecovered && (
+        <div className="flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-text-primary sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-2">
+            <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden />
+            <div className="space-y-1">
+              <p className="font-medium">Não foi possível carregar a lista no servidor</p>
+              <p className="text-text-secondary">
+                Isso não apaga cadastros: em geral é falha temporária de banco ou rede. Os usuários continuam gravados no
+                banco de dados. Use o botão para buscar de novo.
+              </p>
+              {usersFetchErrorMessage ? (
+                <p className="font-mono text-xs text-text-secondary/80 break-all">{usersFetchErrorMessage}</p>
+              ) : null}
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0 border-amber-600/50"
+            disabled={reloadBusy}
+            onClick={() => void handleReloadUsers()}
+          >
+            <RefreshCw className={cn("size-4", reloadBusy && "animate-spin")} />
+            {reloadBusy ? "Carregando…" : "Tentar novamente"}
+          </Button>
+        </div>
+      )}
+
       {/* ── Table card ── */}
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
         <TableToolbar
@@ -299,7 +354,9 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
 
         {pageItems.length === 0 ? (
           <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-            Nenhum registro encontrado.
+            {usersFetchFailed && !fetchRecovered && users.length === 0
+              ? "Lista indisponível. Use o botão Tentar novamente acima ou verifique o banco de dados (Vercel / Postgres)."
+              : "Nenhum registro encontrado."}
           </div>
         ) : (
           <>

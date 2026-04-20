@@ -35,11 +35,21 @@ export default async function UsuariosPage() {
     currentUserId = match?.id ?? null
   }
 
+  const usersFetchFailed = rUsers.status === "rejected"
+  const usersFetchErrorMessage =
+    rUsers.status === "rejected"
+      ? rUsers.reason instanceof Error
+        ? rUsers.reason.message
+        : String(rUsers.reason)
+      : null
+
   return (
     <UsuariosClient
       initialUsers={serializeRscProps(users)}
       currentUserId={currentUserId}
       isAdmin={isAdmin}
+      usersFetchFailed={usersFetchFailed}
+      usersFetchErrorMessage={usersFetchErrorMessage}
     />
   )
 }
