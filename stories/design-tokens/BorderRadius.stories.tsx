@@ -4,9 +4,9 @@ const RADIUS_TOKENS = [
   {
     name: "rounded-custom",
     cssVar: "--radius-custom → --radius-control",
-    value: "0.25em",
+    value: "0.5em",
     description:
-      "Token semântico base (--radius-control). ~4px em fonte 16px; escala com font-size. Usar em Button, Input, filtros, cards, ícones.",
+      "Token semântico base (--radius-control). ~8px em fonte 16px; escala com font-size. Usar em Button, Input, filtros, cards, ícones.",
     isDefault: true,
   },
   {
@@ -131,7 +131,7 @@ function BorderRadiusPage() {
           <div className="flex flex-col items-center gap-2">
             <button
               className="bg-brand-primary px-4 py-2 text-sm font-medium text-white"
-              style={{ borderRadius: "4px" }}
+              style={{ borderRadius: "var(--radius-control)" }}
             >
               Button
             </button>
@@ -142,7 +142,7 @@ function BorderRadiusPage() {
           <div className="flex flex-col items-center gap-2">
             <div
               className="flex h-9 w-36 items-center border border-border-default bg-surface-input px-3 text-sm text-text-secondary"
-              style={{ borderRadius: "4px" }}
+              style={{ borderRadius: "var(--radius-control)" }}
             >
               Input field
             </div>
@@ -153,7 +153,7 @@ function BorderRadiusPage() {
           <div className="flex flex-col items-center gap-2">
             <span
               className="bg-primary-100 px-2 py-0.5 text-xs font-medium text-brand-primary"
-              style={{ borderRadius: "4px" }}
+              style={{ borderRadius: "var(--radius-control)" }}
             >
               Badge
             </span>
@@ -164,7 +164,7 @@ function BorderRadiusPage() {
           <div className="flex flex-col items-center gap-2">
             <div
               className="flex h-16 w-24 items-center justify-center border border-border-default bg-surface-card text-xs text-text-secondary shadow-card"
-              style={{ borderRadius: "4px" }}
+              style={{ borderRadius: "var(--radius-control)" }}
             >
               Card
             </div>

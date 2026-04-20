@@ -103,6 +103,7 @@
   --spacing-agro-2: 16px;
   --spacing-agro-3: 24px;
   --spacing-agro-4: 32px;
+  --spacing-button-inline-end: var(--padding-button-inline-end);
 }
 
 :root {
@@ -116,8 +117,10 @@
   --text-secondary:  #6b7280;
   --border-default:  #e5e7eb;
 
-  /* Raio base da UI (~4px em fonte 16px); escala com font-size — usado em botões, inputs, cards, tabs */
-  --radius-control: 0.25em;
+  /* Raio base da UI (~8px em fonte 16px); escala com font-size — botões, inputs, cards, ícones, tabs */
+  --radius-control: 0.5em;
+  /* Padding direito padrão de botões de texto (~16px em base 16px) */
+  --padding-button-inline-end: 1em;
 
   /* Primary Scale (10 shades, hue 168° — Agrotis Green) */
   --qagrotis-primary-50:  #edfaf6;
@@ -428,7 +431,7 @@
 
   /* ── Radius (gerado a partir de design-system/tokens.ts) ── */
   --radius-none: 0px;
-  --radius-control: 0.25em;
+  --radius-control: 0.5em;
   --radius-sm: var(--radius-control);
   --radius-md: var(--radius-control);
   --radius-lg: var(--radius-control);

@@ -10,7 +10,7 @@ const meta: Meta<typeof Button> = {
     docs: {
       description: {
         component:
-          "Primary action element. Border radius: `rounded-custom` (`--radius-control`, 0.25em). Default height: 40px (`h-10`). Variants: `default` (brand-primary), `secondary`, `outline`, `ghost`, `destructive`, `link`. Supports Lucide icons and loading state.",
+          "Primary action element. Border radius: `rounded-custom` (`--radius-control`, 0.5em). Horizontal padding end: `pr-[var(--padding-button-inline-end)]` (`--padding-button-inline-end`, 1em ≈ 16px em raiz 16px). Default height: 40px (`h-10`). Variants: `default` (brand-primary), `secondary`, `outline`, `ghost`, `destructive`, `link`. Supports Lucide icons and loading state.",
       },
     },
   },
