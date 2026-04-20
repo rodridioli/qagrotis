@@ -92,11 +92,11 @@ function UserAvatar({
 
 // ── Medal config ─────────────────────────────────────────────────────────────
 
-const MEDALS = [
-  { cardShadow: "shadow-[0_4px_20px_0_rgb(251_191_36_/_0.25)]", rankBadge: "bg-amber-400 text-white" },
-  { cardShadow: "shadow-[0_4px_14px_0_rgb(148_163_184_/_0.22)]", rankBadge: "bg-slate-400 text-white"  },
-  { cardShadow: "shadow-[0_4px_14px_0_rgb(251_146_60_/_0.22)]",  rankBadge: "bg-orange-400 text-white" },
-]
+const RANK_BADGE_TOP3 = [
+  "bg-amber-400 text-white",
+  "bg-slate-400 text-white",
+  "bg-orange-400 text-white",
+] as const
 
 // ── Compact stat cell ─────────────────────────────────────────────────────────
 
@@ -123,20 +123,17 @@ function ProgressBar({ value }: { value: number }) {
 // ── Performance Card ──────────────────────────────────────────────────────────
 
 function PerformanceCard({ user, rank }: { user: UserPerformanceData; rank: number }) {
-  const medal = rank <= 3 ? MEDALS[rank - 1]! : null
+  const rankBadgeClass = rank <= 3 ? RANK_BADGE_TOP3[rank - 1]! : "bg-white/20 text-white"
 
   return (
-    <div className={cn(
-      "flex flex-col rounded-xl bg-surface-card border border-border-default overflow-hidden",
-      medal ? medal.cardShadow : "shadow-card",
-    )}>
+    <div className="flex flex-col rounded-xl bg-surface-card border border-border-default overflow-hidden">
 
       {/* ── Header teal ── */}
       <div className="relative px-4 pt-4 pb-3 bg-brand-primary">
         {/* Rank badge — top-right absolute */}
         <span className={cn(
           "absolute right-3 top-3 rounded-full px-2.5 py-0.5 text-xs font-bold leading-none",
-          medal ? medal.rankBadge : "bg-white/20 text-white",
+          rankBadgeClass,
         )}>
           #{rank}
         </span>
@@ -158,24 +155,32 @@ function PerformanceCard({ user, rank }: { user: UserPerformanceData; rank: numb
         </div>
       </div>
 
-      {/* ── Classification badge ── */}
+      {/* ── Sistemas / módulos com atividade (classificação só no cabeçalho) ── */}
       <div className="px-4 py-2.5 border-b border-border-default">
-        {user.classificacao ? (
-          <span className="inline-flex items-center rounded-full bg-primary-50 text-brand-primary border border-brand-primary/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-            {user.classificacao}
-          </span>
+        {user.atividadePorSistema.length > 0 ? (
+          <ul className="space-y-1.5 text-xs leading-snug">
+            {user.atividadePorSistema.map(({ sistema, modulos }) => (
+              <li key={sistema}>
+                <span className="font-semibold text-text-primary">{sistema}</span>
+                {modulos.length > 0 ? (
+                  <>
+                    <span className="text-text-secondary"> — </span>
+                    <span className="text-text-secondary">{modulos.join(", ")}</span>
+                  </>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         ) : (
-          <span className="inline-flex items-center rounded-full bg-surface-input text-text-secondary border border-border-default px-2.5 py-0.5 text-[10px] italic">
-            Sem classificação
-          </span>
+          <p className="text-xs text-text-secondary italic">Nenhum sistema/módulo no período filtrado.</p>
         )}
       </div>
 
       {/* ── Stats 4-column ── */}
       <div className="grid grid-cols-4 divide-x divide-border-default">
         <StatMini label="Cenários" value={user.cenariosCriados}  />
-        <StatMini label="Exec."    value={user.testesExecutados} />
-        <StatMini label="OK"       value={user.sucessos}         color="text-green-600 dark:text-green-400" />
+        <StatMini label="Testes"   value={user.testesExecutados} />
+        <StatMini label="Sucesso"  value={user.sucessos}         color="text-green-600 dark:text-green-400" />
         <StatMini label="Erros"    value={user.errosEncontrados} color="text-destructive" />
       </div>
 

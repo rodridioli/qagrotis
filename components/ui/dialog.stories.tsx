@@ -16,7 +16,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          "Modal dialog built on `@base-ui/react/dialog`. Uses `rounded-custom` (4px), `bg-surface-card`, and `shadow-card` tokens. Backdrop applies `bg-black/10` with a blur.",
+          "Modal dialog built on `@base-ui/react/dialog`. Uses `rounded-custom` (`--radius-control`), `bg-surface-card`, and `shadow-card` tokens. Backdrop applies `bg-black/10` with a blur.",
       },
     },
   },

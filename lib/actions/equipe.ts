@@ -9,8 +9,8 @@ export interface UserPerformanceData {
   email: string
   classificacao: string | null
   photoPath: string | null
-  sistemas: string[]
-  modulos: string[]
+  /** Sistemas e módulos onde o usuário tem cenários (atividade) no período filtrado */
+  atividadePorSistema: { sistema: string; modulos: string[] }[]
   cenariosCriados: number
   testesExecutados: number
   errosEncontrados: number
@@ -93,8 +93,20 @@ export async function getPerformanceData(filters: {
 
   for (const [createdByKey, userCenarios] of grouped.entries()) {
     const info = byEmail.get(createdByKey)
-    const sistemas = [...new Set(userCenarios.map((c) => c.system).filter(Boolean))]
-    const modulos = [...new Set(userCenarios.map((c) => c.module).filter(Boolean))]
+    const bySystem = new Map<string, Set<string>>()
+    for (const c of userCenarios) {
+      const sys = (c.system ?? "").trim()
+      if (!sys) continue
+      if (!bySystem.has(sys)) bySystem.set(sys, new Set())
+      const mod = (c.module ?? "").trim()
+      if (mod) bySystem.get(sys)!.add(mod)
+    }
+    const atividadePorSistema = [...bySystem.entries()]
+      .map(([sistema, modSet]) => ({
+        sistema,
+        modulos: [...modSet].sort((a, b) => a.localeCompare(b, "pt-BR")),
+      }))
+      .sort((a, b) => a.sistema.localeCompare(b.sistema, "pt-BR"))
     const cenariosCriados = userCenarios.length
     const testesExecutados = userCenarios.reduce((s, c) => s + c.execucoes, 0)
     const errosEncontrados = userCenarios.reduce((s, c) => s + c.erros, 0)
@@ -112,8 +124,7 @@ export async function getPerformanceData(filters: {
       email: createdByKey,
       classificacao: info?.classificacao ?? null,
       photoPath: info?.photoPath ?? null,
-      sistemas,
-      modulos,
+      atividadePorSistema,
       cenariosCriados,
       testesExecutados,
       errosEncontrados,

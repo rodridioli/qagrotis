@@ -8,7 +8,7 @@ const meta: Meta<typeof Textarea> = {
   parameters: {
     docs: {
       description: {
-        component: "Multi-line text input. Uses `rounded-custom` (4px), `border-border-default`, `bg-surface-input`. Supports `error` prop for inline validation message.",
+        component: "Multi-line text input. Uses `rounded-custom` (`--radius-control`, 0.25em), `border-border-default`, `bg-surface-input`. Supports `error` prop for inline validation message.",
       },
     },
   },

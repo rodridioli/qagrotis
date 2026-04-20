@@ -39,13 +39,14 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* Alinhados ao token semântico --radius-control (em), definido em :root */
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-control);
+  --radius-xl: var(--radius-control);
+  --radius-2xl: var(--radius-control);
+  --radius-3xl: var(--radius-control);
+  --radius-4xl: var(--radius-control);
 
   /* ── QAgrotis Semantic Tokens ── */
   --color-brand-primary: var(--brand-primary);
@@ -93,7 +94,7 @@
   --color-neutral-grey-900: var(--neutral-grey-900);
 
   /* ── QAgrotis Radius / Font / Shadow ── */
-  --radius-custom: 4px;
+  --radius-custom: var(--radius-control);
   --font-roboto: var(--font-roboto);
   --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
 
@@ -114,6 +115,9 @@
   --text-primary:    #1a202c;
   --text-secondary:  #6b7280;
   --border-default:  #e5e7eb;
+
+  /* Raio base da UI (~4px em fonte 16px); escala com font-size — usado em botões, inputs, cards, tabs */
+  --radius-control: 0.25em;
 
   /* Primary Scale (10 shades, hue 168° — Agrotis Green) */
   --qagrotis-primary-50:  #edfaf6;
@@ -175,7 +179,7 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: var(--radius-control);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -422,12 +426,13 @@
   --sidebar-border: hsl(0 0% 90%);
   --sidebar-ring: hsl(168 100% 22%);
 
-  /* ── Radius ── */
+  /* ── Radius (gerado a partir de design-system/tokens.ts) ── */
   --radius-none: 0px;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-control: 0.25em;
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-control);
+  --radius-xl: var(--radius-control);
   --radius-full: 9999px;
 }
 /* [design-system:end] */

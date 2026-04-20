@@ -3,9 +3,10 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 const RADIUS_TOKENS = [
   {
     name: "rounded-custom",
-    cssVar: "--radius-custom",
-    value: "4px",
-    description: "Token padrão QAgrotis. Aplicar em todos os atoms: Button, Input, Card, Badge, Dialog.",
+    cssVar: "--radius-custom → --radius-control",
+    value: "0.25em",
+    description:
+      "Token semântico base (--radius-control). ~4px em fonte 16px; escala com font-size. Usar em Button, Input, filtros, cards, ícones.",
     isDefault: true,
   },
   {
@@ -18,22 +19,22 @@ const RADIUS_TOKENS = [
   {
     name: "rounded-md",
     cssVar: "--radius-md",
-    value: "8px",
-    description: "Raio médio do sistema base (Shadcn/base-ui). Usar com critério.",
+    value: "var(--radius-control)",
+    description: "Alinhado ao token de controle (mesmo raio que rounded-custom).",
     isDefault: false,
   },
   {
     name: "rounded-lg",
     cssVar: "--radius-lg",
-    value: "10px",
-    description: "Raio grande. Reservado para modais e sheets.",
+    value: "var(--radius-control)",
+    description: "Alinhado ao token de controle.",
     isDefault: false,
   },
   {
     name: "rounded-xl",
     cssVar: "--radius-xl",
-    value: "14px",
-    description: "Raio extra. Evitar — fora do padrão QAgrotis.",
+    value: "var(--radius-control)",
+    description: "Alinhado ao token de controle (modais incluídos no padrão unificado).",
     isDefault: false,
   },
   {
@@ -106,7 +107,7 @@ function BorderRadiusPage() {
         <p className="mt-1 text-sm text-text-secondary">
           Token padrão:{" "}
           <code className="font-mono text-xs font-semibold text-brand-primary">
-            rounded-custom (4px)
+            rounded-custom (--radius-control)
           </code>
           . Aplicar em todos os componentes atoms. Valores maiores apenas em
           contextos específicos como modais.
@@ -123,7 +124,7 @@ function BorderRadiusPage() {
       {/* Usage examples */}
       <div className="flex flex-col gap-4">
         <h2 className="border-b border-border-default pb-2 text-lg font-semibold text-text-primary">
-          Componentes com rounded-custom (4px)
+          Componentes com rounded-custom (--radius-control)
         </h2>
         <div className="flex flex-wrap items-center gap-6 rounded-custom border border-border-default bg-surface-card p-6 shadow-card">
           {/* Button */}

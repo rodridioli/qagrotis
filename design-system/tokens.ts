@@ -90,6 +90,8 @@ export type DesignTokens = {
   }
   radius: {
     none: string
+    /** Raio base da UI (~4px em 16px); escala com font-size */
+    control: string
     sm: string
     md: string
     lg: string
@@ -262,10 +264,11 @@ export const tokens: DesignTokens = {
   },
   radius: {
     none: "0px",
-    sm: "4px",
-    md: "8px",
-    lg: "12px",
-    xl: "16px",
+    control: "0.25em",
+    sm: "var(--radius-control)",
+    md: "var(--radius-control)",
+    lg: "var(--radius-control)",
+    xl: "var(--radius-control)",
     full: "9999px",
   },
 }
@@ -370,9 +373,9 @@ export const qagrotisTokens = {
     "4": "32px", // spacing-4
   },
 
-  /** Border radius */
+  /** Border radius — alinhado a tokens.radius.control / rounded-custom */
   radius: {
-    default: "4px", // rounded-custom
+    default: "0.25em",
   },
 
   /** Shadows */
