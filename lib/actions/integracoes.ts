@@ -34,7 +34,7 @@ export async function getIntegracoes(): Promise<IntegracaoRecord[]> {
   return rows.map((r) => ({
     ...r,
     provider: r.provider,
-    createdAt: r.createdAt.getTime(),
+    createdAt: r.createdAt != null ? r.createdAt.getTime() : Date.now(),
   }))
 }
 
@@ -43,7 +43,11 @@ export async function getIntegracao(id: string): Promise<IntegracaoRecord | null
   if (!result.success) return null
   const row = await prisma.integracao.findUnique({ where: { id } })
   if (!row) return null
-  return { ...row, provider: row.provider, createdAt: row.createdAt.getTime() }
+  return {
+    ...row,
+    provider: row.provider,
+    createdAt: row.createdAt != null ? row.createdAt.getTime() : Date.now(),
+  }
 }
 
 export async function criarIntegracao(data: unknown): Promise<void> {

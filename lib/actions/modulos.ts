@@ -32,14 +32,19 @@ const idsArraySchema = z.array(idSchema).max(1000)
 
 export async function getModulos(): Promise<ModuloRecord[]> {
   const rows = await prisma.modulo.findMany({ orderBy: { createdAt: "asc" }, take: 500 })
-  return rows.map((r) => ({ ...r, createdAt: r.createdAt.getTime() }))
+  return rows.map((r) => ({
+    ...r,
+    createdAt: r.createdAt != null ? r.createdAt.getTime() : Date.now(),
+  }))
 }
 
 export async function getModulo(id: string): Promise<ModuloRecord | null> {
   const result = idSchema.safeParse(id)
   if (!result.success) return null
   const row = await prisma.modulo.findUnique({ where: { id } })
-  return row ? { ...row, createdAt: row.createdAt.getTime() } : null
+  return row
+    ? { ...row, createdAt: row.createdAt != null ? row.createdAt.getTime() : Date.now() }
+    : null
 }
 
 export async function criarModulo(data: {

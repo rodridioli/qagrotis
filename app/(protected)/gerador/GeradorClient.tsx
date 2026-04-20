@@ -36,6 +36,7 @@ import { toast } from "sonner"
 import { criarCenario, atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
 import { parseMarkdownCenarios, buildImportItems, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
 import { criarIntegracao, type IntegracaoRecord } from "@/lib/actions/integracoes"
+import { useSession } from "next-auth/react"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
@@ -55,14 +56,14 @@ interface Props {
 
 export function GeradorClient({ initialCenarios, allModulos, integracoes }: Props) {
   const router = useRouter()
+  const { status: sessionStatus } = useSession()
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   const [contexto, setContexto] = useState("")
   const [jiraInput, setJiraInput] = useState("")
   const [jiraConfigured, setJiraConfigured] = useState(false)
 
-  // Jira: token pode estar só em cookie httpOnly (após salvar em Configurações). localStorage
-  // pode ser limpo sem apagar o cookie — consideramos `jira_cookie_ok` após sync (JiraCredentialsSync).
+  // Jira: token pode estar só em cookie httpOnly (após salvar em Configurações).
   function refreshJiraConfigured() {
     try {
       const url = localStorage.getItem("jira_url")
@@ -81,6 +82,29 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     window.addEventListener("jira-credentials-synced", onSync)
     return () => window.removeEventListener("jira-credentials-synced", onSync)
   }, [])
+
+  // Sincroniza URL/e-mail do servidor (cookies) para o localStorage só nesta tela — evita fetch global no layout.
+  useEffect(() => {
+    if (sessionStatus !== "authenticated") return
+    let cancelled = false
+    fetch("/api/jira/credentials", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { configured?: boolean; jiraUrl?: string; jiraEmail?: string } | null) => {
+        if (cancelled || !d?.configured) return
+        try {
+          if (d.jiraUrl) localStorage.setItem("jira_url", d.jiraUrl)
+          if (d.jiraEmail) localStorage.setItem("jira_email", d.jiraEmail)
+          localStorage.setItem("jira_cookie_ok", "1")
+          window.dispatchEvent(new Event("jira-credentials-synced"))
+        } catch {
+          /* storage indisponível */
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [sessionStatus])
   const activeIntegracoes = useMemo(() => integracoes.filter(i => i.active !== false), [integracoes])
   const [aiProvider, setAiProvider] = useState<string>(() => {
     // Safe: activeIntegracoes is derived from server props, stable on first render

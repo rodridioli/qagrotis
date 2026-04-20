@@ -160,7 +160,7 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
       classificacao: sanitizeClassificacao(p?.classificacao ?? u.classificacao ?? null),
       active:        !inactiveIds.has(u.id),
       photoPath:     p?.photoPath ?? u.photoPath,
-      createdAt:     u.createdAt.getTime(),
+      createdAt:     u.createdAt != null ? u.createdAt.getTime() : Date.now(),
     }
   })
 
@@ -177,7 +177,7 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
         classificacao: sanitizeClassificacao(p?.classificacao ?? null),
         active:        !inactiveIds.has(u.id),
         photoPath:     p?.photoPath ?? u.image ?? null,
-        createdAt:     u.createdAt.getTime(),
+        createdAt:     u.createdAt != null ? u.createdAt.getTime() : Date.now(),
       }
     })
 

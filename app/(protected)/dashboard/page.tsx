@@ -5,6 +5,7 @@ import { getCenarios } from "@/lib/actions/cenarios"
 import { getQaUsers } from "@/lib/actions/usuarios"
 import { getSuitesParaDashboard } from "@/lib/actions/suites"
 import { loadParallelOrFallback } from "@/lib/safe-server-data"
+import { serializeRscProps } from "@/lib/rsc-serialize"
 import { DashboardClient } from "./DashboardClient"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
@@ -29,10 +30,10 @@ export default async function DashboardPage() {
   )
   return (
     <DashboardClient
-      allCenarios={cenarios}
-      allModulos={modulos}
-      allUsers={users}
-      allSuites={suites}
+      allCenarios={serializeRscProps(cenarios)}
+      allModulos={serializeRscProps(modulos)}
+      allUsers={serializeRscProps(users)}
+      allSuites={serializeRscProps(suites)}
     />
   )
 }
