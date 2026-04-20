@@ -146,7 +146,11 @@ function PerformanceCard({ user, rank }: { user: UserPerformanceData; rank: numb
         <div className="min-w-0 flex-1 pr-10">
           <p className="truncate text-base font-bold leading-tight text-white">{user.name}</p>
           <p className="mt-0.5 truncate text-xs text-primary-foreground/85">
-            {user.classificacao ?? <span className="italic text-primary-foreground/55">Sem classificação</span>}
+            {user.classificacao ? (
+              <span>{user.classificacao}</span>
+            ) : (
+              <span className="italic text-primary-foreground/55">Sem classificação</span>
+            )}
           </p>
         </div>
       </div>

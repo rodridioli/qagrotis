@@ -57,7 +57,12 @@ Se o client já existir (outro PC / backup de node_modules/.prisma):
 
 // Aplicar migrações no Postgres de produção (Vercel/CI com DATABASE_URL).
 // Sem isso, o schema do client fica à frente do banco e findMany() quebra (coluna inexistente).
-const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || ""
+const dbUrl =
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_PRISMA_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.PRISMA_DATABASE_URL ||
+  ""
 const skipMigrate = process.env.SKIP_PRISMA_MIGRATE === "1"
 const hasRealDb =
   dbUrl.length > 12 && !/placeholder/i.test(dbUrl) && dbUrl.startsWith("postgres")

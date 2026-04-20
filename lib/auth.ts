@@ -22,6 +22,7 @@ async function checkCredentials(email: string, password: string) {
     prisma.inactiveUser.findMany({ select: { userId: true } }),
     prisma.createdUser.findFirst({
       where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+      select: { id: true, email: true, password: true },
     }),
   ])
 

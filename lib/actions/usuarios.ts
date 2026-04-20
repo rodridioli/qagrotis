@@ -8,6 +8,11 @@ import { sendWelcomeEmail } from "@/lib/email"
 import { nextId, verifyPassword, hashPassword } from "@/lib/db-utils"
 import { requireAdmin, requireSession, checkIsAdmin } from "@/lib/session"
 import { prisma } from "@/lib/prisma"
+import {
+  CREATED_USER_READ_SELECT,
+  USER_PROFILE_READ_SELECT,
+} from "@/lib/prisma-user-selects"
+import { ensureUserDataNascimentoColumns } from "@/lib/prisma-schema-ensure"
 
 export interface QaUserRecord {
   id: string
@@ -117,10 +122,14 @@ function validatePhotoPath(photoPath: string | null | undefined): string | null 
 // ── Public actions ─────────────────────────────────────────────────────────
 
 export async function getQaUsers(): Promise<QaUserRecord[]> {
+  await ensureUserDataNascimentoColumns()
   const [inactiveRecords, profiles, createdUsers, oauthUsers] = await Promise.all([
     prisma.inactiveUser.findMany({ select: { userId: true } }),
-    prisma.userProfile.findMany(),
-    prisma.createdUser.findMany({ orderBy: { createdAt: "asc" } }),
+    prisma.userProfile.findMany({ select: USER_PROFILE_READ_SELECT }),
+    prisma.createdUser.findMany({
+      orderBy: { createdAt: "asc" },
+      select: CREATED_USER_READ_SELECT,
+    }),
     // Include Google OAuth users not yet in createdUser (e.g. external domains)
     prisma.user.findMany({
       select: { id: true, name: true, email: true, createdAt: true, image: true },
@@ -188,17 +197,28 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
   const result = idSchema.safeParse(id)
   if (!result.success) return null
 
+  await ensureUserDataNascimentoColumns()
+
   const mockUser = MOCK_USERS.find((u) => u.id === id)
 
   const [savedProfile, createdUser] = await Promise.all([
-    prisma.userProfile.findUnique({ where: { userId: id } }),
-    prisma.createdUser.findUnique({ where: { id } }),
+    prisma.userProfile.findUnique({ where: { userId: id }, select: USER_PROFILE_READ_SELECT }),
+    prisma.createdUser.findUnique({ where: { id }, select: CREATED_USER_READ_SELECT }),
   ])
 
   const base = mockUser ?? createdUser
   if (!base) return null
 
-  const dn = savedProfile?.dataNascimento ?? createdUser?.dataNascimento ?? null
+  let dn: Date | null = null
+  try {
+    const [pDn, cDn] = await Promise.all([
+      prisma.userProfile.findUnique({ where: { userId: id }, select: { dataNascimento: true } }),
+      prisma.createdUser.findUnique({ where: { id }, select: { dataNascimento: true } }),
+    ])
+    dn = pDn?.dataNascimento ?? cDn?.dataNascimento ?? null
+  } catch {
+    // Coluna ainda inexistente no Postgres (migração não aplicada).
+  }
 
   return {
     name:            savedProfile?.name ?? base.name,
@@ -308,6 +328,8 @@ export async function criarQaUser(data: {
   }
 
   try {
+    await ensureUserDataNascimentoColumns()
+
     const [inactiveRecords, existingCreated] = await Promise.all([
       prisma.inactiveUser.findMany({ select: { userId: true } }),
       prisma.createdUser.findFirst({
@@ -396,7 +418,10 @@ export async function validateLogin(
 
   const [inactiveRecords, createdUser] = await Promise.all([
     prisma.inactiveUser.findMany({ select: { userId: true } }),
-    prisma.createdUser.findFirst({ where: { email: { equals: normalizedEmail, mode: "insensitive" } } }),
+    prisma.createdUser.findFirst({
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+      select: { id: true, password: true },
+    }),
   ])
 
   const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
@@ -411,7 +436,10 @@ export async function validateLogin(
   if (mockUser) {
     const expectedPassword = PROTOTYPE_USERS[normalizedEmail] ?? "admin"
     if (password !== expectedPassword) return { ok: false, reason: "invalid_credentials" }
-    const profile = await prisma.userProfile.findUnique({ where: { userId: mockUser.id } })
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: mockUser.id },
+      select: { email: true },
+    })
     const emailMatch = (profile?.email ?? mockUser.email).toLowerCase() === normalizedEmail
     if (!emailMatch) return { ok: false, reason: "invalid_credentials" }
     if (inactiveIds.has(mockUser.id)) return { ok: false, reason: "inactive" }
@@ -443,6 +471,8 @@ export async function atualizarQaUser(
   if (!idResult.success) return { error: "ID inválido." }
 
   try {
+    await ensureUserDataNascimentoColumns()
+
     const isAdmin = await checkIsAdmin()
     const sessionEmail = session.user?.email?.toLowerCase() ?? ""
 

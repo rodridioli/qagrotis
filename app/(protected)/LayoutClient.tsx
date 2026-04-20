@@ -305,11 +305,17 @@ const Topbar = React.memo(function Topbar({
   const pathname = usePathname()
   const title = getTitle(pathname)
   const { data: session } = useSession()
+  /** Evita mismatch de hidratação: no SSR o cliente ainda não aplicou a sessão do browser. */
+  const [sessionUiReady, setSessionUiReady] = useState(false)
+  useEffect(() => {
+    setSessionUiReady(true)
+  }, [])
 
-  const qaUser = MOCK_USERS.find((u) => u.email === session?.user?.email)
+  const sessionForUi = sessionUiReady ? session : undefined
+  const qaUser = MOCK_USERS.find((u) => u.email === sessionForUi?.user?.email)
   const initials = qaUser
     ? qaUser.name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()
-    : (session?.user?.name?.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase() ?? "QA")
+    : (sessionForUi?.user?.name?.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase() ?? "QA")
   const profileHref = qaUser ? `/configuracoes/usuarios/${qaUser.id}/editar` : "/configuracoes/usuarios"
 
   return (

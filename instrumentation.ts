@@ -1,4 +1,18 @@
 /**
+ * Alinha colunas críticas com o schema Prisma (ex.: migração não aplicada no build).
+ * Corre uma vez por instância Node; falhas são só logadas.
+ */
+export async function register(): Promise<void> {
+  if (process.env.NEXT_RUNTIME === "edge") return
+  try {
+    const { ensureUserDataNascimentoColumns } = await import("@/lib/prisma-schema-ensure")
+    await ensureUserDataNascimentoColumns()
+  } catch (e) {
+    console.error("[instrumentation] register schema ensure", e)
+  }
+}
+
+/**
  * Registra erros de servidor com o mesmo `digest` que aparece no cliente,
  * para correlacionar em Runtime Logs na Vercel (busque pelo número ou por [server-error]).
  *
