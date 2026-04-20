@@ -84,6 +84,11 @@ if (skipMigrate) {
     // Banco criado antes do Prisma Migrate (tabelas já existem, sem histórico _prisma_migrations).
     // https://www.prisma.io/docs/orm/prisma-migrate/workflows/baselining
     const isP3005Baseline = /P3005|The database schema is not empty/i.test(migrateOut)
+    // Neon/pooler: lock ocupado ou timeout ao migrar em paralelo com outro deploy.
+    // https://www.prisma.io/docs/orm/prisma-migrate/workflows/migrate-advisory-locking
+    const isP1002LockOrTimeout =
+      /P1002|advisory lock|pg_advisory_lock|timed out trying to acquire/i.test(migrateOut)
+
     if (isP3005Baseline) {
       console.warn(`
 ----------------------------------------------------------------------
@@ -92,12 +97,20 @@ if (skipMigrate) {
        Opcional: baseline manual com prisma migrate resolve (ver link acima).
 ----------------------------------------------------------------------
 `)
+    } else if (isP1002LockOrTimeout) {
+      console.warn(`
+----------------------------------------------------------------------
+[build] migrate deploy: P1002 / lock ou timeout (comum no Neon com vários deploys).
+       Build continua. Rode migrate deploy manualmente se precisar ou redeploy.
+       Runtime ainda corrige colunas em falta (ensureUserDataNascimentoColumns).
+----------------------------------------------------------------------
+`)
     } else {
       console.error(`
 ----------------------------------------------------------------------
 prisma migrate deploy falhou. Verifique DATABASE_URL e os logs acima.
 
-P3005 (banco antigo): o build agora ignora esse caso; se vir outro código, corrija o DB.
+Casos ignorados pelo build: P3005 (baseline), P1002/lock (Neon).
 Para build sem migrate: SKIP_PRISMA_MIGRATE=1 npm run build
 ----------------------------------------------------------------------
 `)
