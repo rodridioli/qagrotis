@@ -74,7 +74,8 @@ interface SidebarProps {
   onAssistenteOpen: () => void
   hasSistemaModulo: boolean
   hasIntegracoes: boolean
-  onNavigate?: () => void
+  /** Navegação com transição (mantém overlay de carregamento até a rota resolver). */
+  onNavigate?: (href: string) => void
 }
 
 const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasIntegracoes, onNavigate }: SidebarProps) {
@@ -104,7 +105,16 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
           "flex h-14 shrink-0 items-center border-b border-border-default",
           collapsed ? "lg:justify-center lg:px-0 px-4" : "px-4"
         )}>
-          <Link href="/dashboard" className="flex cursor-pointer items-center">
+          <Link
+            href="/dashboard"
+            className="flex cursor-pointer items-center"
+            onClick={(e) => {
+              if (onNavigate) {
+                e.preventDefault()
+                onNavigate("/dashboard")
+              }
+            }}
+          >
             {collapsed
               ? <span className="hidden lg:block"><QAgrotisIcon size={20} className="text-brand-primary" /></span>
               : null}
@@ -228,7 +238,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                   <Tooltip key={href}>
                     <TooltipTrigger render={
                       <button type="button" style={itemStyle} className={itemClassName}
-                        onClick={() => { onNavigate?.(); router.push(href) }} />
+                        onClick={() => (onNavigate ? onNavigate(href) : router.push(href))} />
                     }>
                       {itemChildren}
                     </TooltipTrigger>
@@ -238,7 +248,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
               }
               return (
                 <button key={href} type="button" style={itemStyle} className={itemClassName}
-                  onClick={() => { onNavigate?.(); router.push(href) }}>
+                  onClick={() => (onNavigate ? onNavigate(href) : router.push(href))}>
                   {itemChildren}
                 </button>
               )
@@ -308,7 +318,7 @@ const Topbar = React.memo(function Topbar({
   /** Evita mismatch de hidratação: no SSR o cliente ainda não aplicou a sessão do browser. */
   const [sessionUiReady, setSessionUiReady] = useState(false)
   useEffect(() => {
-    setSessionUiReady(true)
+    queueMicrotask(() => setSessionUiReady(true))
   }, [])
 
   const sessionForUi = sessionUiReady ? session : undefined
@@ -489,7 +499,14 @@ export default function LayoutClient({
     localStorage.setItem(THEME_KEY, next ? "dark" : "light")
   }
 
-  const handleNavigate = React.useCallback(() => startNavigationTransition(() => {}), [startNavigationTransition])
+  const handleNavigate = React.useCallback(
+    (href: string) => {
+      startNavigationTransition(() => {
+        router.push(href)
+      })
+    },
+    [router, startNavigationTransition],
+  )
 
   if (!isReady) {
     return (

@@ -314,8 +314,11 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
     if (activeTab !== "performance") return
     const { dataInicio, dataFim } = getDateRange(applied.periodo)
     let cancelled = false
-    setPerformanceLoading(true)
-    setPerformanceError(null)
+    queueMicrotask(() => {
+      if (cancelled) return
+      setPerformanceLoading(true)
+      setPerformanceError(null)
+    })
     getPerformanceData({
       sistema: applied.sistema === "todos" ? undefined : applied.sistema,
       modulo:  applied.modulo  === "todos" ? undefined : applied.modulo,
