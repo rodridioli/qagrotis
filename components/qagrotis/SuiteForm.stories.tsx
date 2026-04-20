@@ -1,5 +1,5 @@
 
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { SuiteForm } from "./SuiteForm"
 import { SistemaSelecionadoProvider } from "@/lib/modulo-context"
 

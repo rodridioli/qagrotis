@@ -2,7 +2,14 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 
-const PUBLIC_PATHS = ["/login", "/definir-senha", "/api/auth", "/api/stripe"]
+const PUBLIC_PATHS = [
+  "/login",
+  "/definir-senha",
+  "/api/auth",
+  "/api/stripe",
+  "/api/forgot-password",
+  "/api/test-mail",
+]
 
 // NextAuth v5 (Auth.js v5) changed cookie names from "next-auth.*" to "authjs.*"
 // In production (HTTPS) the cookie has the "__Secure-" prefix.

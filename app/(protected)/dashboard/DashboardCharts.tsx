@@ -191,6 +191,7 @@ function Avatar({
   return (
     <div className="relative shrink-0 flex items-center justify-center">
       {photoPath ? (
+        // eslint-disable-next-line @next/next/no-img-element -- dynamic user URLs + custom onError fallback to initials
         <img
           src={photoPath}
           alt={displayName}

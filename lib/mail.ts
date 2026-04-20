@@ -27,7 +27,7 @@ export async function sendMail({ to, subject, html }: MailOptions): Promise<{ su
   if (RESEND_API_KEY && FROM && !FROM.includes("resend.dev")) {
     try {
       const resend = new Resend(RESEND_API_KEY)
-      const { data, error } = await resend.emails.send({ from: FROM, to, subject, html })
+      const { error } = await resend.emails.send({ from: FROM, to, subject, html })
       if (error) {
         const resendMsg = typeof error === "object" && error !== null
           ? ((error as Record<string, unknown>).message as string ?? JSON.stringify(error))

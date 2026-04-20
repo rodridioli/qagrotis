@@ -320,7 +320,6 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
       })
       setUsers(data)
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applied, activeTab])
 
   function handleOpenFilter() {

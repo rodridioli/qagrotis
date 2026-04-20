@@ -63,7 +63,8 @@ npm run dev
 | Command | Description |
 |---|---|
 | `npm run dev` | Start development server |
-| `npm run build` | Build for production |
+| `npm run build` | Production build (`prisma generate` + `next build`; veja nota Prisma abaixo) |
+| `npm run build:next` | Só `next build` (útil se o client Prisma já estiver gerado) |
 | `npm run tokens` | Regenerate CSS tokens from design-system/tokens.ts |
 | `npm run tokens:check` | Validate tokens are in sync |
 | `npm run db:push` | Push Prisma schema to database |
@@ -71,6 +72,16 @@ npm run dev
 | `npm run db:studio` | Open Prisma Studio |
 | `npm run storybook` | Start Storybook |
 | `npm run setup` | Full project setup script |
+
+---
+
+## Security
+
+Rotation of secrets and safe use of environment variables (including after incidents at hosting providers): see [SECURITY.md](./SECURITY.md).
+
+### Prisma em rede corporativa (Windows)
+
+Se `npx prisma generate` ou `npm run build` falharem ao baixar `binaries.prisma.sh`, configure `HTTPS_PROXY`/`HTTP_PROXY`, use outra rede (ex.: hotspot) para rodar `npx prisma generate` uma vez, ou com client já em `node_modules/.prisma`: `SKIP_PRISMA_GENERATE=1 npm run build`. O `postinstall` não interrompe o `npm install` se o download falhar.
 
 ---
 

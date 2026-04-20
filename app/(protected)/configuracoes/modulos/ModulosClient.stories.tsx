@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import ModulosClient from "./ModulosClient"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
+import type { SistemaRecord } from "@/lib/actions/sistemas"
 
 const modulos: ModuloRecord[] = [
   { id: "M-01", name: "Folha de Pagamento", sistemaId: "S-01", sistemaName: "Financeiro", description: "Processamento da folha", active: true, createdAt: Date.now() - 86400000 },
@@ -9,10 +10,48 @@ const modulos: ModuloRecord[] = [
   { id: "M-03", name: "Recrutamento", sistemaId: "S-02", sistemaName: "RH", description: "Processo seletivo", active: false, createdAt: Date.now() - 172800000 },
 ]
 
-const cenarios: Partial<CenarioRecord>[] = [
-  { module: "Folha de Pagamento", active: true },
-  { module: "Folha de Pagamento", active: true },
-  { module: "Folha de Pagamento", active: false },
+const sistemas: SistemaRecord[] = [
+  { id: "S-01", name: "Financeiro", description: null, active: true, createdAt: Date.now() - 86400000 },
+  { id: "S-02", name: "RH", description: null, active: true, createdAt: Date.now() - 86400000 },
+]
+
+const cenarios: CenarioRecord[] = [
+  {
+    id: "CT-01",
+    scenarioName: "Login",
+    module: "Folha de Pagamento",
+    system: "Financeiro",
+    client: "Acme Corp",
+    execucoes: 2,
+    erros: 0,
+    suites: 1,
+    tipo: "Manual",
+    active: true,
+  },
+  {
+    id: "CT-02",
+    scenarioName: "Folha",
+    module: "Folha de Pagamento",
+    system: "Financeiro",
+    client: "Acme Corp",
+    execucoes: 5,
+    erros: 1,
+    suites: 2,
+    tipo: "Automatizado",
+    active: true,
+  },
+  {
+    id: "CT-03",
+    scenarioName: "Inativo",
+    module: "Folha de Pagamento",
+    system: "Financeiro",
+    client: "Acme Corp",
+    execucoes: 0,
+    erros: 0,
+    suites: 0,
+    tipo: "Manual",
+    active: false,
+  },
 ]
 
 const meta: Meta<typeof ModulosClient> = {
@@ -36,7 +75,8 @@ export const Admin: Story = {
   name: "Visão de administrador",
   args: {
     initialModulos: modulos,
-    initialCenarios: cenarios as CenarioRecord[],
+    initialCenarios: cenarios,
+    initialSistemas: sistemas,
     isAdmin: true,
   },
 }
@@ -45,7 +85,8 @@ export const Padrao: Story = {
   name: "Visão de usuário padrão",
   args: {
     initialModulos: modulos,
-    initialCenarios: cenarios as CenarioRecord[],
+    initialCenarios: cenarios,
+    initialSistemas: sistemas,
     isAdmin: false,
   },
 }
@@ -55,6 +96,7 @@ export const ListaVazia: Story = {
   args: {
     initialModulos: [],
     initialCenarios: [],
+    initialSistemas: [],
     isAdmin: true,
   },
 }
@@ -74,8 +116,33 @@ export const NomesLongos: Story = {
       { id: "M-002", name: "Gestão de Contas a Pagar e Receber", sistemaId: "S-01", sistemaName: "Sistema Integrado de Gestão Agropecuária", description: null, active: true, createdAt: Date.now() - 1000 },
     ],
     initialCenarios: [
-      { module: "Processamento Automático da Folha de Pagamento Mensal", active: true } as any,
-      { module: "Processamento Automático da Folha de Pagamento Mensal", active: true } as any,
+      {
+        id: "CT-101",
+        scenarioName: "Cenário longo 1",
+        module: "Processamento Automático da Folha de Pagamento Mensal",
+        system: "Sistema Integrado de Gestão Agropecuária",
+        client: "Cliente demo",
+        execucoes: 1,
+        erros: 0,
+        suites: 0,
+        tipo: "Manual",
+        active: true,
+      },
+      {
+        id: "CT-102",
+        scenarioName: "Cenário longo 2",
+        module: "Processamento Automático da Folha de Pagamento Mensal",
+        system: "Sistema Integrado de Gestão Agropecuária",
+        client: "Cliente demo",
+        execucoes: 2,
+        erros: 0,
+        suites: 1,
+        tipo: "Manual",
+        active: true,
+      },
+    ],
+    initialSistemas: [
+      { id: "S-01", name: "Sistema Integrado de Gestão Agropecuária", description: null, active: true, createdAt: Date.now() },
     ],
     isAdmin: true,
   },

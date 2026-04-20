@@ -27,7 +27,11 @@ export async function POST(req: NextRequest) {
   try { body = await req.json() }
   catch { return new Response("JSON inválido.", { status: 400 }) }
 
-  let { action = "update", jiraUrl, issueKey, apiToken, email } = body as typeof body & { action?: string }
+  const action = body.action ?? "update"
+  const issueKey = body.issueKey
+  let jiraUrl = body.jiraUrl
+  let apiToken = body.apiToken
+  let email = body.email
 
   // If credentials not in body, try server-side cookies (httpOnly, not accessible from JS)
   if (!jiraUrl || !apiToken || !email) {

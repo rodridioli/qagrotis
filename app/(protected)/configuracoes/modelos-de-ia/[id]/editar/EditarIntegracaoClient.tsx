@@ -6,18 +6,9 @@ import { useRouter } from "next/navigation"
 import { AlertCircle, ArrowLeft, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectPopup,
-  SelectItem,
-} from "@/components/ui/select"
 import { atualizarIntegracao, type IntegracaoRecord } from "@/lib/actions/integracoes"
 import { toast } from "sonner"
 
-
-const MAX_DESCRICAO = 200
 
 type KeyStatus = "idle" | "validating" | "valid" | "invalid" | "uncertain"
 
@@ -51,7 +42,7 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
     } catch {
       setKeyStatus("uncertain")
     }
-  }, [apiKey])
+  }, [apiKey, provider])
 
   function handleApiKeyChange(value: string) {
     setApiKey(value)

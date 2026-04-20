@@ -1,5 +1,5 @@
 
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { AssistenteDrawer } from "./AssistenteDrawer"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"

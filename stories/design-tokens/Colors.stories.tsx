@@ -19,12 +19,6 @@ function contrastColor(hex: string): "#ffffff" | "#333333" {
   return lum > 0.55 ? "#333333" : "#ffffff"
 }
 
-/** #rrggbb → "R G B" */
-function rgbString(hex: string): string {
-  const rgb = hexToRgb(hex)
-  return rgb ? `${rgb.r} ${rgb.g} ${rgb.b}` : ""
-}
-
 // ── Section ───────────────────────────────────────────────────
 
 function Section({

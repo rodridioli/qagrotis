@@ -2,6 +2,8 @@ import type { NextAuthConfig } from "next-auth"
 
 // Edge-compatible auth config — NO database/pg imports here
 export const authConfig: NextAuthConfig = {
+  // Localhost / preview URLs: avoids HTML error responses where the client expects JSON
+  trustHost: true,
   pages: {
     signIn: "/login",
     verifyRequest: "/login?verify=1",
@@ -20,7 +22,8 @@ export const authConfig: NextAuthConfig = {
         pathname.startsWith("/definir-senha") ||
         pathname.startsWith("/api/auth") ||
         pathname.startsWith("/api/stripe") ||
-        pathname.startsWith("/api/test-mail")
+        pathname.startsWith("/api/test-mail") ||
+        pathname.startsWith("/api/forgot-password")
       if (isPublic) return true
       return isLoggedIn
     },

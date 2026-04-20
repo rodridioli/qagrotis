@@ -389,8 +389,6 @@ async function streamOpenRouter(
       const fallbackRes = await tryModel(fallbackModel)
       if (fallbackRes.ok) {
         // Stream the fallback response
-        const { provider: _p, ...rest } = { provider: "openrouter" }
-        void rest
         const enc2 = new TextEncoder()
         const readable2 = new ReadableStream({
           async start(controller) {

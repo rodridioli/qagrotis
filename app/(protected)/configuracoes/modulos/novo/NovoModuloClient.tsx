@@ -31,7 +31,7 @@ export default function NovoModuloClient({ sistemas }: Props) {
   useEffect(() => {
     if (sistemas.length === 0)
       toast.warning("É preciso cadastrar um sistema antes de criar módulos.")
-  }, [])
+  }, [sistemas.length])
 
   function handleSave() {
     if (!nome.trim()) {

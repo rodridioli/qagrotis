@@ -34,7 +34,7 @@ import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { criarCenario, atualizarCenario, inativarCenarios, ativarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
-import { parseMarkdownCenarios, buildImportItems, type ParsedCenario, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
+import { parseMarkdownCenarios, buildImportItems, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
 import { cn } from "@/lib/utils"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
@@ -876,7 +876,13 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
           {compareItem && (
             <>
               <p className="text-sm text-text-secondary -mt-1">
-                Comparando <span className="font-medium text-text-primary">"{compareItem.parsed.scenarioName}"</span> do arquivo com o cenário existente <span className="font-medium text-text-primary">{compareItem.existing?.id}</span>.
+                Comparando{" "}
+                <span className="font-medium text-text-primary">
+                  {"\u201C"}
+                  {compareItem.parsed.scenarioName}
+                  {"\u201D"}
+                </span>{" "}
+                do arquivo com o cenário existente <span className="font-medium text-text-primary">{compareItem.existing?.id}</span>.
               </p>
               <div className="flex-1 overflow-y-auto min-h-0">
                 <table className="w-full text-sm border-collapse">

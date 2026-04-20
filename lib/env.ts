@@ -7,17 +7,6 @@ function get(name: string): string {
   return process.env[name] ?? ""
 }
 
-function require(name: string): string {
-  const value = process.env[name]
-  if (!value || value.trim() === "") {
-    throw new Error(
-      `[env] Missing required environment variable: "${name}"\n` +
-        `Copy .env.example → .env and fill in all values before running.`
-    )
-  }
-  return value
-}
-
 export const env = {
   get DATABASE_URL() { return get("DATABASE_URL") },
   get AUTH_SECRET() { return get("AUTH_SECRET") },

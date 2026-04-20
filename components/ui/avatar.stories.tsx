@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import {
   Avatar,
-  AvatarImage,
   AvatarFallback,
   AvatarBadge,
   AvatarGroup,

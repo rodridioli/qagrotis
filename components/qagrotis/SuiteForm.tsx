@@ -105,7 +105,7 @@ export function SuiteForm({
   useEffect(() => {
     if (systemList.length === 0)
       toast.warning("É preciso cadastrar um sistema antes de criar suítes.")
-  }, [])
+  }, [systemList.length])
 
   const [addCenarioOpen, setAddCenarioOpen] = useState(false)
   const [selectedCenarios, setSelectedCenarios] = useState<Set<string>>(new Set())
@@ -125,7 +125,6 @@ export function SuiteForm({
   function buildCenariosJiraContent(ids: Set<string>): string {
     const selected = cenarios.filter(c => ids.has(c.id))
     if (selected.length === 0) return ""
-    const resultIcon = (r: string) => r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : "⏳"
     const fieldOrDash = (v: string | undefined | null) => (v && v.trim()) ? v.trim() : "—"
     const details = selected.map((c) => {
       const cenario = allCenarios.find((ac) => ac.id === c.id)
@@ -289,7 +288,6 @@ export function SuiteForm({
       if (data.hasContent) {
         // Show step 2 with existing content
         setJiraExisting(data)
-        setJiraMode("append")
       } else {
         // No existing content — send directly
         await sendToJira(issueKey, creds, "replace")
@@ -363,7 +361,6 @@ export function SuiteForm({
   const [jiraEvidences, setJiraEvidences] = useState<EvFile[]>([])
   const [jiraInputTouched, setJiraInputTouched] = useState(false)
   const [jiraExisting, setJiraExisting] = useState<{ summary: string; descText: string; hasContent: boolean; attachmentIds?: number[] } | null>(null)
-  const [jiraMode, setJiraMode] = useState<"replace" | "append">("replace")
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
   const [addSearch, setAddSearch] = useState("")
   const [addModuloFilter, setAddModuloFilter] = useState("")

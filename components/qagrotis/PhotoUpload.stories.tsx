@@ -23,7 +23,6 @@ type Story = StoryObj<typeof PhotoUpload>
 export const Vazio: Story = {
   name: "Vazio (sem foto)",
   render: () => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const [preview, setPreview] = useState<string | null>(null)
     return (
       <div className="w-64">
@@ -44,7 +43,6 @@ export const Vazio: Story = {
 export const ComFoto: Story = {
   name: "Com foto carregada",
   render: () => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const [preview, setPreview] = useState<string | null>(
       "https://i.pravatar.cc/300?img=12"
     )
@@ -75,7 +73,6 @@ export const NoPainelDeEdicao: Story = {
     },
   },
   render: () => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const [preview, setPreview] = useState<string | null>(null)
     return (
       <div className="w-80 rounded-xl bg-surface-card p-5 shadow-card">

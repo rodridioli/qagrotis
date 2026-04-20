@@ -150,8 +150,6 @@ interface Props {
   allModulos: ModuloRecord[]
   allUsers: QaUserRecord[]
   allSuites: SuiteDashboardRecord[]
-  currentUser: string | null
-  currentUserPhotoPath: string | null
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -161,8 +159,6 @@ export function DashboardClient({
   allModulos,
   allUsers,
   allSuites,
-  currentUser,
-  currentUserPhotoPath,
 }: Props) {
   const { sistemaSelecionado } = useSistemaSelecionado()
 
@@ -175,6 +171,8 @@ export function DashboardClient({
   const [errosModulo,         setErrosModulo]         = useState("")
   const [sucessoFilter,       setSucessoFilter]       = useState<ChartFilter>("hoje")
   const [sucessoModulo,       setSucessoModulo]       = useState("")
+  /** Stable fallback when `createdAt` is missing (avoids Date.now() during render). */
+  const [missingCreatedAtFallback] = useState(() => Date.now())
 
   // ── User map ───────────────────────────────────────────────────────────────
   const userMap = useMemo(() => {
@@ -218,7 +216,7 @@ export function DashboardClient({
   // ── Cenários filtrados ─────────────────────────────────────────────────────
   const {
     totalModulos, totalCenarios, totalManuais, totalAutomatizados,
-    pctManuais, pctAuto, automationData, ultimasAutomacoes, cenariosFiltrados, activeModuleNames,
+    pctManuais, pctAuto, automationData, ultimasAutomacoes, activeModuleNames,
   } = useMemo(() => {
     const modsFiltrados = allModulos.filter(
       m => m.active && (!sistemaSelecionado || m.sistemaName === sistemaSelecionado)
@@ -248,7 +246,7 @@ export function DashboardClient({
 
     const ultimasAutomacoes: UltimaAutomacao[] = cenariosFiltrados
       .filter(c => c.tipo === "Automatizado" || c.tipo === "Man./Auto.")
-      .sort((a, b) => (b.createdAt ?? Date.now()) - (a.createdAt ?? Date.now()))
+      .sort((a, b) => (b.createdAt ?? missingCreatedAtFallback) - (a.createdAt ?? missingCreatedAtFallback))
       .slice(0, 20)
       .map(c => ({
         id: c.id,
@@ -261,9 +259,9 @@ export function DashboardClient({
 
     return {
       totalModulos, totalCenarios, totalManuais, totalAutomatizados,
-      pctManuais, pctAuto, automationData, ultimasAutomacoes, cenariosFiltrados, activeModuleNames,
+      pctManuais, pctAuto, automationData, ultimasAutomacoes, activeModuleNames,
     }
-  }, [allCenarios, allModulos, sistemaSelecionado])
+  }, [allCenarios, allModulos, sistemaSelecionado, missingCreatedAtFallback])
 
   // ── Cenários por módulo (pie chart) ────────────────────────────────────────
   const cenariosPorModulo = useMemo(() => {
@@ -323,8 +321,8 @@ export function DashboardClient({
     for (const c of source) {
       if (rankingModulo && c.module !== rankingModulo) continue
       if (sistemaSelecionado && c.system !== sistemaSelecionado) continue
-      // If createdAt is missing (imported cenarios), treat as current time so they always appear
-      const ts = c.createdAt ?? Date.now()
+      // If createdAt is missing (imported cenarios), treat as stable “now” so they count in range
+      const ts = c.createdAt ?? missingCreatedAtFallback
       if (ts >= start && ts <= end) {
         const key = normalizeKey(c.createdBy)
         countByUser.set(key, (countByUser.get(key) ?? 0) + 1)
@@ -334,7 +332,7 @@ export function DashboardClient({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([createdBy, count]) => ({ createdBy, count }))
-  }, [allCenarios, rankingFilter, rankingModulo, sistemaSelecionado, userMap, allUsers])
+  }, [allCenarios, rankingFilter, rankingModulo, sistemaSelecionado, userMap, allUsers, missingCreatedAtFallback])
 
   // ── Testes chart ───────────────────────────────────────────────────────────
   const testesData = useMemo((): DataPoint[] => {

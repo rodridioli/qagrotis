@@ -58,7 +58,6 @@ export const Outline: Story = {
 // ── Test Status Palette ───────────────────────────────────────
 
 export const TestStatusPalette: Story = {
-  name: "Test Status Palette",
   render: () => (
     <div className="flex flex-wrap items-center gap-3 p-4">
       <Badge variant="default">

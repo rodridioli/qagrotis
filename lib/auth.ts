@@ -5,12 +5,17 @@ import { authConfig } from "@/lib/auth.config"
 import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 import { verifyPassword, nextId } from "@/lib/db-utils"
-import { prisma } from "@/lib/prisma"
 import { resolveGoogleAccess, resolveGoogleInternalId } from "@/lib/auth-google"
-import { revalidatePath } from "next/cache"
+
+/** Dynamic import so /api/auth/session does not load @prisma/client until login flows need the DB. */
+async function getPrisma() {
+  const { prisma } = await import("@/lib/prisma")
+  return prisma
+}
 
 // Inline credential validation (can't import "use server" actions here)
 async function checkCredentials(email: string, password: string) {
+  const prisma = await getPrisma()
   const normalizedEmail = email.trim().toLowerCase()
 
   const [inactiveRecords, createdUser] = await Promise.all([
@@ -74,6 +79,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google") {
+        const prisma = await getPrisma()
         const email = (user.email ?? "").trim().toLowerCase()
 
         const [existingCreated, inactiveRecords] = await Promise.all([
@@ -117,6 +123,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async jwt({ token, user, account }) {
       if (account?.provider === "google" && user?.email) {
+        const prisma = await getPrisma()
         // First Google sign-in: resolve internal CreatedUser ID (never trust user.id from OAuth).
         // Use findMany + filter to skip inactive records — an @agrotis.com user may have both
         // an old inactive record and a freshly auto-registered active one for the same email.

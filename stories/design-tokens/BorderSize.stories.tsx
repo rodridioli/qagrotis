@@ -259,7 +259,7 @@ function BorderSizePage() {
           de um campo de formulário.
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STATES.map(({ label, borderColor, bgColor, token, extra }) => (
+          {STATES.map(({ label, borderColor, bgColor, token }) => (
             <div
               key={label}
               className="flex flex-col gap-3 rounded-custom border border-border-default bg-surface-card p-4 shadow-card"

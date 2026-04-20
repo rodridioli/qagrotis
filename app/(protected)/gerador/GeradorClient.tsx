@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { criarCenario, atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
-import { parseMarkdownCenarios, buildImportItems, type ParsedCenario, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
+import { parseMarkdownCenarios, buildImportItems, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
 import { criarIntegracao, type IntegracaoRecord } from "@/lib/actions/integracoes"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
@@ -214,6 +214,16 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       return
     }
 
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    setOutput("")
+    setApiError(null)
+    setIsEditing(false)
+    setLoading(true)
+    setActiveTab("cenarios")
+
     // Fetch Jira issue content if URL/key provided
     let jiraContext = contexto.trim()
     const jiraAttachments: { list: { name: string; dataUrl: string }[] } = { list: [] }
@@ -253,16 +263,6 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         }
       } catch { /* continue without Jira data */ }
     }
-
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-
-    setOutput("")
-    setApiError(null)
-    setIsEditing(false)
-    setLoading(true)
-    setActiveTab("cenarios")
 
     try {
       const res = await fetch("/api/gerador", {
@@ -888,8 +888,13 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
           {compareItem && (
             <>
               <p className="-mt-1 text-sm text-text-secondary">
-                Comparando <span className="font-medium text-text-primary">"{compareItem.parsed.scenarioName}"</span> com o cenário existente{" "}
-                <span className="font-medium text-text-primary">{compareItem.existing?.id}</span>.
+                Comparando{" "}
+                <span className="font-medium text-text-primary">
+                  {"\u201C"}
+                  {compareItem.parsed.scenarioName}
+                  {"\u201D"}
+                </span>{" "}
+                com o cenário existente <span className="font-medium text-text-primary">{compareItem.existing?.id}</span>.
               </p>
               <div className="min-h-0 flex-1 overflow-y-auto">
                 <table className="w-full border-collapse text-sm">

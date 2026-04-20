@@ -38,7 +38,6 @@ export const CustomLabel: Story = {
 
 export const WithRefActions: Story = {
   render: () => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const ref = useRef<CaptchaHandle>(null)
     return (
       <div className="space-y-4 max-w-xs">

@@ -442,7 +442,17 @@ export default function EditarCenarioClient({
     setDepSearchInput("")
     setDepSearch("")
     setAddDepOpen(false)
-  }, [allCenarios, selectedDepIds])
+  }, [
+    allCenarios,
+    selectedDepIds,
+    setDeps,
+    setSelectedDepIds,
+    setDepSistema,
+    setDepModulo,
+    setDepSearchInput,
+    setDepSearch,
+    setAddDepOpen,
+  ])
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (

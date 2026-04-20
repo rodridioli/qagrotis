@@ -9,13 +9,6 @@ import {
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectPopup,
-  SelectItem,
-} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
@@ -36,17 +29,9 @@ export interface AssistenteDrawerProps {
   integracoes?: IntegracaoRecord[]
 }
 
-// ── Suggested starter questions ───────────────────────────────────────────────
-
-const SUGESTOES = [
-  "Como cadastrar um novo cliente?",
-  "Quais são os campos obrigatórios?",
-  "Como funciona a aprovação de pedidos?",
-]
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function AssistenteDrawer({ open, onOpenChange, integracoes = [] }: AssistenteDrawerProps) {
+export function AssistenteDrawer({ open, onOpenChange }: AssistenteDrawerProps) {
   const { sistemaSelecionado } = useSistemaSelecionado()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")

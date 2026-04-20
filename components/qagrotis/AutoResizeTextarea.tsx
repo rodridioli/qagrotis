@@ -5,7 +5,7 @@ import React, { useRef, useEffect } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
-interface AutoResizeTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+type AutoResizeTextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>
 
 export function AutoResizeTextarea({ className, ...props }: AutoResizeTextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)

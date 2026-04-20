@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useRef } from "react"
+import Image from "next/image"
 import { CloudUpload, Trash2 } from "lucide-react"
 
 interface PhotoUploadProps {
@@ -30,11 +31,13 @@ export function PhotoUpload({ preview, onFileSelect, onRemove }: PhotoUploadProp
         onChange={handleChange}
       />
       {preview ? (
-        <div className="relative">
-          <img
+        <div className="relative h-48 w-full">
+          <Image
             src={preview}
             alt="Foto de perfil"
-            className="h-48 w-full rounded-custom object-cover"
+            fill
+            unoptimized
+            className="rounded-custom object-cover"
           />
           <button
             type="button"

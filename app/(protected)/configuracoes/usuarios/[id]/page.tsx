@@ -1,4 +1,5 @@
 import React from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { notFound } from "next/navigation"
@@ -91,9 +92,12 @@ export default async function UsuarioDetailPage({ params }: { params: Promise<{ 
         {/* Avatar */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card flex flex-col items-center gap-4">
           {user.photoPath ? (
-            <img
+            <Image
               src={user.photoPath}
               alt={user.name}
+              width={80}
+              height={80}
+              unoptimized
               className="size-20 rounded-full object-cover"
             />
           ) : (

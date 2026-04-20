@@ -33,11 +33,6 @@ import type { IntegracaoRecord } from "@/lib/actions/integracoes"
 const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"
 
-// Rotas que requerem sistema ativo + módulo ativo para serem acessíveis
-const REQUIRES_SISTEMA_MODULO = new Set(["/dashboard", "/cenarios", "/gerador", "/assistente", "/atualizacoes"])
-// Suítes requer também pelo menos 1 cenário no sistema selecionado
-const REQUIRES_CENARIO = new Set(["/suites"])
-
 const NAV_ITEMS = [
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false },
   { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false },
@@ -77,17 +72,14 @@ interface SidebarProps {
   isDark: boolean
   assistenteOpen: boolean
   onAssistenteOpen: () => void
-  hasActiveSistema: boolean
   hasSistemaModulo: boolean
-  hasSistemaCenario: boolean
   hasIntegracoes: boolean
   onNavigate?: () => void
 }
 
-const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasActiveSistema, hasSistemaModulo, hasSistemaCenario, hasIntegracoes, onNavigate }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasIntegracoes, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const expanded = !collapsed
 
   return (
     <>
@@ -112,7 +104,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
           "flex h-14 shrink-0 items-center border-b border-border-default",
           collapsed ? "lg:justify-center lg:px-0 px-4" : "px-4"
         )}>
-          <Link href="/dashboard" className="flex items-center">
+          <Link href="/dashboard" className="flex cursor-pointer items-center">
             {collapsed
               ? <span className="hidden lg:block"><QAgrotisIcon size={20} className="text-brand-primary" /></span>
               : null}
@@ -161,7 +153,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
               }
 
               const itemClassName = cn(
-                "group flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium transition-all duration-150",
+                "group flex cursor-pointer items-center gap-3 rounded px-2.5 py-2 text-sm font-medium transition-all duration-150",
                 collapsed ? "lg:justify-center" : "",
                 isActive
                   ? "bg-brand-primary text-white"
@@ -263,7 +255,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                     <button
                       type="button"
                       onClick={() => signOut({ callbackUrl: "/login" })}
-                      className="flex w-full items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-destructive transition-all duration-150 hover:bg-neutral-grey-100 lg:justify-center"
+                      className="flex w-full cursor-pointer items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-destructive transition-all duration-150 hover:bg-neutral-grey-100 lg:justify-center"
                     />
                   }
                 >
@@ -275,7 +267,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
               <button
                 type="button"
                 onClick={() => signOut({ callbackUrl: "/login" })}
-                className="flex w-full items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-destructive transition-all duration-150 hover:bg-neutral-grey-100 hover:translate-x-0.5"
+                className="flex w-full cursor-pointer items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-destructive transition-all duration-150 hover:bg-neutral-grey-100 hover:translate-x-0.5"
               >
                 <LogOut className="size-4.5 shrink-0" />
                 <span className="truncate">Sair do Sistema</span>
@@ -404,7 +396,6 @@ export default function LayoutClient({
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
-  const { data: session } = useSession()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isDark, setIsDark] = useState(false)
@@ -455,7 +446,6 @@ export default function LayoutClient({
   // Gerador, Assistente: require modelo de IA (integração)
   const hasActiveSistema = sistemaNames.length > 0
   const hasSistemaModulo = stableHasSistemaComModulo   // sistema + módulo vinculado
-  const hasSistemaCenario = stableHasSistemaComModulo  // same requirement for suítes
 
   // ── Theme ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -512,9 +502,7 @@ export default function LayoutClient({
           isDark={isDark}
           assistenteOpen={assistenteOpen}
           onAssistenteOpen={() => setAssistenteOpen(true)}
-          hasActiveSistema={hasActiveSistema}
           hasSistemaModulo={hasSistemaModulo}
-          hasSistemaCenario={hasSistemaCenario}
           hasIntegracoes={integracoes.length > 0}
           onNavigate={handleNavigate}
         />

@@ -1,17 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
-import { qagrotisTokens } from "@/design-system/tokens"
 
 function SpacingPage() {
-  const { spacing } = qagrotisTokens
-
-  const allSpacing: Record<string, string> = {
-    // QAgrotis base-8 named tokens
-    "spacing-1 / agro-1": "8px",
-    "spacing-2 / agro-2": "16px",
-    "spacing-3 / agro-3": "24px",
-    "spacing-4 / agro-4": "32px",
-  }
-
   // Extended Tailwind-like scale for reference
   const extendedScale: { token: string; value: string; note?: string }[] = [
     { token: "spacing-1 (agro-1)", value: "8px",  note: "QAgrotis base unit" },

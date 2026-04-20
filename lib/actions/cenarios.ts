@@ -144,6 +144,7 @@ export async function criarCenario(data: {
   senhaFalsa: string
   steps: CenarioStep[]
   deps: string[]
+  credencialId?: string | null
 }): Promise<CenarioRecord> {
   const session = await requireSession()
   const createdBy = session?.user?.email ?? session?.user?.name ?? undefined
@@ -167,10 +168,26 @@ export async function criarCenario(data: {
       usuarioTeste:      (data.usuarioTeste || "").trim(),
       senhaTeste:        (data.senhaTeste || "").trim(),
       senhaFalsa:        (data.senhaFalsa || "").trim(),
+      credencialId:      data.credencialId ?? null,
     })
   } catch (e) {
     if (e instanceof z.ZodError) throw new Error(e.issues[0]?.message ?? "Dados inválidos.")
     throw e
+  }
+
+  let urlAmbiente = parsed.urlAmbiente
+  let usuarioTeste = parsed.usuarioTeste
+  let senhaTeste = parsed.senhaTeste
+  const credencialId = parsed.credencialId ?? null
+  if (credencialId) {
+    const cred = await prisma.credencial.findFirst({
+      where: { id: credencialId, active: true },
+      select: { urlAmbiente: true, usuario: true, senha: true },
+    })
+    if (!cred) throw new Error("Credencial não encontrada ou inativa.")
+    urlAmbiente = (cred.urlAmbiente ?? "").trim()
+    usuarioTeste = cred.usuario.trim()
+    senhaTeste = cred.senha
   }
 
   const existing = await prisma.cenario.findMany({ select: { id: true } })
@@ -204,14 +221,15 @@ export async function criarCenario(data: {
       preCondicoes:      parsed.preCondicoes,
       bdd:               parsed.bdd,
       resultadoEsperado: parsed.resultadoEsperado,
-      urlAmbiente:       parsed.urlAmbiente,
+      urlAmbiente,
       objetivo:          parsed.objetivo,
       urlScript:         parsed.urlScript,
-      usuarioTeste:      parsed.usuarioTeste,
-      senhaTeste:        parsed.senhaTeste,
+      usuarioTeste,
+      senhaTeste,
       senhaFalsa:        parsed.senhaFalsa,
       steps:             parsed.steps,
       deps:              parsed.deps,
+      credencialId,
       createdBy,
     },
   })

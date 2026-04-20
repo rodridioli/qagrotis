@@ -1,5 +1,5 @@
 
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import NovaIntegracaoForm from "./NovaIntegracaoForm"
 
 const meta: Meta<typeof NovaIntegracaoForm> = {

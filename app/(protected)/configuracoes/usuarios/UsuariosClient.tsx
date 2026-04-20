@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
@@ -370,9 +371,12 @@ export default function UsuariosClient({ initialUsers, currentUserId, isAdmin }:
                         <td className="px-4 py-3 min-w-0 transition-colors group-hover:bg-neutral-grey-50">
                           <div className="flex min-w-0 items-center gap-2">
                             {u.photoPath ? (
-                              <img
+                              <Image
                                 src={u.photoPath}
                                 alt={u.name}
+                                width={28}
+                                height={28}
+                                unoptimized
                                 className="size-7 shrink-0 rounded-full object-cover"
                               />
                             ) : (

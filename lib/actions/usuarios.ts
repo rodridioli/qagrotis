@@ -37,7 +37,6 @@ const userInputSchema = z.object({
 })
 
 const CLASSIFICACOES_VALIDAS = ["Colaborador", "Líder", "Coordenador", "Outro"] as const
-type ClassificacaoValida = typeof CLASSIFICACOES_VALIDAS[number]
 
 function sanitizeClassificacao(value: string | null | undefined): string | null {
   if (!value) return null
