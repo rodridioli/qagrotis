@@ -225,8 +225,8 @@ export default function NovoUsuarioForm() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-end">
-            <div className="space-y-1.5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-4">
+            <div className="min-w-0 flex-1 space-y-1.5">
               <label htmlFor="classificacao" className="text-sm font-medium text-text-primary">
                 Classificação
               </label>
@@ -246,7 +246,7 @@ export default function NovoUsuarioForm() {
               </Select>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="min-w-0 flex-1 space-y-1.5">
               <label htmlFor="dataNascimento" className="text-sm font-medium text-text-primary">
                 Data de nascimento
               </label>

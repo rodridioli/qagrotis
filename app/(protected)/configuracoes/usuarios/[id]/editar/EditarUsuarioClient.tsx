@@ -183,45 +183,49 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <label htmlFor="classificacao" className="text-sm font-medium text-text-primary">
-              Classificação
-            </label>
-            {isAdmin ? (
-              <Select
-                value={classificacao || "Colaborador"}
-                onValueChange={(v) => setClassificacao(v ?? "Colaborador")}
-                disabled={isPending}
-              >
-                <SelectTrigger id="classificacao"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                <SelectPopup>
-                  <SelectItem value="Colaborador">Colaborador</SelectItem>
-                  <SelectItem value="Líder">Líder</SelectItem>
-                  <SelectItem value="Outro">Outro</SelectItem>
-                </SelectPopup>
-              </Select>
-            ) : (
-              <div
-                id="classificacao"
-                className="flex h-9 items-center rounded-custom border border-border-default bg-surface-input px-3 text-sm text-text-secondary"
-              >
-                {classificacao || "—"}
-              </div>
-            )}
-          </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-4">
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <label htmlFor="classificacao" className="text-sm font-medium text-text-primary">
+                Classificação
+              </label>
+              {isAdmin ? (
+                <Select
+                  value={classificacao || "Colaborador"}
+                  onValueChange={(v) => setClassificacao(v ?? "Colaborador")}
+                  disabled={isPending}
+                >
+                  <SelectTrigger id="classificacao" className="w-full">
+                    <SelectValue placeholder="Selecionar..." />
+                  </SelectTrigger>
+                  <SelectPopup>
+                    <SelectItem value="Colaborador">Colaborador</SelectItem>
+                    <SelectItem value="Líder">Líder</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
+                  </SelectPopup>
+                </Select>
+              ) : (
+                <div
+                  id="classificacao"
+                  className="flex h-9 w-full items-center rounded-custom border border-border-default bg-surface-input px-3 text-sm text-text-secondary"
+                >
+                  {classificacao || "—"}
+                </div>
+              )}
+            </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor="dataNascimento" className="text-sm font-medium text-text-primary">
-              Data de nascimento
-            </label>
-            <Input
-              id="dataNascimento"
-              type="date"
-              value={dataNascimento}
-              onChange={(e) => setDataNascimento(e.target.value)}
-              disabled={isPending}
-              className="max-w-full sm:max-w-xs"
-            />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <label htmlFor="dataNascimento" className="text-sm font-medium text-text-primary">
+                Data de nascimento
+              </label>
+              <Input
+                id="dataNascimento"
+                type="date"
+                value={dataNascimento}
+                onChange={(e) => setDataNascimento(e.target.value)}
+                disabled={isPending}
+                className="w-full min-w-0"
+              />
+            </div>
           </div>
 
           {/* ── Password section ── */}
