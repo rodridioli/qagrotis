@@ -214,6 +214,12 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       return
     }
 
+    setOutput("")
+    setApiError(null)
+    setIsEditing(false)
+    setLoading(true)
+    setActiveTab("cenarios")
+
     // Fetch Jira issue content if URL/key provided
     let jiraContext = contexto.trim()
     const jiraAttachments: { list: { name: string; dataUrl: string }[] } = { list: [] }
@@ -257,12 +263,6 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
-
-    setOutput("")
-    setApiError(null)
-    setIsEditing(false)
-    setLoading(true)
-    setActiveTab("cenarios")
 
     try {
       const res = await fetch("/api/gerador", {

@@ -161,7 +161,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
               }
 
               const itemClassName = cn(
-                "group flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium transition-all duration-150",
+                "group flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium transition-all duration-150 cursor-pointer",
                 collapsed ? "lg:justify-center" : "",
                 isActive
                   ? "bg-brand-primary text-white"

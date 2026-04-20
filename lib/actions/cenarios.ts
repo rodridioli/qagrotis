@@ -144,6 +144,7 @@ export async function criarCenario(data: {
   senhaFalsa: string
   steps: CenarioStep[]
   deps: string[]
+  credencialId?: string | null
 }): Promise<CenarioRecord> {
   const session = await requireSession()
   const createdBy = session?.user?.email ?? session?.user?.name ?? undefined
@@ -212,6 +213,7 @@ export async function criarCenario(data: {
       senhaFalsa:        parsed.senhaFalsa,
       steps:             parsed.steps,
       deps:              parsed.deps,
+      credencialId:      parsed.credencialId ?? null,
       createdBy,
     },
   })
