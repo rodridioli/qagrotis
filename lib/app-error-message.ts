@@ -12,7 +12,10 @@ export function getAppErrorUserMessage(error: Error & { digest?: string }): stri
     m.includes("omitted in production builds") ||
     m.includes("digest property")
   ) {
-    return "Erro ao processar esta página no servidor. Em produção o detalhe técnico fica oculto; use o código ref abaixo para localizar o erro nos logs da Vercel ou reproduza com npm run dev."
+    const tail = error.digest
+      ? ` Nos Runtime Logs da Vercel, busque \`[server-error]\` ou o digest \`${error.digest}\` (mensagem e rota aparecem no servidor).`
+      : ""
+    return `Erro ao processar esta página no servidor. Em produção o detalhe técnico fica oculto; use o ref abaixo ou reproduza com npm run dev.${tail}`
   }
   return m || "Ocorreu um erro inesperado."
 }
@@ -21,3 +24,4 @@ export function getAppErrorUserMessage(error: Error & { digest?: string }): stri
 export function logClientSegmentError(segment: string, error: Error & { digest?: string }): void {
   console.error(`[${segment}]`, error.digest ?? "(sem digest)", error)
 }
+
