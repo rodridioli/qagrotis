@@ -73,20 +73,36 @@ if (skipMigrate) {
   console.info("[build] prisma migrate deploy (aplicar migrações pendentes no banco)")
   const migrate = spawnSync("npx", ["prisma", "migrate", "deploy"], {
     cwd: root,
-    stdio: "inherit",
+    encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024,
     shell: true,
     env: process.env,
   })
+  const migrateOut = `${migrate.stdout ?? ""}${migrate.stderr ?? ""}`
+  if (migrateOut.trim()) console.log(migrateOut)
   if (migrate.status !== 0) {
-    console.error(`
+    // Banco criado antes do Prisma Migrate (tabelas já existem, sem histórico _prisma_migrations).
+    // https://www.prisma.io/docs/orm/prisma-migrate/workflows/baselining
+    const isP3005Baseline = /P3005|The database schema is not empty/i.test(migrateOut)
+    if (isP3005Baseline) {
+      console.warn(`
 ----------------------------------------------------------------------
-prisma migrate deploy falhou. O banco precisa estar alinhado ao schema.
-Verifique DATABASE_URL na Vercel e os logs acima.
-
-Para build local sem DB: SKIP_PRISMA_MIGRATE=1 npm run build
+[build] migrate deploy: P3005 — banco não vazio / sem baseline de migrações.
+       Build continua. Schema é alinhado em runtime (ensureUserDataNascimentoColumns).
+       Opcional: baseline manual com prisma migrate resolve (ver link acima).
 ----------------------------------------------------------------------
 `)
-    process.exit(migrate.status ?? 1)
+    } else {
+      console.error(`
+----------------------------------------------------------------------
+prisma migrate deploy falhou. Verifique DATABASE_URL e os logs acima.
+
+P3005 (banco antigo): o build agora ignora esse caso; se vir outro código, corrija o DB.
+Para build sem migrate: SKIP_PRISMA_MIGRATE=1 npm run build
+----------------------------------------------------------------------
+`)
+      process.exit(migrate.status ?? 1)
+    }
   }
 } else {
   console.info("[build] DATABASE_URL não definida ou placeholder — pulando prisma migrate deploy.")
