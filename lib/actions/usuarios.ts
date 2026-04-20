@@ -193,6 +193,46 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
   return mergeQaUsersByEmail(mockRecords, createdRecords, oauthRecords)
 }
 
+async function resolveEmailForQaUserId(id: string): Promise<string | null> {
+  const mock = MOCK_USERS.find((u) => u.id === id)
+  if (mock?.email?.trim()) return mock.email.trim().toLowerCase()
+  const row = await prisma.createdUser.findUnique({ where: { id }, select: { email: true } })
+  if (row?.email?.trim()) return row.email.trim().toLowerCase()
+  return null
+}
+
+/** Outro cadastro (mock, CreatedUser ou OAuth) com o mesmo e-mail já ativo — reativação geraria duplicidade. */
+async function hasActiveOtherWithSameEmail(excludeUserId: string, emailNorm: string): Promise<boolean> {
+  const inactiveRows = await prisma.inactiveUser.findMany({ select: { userId: true } })
+  const inactiveSet = new Set(inactiveRows.map((r) => r.userId))
+
+  const otherCreated = await prisma.createdUser.findFirst({
+    where: {
+      email: { equals: emailNorm, mode: "insensitive" },
+      NOT: { id: excludeUserId },
+    },
+    select: { id: true },
+  })
+  if (otherCreated && !inactiveSet.has(otherCreated.id)) return true
+
+  const otherAuth = await prisma.user.findFirst({
+    where: {
+      email: { equals: emailNorm, mode: "insensitive" },
+      NOT: { id: excludeUserId },
+    },
+    select: { id: true },
+  })
+  if (otherAuth && !inactiveSet.has(otherAuth.id)) return true
+
+  for (const m of MOCK_USERS) {
+    if (m.id === excludeUserId) continue
+    if (m.email.trim().toLowerCase() !== emailNorm) continue
+    if (!inactiveSet.has(m.id)) return true
+  }
+
+  return false
+}
+
 export async function getQaUserProfile(id: string): Promise<QaUserProfile | null> {
   const result = idSchema.safeParse(id)
   if (!result.success) return null
@@ -242,6 +282,16 @@ export async function ativarQaUser(id: string): Promise<{ error?: string }> {
   try {
     const isInactive = await prisma.inactiveUser.findUnique({ where: { userId: id } })
     if (!isInactive) return { error: "Usuário não está inativo." }
+
+    const email = await resolveEmailForQaUserId(id)
+    if (!email) return { error: "Não foi possível identificar o e-mail deste cadastro." }
+
+    if (await hasActiveOtherWithSameEmail(id, email)) {
+      return {
+        error:
+          "Já existe um cadastro ativo com o mesmo e-mail. Não é possível reativar para evitar duplicidade.",
+      }
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.inactiveUser.delete({ where: { userId: id } })

@@ -225,36 +225,40 @@ export default function NovoUsuarioForm() {
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor="classificacao" className="text-sm font-medium text-text-primary">
-              Classificação
-            </label>
-            <Select
-              value={classificacao || "Colaborador"}
-              onValueChange={(v) => setClassificacao(v ?? "Colaborador")}
-              disabled={isPending}
-            >
-              <SelectTrigger id="classificacao"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-              <SelectPopup>
-                <SelectItem value="Colaborador">Colaborador</SelectItem>
-                <SelectItem value="Líder">Líder</SelectItem>
-                <SelectItem value="Outro">Outro</SelectItem>
-              </SelectPopup>
-            </Select>
-          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-end">
+            <div className="space-y-1.5">
+              <label htmlFor="classificacao" className="text-sm font-medium text-text-primary">
+                Classificação
+              </label>
+              <Select
+                value={classificacao || "Colaborador"}
+                onValueChange={(v) => setClassificacao(v ?? "Colaborador")}
+                disabled={isPending}
+              >
+                <SelectTrigger id="classificacao" className="w-full">
+                  <SelectValue placeholder="Selecionar..." />
+                </SelectTrigger>
+                <SelectPopup>
+                  <SelectItem value="Colaborador">Colaborador</SelectItem>
+                  <SelectItem value="Líder">Líder</SelectItem>
+                  <SelectItem value="Outro">Outro</SelectItem>
+                </SelectPopup>
+              </Select>
+            </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor="dataNascimento" className="text-sm font-medium text-text-primary">
-              Data de nascimento
-            </label>
-            <Input
-              id="dataNascimento"
-              type="date"
-              value={dataNascimento}
-              onChange={(e) => setDataNascimento(e.target.value)}
-              disabled={isPending}
-              className="max-w-full sm:max-w-xs"
-            />
+            <div className="space-y-1.5">
+              <label htmlFor="dataNascimento" className="text-sm font-medium text-text-primary">
+                Data de nascimento
+              </label>
+              <Input
+                id="dataNascimento"
+                type="date"
+                value={dataNascimento}
+                onChange={(e) => setDataNascimento(e.target.value)}
+                disabled={isPending}
+                className="w-full min-w-0"
+              />
+            </div>
           </div>
 
           {/* ── Password section ── */}

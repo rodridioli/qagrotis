@@ -2,6 +2,7 @@
 
 // Static import — bundled at build time, works on Vercel (no fs access needed)
 import changelogData from "@/data/changelog.json"
+import { formatChangelogVersionForDisplay } from "@/lib/changelog-version"
 
 export interface ChangelogEntry {
   version: string
@@ -13,5 +14,9 @@ export interface ChangelogEntry {
 }
 
 export async function getChangelog(): Promise<ChangelogEntry[]> {
-  return changelogData as ChangelogEntry[]
+  const rows = changelogData as ChangelogEntry[]
+  return rows.map((e) => ({
+    ...e,
+    version: formatChangelogVersionForDisplay(e.version),
+  }))
 }
