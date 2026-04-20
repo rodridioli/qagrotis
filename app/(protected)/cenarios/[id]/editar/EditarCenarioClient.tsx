@@ -712,18 +712,16 @@ export default function EditarCenarioClient({
         {/* ── Teste Automatizado tab ── */}
         {automatizado && (
           <div className={`p-5 space-y-5${activeTab !== "automatizado" ? " hidden" : ""}`}>
-            {!manual && (
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-primary">
-                  Cenário <span className="text-destructive">*</span>
-                </label>
-                <Input
-                  value={scenarioName}
-                  onChange={(e) => setScenarioName(e.target.value)}
-                  placeholder="Nome do cenário de teste"
-                />
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Cenário <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={scenarioName}
+                onChange={(e) => setScenarioName(e.target.value)}
+                placeholder="Nome do cenário de teste"
+              />
+            </div>
 
             {/* Credentials */}
             <div className="space-y-1.5">
@@ -800,17 +798,19 @@ export default function EditarCenarioClient({
                       {steps.map((s, idx) => (
                         <tr
                           key={s.id}
-                          draggable
-                          onDragStart={() => { draggedStepId.current = s.id }}
                           onDragOver={(e) => handleStepDragOver(e, s.id)}
-                          onDragEnd={() => { draggedStepId.current = null }}
                           className="group border-b border-border-default last:border-0"
                         >
-                          <td className="cursor-grab py-1.5 pr-1 active:cursor-grabbing">
+                          <td
+                            draggable
+                            onDragStart={() => { draggedStepId.current = s.id }}
+                            onDragEnd={() => { draggedStepId.current = null }}
+                            className="cursor-grab py-1.5 pr-1 active:cursor-grabbing"
+                          >
                             <GripVertical className="size-4 text-text-secondary opacity-40 transition-opacity group-hover:opacity-100" />
                           </td>
                           <td className="w-8 py-1.5 text-xs font-medium text-text-secondary">{idx + 1}</td>
-                          <td className="px-2 py-1.5">
+                          <td className="px-2 py-1.5" onMouseDown={(e) => e.stopPropagation()}>
                             <Input
                               ref={(el) => { stepInputRefs.current[s.id] = el }}
                               value={s.acao}
@@ -818,7 +818,7 @@ export default function EditarCenarioClient({
                               placeholder="Descreva a ação..."
                             />
                           </td>
-                          <td className="px-2 py-1.5">
+                          <td className="px-2 py-1.5" onMouseDown={(e) => e.stopPropagation()}>
                             <Input
                               value={s.resultado}
                               onChange={(e) => updateStep(s.id, "resultado", e.target.value)}
@@ -850,6 +850,12 @@ export default function EditarCenarioClient({
               <AutoResizeTextarea
                 value={resultadoEsperado}
                 onChange={(e) => { setResultadoEsperado(e.target.value); setHasSaved(false) }}
+                onKeyDown={(e) => {
+                  if (e.key === "Tab" && !e.shiftKey) {
+                    e.preventDefault()
+                    addStepRow()
+                  }
+                }}
                 placeholder="Descreva o resultado esperado do teste automatizado..."
                 className="min-h-[100px]"
               />

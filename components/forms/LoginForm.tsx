@@ -75,7 +75,7 @@ function PrimaryButton({ children, loading = false, className, ...props }: React
       aria-busy={loading}
       style={{ color: "#ffffff" }}
       className={cn(
-        "flex h-12 w-full items-center justify-center gap-2 rounded-xl",
+        "flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl",
         "bg-brand-primary text-base font-semibold",
         "transition-opacity hover:opacity-90 active:opacity-80",
         "disabled:cursor-not-allowed disabled:opacity-50",
@@ -229,7 +229,7 @@ function LoginView({ onForgotPassword, callbackUrl }: { onForgotPassword: () => 
           <button
             type="button"
             onClick={onForgotPassword}
-            className="text-sm text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 rounded"
+            className="cursor-pointer text-sm text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 rounded"
           >
             Esqueci minha senha
           </button>
@@ -246,7 +246,7 @@ function LoginView({ onForgotPassword, callbackUrl }: { onForgotPassword: () => 
         disabled={loading || googleLoading}
         aria-busy={googleLoading}
         className={cn(
-          "flex h-12 w-full items-center justify-center gap-2.5 rounded-xl",
+          "flex h-12 w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl",
           "border border-border-default bg-surface-card text-sm font-medium text-text-primary",
           "transition-colors hover:bg-neutral-grey-50",
           "disabled:cursor-not-allowed disabled:opacity-50",

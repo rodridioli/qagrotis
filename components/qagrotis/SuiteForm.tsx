@@ -39,6 +39,17 @@ import { criarSuite, atualizarSuite, removerHistoricoSuite, encerrarSuite, reabr
 import { toast } from "sonner"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 
+/** Markdown estável para Jira/ADF: campos multilinha em fence, sem listas aninhadas com ** */
+function jiraExportField(label: string, value: string | undefined | null): string {
+  const v = (value && value.trim()) ? value.trim() : "—"
+  if (v === "—") return `**${label}:** —`
+  if (v.includes("\n")) {
+    const safe = v.replace(/```/g, "'''")
+    return `**${label}:**\n\n\`\`\`text\n${safe}\n\`\`\``
+  }
+  return `**${label}:** ${v}`
+}
+
 export interface SuiteFormProps {
   mode: "create" | "edit"
   suite?: SuiteRecord
@@ -125,21 +136,21 @@ export function SuiteForm({
   function buildCenariosJiraContent(ids: Set<string>): string {
     const selected = cenarios.filter(c => ids.has(c.id))
     if (selected.length === 0) return ""
-    const fieldOrDash = (v: string | undefined | null) => (v && v.trim()) ? v.trim() : "—"
     const details = selected.map((c) => {
       const cenario = allCenarios.find((ac) => ac.id === c.id)
+      const sys = cenario?.system ?? suite?.sistema
       return [
         `### ${c.id} — ${c.name}`,
         ``,
-        `- **Sistema:** ${fieldOrDash(cenario?.system ?? suite?.sistema)}`,
-        `- **Módulo:** ${fieldOrDash(c.module)}`,
-        `- **Tipo:** ${fieldOrDash(c.tipo)}`,
-        `- **Descrição:** ${fieldOrDash(cenario?.descricao)}`,
-        `- **Regra de Negócio:** ${fieldOrDash(cenario?.regraDeNegocio)}`,
-        `- **Pré-condições:** ${fieldOrDash(cenario?.preCondicoes)}`,
-        `- **BDD (Gherkin):** ${fieldOrDash(cenario?.bdd)}`,
-        `- **Resultado esperado:** ${fieldOrDash(cenario?.resultadoEsperado)}`,
-        `- **Testes:** ${historicoStats[c.id]?.execucoes ?? 0} | **Erros:** ${historicoStats[c.id]?.erros ?? 0}`,
+        jiraExportField("Sistema", sys),
+        jiraExportField("Módulo", c.module),
+        jiraExportField("Tipo", c.tipo),
+        jiraExportField("Descrição", cenario?.descricao),
+        jiraExportField("Regra de Negócio", cenario?.regraDeNegocio),
+        jiraExportField("Pré-condições", cenario?.preCondicoes),
+        jiraExportField("BDD (Gherkin)", cenario?.bdd),
+        jiraExportField("Resultado esperado", cenario?.resultadoEsperado),
+        `**Testes:** ${historicoStats[c.id]?.execucoes ?? 0} | **Erros:** ${historicoStats[c.id]?.erros ?? 0}`,
       ].join("\n")
     }).join("\n---\n\n")
     const exportDate = new Date().toLocaleDateString("pt-BR")
@@ -167,7 +178,6 @@ export function SuiteForm({
     // Build content and open modal
 
     const resultIcon = (r: string) => r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : "⏳"
-    const fieldOrDash = (v: string | undefined | null) => (v && v.trim()) ? v.trim() : "—"
 
     // ── Detailed blocks ───────────────────────────────────────────────────────
     const allEvidences: EvFile[] = []
@@ -186,16 +196,16 @@ export function SuiteForm({
       const lines = [
         `### ${h.id} — ${h.cenario}  ${icon} ${h.resultado}`,
         ``,
-        `- **Sistema:** ${fieldOrDash(cenario?.system ?? suite?.sistema)}`,
-        `- **Módulo:** ${fieldOrDash(h.module)}`,
-        `- **Tipo:** ${fieldOrDash(h.tipo)}`,
-        `- **Descrição:** ${fieldOrDash(cenario?.descricao)}`,
-        `- **Regra de Negócio:** ${fieldOrDash(cenario?.regraDeNegocio)}`,
-        `- **Pré-condições:** ${fieldOrDash(cenario?.preCondicoes)}`,
-        `- **BDD (Gherkin):** ${fieldOrDash(cenario?.bdd)}`,
-        `- **Resultado esperado:** ${fieldOrDash(cenario?.resultadoEsperado)}`,
-        `- **Execução:** ${h.data}${h.hora ? ` às ${h.hora}` : ""}`,
-        `- **Resultado:** ${icon} ${h.resultado}`,
+        jiraExportField("Sistema", cenario?.system ?? suite?.sistema),
+        jiraExportField("Módulo", h.module),
+        jiraExportField("Tipo", h.tipo),
+        jiraExportField("Descrição", cenario?.descricao),
+        jiraExportField("Regra de Negócio", cenario?.regraDeNegocio),
+        jiraExportField("Pré-condições", cenario?.preCondicoes),
+        jiraExportField("BDD (Gherkin)", cenario?.bdd),
+        jiraExportField("Resultado esperado", cenario?.resultadoEsperado),
+        `**Execução:** ${h.data}${h.hora ? ` às ${h.hora}` : ""}`,
+        `**Resultado:** ${icon} ${h.resultado}`,
       ]
 
       if (manualEvs.length > 0) {
@@ -383,6 +393,7 @@ export function SuiteForm({
   const filteredAdd = allCenarios.filter((c) => {
     if (!c.active) return false
     if (existingIds.has(c.id)) return false
+    if (sistemaSelecionado && (c.system || "").trim() !== sistemaSelecionado.trim()) return false
     // Search filter
     const searchLow = addSearch.toLowerCase().trim()
     const matchesSearch = !searchLow ||

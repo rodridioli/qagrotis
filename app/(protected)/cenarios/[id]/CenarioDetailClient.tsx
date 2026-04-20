@@ -35,25 +35,18 @@ interface Props {
 
 /* ── Helpers ── */
 
-/** Quebra o BDD em linhas, destacando DADO/QUANDO/ENTÃO */
+/** Exibe BDD preservando quebras de linha (evita “quebrar” texto no meio de palavras) */
 function formatBdd(text: string): React.ReactNode {
-  if (!text) return <span className="text-text-secondary italic">—</span>
-  // Quebra antes de cada palavra-chave (case-insensitive)
-  const normalized = text
-    .replace(/\r\n/g, "\n")
-    .replace(/(\n)?(DADO|QUANDO|ENTÃO|ENTAO|AND|E\s)/gi, (m) => `\n${m.trim()}`)
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-
+  if (!text?.trim()) return <span className="text-text-secondary italic">—</span>
+  const lines = text.replace(/\r\n/g, "\n").split("\n")
   return (
-    <>
-      {normalized.map((line, i) => (
-        <span key={i} className="block">
-          {line}
+    <span className="whitespace-pre-wrap break-words">
+      {lines.map((line, i) => (
+        <span key={i} className="block min-h-[1.25em]">
+          {line || "\u00A0"}
         </span>
       ))}
-    </>
+    </span>
   )
 }
 

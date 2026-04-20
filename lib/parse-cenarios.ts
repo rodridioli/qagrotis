@@ -301,13 +301,10 @@ export function buildImportItems(
       ) ?? null
 
     let error: string | undefined
-    // Allow import if at least scenarioName is present.
-    // descricao falls back to bdd (handled in import handler),
-    // resultadoEsperado falls back to "-" (handled in import handler).
-    // Only block if truly nothing useful was parsed.
-    if (!pFinal.descricao && !pFinal.bdd && !pFinal.resultadoEsperado) {
-      error = "Cenário sem conteúdo: nenhum campo foi identificado no texto gerado"
+    if (!pFinal.scenarioName?.trim()) {
+      error = "Cenário sem título: não foi possível identificar o nome no texto."
     }
+    // Com título identificado, não bloqueia por corpo vazio (evita "nenhum campo identificado" em .md do gerador)
 
     return {
       key: `${idx}-${p.scenarioName}`,

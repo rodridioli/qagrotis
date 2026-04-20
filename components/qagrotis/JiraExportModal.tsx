@@ -28,23 +28,32 @@ function parseIssueKey(input: string): string {
   return trimmed
 }
 
+function fieldMd(label: string, value: string | undefined | null): string {
+  const v = (value && value.trim()) ? value.trim() : "—"
+  if (v === "—") return `**${label}:** —`
+  if (v.includes("\n")) {
+    const safe = v.replace(/```/g, "'''")
+    return `**${label}:**\n\n\`\`\`text\n${safe}\n\`\`\``
+  }
+  return `**${label}:** ${v}`
+}
+
 function buildContent(cenario: CenarioRecord, manualNames: string[], autoNames: string[]): string {
-  const f = (v: string | undefined | null) => (v && v.trim()) ? v.trim() : "—"
   const exportDate = new Date().toLocaleDateString("pt-BR")
 
   const lines: string[] = [
     `## ${cenario.id} — ${cenario.scenarioName}`,
     `*Exportado em ${exportDate}*`,
     ``,
-    `- **Sistema:** ${f(cenario.system)}`,
-    `- **Módulo:** ${f(cenario.module)}`,
-    `- **Tipo:** ${f(cenario.tipo)}`,
-    `- **Risco:** ${f(cenario.risco)}`,
-    `- **Descrição:** ${f(cenario.descricao)}`,
-    `- **Regra de Negócio:** ${f(cenario.regraDeNegocio)}`,
-    `- **Pré-condições:** ${f(cenario.preCondicoes)}`,
-    `- **BDD (Gherkin):** ${f(cenario.bdd)}`,
-    `- **Resultado Esperado:** ${f(cenario.resultadoEsperado)}`,
+    fieldMd("Sistema", cenario.system),
+    fieldMd("Módulo", cenario.module),
+    fieldMd("Tipo", cenario.tipo),
+    fieldMd("Risco", cenario.risco),
+    fieldMd("Descrição", cenario.descricao),
+    fieldMd("Regra de Negócio", cenario.regraDeNegocio),
+    fieldMd("Pré-condições", cenario.preCondicoes),
+    fieldMd("BDD (Gherkin)", cenario.bdd),
+    fieldMd("Resultado Esperado", cenario.resultadoEsperado),
   ]
 
   if (manualNames.length > 0) {
