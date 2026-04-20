@@ -55,6 +55,38 @@ Se o client já existir (outro PC / backup de node_modules/.prisma):
   }
 }
 
+// Aplicar migrações no Postgres de produção (Vercel/CI com DATABASE_URL).
+// Sem isso, o schema do client fica à frente do banco e findMany() quebra (coluna inexistente).
+const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || ""
+const skipMigrate = process.env.SKIP_PRISMA_MIGRATE === "1"
+const hasRealDb =
+  dbUrl.length > 12 && !/placeholder/i.test(dbUrl) && dbUrl.startsWith("postgres")
+
+if (skipMigrate) {
+  console.info("[build] SKIP_PRISMA_MIGRATE=1 — pulando prisma migrate deploy.")
+} else if (hasRealDb) {
+  console.info("[build] prisma migrate deploy (aplicar migrações pendentes no banco)")
+  const migrate = spawnSync("npx", ["prisma", "migrate", "deploy"], {
+    cwd: root,
+    stdio: "inherit",
+    shell: true,
+    env: process.env,
+  })
+  if (migrate.status !== 0) {
+    console.error(`
+----------------------------------------------------------------------
+prisma migrate deploy falhou. O banco precisa estar alinhado ao schema.
+Verifique DATABASE_URL na Vercel e os logs acima.
+
+Para build local sem DB: SKIP_PRISMA_MIGRATE=1 npm run build
+----------------------------------------------------------------------
+`)
+    process.exit(migrate.status ?? 1)
+  }
+} else {
+  console.info("[build] DATABASE_URL não definida ou placeholder — pulando prisma migrate deploy.")
+}
+
 const build = spawnSync("npx", ["next", "build"], {
   cwd: root,
   stdio: "inherit",
