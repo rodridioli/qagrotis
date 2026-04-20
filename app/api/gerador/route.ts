@@ -561,26 +561,37 @@ Cruze a análise visual com o contexto/requisitos fornecidos para gerar cenário
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
+export const dynamic = "force-dynamic"
+
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user) {
     return new Response("Unauthorized", { status: 401 })
   }
 
-  const body = await req.json() as {
-    /** Texto livre (requisitos / contexto). Alias legado: `jira`. */
+  let body: {
     context?: string
     jira?: string
+    prompt?: string
     imagens?: { dataUrl: string; name: string }[]
     integrationId?: string
   }
+  try {
+    body = await req.json()
+  } catch {
+    return new Response("Corpo da requisição inválido (JSON esperado).", { status: 400 })
+  }
 
-  const { imagens, integrationId } = body
+  const imagens = Array.isArray(body.imagens) ? body.imagens : undefined
+  const integrationId =
+    typeof body.integrationId === "string" ? body.integrationId.trim() : ""
   const ctx = typeof body.context === "string" ? body.context.trim() : ""
   const leg = typeof body.jira === "string" ? body.jira.trim() : ""
-  const jira = ctx || leg
+  const pr = typeof body.prompt === "string" ? body.prompt.trim() : ""
+  const jira = ctx || leg || pr
 
-  if (!checkGeradorRateLimit(session.user.id!)) {
+  const rateUserId = session.user.id ?? session.user.email ?? "session"
+  if (!checkGeradorRateLimit(rateUserId)) {
     return new Response("Limite de geração atingido (30/hora). Aguarde antes de tentar novamente.", { status: 429 })
   }
 
@@ -590,7 +601,7 @@ export async function POST(req: NextRequest) {
 
   if (!jira && (!imagens || imagens.length === 0)) {
     return new Response(
-      "Informe ao menos uma entrada: texto em Contexto, anexos (imagens/PDF) ou issue do Jira carregada com sucesso.",
+      "Informe ao menos uma entrada: texto no campo Contexto, anexos (imagem/PDF) ou carregue uma issue do Jira com sucesso (URL/chave + integração Jira em Configurações).",
       { status: 400 },
     )
   }

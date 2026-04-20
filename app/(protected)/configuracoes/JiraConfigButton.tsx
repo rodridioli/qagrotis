@@ -33,10 +33,25 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
   )
   const [saving, setSaving] = useState(false)
 
-  function handleOpen() {
+  async function handleOpen() {
     setJiraUrl(localStorage.getItem("jira_url") || "https://agrotis.atlassian.net/")
     setEmail(localStorage.getItem("jira_email") || defaultEmail)
     setToken(localStorage.getItem("jira_token") || "")
+    try {
+      const r = await fetch("/api/jira/credentials", { credentials: "same-origin" })
+      if (r.ok) {
+        const d = (await r.json()) as {
+          jiraUrl?: string
+          jiraEmail?: string
+          hasToken?: boolean
+        }
+        if (d.jiraUrl) setJiraUrl(d.jiraUrl)
+        if (d.jiraEmail) setEmail(d.jiraEmail)
+        if (d.hasToken) localStorage.setItem("jira_cookie_ok", "1")
+      }
+    } catch {
+      /* ignora rede */
+    }
     setOpen(true)
   }
 
@@ -68,6 +83,8 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
       localStorage.setItem("jira_url", jiraUrl.trim())
       localStorage.setItem("jira_email", email.trim())
       localStorage.setItem("jira_token", token.trim())
+      localStorage.setItem("jira_cookie_ok", "1")
+      window.dispatchEvent(new Event("jira-credentials-synced"))
       toast.success("Configuração do Jira salva com sucesso.")
       setOpen(false)
     } catch {
@@ -99,7 +116,7 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
           </DialogHeader>
           <div className="flex flex-col gap-4 py-2">
             <p className="text-sm text-text-secondary">
-              Configure as credenciais para exportar históricos diretamente para o Jira. As informações são salvas localmente no seu navegador.
+              Configure as credenciais para exportar históricos e usar o Gerador com issues do Jira. URL, e-mail e token são gravados em cookies seguros no servidor (persistem mesmo se você limpar apenas o armazenamento local do site).
             </p>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">URL do Jira <span className="text-destructive">*</span></label>

@@ -3,16 +3,17 @@
 import { useEffect } from "react"
 import { AlertTriangle, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { getAppErrorUserMessage, logClientSegmentError } from "@/lib/app-error-message"
 
 export default function ProtectedError({
   error,
-  unstable_retry,
+  reset,
 }: {
   error: Error & { digest?: string }
-  unstable_retry: () => void
+  reset: () => void
 }) {
   useEffect(() => {
-    console.error("[error-boundary]", error)
+    logClientSegmentError("protected-layout", error)
   }, [error])
 
   return (
@@ -22,16 +23,12 @@ export default function ProtectedError({
       </div>
       <div className="max-w-sm space-y-1">
         <p className="text-base font-semibold text-text-primary">Algo deu errado</p>
-        <p className="text-sm text-text-secondary">
-          {error.message && !error.message.includes("digest")
-            ? error.message
-            : "Ocorreu um erro inesperado. Tente novamente."}
-        </p>
+        <p className="text-sm text-text-secondary">{getAppErrorUserMessage(error)}</p>
         {error.digest && (
           <p className="font-mono text-xs text-text-secondary/60">ref: {error.digest}</p>
         )}
       </div>
-      <Button variant="outline" onClick={unstable_retry} className="gap-2">
+      <Button variant="outline" onClick={() => reset()} className="gap-2">
         <RefreshCw className="size-4" />
         Tentar novamente
       </Button>

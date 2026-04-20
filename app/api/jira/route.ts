@@ -57,7 +57,18 @@ export async function POST(req: NextRequest) {
 
     if (!res.ok) {
       const err = await res.text()
-      return new Response(`Erro Jira ${res.status}: ${err.slice(0, 300)}`, { status: res.status })
+      const detail = `Erro Jira (${res.status}): ${err.slice(0, 300)}`
+      // Não repassar 404 do Jira como HTTP 404 da nossa rota (parece /api/jira inexistente no DevTools).
+      const http =
+        res.status === 404 || res.status === 401 || res.status === 403
+          ? 400
+          : res.status >= 500
+            ? 502
+            : 400
+      return new Response(
+        JSON.stringify({ jiraStatus: res.status, detail }),
+        { status: http, headers: { "Content-Type": "application/json" } },
+      )
     }
 
     const data = await res.json() as {

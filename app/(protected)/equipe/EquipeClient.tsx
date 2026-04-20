@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useTransition, useMemo } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import {
   BarChart3, Users, Clock, Calendar,
   SlidersHorizontal,
@@ -297,7 +297,8 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
   const [applied, setApplied] = useState(DEFAULT_FILTERS)
 
   const [users, setUsers] = useState<UserPerformanceData[]>([])
-  const [isPending, startTransition] = useTransition()
+  const [performanceLoading, setPerformanceLoading] = useState(true)
+  const [performanceError, setPerformanceError] = useState<string | null>(null)
 
   const activeFilterCount = [
     applied.sistema !== "todos",
@@ -308,15 +309,30 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
   useEffect(() => {
     if (activeTab !== "performance") return
     const { dataInicio, dataFim } = getDateRange(applied.periodo)
-    startTransition(async () => {
-      const data = await getPerformanceData({
-        sistema:    applied.sistema === "todos" ? undefined : applied.sistema,
-        modulo:     applied.modulo  === "todos" ? undefined : applied.modulo,
-        dataInicio,
-        dataFim,
-      })
-      setUsers(data)
+    let cancelled = false
+    setPerformanceLoading(true)
+    setPerformanceError(null)
+    getPerformanceData({
+      sistema: applied.sistema === "todos" ? undefined : applied.sistema,
+      modulo:  applied.modulo  === "todos" ? undefined : applied.modulo,
+      dataInicio,
+      dataFim,
     })
+      .then((data) => {
+        if (!cancelled) setUsers(data)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUsers([])
+          setPerformanceError("Não foi possível carregar os dados de performance. Tente novamente em instantes.")
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPerformanceLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [applied, activeTab])
 
   function handleOpenFilter() {
@@ -383,16 +399,20 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
             onOpenChange={setFilterOpen}
             sistemas={sistemas}
             modulosPorSistema={modulosPorSistema}
-            pending={isPending}
+            pending={performanceLoading}
             draft={draft}
             onDraftChange={setDraft}
             onApply={handleApply}
             onReset={handleReset}
           />
 
-          {isPending ? (
+          {performanceLoading ? (
             <div className="flex items-center justify-center py-20">
               <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
+            </div>
+          ) : performanceError ? (
+            <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
+              <p className="text-center text-sm text-destructive">{performanceError}</p>
             </div>
           ) : users.length === 0 ? (
             <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card">

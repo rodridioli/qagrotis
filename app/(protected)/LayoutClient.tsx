@@ -464,8 +464,12 @@ export default function LayoutClient({
   }, [hasActiveSistema, pathname, router])
 
   // Show loading screen only during the brief hydration gap where props arrived
-  // but sistemaSelecionado hasn't been initialized yet
-  const isReady = !hasActiveSistema || sistemaSelecionado !== ""
+  // but sistemaSelecionado hasn't been initialized yet.
+  // /equipe não depende do sistema do topo — evita spinner eterno se o estado atrasar após hidratação.
+  const isReady =
+    !hasActiveSistema ||
+    sistemaSelecionado !== "" ||
+    pathname.startsWith("/equipe")
 
   function handleSistemaChange(value: string) {
     setSistemaSelecionado(value)

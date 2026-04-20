@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { SessionProvider } from "next-auth/react"
 import { useState, type ReactNode } from "react"
+import { JiraCredentialsSync } from "@/components/qagrotis/JiraCredentialsSync"
 
 interface ProvidersProps {
   children: ReactNode
@@ -22,6 +23,7 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <SessionProvider>
+      <JiraCredentialsSync />
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </SessionProvider>
   )

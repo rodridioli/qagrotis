@@ -61,12 +61,25 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const [jiraInput, setJiraInput] = useState("")
   const [jiraConfigured, setJiraConfigured] = useState(false)
 
-  // Check if Jira is configured in localStorage
+  // Jira: token pode estar só em cookie httpOnly (após salvar em Configurações). localStorage
+  // pode ser limpo sem apagar o cookie — consideramos `jira_cookie_ok` após sync (JiraCredentialsSync).
+  function refreshJiraConfigured() {
+    try {
+      const url = localStorage.getItem("jira_url")
+      const email = localStorage.getItem("jira_email")
+      const token = localStorage.getItem("jira_token")
+      const cookieOk = localStorage.getItem("jira_cookie_ok") === "1"
+      setJiraConfigured(!!(url?.trim() && email?.trim() && (token?.trim() || cookieOk)))
+    } catch {
+      setJiraConfigured(false)
+    }
+  }
+
   useEffect(() => {
-    const url = localStorage.getItem("jira_url")
-    const email = localStorage.getItem("jira_email")
-    const token = localStorage.getItem("jira_token")
-    setJiraConfigured(!!(url && email && token))
+    refreshJiraConfigured()
+    const onSync = () => refreshJiraConfigured()
+    window.addEventListener("jira-credentials-synced", onSync)
+    return () => window.removeEventListener("jira-credentials-synced", onSync)
   }, [])
   const activeIntegracoes = useMemo(() => integracoes.filter(i => i.active !== false), [integracoes])
   const [aiProvider, setAiProvider] = useState<string>(() => {
@@ -96,6 +109,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const generateInFlight = useRef(false)
   const [anexoPreviews, setAnexoPreviews] = useState<UploadFile[]>([])
 
   // Import state
@@ -196,6 +210,12 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   )
 
   async function generate() {
+    if (generateInFlight.current) return
+    generateInFlight.current = true
+    const api = (path: string) =>
+      typeof window !== "undefined" ? `${window.location.origin}${path}` : path
+
+    try {
     const hasInput = contexto.trim() || jiraInput.trim() || anexoPreviews.length > 0
     if (!aiProvider) {
       setActiveTab("contexto")
@@ -219,6 +239,8 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
     // Fetch Jira issue content if URL/key provided
     let jiraContext = contexto.trim()
+    /** Quando o Jira indica issue inacessível (ex.: 404), usamos mensagem única para o usuário. */
+    let jiraIssueInaccessibleMessage: string | null = null
     const jiraAttachments: { list: { name: string; dataUrl: string }[] } = { list: [] }
     if (jiraInput.trim()) {
       try {
@@ -229,7 +251,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         const issueKey = jiraInput.trim().includes("/")
           ? jiraInput.trim().split("/").pop() ?? jiraInput.trim()
           : jiraInput.trim()
-        const jiraRes = await fetch("/api/jira", {
+        const jiraRes = await fetch(api("/api/jira"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "fetch", jiraUrl, issueKey, email: jiraEmail, apiToken: jiraToken }),
@@ -255,9 +277,24 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
           }
         } else {
           const errBody = await jiraRes.text().catch(() => "")
-          toast.error(
-            `Jira: não foi possível carregar a issue (${jiraRes.status}). ${errBody.slice(0, 160)}`,
-          )
+          let jiraStatus: number | undefined
+          try {
+            const parsed = JSON.parse(errBody) as { jiraStatus?: number }
+            jiraStatus = parsed.jiraStatus
+          } catch {
+            const m = errBody.match(/Erro Jira \((\d+)\)/)
+            if (m) jiraStatus = Number(m[1])
+          }
+          if (jiraStatus === 404) {
+            const msg =
+              "Seu token do Jira expirou. Por favor, atualize-o e tente novamente."
+            jiraIssueInaccessibleMessage = msg
+            toast.error(msg)
+          } else {
+            toast.error(
+              `Jira: não foi possível carregar a issue (${jiraRes.status}). ${errBody.slice(0, 160)}`,
+            )
+          }
         }
       } catch {
         toast.error("Falha de rede ao contatar o Jira. Verifique a conexão e as credenciais em Configurações.")
@@ -271,9 +308,12 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     if (!textPayload && imagensPayload.length === 0) {
       setActiveTab("contexto")
       setApiError(
-        "É necessário texto em Contexto, anexos ou uma issue do Jira válida (com credenciais configuradas). Se você informou só a URL da issue, confira a integração Jira e a chave do item.",
+        jiraIssueInaccessibleMessage ??
+          "É necessário texto em Contexto, anexos ou uma issue do Jira válida (com credenciais configuradas). Se você informou só a URL da issue, confira a integração Jira e a chave do item.",
       )
-      toast.error("Nenhum dado para enviar ao modelo. Preencha o contexto, anexos ou corrija o Jira.")
+      if (!jiraIssueInaccessibleMessage) {
+        toast.error("Nenhum dado para enviar ao modelo. Preencha o contexto, anexos ou corrija o Jira.")
+      }
       setLoading(false)
       return
     }
@@ -281,7 +321,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     setActiveTab("cenarios")
 
     try {
-      const res = await fetch("/api/gerador", {
+      const res = await fetch(api("/api/gerador"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -317,6 +357,9 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       }
     } finally {
       setLoading(false)
+    }
+    } finally {
+      generateInFlight.current = false
     }
   }
 
