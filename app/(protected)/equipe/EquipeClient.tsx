@@ -6,7 +6,8 @@ import {
   SlidersHorizontal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getPerformanceData, type UserPerformanceData } from "@/lib/actions/equipe"
+import { getPerformanceData } from "@/lib/actions/equipe"
+import { EquipePerformanceCard } from "@/components/equipe/EquipePerformanceCard"
 import {
   Select, SelectTrigger, SelectPopup, SelectItem,
 } from "@/components/ui/select"
@@ -63,140 +64,6 @@ function getDateRange(periodo: string): { dataInicio?: string; dataFim?: string 
     }
     default: return {}
   }
-}
-
-// ── Avatar ───────────────────────────────────────────────────────────────────
-
-function UserAvatar({
-  name, photoPath, size, ringClass, shape = "circle",
-}: { name: string; photoPath: string | null; size: number; ringClass?: string; shape?: "circle" | "square" }) {
-  const initials = name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()
-  const radius = shape === "square" ? "rounded-custom" : "rounded-full"
-  const cls = cn(radius, "flex-shrink-0", ringClass)
-  if (photoPath) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={photoPath} alt={name} className={cn(cls, "object-cover")}
-        style={{ width: size, height: size }} />
-    )
-  }
-  return (
-    <div
-      className={cn(cls, "flex items-center justify-center bg-white/20 text-white font-semibold")}
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}
-    >
-      {initials}
-    </div>
-  )
-}
-
-// ── Medal config ─────────────────────────────────────────────────────────────
-
-const RANK_BADGE_TOP3 = [
-  "bg-amber-400 text-white",
-  "bg-slate-400 text-white",
-  "bg-orange-400 text-white",
-] as const
-
-// ── Compact stat cell ─────────────────────────────────────────────────────────
-
-function StatMini({ label, value, color }: { label: string; value: number; color?: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-1 px-1 py-3">
-      <span className={cn("text-lg font-bold leading-none tracking-tight text-text-primary", color)}>{value}</span>
-      <span className="text-center text-[11px] leading-tight text-text-secondary">{label}</span>
-    </div>
-  )
-}
-
-// ── Progress bar ─────────────────────────────────────────────────────────────
-
-function ProgressBar({ value }: { value: number }) {
-  return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-      <div
-        className="h-full rounded-full bg-brand-primary transition-all duration-500"
-        style={{ width: `${Math.min(100, value)}%` }}
-      />
-    </div>
-  )
-}
-
-// ── Performance Card ──────────────────────────────────────────────────────────
-
-function PerformanceCard({ user, rank }: { user: UserPerformanceData; rank: number }) {
-  const rankBadgeClass = rank <= 3 ? RANK_BADGE_TOP3[rank - 1]! : "bg-white/20 text-white"
-
-  return (
-    <div className="flex flex-col overflow-hidden rounded-custom border border-border-default bg-surface-card shadow-card">
-
-      {/* ── Header: avatar + nome (linha), badge #rank ── */}
-      <div className="relative flex items-center gap-3 bg-brand-primary px-4 pb-3 pt-4">
-        <span
-          className={cn(
-            "absolute right-3 top-3 rounded-full px-2.5 py-0.5 text-xs font-bold leading-none",
-            rankBadgeClass,
-          )}
-        >
-          #{rank}
-        </span>
-
-        <UserAvatar name={user.name} photoPath={user.photoPath} size={56} shape="square" />
-
-        <div className="min-w-0 flex-1 pr-10">
-          <p className="truncate text-base font-bold leading-tight text-white">{user.name}</p>
-          <p className="mt-0.5 truncate text-xs text-primary-foreground/85">
-            {user.classificacao ? (
-              <span>{user.classificacao}</span>
-            ) : (
-              <span className="italic text-primary-foreground/55">Sem classificação</span>
-            )}
-          </p>
-        </div>
-      </div>
-
-      {/* ── Sistemas / módulos: **Sistema:** módulos / **Sistema2:** … ── */}
-      <div className="border-b border-border-default px-4 py-2.5">
-        {user.atividadePorSistema.length > 0 ? (
-          <p className="text-xs leading-snug">
-            {user.atividadePorSistema.map(({ sistema, modulos }, i) => (
-              <span key={sistema}>
-                {i > 0 ? <span className="text-text-secondary"> / </span> : null}
-                <span className="font-semibold text-text-primary">{sistema}:</span>{" "}
-                <span className="text-text-secondary">
-                  {modulos.length > 0 ? modulos.join(", ") : "—"}
-                </span>
-              </span>
-            ))}
-          </p>
-        ) : (
-          <p className="text-xs italic text-text-secondary">Nenhum sistema/módulo no período filtrado.</p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-4 divide-x divide-border-default">
-        <StatMini label="Cenários" value={user.cenariosCriados} />
-        <StatMini label="Testes" value={user.testesExecutados} />
-        <StatMini label="Sucesso" value={user.sucessos} color="text-green-600 dark:text-green-400" />
-        <StatMini label="Erros" value={user.errosEncontrados} color="text-destructive" />
-      </div>
-
-      <div className="border-t border-border-default px-4 py-3">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
-            Automatizados
-          </span>
-          <span className="text-xs font-bold text-text-primary">
-            {user.testesAutomatizados} de {user.cenariosCriados}{" "}
-            <span className="text-[10px] font-normal text-text-secondary">
-              ({user.percentualAutomatizado}%)
-            </span>
-          </span>
-        </div>
-        <ProgressBar value={user.percentualAutomatizado} />
-      </div>
-    </div>
-  )
 }
 
 // ── Filter Modal ─────────────────────────────────────────────────────────────
@@ -430,7 +297,7 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {users.map((u, idx) => (
-                <PerformanceCard key={u.userId} user={u} rank={idx + 1} />
+                <EquipePerformanceCard key={u.userId} user={u} rank={idx + 1} />
               ))}
             </div>
           )}
