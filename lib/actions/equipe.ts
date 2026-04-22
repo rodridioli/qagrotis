@@ -41,6 +41,12 @@ export async function getPerformanceData(filters: {
     }
     const hasDateFilter = !!dateFilter.gte || !!dateFilter.lte
 
+    const cenarioCreatedAtWhere: { gte?: Date; lte?: Date } = {}
+    if (hasDateFilter) {
+      if (dateFilter.gte) cenarioCreatedAtWhere.gte = dateFilter.gte
+      if (dateFilter.lte) cenarioCreatedAtWhere.lte = dateFilter.lte
+    }
+
     const [inactiveRecords, profiles, createdUsers, oauthUsers, cenarios, activeSuites] = await Promise.all([
       prisma.inactiveUser.findMany({ select: { userId: true } }),
       prisma.userProfile.findMany({ select: USER_PROFILE_READ_SELECT }),
@@ -55,6 +61,9 @@ export async function getPerformanceData(filters: {
           createdBy: { not: null },
           ...(filters.sistema ? { system: filters.sistema } : {}),
           ...(filters.modulo ? { module: filters.modulo } : {}),
+          ...(hasDateFilter && Object.keys(cenarioCreatedAtWhere).length > 0
+            ? { createdAt: cenarioCreatedAtWhere }
+            : {}),
         },
         select: {
           id: true,
@@ -62,6 +71,7 @@ export async function getPerformanceData(filters: {
           system: true,
           module: true,
           tipo: true,
+          createdAt: true,
         },
       }),
       prisma.suite.findMany({
