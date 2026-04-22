@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select"
 import { PhotoUpload } from "@/components/qagrotis/PhotoUpload"
 import { atualizarQaUser, type QaUserProfile } from "@/lib/actions/usuarios"
-import { FORMATOS_TRABALHO } from "@/lib/usuario-trabalho"
+import { FORMATOS_TRABALHO, sanitizeFormatoTrabalho } from "@/lib/usuario-trabalho"
 import { generateSecurePassword } from "@/lib/generate-secure-password"
 import { inputNativePickerRightClassName } from "@/lib/input-native-picker-classes"
 import { toast } from "sonner"
@@ -37,7 +37,9 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
   const [dataNascimento, setDataNascimento] = useState(initialProfile.dataNascimento ?? "")
   const [horarioEntrada, setHorarioEntrada] = useState(initialProfile.horarioEntrada ?? "")
   const [horarioSaida, setHorarioSaida] = useState(initialProfile.horarioSaida ?? "")
-  const [formatoTrabalho, setFormatoTrabalho] = useState(initialProfile.formatoTrabalho ?? "")
+  const [formatoTrabalho, setFormatoTrabalho] = useState<string>(
+    () => sanitizeFormatoTrabalho(initialProfile.formatoTrabalho) ?? "Presencial",
+  )
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(
     initialProfile.photoPath ?? null
@@ -116,7 +118,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
         dataNascimento: dataNascimento.trim() || null,
         horarioEntrada: horarioEntrada.trim() || null,
         horarioSaida: horarioSaida.trim() || null,
-        formatoTrabalho: formatoTrabalho.trim() || null,
+        formatoTrabalho: sanitizeFormatoTrabalho(formatoTrabalho) ?? "Presencial",
         photoPath: resolvedPhotoPath,
         newPassword: password.trim() || undefined,
       })
@@ -289,15 +291,14 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
                 Formato
               </label>
               <Select
-                value={formatoTrabalho || "__none__"}
-                onValueChange={(v) => setFormatoTrabalho(v === "__none__" ? "" : (v ?? ""))}
+                value={formatoTrabalho}
+                onValueChange={(v) => setFormatoTrabalho(v ?? "Presencial")}
                 disabled={isPending}
               >
                 <SelectTrigger id="formatoTrabalho" className="w-full">
-                  <SelectValue placeholder="Selecionar…" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectPopup>
-                  <SelectItem value="__none__">Selecionar…</SelectItem>
                   {FORMATOS_TRABALHO.map((f) => (
                     <SelectItem key={f} value={f}>
                       {f}

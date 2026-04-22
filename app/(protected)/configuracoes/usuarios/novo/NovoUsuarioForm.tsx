@@ -17,7 +17,7 @@ import { PhotoUpload } from "@/components/qagrotis/PhotoUpload"
 import { criarQaUser, atualizarQaUser } from "@/lib/actions/usuarios"
 import { generateSecurePassword } from "@/lib/generate-secure-password"
 import { inputNativePickerRightClassName } from "@/lib/input-native-picker-classes"
-import { FORMATOS_TRABALHO } from "@/lib/usuario-trabalho"
+import { FORMATOS_TRABALHO, sanitizeFormatoTrabalho } from "@/lib/usuario-trabalho"
 import { toast } from "sonner"
 
 export default function NovoUsuarioForm() {
@@ -88,7 +88,7 @@ export default function NovoUsuarioForm() {
         dataNascimento: dataNascimento.trim() || null,
         horarioEntrada: horarioEntrada.trim() || null,
         horarioSaida: horarioSaida.trim() || null,
-        formatoTrabalho: formatoTrabalho.trim() || null,
+        formatoTrabalho: sanitizeFormatoTrabalho(formatoTrabalho) ?? "Presencial",
         password,
       })
       if (result.error || !result.id) {
@@ -119,7 +119,7 @@ export default function NovoUsuarioForm() {
             dataNascimento: dataNascimento.trim() || null,
             horarioEntrada: horarioEntrada.trim() || null,
             horarioSaida: horarioSaida.trim() || null,
-            formatoTrabalho: formatoTrabalho.trim() || null,
+            formatoTrabalho: sanitizeFormatoTrabalho(formatoTrabalho) ?? "Presencial",
             photoPath,
           })
         } else {

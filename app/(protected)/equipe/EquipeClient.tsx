@@ -428,9 +428,12 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
                   <div className="border-b border-border-default pb-2">
                     <h2
                       id={`mes-aniversario-${month}`}
-                      className="text-sm font-semibold uppercase tracking-wide text-text-secondary"
+                      className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-base font-semibold text-text-primary"
                     >
-                      {titulo}
+                      <span className="uppercase tracking-wide text-text-secondary">{titulo}</span>
+                      <span className="text-sm font-normal normal-case text-text-secondary">
+                        {users.length} {users.length === 1 ? "aniversariante" : "aniversariantes"}
+                      </span>
                     </h2>
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

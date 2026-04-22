@@ -361,15 +361,15 @@ export default function UsuariosClient({
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-160 table-fixed text-sm">
+              <table className="w-full min-w-[76rem] table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
-                  <col className="w-20" />
-                  <col className="w-44" />
-                  <col />
-                  <col className="w-36" />
-                  <col className="min-w-[12rem] w-52 sm:min-w-[14rem] sm:w-60" />
-                  <col className="w-16" />
+                  <col className="w-24 shrink-0" />
+                  <col className="w-48 shrink-0" />
+                  <col className="w-[14rem] shrink-0" />
+                  <col className="w-36 shrink-0" />
+                  <col className="min-w-[22rem] w-[28rem] sm:min-w-[26rem] sm:w-[32rem]" />
+                  <col className="w-16 shrink-0" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -452,8 +452,13 @@ export default function UsuariosClient({
                         </td>
                         <td className="px-4 py-3 text-text-secondary truncate transition-colors group-hover:bg-neutral-grey-50" title={u.email}>{u.email}</td>
                         <td className="px-4 py-3 transition-colors group-hover:bg-neutral-grey-50"><UserTipoBadge tipo={u.type} /></td>
-                        <td className="max-w-[16rem] px-4 py-3 align-top text-text-secondary break-words whitespace-normal transition-colors group-hover:bg-neutral-grey-50 sm:max-w-none">
-                          {u.classificacao ?? "—"}
+                        <td
+                          className="min-w-0 px-4 py-3 text-text-secondary transition-colors group-hover:bg-neutral-grey-50"
+                          title={u.classificacao ?? undefined}
+                        >
+                          <span className="block truncate whitespace-nowrap">
+                            {u.classificacao ?? "—"}
+                          </span>
                         </td>
                         <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
                           {filters.apenasInativos && !isSelf ? (
