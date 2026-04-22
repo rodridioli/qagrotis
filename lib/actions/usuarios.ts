@@ -471,6 +471,8 @@ export async function atualizarQaUser(
     classificacao?: string | null
     dataNascimento?: string | null
     photoPath?: string | null
+    /** Nova senha local (CreatedUser). Omitir ou vazio = não alterar. */
+    newPassword?: string | null
   }
 ): Promise<{ error?: string }> {
   let session: Awaited<ReturnType<typeof requireSession>>
@@ -524,6 +526,12 @@ export async function atualizarQaUser(
     const dataNascimento =
       data.dataNascimento === undefined ? undefined : parseDateInput(data.dataNascimento)
 
+    const newPw = data.newPassword?.trim()
+    if (newPw) {
+      if (newPw.length < 8) return { error: "A nova senha deve ter no mínimo 8 caracteres." }
+      if (newPw.length > 100) return { error: "Senha muito longa." }
+    }
+
     const profileData: {
       name: string
       email: string
@@ -555,6 +563,13 @@ export async function atualizarQaUser(
     })
 
     const createdRow = await prisma.createdUser.findUnique({ where: { id }, select: { id: true } })
+    if (newPw && !createdRow) {
+      return {
+        error:
+          "Este perfil não possui cadastro com senha local (ex.: conta só Google). Peça a um administrador para criar o usuário com senha ou use apenas o login Google.",
+      }
+    }
+
     if (createdRow) {
       await prisma.createdUser.update({
         where: { id },
@@ -565,6 +580,7 @@ export async function atualizarQaUser(
           classificacao: classificacaoValida,
           ...(dataNascimento !== undefined ? { dataNascimento } : {}),
           ...(safePhotoPath !== undefined ? { photoPath: safePhotoPath } : {}),
+          ...(newPw ? { password: hashPassword(newPw) } : {}),
         },
       })
     }

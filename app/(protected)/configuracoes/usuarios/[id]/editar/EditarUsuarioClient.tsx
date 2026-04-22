@@ -68,6 +68,16 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
       toast.error("O e-mail é obrigatório.")
       return
     }
+    if (password || confirmPassword) {
+      if (password.length < 8) {
+        toast.error("A nova senha deve ter no mínimo 8 caracteres.")
+        return
+      }
+      if (password !== confirmPassword) {
+        toast.error("A confirmação da senha não confere.")
+        return
+      }
+    }
 
     startTransition(async () => {
       // undefined = no change, null = explicitly removed, string = new upload
@@ -100,6 +110,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
         classificacao: classificacao || null,
         dataNascimento: dataNascimento.trim() || null,
         photoPath: resolvedPhotoPath,
+        newPassword: password.trim() || undefined,
       })
 
       if (result.error) {
@@ -107,6 +118,8 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
         return
       }
 
+      setPassword("")
+      setConfirmPassword("")
       toast.success("Cadastro atualizado com sucesso.")
       router.refresh()
     })
@@ -183,8 +196,8 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
             </div>
           )}
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-4">
-            <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+            <div className="min-w-0 space-y-1.5">
               <label htmlFor="classificacao" className="text-sm font-medium text-text-primary">
                 Classificação
               </label>
@@ -213,9 +226,9 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
               )}
             </div>
 
-            <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <label htmlFor="dataNascimento" className="text-sm font-medium text-text-primary">
-                Data de nascimento
+                Data de Nascimento
               </label>
               <Input
                 id="dataNascimento"
@@ -223,7 +236,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
                 value={dataNascimento}
                 onChange={(e) => setDataNascimento(e.target.value)}
                 disabled={isPending}
-                className="w-full min-w-0"
+                className="w-full min-w-0 sm:max-w-[12.5rem]"
               />
             </div>
           </div>
