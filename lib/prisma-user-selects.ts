@@ -1,7 +1,7 @@
 /**
- * Leituras de UserProfile / CreatedUser sem `dataNascimento` no SELECT.
- * Evita erro Prisma quando o banco de produção ainda não recebeu a migração
- * que adiciona a coluna (deploy sem `prisma migrate deploy`).
+ * Leituras de UserProfile / CreatedUser.
+ * Chame `ensureUserDataNascimentoColumns` e `ensureUserWorkScheduleColumns` antes das queries
+ * se o deploy ainda não aplicou migrações (ADD COLUMN IF NOT EXISTS no ensure).
  */
 export const USER_PROFILE_READ_SELECT = {
   userId: true,
@@ -10,6 +10,10 @@ export const USER_PROFILE_READ_SELECT = {
   type: true,
   classificacao: true,
   photoPath: true,
+  dataNascimento: true,
+  horarioEntrada: true,
+  horarioSaida: true,
+  formatoTrabalho: true,
 } as const
 
 export const CREATED_USER_READ_SELECT = {
@@ -21,4 +25,8 @@ export const CREATED_USER_READ_SELECT = {
   photoPath: true,
   password: true,
   createdAt: true,
+  dataNascimento: true,
+  horarioEntrada: true,
+  horarioSaida: true,
+  formatoTrabalho: true,
 } as const

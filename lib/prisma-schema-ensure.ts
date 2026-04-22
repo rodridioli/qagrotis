@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma"
 
-const g = globalThis as unknown as { __qagrotisEnsuredDataNascimento?: boolean }
+const g = globalThis as unknown as {
+  __qagrotisEnsuredDataNascimento?: boolean
+  __qagrotisEnsuredWorkSchedule?: boolean
+}
 
 /**
  * Garante as colunas `dataNascimento` em `CreatedUser` e `UserProfile`.
@@ -21,5 +24,35 @@ export async function ensureUserDataNascimentoColumns(): Promise<void> {
     g.__qagrotisEnsuredDataNascimento = true
   } catch (e) {
     console.error("[prisma-schema-ensure] dataNascimento columns", e)
+  }
+}
+
+/**
+ * Garante horário entrada/saída e formato de trabalho em CreatedUser e UserProfile.
+ */
+export async function ensureUserWorkScheduleColumns(): Promise<void> {
+  if (g.__qagrotisEnsuredWorkSchedule) return
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "CreatedUser" ADD COLUMN IF NOT EXISTS "horarioEntrada" TEXT`,
+    )
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "CreatedUser" ADD COLUMN IF NOT EXISTS "horarioSaida" TEXT`,
+    )
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "CreatedUser" ADD COLUMN IF NOT EXISTS "formatoTrabalho" TEXT`,
+    )
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "horarioEntrada" TEXT`,
+    )
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "horarioSaida" TEXT`,
+    )
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "formatoTrabalho" TEXT`,
+    )
+    g.__qagrotisEnsuredWorkSchedule = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] work schedule columns", e)
   }
 }

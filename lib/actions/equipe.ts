@@ -1,7 +1,10 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-import { ensureUserDataNascimentoColumns } from "@/lib/prisma-schema-ensure"
+import {
+  ensureUserDataNascimentoColumns,
+  ensureUserWorkScheduleColumns,
+} from "@/lib/prisma-schema-ensure"
 import { USER_PROFILE_READ_SELECT } from "@/lib/prisma-user-selects"
 export interface UserPerformanceData {
   userId: string
@@ -249,6 +252,154 @@ export async function getPerformanceData(filters: {
   } catch (e) {
     console.error("[getPerformanceData]", e)
     return []
+  }
+}
+
+/** Usuário ativo com dados de cadastro (equipe: aniversários / horários). */
+export interface EquipeUsuarioCadastro {
+  userId: string
+  name: string
+  email: string
+  classificacao: string | null
+  photoPath: string | null
+  /** `yyyy-mm-dd` quando definida */
+  dataNascimentoIso: string | null
+  horarioEntrada: string | null
+  horarioSaida: string | null
+}
+
+function toDateOnlyIso(d: Date | null | undefined): string | null {
+  if (!d) return null
+  const t = d.getTime()
+  if (Number.isNaN(t)) return null
+  return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Lista usuários ativos para abas Aniversários e Horários (um round-trip ao banco).
+ */
+export async function getEquipeListagemCadastro(): Promise<{
+  aniversariantes: EquipeUsuarioCadastro[]
+  comHorario: EquipeUsuarioCadastro[]
+}> {
+  try {
+    await ensureUserDataNascimentoColumns()
+    await ensureUserWorkScheduleColumns()
+
+    const [inactiveRecords, profiles, createdUsers, oauthUsers] = await Promise.all([
+      prisma.inactiveUser.findMany({ select: { userId: true } }),
+      prisma.userProfile.findMany({ select: USER_PROFILE_READ_SELECT }),
+      prisma.createdUser.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          classificacao: true,
+          photoPath: true,
+          dataNascimento: true,
+          horarioEntrada: true,
+          horarioSaida: true,
+        },
+      }),
+      prisma.user.findMany({
+        select: { id: true, name: true, email: true, image: true },
+      }),
+    ])
+
+    const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
+    const profileMap = new Map(profiles.map((p) => [p.userId, p]))
+
+    type Row = EquipeUsuarioCadastro & { active: boolean }
+    const usersByEmail = new Map<string, Row>()
+
+    const upsert = (base: {
+      id: string
+      name: string
+      email: string
+      classificacao?: string | null
+      photoPath?: string | null
+      dataNascimento?: Date | null
+      horarioEntrada?: string | null
+      horarioSaida?: string | null
+      active: boolean
+    }) => {
+      const p = profileMap.get(base.id)
+      const email = (p?.email ?? base.email).trim()
+      if (!email) return
+      const dn = p?.dataNascimento ?? base.dataNascimento ?? null
+      const he = p?.horarioEntrada ?? base.horarioEntrada ?? null
+      const hs = p?.horarioSaida ?? base.horarioSaida ?? null
+      usersByEmail.set(email.toLowerCase(), {
+        userId: base.id,
+        name: (p?.name ?? base.name).trim() || base.name,
+        email,
+        classificacao: p?.classificacao ?? base.classificacao ?? null,
+        photoPath: p?.photoPath ?? base.photoPath ?? null,
+        dataNascimentoIso: toDateOnlyIso(dn),
+        horarioEntrada: he?.trim() ? he.trim() : null,
+        horarioSaida: hs?.trim() ? hs.trim() : null,
+        active: base.active && !inactiveIds.has(base.id),
+      })
+    }
+
+    for (const u of createdUsers) {
+      upsert({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        classificacao: u.classificacao ?? null,
+        photoPath: u.photoPath ?? null,
+        dataNascimento: u.dataNascimento,
+        horarioEntrada: u.horarioEntrada,
+        horarioSaida: u.horarioSaida,
+        active: true,
+      })
+    }
+    for (const u of oauthUsers) {
+      if (!u.email?.trim()) continue
+      if (!usersByEmail.has(u.email.toLowerCase())) {
+        upsert({
+          id: u.id,
+          name: u.name ?? u.email,
+          email: u.email,
+          classificacao: null,
+          photoPath: u.image ?? null,
+          dataNascimento: null,
+          horarioEntrada: null,
+          horarioSaida: null,
+          active: true,
+        })
+      }
+    }
+
+    const all = [...usersByEmail.values()].filter((u) => u.active)
+    const sortName = (a: Row, b: Row) => a.name.localeCompare(b.name, "pt-BR")
+
+    const strip = (r: Row): EquipeUsuarioCadastro => ({
+      userId: r.userId,
+      name: r.name,
+      email: r.email,
+      classificacao: r.classificacao,
+      photoPath: r.photoPath,
+      dataNascimentoIso: r.dataNascimentoIso,
+      horarioEntrada: r.horarioEntrada,
+      horarioSaida: r.horarioSaida,
+    })
+
+    const aniversariantes = all
+      .filter((u) => u.dataNascimentoIso)
+      .sort(sortName)
+      .map(strip)
+
+    const comHorario = all
+      .filter((u) => u.horarioEntrada && u.horarioSaida)
+      .sort(sortName)
+      .map(strip)
+
+    return { aniversariantes, comHorario }
+  } catch (e) {
+    console.error("[getEquipeListagemCadastro]", e)
+    return { aniversariantes: [], comHorario: [] }
   }
 }
 

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { PhotoUpload } from "@/components/qagrotis/PhotoUpload"
 import { criarQaUser, atualizarQaUser } from "@/lib/actions/usuarios"
+import { FORMATOS_TRABALHO } from "@/lib/usuario-trabalho"
 import { toast } from "sonner"
 
 function generateSecurePassword(): string {
@@ -55,8 +56,11 @@ export default function NovoUsuarioForm() {
   const [nome, setNome] = useState("")
   const [email, setEmail] = useState("")
   const [tipo, setTipo] = useState<string>("Padrão")
-  const [classificacao, setClassificacao] = useState<string>("Colaborador")
+  const [cargo, setCargo] = useState("")
   const [dataNascimento, setDataNascimento] = useState("")
+  const [horarioEntrada, setHorarioEntrada] = useState("")
+  const [horarioSaida, setHorarioSaida] = useState("")
+  const [formatoTrabalho, setFormatoTrabalho] = useState("")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
@@ -109,8 +113,11 @@ export default function NovoUsuarioForm() {
         name: nome,
         email,
         type: tipo,
-        classificacao: classificacao || null,
+        classificacao: cargo.trim() || null,
         dataNascimento: dataNascimento.trim() || null,
+        horarioEntrada: horarioEntrada.trim() || null,
+        horarioSaida: horarioSaida.trim() || null,
+        formatoTrabalho: formatoTrabalho.trim() || null,
         password,
       })
       if (result.error || !result.id) {
@@ -137,8 +144,11 @@ export default function NovoUsuarioForm() {
             name: nome,
             email,
             type: tipo,
-            classificacao: classificacao || null,
+            classificacao: cargo.trim() || null,
             dataNascimento: dataNascimento.trim() || null,
+            horarioEntrada: horarioEntrada.trim() || null,
+            horarioSaida: horarioSaida.trim() || null,
+            formatoTrabalho: formatoTrabalho.trim() || null,
             photoPath,
           })
         } else {
@@ -225,30 +235,25 @@ export default function NovoUsuarioForm() {
             </Select>
           </div>
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-4">
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <label htmlFor="classificacao" className="text-sm font-medium text-text-primary">
-                Classificação
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+            <div className="min-w-0 space-y-1.5">
+              <label htmlFor="cargo" className="text-sm font-medium text-text-primary">
+                Cargo
               </label>
-              <Select
-                value={classificacao || "Colaborador"}
-                onValueChange={(v) => setClassificacao(v ?? "Colaborador")}
+              <Input
+                id="cargo"
+                value={cargo}
+                onChange={(e) => setCargo(e.target.value)}
+                placeholder="Ex.: Analista de QA"
+                maxLength={120}
                 disabled={isPending}
-              >
-                <SelectTrigger id="classificacao" className="w-full">
-                  <SelectValue placeholder="Selecionar..." />
-                </SelectTrigger>
-                <SelectPopup>
-                  <SelectItem value="Colaborador">Colaborador</SelectItem>
-                  <SelectItem value="Líder">Líder</SelectItem>
-                  <SelectItem value="Outro">Outro</SelectItem>
-                </SelectPopup>
-              </Select>
+                className="w-full"
+              />
             </div>
 
-            <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <label htmlFor="dataNascimento" className="text-sm font-medium text-text-primary">
-                Data de nascimento
+                Data de Nascimento
               </label>
               <Input
                 id="dataNascimento"
@@ -256,8 +261,59 @@ export default function NovoUsuarioForm() {
                 value={dataNascimento}
                 onChange={(e) => setDataNascimento(e.target.value)}
                 disabled={isPending}
+                className="w-full min-w-0 sm:max-w-[12.5rem]"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-start">
+            <div className="min-w-0 space-y-1.5">
+              <label htmlFor="horarioEntrada" className="text-sm font-medium text-text-primary">
+                Horário Entrada
+              </label>
+              <Input
+                id="horarioEntrada"
+                type="time"
+                value={horarioEntrada}
+                onChange={(e) => setHorarioEntrada(e.target.value)}
+                disabled={isPending}
                 className="w-full min-w-0"
               />
+            </div>
+            <div className="min-w-0 space-y-1.5">
+              <label htmlFor="horarioSaida" className="text-sm font-medium text-text-primary">
+                Horário Saída
+              </label>
+              <Input
+                id="horarioSaida"
+                type="time"
+                value={horarioSaida}
+                onChange={(e) => setHorarioSaida(e.target.value)}
+                disabled={isPending}
+                className="w-full min-w-0"
+              />
+            </div>
+            <div className="min-w-0 space-y-1.5">
+              <label htmlFor="formatoTrabalho" className="text-sm font-medium text-text-primary">
+                Formato
+              </label>
+              <Select
+                value={formatoTrabalho || "__none__"}
+                onValueChange={(v) => setFormatoTrabalho(v === "__none__" ? "" : (v ?? ""))}
+                disabled={isPending}
+              >
+                <SelectTrigger id="formatoTrabalho" className="w-full">
+                  <SelectValue placeholder="Selecionar…" />
+                </SelectTrigger>
+                <SelectPopup>
+                  <SelectItem value="__none__">Selecionar…</SelectItem>
+                  {FORMATOS_TRABALHO.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
             </div>
           </div>
 

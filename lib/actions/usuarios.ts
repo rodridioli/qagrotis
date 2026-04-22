@@ -10,7 +10,8 @@ import {
   CREATED_USER_READ_SELECT,
   USER_PROFILE_READ_SELECT,
 } from "@/lib/prisma-user-selects"
-import { ensureUserDataNascimentoColumns } from "@/lib/prisma-schema-ensure"
+import { ensureUserDataNascimentoColumns, ensureUserWorkScheduleColumns } from "@/lib/prisma-schema-ensure"
+import { parseHorarioInput, sanitizeFormatoTrabalho } from "@/lib/usuario-trabalho"
 
 export interface QaUserRecord {
   id: string
@@ -31,6 +32,10 @@ export interface QaUserProfile {
   photoPath: string | null
   /** ISO `yyyy-mm-dd` quando definida */
   dataNascimento?: string | null
+  /** `HH:mm` quando definido */
+  horarioEntrada?: string | null
+  horarioSaida?: string | null
+  formatoTrabalho?: string | null
 }
 
 // ── Validation schemas ──────────────────────────────────────────────────────
@@ -41,12 +46,14 @@ const userInputSchema = z.object({
   type: z.enum(["Padrão", "Administrador"]),
 })
 
-const CLASSIFICACOES_VALIDAS = ["Colaborador", "Líder", "Outro"] as const
+const MAX_CLASSIFICACAO_LEN = 120
 
+/** Cargo / classificação: texto livre (rótulo na UI: "Cargo"). */
 function sanitizeClassificacao(value: string | null | undefined): string | null {
   if (!value) return null
-  const v = value === "Coordenador" ? "Colaborador" : value
-  return (CLASSIFICACOES_VALIDAS as readonly string[]).includes(v) ? v : null
+  const v = value.trim()
+  if (!v) return null
+  return v.slice(0, MAX_CLASSIFICACAO_LEN)
 }
 
 function toDateInputValue(d: Date | null | undefined): string {
@@ -115,6 +122,7 @@ function validatePhotoPath(photoPath: string | null | undefined): string | null 
 
 export async function getQaUsers(): Promise<QaUserRecord[]> {
   await ensureUserDataNascimentoColumns()
+  await ensureUserWorkScheduleColumns()
   const [inactiveRecords, profiles, createdUsers, oauthUsers] = await Promise.all([
     prisma.inactiveUser.findMany({ select: { userId: true } }),
     prisma.userProfile.findMany({ select: USER_PROFILE_READ_SELECT }),
@@ -207,6 +215,7 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
   if (!result.success) return null
 
   await ensureUserDataNascimentoColumns()
+  await ensureUserWorkScheduleColumns()
 
   const [savedProfile, createdUser, oauthUser] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId: id }, select: USER_PROFILE_READ_SELECT }),
@@ -225,16 +234,7 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
       : null)
   if (!base) return null
 
-  let dn: Date | null = null
-  try {
-    const [pDn, cDn] = await Promise.all([
-      prisma.userProfile.findUnique({ where: { userId: id }, select: { dataNascimento: true } }),
-      prisma.createdUser.findUnique({ where: { id }, select: { dataNascimento: true } }),
-    ])
-    dn = pDn?.dataNascimento ?? cDn?.dataNascimento ?? null
-  } catch {
-    // Coluna ainda inexistente no Postgres (migração não aplicada).
-  }
+  const dn = savedProfile?.dataNascimento ?? createdUser?.dataNascimento ?? null
 
   return {
     name:            savedProfile?.name ?? base.name,
@@ -243,6 +243,9 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
     classificacao:   sanitizeClassificacao(savedProfile?.classificacao ?? (createdUser?.classificacao ?? null)),
     photoPath:       savedProfile?.photoPath ?? (createdUser?.photoPath ?? oauthUser?.image ?? null),
     dataNascimento:  dn ? toDateInputValue(dn) : null,
+    horarioEntrada:  savedProfile?.horarioEntrada ?? createdUser?.horarioEntrada ?? null,
+    horarioSaida:    savedProfile?.horarioSaida ?? createdUser?.horarioSaida ?? null,
+    formatoTrabalho: savedProfile?.formatoTrabalho ?? createdUser?.formatoTrabalho ?? null,
   }
 }
 
@@ -324,6 +327,9 @@ export async function criarQaUser(data: {
   type: string
   classificacao?: string | null
   dataNascimento?: string | null
+  horarioEntrada?: string | null
+  horarioSaida?: string | null
+  formatoTrabalho?: string | null
   password: string
   photoPath?: string | null
 }): Promise<{ id?: string; error?: string; emailEnviado?: boolean }> {
@@ -355,6 +361,7 @@ export async function criarQaUser(data: {
 
   try {
     await ensureUserDataNascimentoColumns()
+    await ensureUserWorkScheduleColumns()
 
     const [inactiveRecords, existingCreated] = await Promise.all([
       prisma.inactiveUser.findMany({ select: { userId: true } }),
@@ -378,6 +385,9 @@ export async function criarQaUser(data: {
     const hashedPassword = hashPassword(data.password)
     const classificacaoValida = sanitizeClassificacao(data.classificacao)
     const dataNascimento = parseDateInput(data.dataNascimento ?? undefined)
+    const horarioEntrada = parseHorarioInput(data.horarioEntrada ?? undefined)
+    const horarioSaida = parseHorarioInput(data.horarioSaida ?? undefined)
+    const formatoTrabalho = sanitizeFormatoTrabalho(data.formatoTrabalho ?? undefined)
 
     let createdId = ""
     if (existingCreated && inactiveIds.has(existingCreated.id)) {
@@ -392,6 +402,9 @@ export async function criarQaUser(data: {
             password: hashedPassword,
             photoPath: data.photoPath ?? null,
             dataNascimento,
+            horarioEntrada,
+            horarioSaida,
+            formatoTrabalho,
           },
         }),
         prisma.inactiveUser.delete({ where: { userId: existingCreated.id } }),
@@ -411,6 +424,9 @@ export async function criarQaUser(data: {
           photoPath: data.photoPath ?? null,
           password: hashedPassword,
           dataNascimento,
+          horarioEntrada,
+          horarioSaida,
+          formatoTrabalho,
         },
       })
       createdId = id
@@ -470,6 +486,9 @@ export async function atualizarQaUser(
     type: string
     classificacao?: string | null
     dataNascimento?: string | null
+    horarioEntrada?: string | null
+    horarioSaida?: string | null
+    formatoTrabalho?: string | null
     photoPath?: string | null
     /** Nova senha local (CreatedUser). Omitir ou vazio = não alterar. */
     newPassword?: string | null
@@ -487,6 +506,7 @@ export async function atualizarQaUser(
 
   try {
     await ensureUserDataNascimentoColumns()
+    await ensureUserWorkScheduleColumns()
 
     const isAdmin = await checkIsAdmin()
     const sessionEmail = session.user?.email?.toLowerCase() ?? ""
@@ -525,6 +545,12 @@ export async function atualizarQaUser(
     const classificacaoValida = sanitizeClassificacao(data.classificacao)
     const dataNascimento =
       data.dataNascimento === undefined ? undefined : parseDateInput(data.dataNascimento)
+    const horarioEntrada =
+      data.horarioEntrada === undefined ? undefined : parseHorarioInput(data.horarioEntrada)
+    const horarioSaida =
+      data.horarioSaida === undefined ? undefined : parseHorarioInput(data.horarioSaida)
+    const formatoTrabalho =
+      data.formatoTrabalho === undefined ? undefined : sanitizeFormatoTrabalho(data.formatoTrabalho)
 
     const newPw = data.newPassword?.trim()
     if (newPw) {
@@ -539,6 +565,9 @@ export async function atualizarQaUser(
       classificacao: string | null
       photoPath?: string | null
       dataNascimento?: Date | null
+      horarioEntrada?: string | null
+      horarioSaida?: string | null
+      formatoTrabalho?: string | null
     } = {
       name:          parsed.name,
       email:         parsed.email,
@@ -547,6 +576,9 @@ export async function atualizarQaUser(
     }
     if (safePhotoPath !== undefined) profileData.photoPath = safePhotoPath
     if (dataNascimento !== undefined) profileData.dataNascimento = dataNascimento
+    if (horarioEntrada !== undefined) profileData.horarioEntrada = horarioEntrada
+    if (horarioSaida !== undefined) profileData.horarioSaida = horarioSaida
+    if (formatoTrabalho !== undefined) profileData.formatoTrabalho = formatoTrabalho
 
     await prisma.userProfile.upsert({
       where:  { userId: id },
@@ -558,6 +590,9 @@ export async function atualizarQaUser(
         classificacao: classificacaoValida,
         photoPath: safePhotoPath ?? null,
         dataNascimento: dataNascimento ?? null,
+        horarioEntrada: horarioEntrada ?? null,
+        horarioSaida: horarioSaida ?? null,
+        formatoTrabalho: formatoTrabalho ?? null,
       },
       update: profileData,
     })
@@ -579,6 +614,9 @@ export async function atualizarQaUser(
           type: parsed.type,
           classificacao: classificacaoValida,
           ...(dataNascimento !== undefined ? { dataNascimento } : {}),
+          ...(horarioEntrada !== undefined ? { horarioEntrada } : {}),
+          ...(horarioSaida !== undefined ? { horarioSaida } : {}),
+          ...(formatoTrabalho !== undefined ? { formatoTrabalho } : {}),
           ...(safePhotoPath !== undefined ? { photoPath: safePhotoPath } : {}),
           ...(newPw ? { password: hashPassword(newPw) } : {}),
         },

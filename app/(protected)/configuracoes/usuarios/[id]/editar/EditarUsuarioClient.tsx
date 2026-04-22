@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { PhotoUpload } from "@/components/qagrotis/PhotoUpload"
 import { atualizarQaUser, type QaUserProfile } from "@/lib/actions/usuarios"
+import { FORMATOS_TRABALHO } from "@/lib/usuario-trabalho"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -24,11 +25,6 @@ interface Props {
   isAdmin: boolean
 }
 
-function normalizeClassificacaoSelect(c: string | null | undefined) {
-  if (!c || c === "Coordenador") return "Colaborador"
-  return c
-}
-
 export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -36,10 +32,11 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
   const [nome, setNome] = useState(initialProfile.name)
   const [email, setEmail] = useState(initialProfile.email)
   const [tipo, setTipo] = useState(initialProfile.type)
-  const [classificacao, setClassificacao] = useState<string>(
-    normalizeClassificacaoSelect(initialProfile.classificacao),
-  )
+  const [cargo, setCargo] = useState<string>(initialProfile.classificacao ?? "")
   const [dataNascimento, setDataNascimento] = useState(initialProfile.dataNascimento ?? "")
+  const [horarioEntrada, setHorarioEntrada] = useState(initialProfile.horarioEntrada ?? "")
+  const [horarioSaida, setHorarioSaida] = useState(initialProfile.horarioSaida ?? "")
+  const [formatoTrabalho, setFormatoTrabalho] = useState(initialProfile.formatoTrabalho ?? "")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(
     initialProfile.photoPath ?? null
@@ -108,8 +105,11 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
         name: nome,
         email,
         type: tipo,
-        classificacao: classificacao || null,
+        classificacao: cargo.trim() || null,
         dataNascimento: dataNascimento.trim() || null,
+        horarioEntrada: horarioEntrada.trim() || null,
+        horarioSaida: horarioSaida.trim() || null,
+        formatoTrabalho: formatoTrabalho.trim() || null,
         photoPath: resolvedPhotoPath,
         newPassword: password.trim() || undefined,
       })
@@ -184,7 +184,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
             />
           </div>
 
-          {/* Tipo + Classificação + Data de Nascimento — mesma linha (desktop); mobile-first em coluna */}
+          {/* Tipo + Cargo + Data de Nascimento — mesma linha (desktop); mobile-first em coluna */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-start">
             <div className="min-w-0 space-y-1.5">
               <label htmlFor="tipo" className="text-sm font-medium text-text-primary">Tipo</label>
@@ -209,30 +209,25 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
             </div>
 
             <div className="min-w-0 space-y-1.5">
-              <label htmlFor="classificacao" className="text-sm font-medium text-text-primary">
-                Classificação
+              <label htmlFor="cargo" className="text-sm font-medium text-text-primary">
+                Cargo
               </label>
               {isAdmin ? (
-                <Select
-                  value={classificacao || "Colaborador"}
-                  onValueChange={(v) => setClassificacao(v ?? "Colaborador")}
+                <Input
+                  id="cargo"
+                  value={cargo}
+                  onChange={(e) => setCargo(e.target.value)}
+                  placeholder="Ex.: Analista de QA"
+                  maxLength={120}
                   disabled={isPending}
-                >
-                  <SelectTrigger id="classificacao" className="w-full">
-                    <SelectValue placeholder="Selecionar..." />
-                  </SelectTrigger>
-                  <SelectPopup>
-                    <SelectItem value="Colaborador">Colaborador</SelectItem>
-                    <SelectItem value="Líder">Líder</SelectItem>
-                    <SelectItem value="Outro">Outro</SelectItem>
-                  </SelectPopup>
-                </Select>
+                  className="w-full"
+                />
               ) : (
                 <div
-                  id="classificacao"
-                  className="flex h-9 w-full items-center rounded-custom border border-border-default bg-surface-input px-3 text-sm text-text-secondary"
+                  id="cargo"
+                  className="flex min-h-9 w-full items-center rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-secondary"
                 >
-                  {classificacao || "—"}
+                  {cargo.trim() ? cargo : "—"}
                 </div>
               )}
             </div>
@@ -257,6 +252,57 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
                   )}
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-start">
+            <div className="min-w-0 space-y-1.5">
+              <label htmlFor="horarioEntrada" className="text-sm font-medium text-text-primary">
+                Horário Entrada
+              </label>
+              <Input
+                id="horarioEntrada"
+                type="time"
+                value={horarioEntrada}
+                onChange={(e) => setHorarioEntrada(e.target.value)}
+                disabled={isPending}
+                className="w-full min-w-0"
+              />
+            </div>
+            <div className="min-w-0 space-y-1.5">
+              <label htmlFor="horarioSaida" className="text-sm font-medium text-text-primary">
+                Horário Saída
+              </label>
+              <Input
+                id="horarioSaida"
+                type="time"
+                value={horarioSaida}
+                onChange={(e) => setHorarioSaida(e.target.value)}
+                disabled={isPending}
+                className="w-full min-w-0"
+              />
+            </div>
+            <div className="min-w-0 space-y-1.5">
+              <label htmlFor="formatoTrabalho" className="text-sm font-medium text-text-primary">
+                Formato
+              </label>
+              <Select
+                value={formatoTrabalho || "__none__"}
+                onValueChange={(v) => setFormatoTrabalho(v === "__none__" ? "" : (v ?? ""))}
+                disabled={isPending}
+              >
+                <SelectTrigger id="formatoTrabalho" className="w-full">
+                  <SelectValue placeholder="Selecionar…" />
+                </SelectTrigger>
+                <SelectPopup>
+                  <SelectItem value="__none__">Selecionar…</SelectItem>
+                  {FORMATOS_TRABALHO.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
             </div>
           </div>
 

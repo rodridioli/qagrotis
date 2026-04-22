@@ -6,8 +6,15 @@ import {
   SlidersHorizontal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getPerformanceData, type UserPerformanceData } from "@/lib/actions/equipe"
+import {
+  getPerformanceData,
+  getEquipeListagemCadastro,
+  type UserPerformanceData,
+  type EquipeUsuarioCadastro,
+} from "@/lib/actions/equipe"
 import { EquipePerformanceCard } from "@/components/equipe/EquipePerformanceCard"
+import { EquipeAniversarioCard } from "@/components/equipe/EquipeAniversarioCard"
+import { EquipeHorariosTable } from "@/components/equipe/EquipeHorariosTable"
 import {
   Select, SelectTrigger, SelectPopup, SelectItem,
 } from "@/components/ui/select"
@@ -51,6 +58,12 @@ const PERIODOS = [
 ]
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
+
+function formatDataNascimentoBr(iso: string): string {
+  const [y, m, d] = iso.split("-")
+  if (!y || !m || !d) return iso
+  return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`
+}
 
 function getDateRange(periodo: string): { dataInicio?: string; dataFim?: string } {
   const now = new Date()
@@ -181,6 +194,11 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
   const [performanceLoading, setPerformanceLoading] = useState(true)
   const [performanceError, setPerformanceError] = useState<string | null>(null)
 
+  const [aniversariantes, setAniversariantes] = useState<EquipeUsuarioCadastro[]>([])
+  const [comHorario, setComHorario] = useState<EquipeUsuarioCadastro[]>([])
+  const [cadastroLoading, setCadastroLoading] = useState(false)
+  const [cadastroError, setCadastroError] = useState<string | null>(null)
+
   const activeFilterCount = [
     applied.sistema !== "todos",
     applied.modulo  !== "todos",
@@ -218,6 +236,36 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
       cancelled = true
     }
   }, [applied, activeTab])
+
+  useEffect(() => {
+    if (activeTab !== "aniversarios" && activeTab !== "horarios") return
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      setCadastroLoading(true)
+      setCadastroError(null)
+    })
+    getEquipeListagemCadastro()
+      .then((data) => {
+        if (!cancelled) {
+          setAniversariantes(data.aniversariantes)
+          setComHorario(data.comHorario)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAniversariantes([])
+          setComHorario([])
+          setCadastroError("Não foi possível carregar os dados. Tente novamente em instantes.")
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCadastroLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab])
 
   function handleOpenFilter() {
     setDraft(applied)
@@ -314,13 +362,60 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
         </div>
       )}
 
-      {/* ── Abas WIP ── */}
+      {activeTab === "aniversarios" && (
+        <div className="space-y-4">
+          {cadastroLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
+            </div>
+          ) : cadastroError ? (
+            <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
+              <p className="text-center text-sm text-destructive">{cadastroError}</p>
+            </div>
+          ) : aniversariantes.length === 0 ? (
+            <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card">
+              <p className="text-sm text-text-secondary">
+                Nenhum usuário ativo com data de nascimento cadastrada.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {aniversariantes.map((u) => (
+                <EquipeAniversarioCard
+                  key={u.userId}
+                  name={u.name}
+                  classificacao={u.classificacao}
+                  photoPath={u.photoPath}
+                  dataNascimentoLabel={
+                    u.dataNascimentoIso ? formatDataNascimentoBr(u.dataNascimentoIso) : "—"
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "horarios" && (
+        <div className="space-y-4">
+          {cadastroLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
+            </div>
+          ) : cadastroError ? (
+            <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
+              <p className="text-center text-sm text-destructive">{cadastroError}</p>
+            </div>
+          ) : (
+            <EquipeHorariosTable rows={comHorario} />
+          )}
+        </div>
+      )}
+
       {(activeTab === "chapters" ||
-        activeTab === "horarios" ||
         activeTab === "ferias" ||
         activeTab === "ausencias" ||
-        activeTab === "metas" ||
-        activeTab === "aniversarios") && (
+        activeTab === "metas") && (
         <div className="flex items-center justify-center py-16">
           <p className="text-sm text-text-secondary">Em desenvolvimento.</p>
         </div>

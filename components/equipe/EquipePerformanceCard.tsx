@@ -6,7 +6,7 @@ import type { UserPerformanceData } from "@/lib/actions/equipe"
 
 const FALLBACK_ROW_LABELS = ["Gerencial", "Plataforma", "SAP-B1"] as const
 
-function UserAvatar({ name, photoPath, size }: { name: string; photoPath: string | null; size: number }) {
+export function UserAvatar({ name, photoPath, size }: { name: string; photoPath: string | null; size: number }) {
   const initials = name
     .split(" ")
     .slice(0, 2)
@@ -124,7 +124,7 @@ function ProgressBar({ value }: { value: number }) {
   )
 }
 
-function cargoLabel(classificacao: string | null): string {
+export function cargoLabel(classificacao: string | null): string {
   const c = (classificacao ?? "").trim()
   if (c) return c
   return "Colaborador"
