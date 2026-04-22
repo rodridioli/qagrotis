@@ -2,8 +2,6 @@ import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
 import { authConfig } from "@/lib/auth.config"
-import { MOCK_USERS } from "@/lib/qagrotis-constants"
-import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 import { verifyPassword, nextId } from "@/lib/db-utils"
 import { resolveGoogleAccess, resolveGoogleInternalId } from "@/lib/auth-google"
 
@@ -28,21 +26,11 @@ async function checkCredentials(email: string, password: string) {
 
   const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
 
-  // Check dynamically created users
   if (createdUser) {
     if (!createdUser.password) return null // invite not yet accepted
     if (!verifyPassword(password, createdUser.password)) return null
     if (inactiveIds.has(createdUser.id)) return null
     return { id: createdUser.id, email: createdUser.email, name: createdUser.email }
-  }
-
-  // Check MOCK_USERS with PROTOTYPE_USERS passwords
-  const mockUser = MOCK_USERS.find((u) => u.email.toLowerCase() === normalizedEmail)
-  if (mockUser) {
-    const expectedPassword = PROTOTYPE_USERS[normalizedEmail] ?? "admin"
-    if (password !== expectedPassword) return null
-    if (inactiveIds.has(mockUser.id)) return null
-    return { id: mockUser.id, email: mockUser.email, name: mockUser.name }
   }
 
   return null
@@ -110,7 +98,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           } else {
             // @agrotis.com first-time login — no existing record, safe to create.
             const allIds = await prisma.createdUser.findMany({ select: { id: true } })
-            const allExistingIds = [...MOCK_USERS.map((u) => u.id), ...allIds.map((u) => u.id)]
+            const allExistingIds = allIds.map((u) => u.id)
             const id = nextId(allExistingIds, "U")
             await prisma.createdUser.create({
               data: { id, email, name: user.name ?? email, type: "Padrão", password: "" },
@@ -129,7 +117,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Use findMany + filter to skip inactive records — an @agrotis.com user may have both
         // an old inactive record and a freshly auto-registered active one for the same email.
         const email = user.email.trim().toLowerCase()
-        
+
         // Retry logic for DB consistency on first sign-in (give time for commit to be visible)
         let activeCreated = null
         for (let i = 0; i < 3; i++) {
@@ -142,9 +130,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           ])
           const jwtInactiveIds = new Set(inactiveRecords.map((r) => r.userId))
           activeCreated = createdUsers.find((u) => !jwtInactiveIds.has(u.id))
-          
+
           if (activeCreated) break
-          if (i < 2) await new Promise(r => setTimeout(r, 100 * (i + 1))) // Backoff
+          if (i < 2) await new Promise((r) => setTimeout(r, 100 * (i + 1))) // Backoff
         }
 
         token.id = resolveGoogleInternalId(email, activeCreated?.id ?? null, user.id ?? "")
@@ -161,4 +149,3 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 })
-

@@ -2,8 +2,6 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { MOCK_USERS } from "@/lib/qagrotis-constants"
-import { PROTOTYPE_USERS } from "@/lib/prototype-users"
 import { sendWelcomeEmail } from "@/lib/email"
 import { nextId, verifyPassword, hashPassword } from "@/lib/db-utils"
 import { requireAdmin, requireSession, checkIsAdmin } from "@/lib/session"
@@ -63,17 +61,10 @@ function parseDateInput(s: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
-/** Uma linha por e-mail: prioridade CreatedUser > Mock > OAuth; IDs sem e-mail entram uma vez. */
-function mergeQaUsersByEmail(
-  mockRecords: QaUserRecord[],
-  createdRecords: QaUserRecord[],
-  oauthRecords: QaUserRecord[],
-): QaUserRecord[] {
+/** Uma linha por e-mail: prioridade CreatedUser > OAuth; IDs sem e-mail entram uma vez. */
+function mergeQaUsersByEmail(createdRecords: QaUserRecord[], oauthRecords: QaUserRecord[]): QaUserRecord[] {
   const byEmail = new Map<string, QaUserRecord>()
   for (const r of oauthRecords) {
-    if (r.email?.trim()) byEmail.set(r.email.toLowerCase(), r)
-  }
-  for (const r of mockRecords) {
     if (r.email?.trim()) byEmail.set(r.email.toLowerCase(), r)
   }
   for (const r of createdRecords) {
@@ -81,7 +72,7 @@ function mergeQaUsersByEmail(
   }
   const merged = [...byEmail.values()]
   const seenIds = new Set(merged.map((u) => u.id))
-  for (const r of [...mockRecords, ...createdRecords, ...oauthRecords]) {
+  for (const r of [...createdRecords, ...oauthRecords]) {
     if (!seenIds.has(r.id)) {
       merged.push(r)
       seenIds.add(r.id)
@@ -90,8 +81,9 @@ function mergeQaUsersByEmail(
   return merged
 }
 
-const idSchema = z.string().regex(/^U-\d+$/, "ID inválido")
-const idsArraySchema = z.array(idSchema).max(1000)
+/** IDs de CreatedUser (U-…) ou NextAuth User (cuid). */
+const userIdSchema = z.string().min(1).max(128)
+const idsArraySchema = z.array(userIdSchema).max(1000)
 
 /**
  * Validate that a photo path is either:
@@ -140,24 +132,7 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
   const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
   const profileMap = new Map(profiles.map((p) => [p.userId, p]))
 
-  // Emails already covered by createdUser or mockUsers
-  const knownEmails = new Set([
-    ...MOCK_USERS.map((u) => u.email.toLowerCase()),
-    ...createdUsers.map((u) => u.email.toLowerCase()),
-  ])
-
-  const mockRecords: QaUserRecord[] = MOCK_USERS.map((u) => {
-    const p = profileMap.get(u.id)
-    return {
-      id:            u.id,
-      name:          p?.name ?? u.name,
-      email:         p?.email ?? u.email,
-      type:          p?.type ?? u.type,
-      classificacao: sanitizeClassificacao(p?.classificacao ?? null),
-      active:        !inactiveIds.has(u.id) && u.active,
-      photoPath:     p?.photoPath ?? null,
-    }
-  })
+  const knownEmails = new Set(createdUsers.map((u) => u.email.toLowerCase()))
 
   const createdRecords: QaUserRecord[] = createdUsers.map((u) => {
     const p = profileMap.get(u.id)
@@ -190,18 +165,18 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
       }
     })
 
-  return mergeQaUsersByEmail(mockRecords, createdRecords, oauthRecords)
+  return mergeQaUsersByEmail(createdRecords, oauthRecords)
 }
 
 async function resolveEmailForQaUserId(id: string): Promise<string | null> {
-  const mock = MOCK_USERS.find((u) => u.id === id)
-  if (mock?.email?.trim()) return mock.email.trim().toLowerCase()
   const row = await prisma.createdUser.findUnique({ where: { id }, select: { email: true } })
   if (row?.email?.trim()) return row.email.trim().toLowerCase()
+  const auth = await prisma.user.findUnique({ where: { id }, select: { email: true } })
+  if (auth?.email?.trim()) return auth.email.trim().toLowerCase()
   return null
 }
 
-/** Outro cadastro (mock, CreatedUser ou OAuth) com o mesmo e-mail já ativo — reativação geraria duplicidade. */
+/** Outro cadastro (CreatedUser ou OAuth) com o mesmo e-mail já ativo — reativação geraria duplicidade. */
 async function hasActiveOtherWithSameEmail(excludeUserId: string, emailNorm: string): Promise<boolean> {
   const inactiveRows = await prisma.inactiveUser.findMany({ select: { userId: true } })
   const inactiveSet = new Set(inactiveRows.map((r) => r.userId))
@@ -224,29 +199,30 @@ async function hasActiveOtherWithSameEmail(excludeUserId: string, emailNorm: str
   })
   if (otherAuth && !inactiveSet.has(otherAuth.id)) return true
 
-  for (const m of MOCK_USERS) {
-    if (m.id === excludeUserId) continue
-    if (m.email.trim().toLowerCase() !== emailNorm) continue
-    if (!inactiveSet.has(m.id)) return true
-  }
-
   return false
 }
 
 export async function getQaUserProfile(id: string): Promise<QaUserProfile | null> {
-  const result = idSchema.safeParse(id)
+  const result = userIdSchema.safeParse(id)
   if (!result.success) return null
 
   await ensureUserDataNascimentoColumns()
 
-  const mockUser = MOCK_USERS.find((u) => u.id === id)
-
-  const [savedProfile, createdUser] = await Promise.all([
+  const [savedProfile, createdUser, oauthUser] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId: id }, select: USER_PROFILE_READ_SELECT }),
     prisma.createdUser.findUnique({ where: { id }, select: CREATED_USER_READ_SELECT }),
+    prisma.user.findUnique({ where: { id }, select: { name: true, email: true, image: true } }),
   ])
 
-  const base = mockUser ?? createdUser
+  const base =
+    createdUser ??
+    (oauthUser?.email
+      ? {
+          name: oauthUser.name ?? oauthUser.email,
+          email: oauthUser.email,
+          type: "Padrão" as const,
+        }
+      : null)
   if (!base) return null
 
   let dn: Date | null = null
@@ -265,7 +241,7 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
     email:           savedProfile?.email ?? base.email,
     type:            savedProfile?.type ?? base.type,
     classificacao:   sanitizeClassificacao(savedProfile?.classificacao ?? (createdUser?.classificacao ?? null)),
-    photoPath:       savedProfile?.photoPath ?? (createdUser?.photoPath ?? null),
+    photoPath:       savedProfile?.photoPath ?? (createdUser?.photoPath ?? oauthUser?.image ?? null),
     dataNascimento:  dn ? toDateInputValue(dn) : null,
   }
 }
@@ -276,7 +252,7 @@ export async function ativarQaUser(id: string): Promise<{ error?: string }> {
   } catch {
     return { error: "Não autorizado." }
   }
-  const result = idSchema.safeParse(id)
+  const result = userIdSchema.safeParse(id)
   if (!result.success) return { error: "ID inválido." }
 
   try {
@@ -390,12 +366,13 @@ export async function criarQaUser(data: {
 
     const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
 
-    // Block if email is already active (mock or created)
-    const activeMockEmails = MOCK_USERS
-      .filter((u) => !inactiveIds.has(u.id))
-      .map((u) => u.email.toLowerCase())
-
-    if (activeMockEmails.includes(parsed.email)) return { error: "E-mail já cadastrado." }
+    const oauthExisting = await prisma.user.findFirst({
+      where: { email: { equals: parsed.email, mode: "insensitive" } },
+      select: { id: true },
+    })
+    if (oauthExisting && !inactiveIds.has(oauthExisting.id)) {
+      return { error: "E-mail já cadastrado." }
+    }
     if (existingCreated && !inactiveIds.has(existingCreated.id)) return { error: "E-mail já cadastrado." }
 
     const hashedPassword = hashPassword(data.password)
@@ -422,7 +399,7 @@ export async function criarQaUser(data: {
       createdId = existingCreated.id
     } else {
       const createdIds = await prisma.createdUser.findMany({ select: { id: true } })
-      const allIds = [...MOCK_USERS.map((u) => u.id), ...createdIds.map((u) => u.id)]
+      const allIds = createdIds.map((u) => u.id)
       const id = nextId(allIds, "U")
       await prisma.createdUser.create({
         data: {
@@ -482,20 +459,6 @@ export async function validateLogin(
     return { ok: true }
   }
 
-  const mockUser = MOCK_USERS.find((u) => u.email.toLowerCase() === normalizedEmail)
-  if (mockUser) {
-    const expectedPassword = PROTOTYPE_USERS[normalizedEmail] ?? "admin"
-    if (password !== expectedPassword) return { ok: false, reason: "invalid_credentials" }
-    const profile = await prisma.userProfile.findUnique({
-      where: { userId: mockUser.id },
-      select: { email: true },
-    })
-    const emailMatch = (profile?.email ?? mockUser.email).toLowerCase() === normalizedEmail
-    if (!emailMatch) return { ok: false, reason: "invalid_credentials" }
-    if (inactiveIds.has(mockUser.id)) return { ok: false, reason: "inactive" }
-    return { ok: true }
-  }
-
   return { ok: false, reason: "invalid_credentials" }
 }
 
@@ -517,7 +480,7 @@ export async function atualizarQaUser(
     return { error: "Não autenticado." }
   }
 
-  const idResult = idSchema.safeParse(id)
+  const idResult = userIdSchema.safeParse(id)
   if (!idResult.success) return { error: "ID inválido." }
 
   try {

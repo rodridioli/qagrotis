@@ -2,7 +2,6 @@
 
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { MOCK_USERS } from "@/lib/qagrotis-constants"
 
 async function getUserType(email: string): Promise<string | null> {
   const normalized = email.toLowerCase()
@@ -20,10 +19,6 @@ async function getUserType(email: string): Promise<string | null> {
     select: { type: true },
   })
   if (created) return created.type
-
-  // Fall back to MOCK_USERS constants
-  const mockUser = MOCK_USERS.find((u) => u.email.toLowerCase() === normalized)
-  if (mockUser) return mockUser.type
 
   // Check NextAuth User table (Google OAuth users from external domains)
   // These users are always "Padrão" unless explicitly promoted via UserProfile

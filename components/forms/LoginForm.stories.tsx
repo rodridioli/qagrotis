@@ -17,8 +17,6 @@ Formulário de autenticação do QAgrotis com dois modos:
 - **Recuperação de senha** — apenas e-mail; chama \`POST /api/forgot-password\` via Resend.
 
 **Tokens usados:** \`bg-brand-primary\`, \`bg-surface-card\`, \`bg-surface-input\`, \`border-border-default\`, \`text-text-primary\`, \`text-text-secondary\`, \`rounded-custom\`, \`text-destructive\`.
-
-**Credenciais de protótipo:** \`rodridioli@gmail.com\` / \`admin\`.
         `.trim(),
       },
     },

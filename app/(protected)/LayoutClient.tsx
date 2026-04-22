@@ -25,7 +25,6 @@ import { cn } from "@/lib/utils"
 import { QAgrotisLogo } from "@/components/qagrotis/QAgrotisLogo"
 import { QAgrotisIcon } from "@/components/qagrotis/QAgrotisIcon"
 import { signOut, useSession } from "next-auth/react"
-import { MOCK_USERS } from "@/lib/qagrotis-constants"
 import { SistemaContext } from "@/lib/modulo-context"
 import { AssistenteDrawer } from "@/components/qagrotis/AssistenteDrawer"
 import type { IntegracaoRecord } from "@/lib/actions/integracoes"
@@ -322,11 +321,19 @@ const Topbar = React.memo(function Topbar({
   }, [])
 
   const sessionForUi = sessionUiReady ? session : undefined
-  const qaUser = MOCK_USERS.find((u) => u.email === sessionForUi?.user?.email)
-  const initials = qaUser
-    ? qaUser.name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()
-    : (sessionForUi?.user?.name?.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase() ?? "QA")
-  const profileHref = qaUser ? `/configuracoes/usuarios/${qaUser.id}/editar` : "/configuracoes/usuarios"
+  const displayName = sessionForUi?.user?.name ?? sessionForUi?.user?.email ?? ""
+  const initials =
+    displayName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase() || "QA"
+  const internalId = sessionForUi?.user?.id
+  const profileHref = internalId
+    ? `/configuracoes/usuarios/${internalId}/editar`
+    : "/configuracoes/usuarios"
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-default bg-surface-card px-4">

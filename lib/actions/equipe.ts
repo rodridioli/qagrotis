@@ -3,8 +3,6 @@
 import { prisma } from "@/lib/prisma"
 import { ensureUserDataNascimentoColumns } from "@/lib/prisma-schema-ensure"
 import { USER_PROFILE_READ_SELECT } from "@/lib/prisma-user-selects"
-import { MOCK_USERS } from "@/lib/qagrotis-constants"
-
 export interface UserPerformanceData {
   userId: string
   name: string
@@ -99,16 +97,6 @@ export async function getPerformanceData(filters: {
       })
     }
 
-    for (const u of MOCK_USERS) {
-      upsert({
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        classificacao: null,
-        photoPath: null,
-        active: u.active,
-      })
-    }
     for (const u of createdUsers) {
       upsert({
         id: u.id,

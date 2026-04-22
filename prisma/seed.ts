@@ -42,9 +42,7 @@ async function main() {
   // All seed JSON files have been emptied. Delete the corresponding records from
   // the DB so they don't persist across deploys.
 
-  // Note: user deletion removed — real users created via Google OAuth get IDs like
-  // U-01, U-02, etc. and must NOT be deleted on deploy. The MOCK_USERS list now only
-  // contains U-00 (hardcoded admin). No prototype users to clean.
+  // Note: user deletion removed — usuários reais (CreatedUser / OAuth) não são apagados no seed.
   console.log("✓ no prototype user records to clean")
 
   // Sistemas: SIS-01..SIS-10

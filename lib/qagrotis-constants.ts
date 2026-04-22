@@ -2,16 +2,6 @@ export type UserType = "Administrador" | "Padrão"
 export type CenarioTipo = "Automatizado" | "Manual" | "Man./Auto."
 export type SuiteTipo = "Sprint" | "Kanban" | "Outro"
 
-export interface MockUser {
-  id: string
-  name: string
-  email: string
-  type: UserType
-  avatar: string
-  active: boolean
-}
-
-
 export interface DashboardMetric {
   label: string
   value: string
@@ -46,18 +36,6 @@ const CLIENTS = [
   "Irrigação Plus",
   "Solo Fértil",
 ]
-
-export const MOCK_USERS: MockUser[] = [
-  {
-    id: "U-00",
-    name: "Rodrigo",
-    email: "rodridioli@gmail.com",
-    type: "Administrador",
-    avatar: "",
-    active: true,
-  },
-]
-
 
 export const DASHBOARD_METRICS: DashboardMetric[] = [
   { label: "Módulos", value: "6" },
