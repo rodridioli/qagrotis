@@ -6,18 +6,19 @@ const mockRodrigo: UserPerformanceData = {
   userId: "demo-1",
   name: "Rodrigo Diego de Oliveira",
   email: "rodrigo@example.com",
-  classificacao: "Coordenador",
+  classificacao: "Colaborador",
   photoPath: null,
   atividadePorSistema: [
     { sistema: "Gerencial", modulos: ["Sped"] },
+    { sistema: "Plataforma", modulos: ["ARM", "REC"] },
     { sistema: "SAP-B1", modulos: ["Indústria"] },
   ],
-  cenariosCriados: 19,
+  cenariosCriados: 22,
   testesExecutados: 0,
   errosEncontrados: 0,
   sucessos: 0,
-  testesAutomatizados: 1,
-  percentualAutomatizado: 5,
+  testesAutomatizados: 2,
+  percentualAutomatizado: 9,
   score: 100,
 }
 

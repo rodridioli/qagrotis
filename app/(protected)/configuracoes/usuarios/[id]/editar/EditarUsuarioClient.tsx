@@ -183,20 +183,30 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
             />
           </div>
 
-          {isAdmin && (
-            <div className="space-y-1.5">
+          {/* Tipo + Classificação + Data de Nascimento — mesma linha (desktop); mobile-first em coluna */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-start">
+            <div className="min-w-0 space-y-1.5">
               <label htmlFor="tipo" className="text-sm font-medium text-text-primary">Tipo</label>
-              <Select value={tipo} onValueChange={(v) => setTipo(v ?? initialProfile.type)} disabled={isPending}>
-                <SelectTrigger id="tipo"><SelectValue /></SelectTrigger>
-                <SelectPopup>
-                  <SelectItem value="Padrão">Padrão</SelectItem>
-                  <SelectItem value="Administrador">Administrador</SelectItem>
-                </SelectPopup>
-              </Select>
+              {isAdmin ? (
+                <Select value={tipo} onValueChange={(v) => setTipo(v ?? initialProfile.type)} disabled={isPending}>
+                  <SelectTrigger id="tipo" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectPopup>
+                    <SelectItem value="Padrão">Padrão</SelectItem>
+                    <SelectItem value="Administrador">Administrador</SelectItem>
+                  </SelectPopup>
+                </Select>
+              ) : (
+                <div
+                  id="tipo"
+                  className="flex h-9 w-full items-center rounded-custom border border-border-default bg-surface-input px-3 text-sm text-text-secondary"
+                >
+                  {tipo}
+                </div>
+              )}
             </div>
-          )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
             <div className="min-w-0 space-y-1.5">
               <label htmlFor="classificacao" className="text-sm font-medium text-text-primary">
                 Classificação
@@ -236,7 +246,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
                 value={dataNascimento}
                 onChange={(e) => setDataNascimento(e.target.value)}
                 disabled={isPending}
-                className="w-full min-w-0 sm:max-w-[12.5rem]"
+                className="w-full min-w-0"
               />
             </div>
           </div>

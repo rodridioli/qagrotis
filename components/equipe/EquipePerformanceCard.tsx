@@ -1,32 +1,19 @@
 "use client"
 
-import React from "react"
+import React, { useMemo } from "react"
 import { cn } from "@/lib/utils"
 import type { UserPerformanceData } from "@/lib/actions/equipe"
 
-// ── Avatar ───────────────────────────────────────────────────────────────────
+const FALLBACK_ROW_LABELS = ["Gerencial", "Plataforma", "SAP-B1"] as const
 
-function UserAvatar({
-  name,
-  photoPath,
-  size,
-  ringClass,
-}: {
-  name: string
-  photoPath: string | null
-  size: number
-  ringClass?: string
-}) {
+function UserAvatar({ name, photoPath, size }: { name: string; photoPath: string | null; size: number }) {
   const initials = name
     .split(" ")
     .slice(0, 2)
     .map((n) => n[0])
     .join("")
     .toUpperCase()
-  const cls = cn(
-    "flex-shrink-0 rounded-2xl object-cover ring-2 ring-white",
-    ringClass,
-  )
+  const cls = "flex-shrink-0 rounded-full object-cover ring-2 ring-border-default"
   if (photoPath) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -40,16 +27,58 @@ function UserAvatar({
   }
   return (
     <div
-      className={cn(cls, "flex items-center justify-center bg-white/20 font-semibold text-white")}
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}
+      className={cn(
+        cls,
+        "flex items-center justify-center bg-neutral-grey-100 text-sm font-semibold text-text-primary",
+      )}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.34) }}
     >
       {initials}
     </div>
   )
 }
 
-// ── Stat box (valor em “caixa”, como na referência visual) ─────────────────
+/** Badge 1º–4º lugar + ponto de cor (referência visual) */
+function RankLugarBadge({ rank }: { rank: number }) {
+  const label = `${rank}º Lugar`
+  const { wrap, dot } =
+    rank === 1
+      ? {
+          wrap:
+            "border-amber-400/50 bg-amber-100 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/45 dark:text-amber-50",
+          dot: "bg-amber-600 dark:bg-amber-400",
+        }
+      : rank === 2
+        ? {
+            wrap:
+              "border-secondary-300 bg-secondary-100 text-secondary-900 dark:border-secondary-600 dark:bg-secondary-800/60 dark:text-secondary-50",
+            dot: "bg-neutral-grey-500 dark:bg-neutral-grey-400",
+          }
+        : rank === 3
+          ? {
+              wrap:
+                "border-orange-400/45 bg-orange-100 text-orange-950 dark:border-orange-500/35 dark:bg-orange-950/45 dark:text-orange-50",
+              dot: "bg-orange-500 dark:bg-orange-400",
+            }
+          : {
+              wrap:
+                "border-border-default bg-neutral-grey-100 text-text-secondary dark:bg-neutral-grey-800 dark:text-neutral-grey-100",
+              dot: "bg-neutral-grey-400 dark:bg-neutral-grey-500",
+            }
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold tabular-nums",
+        wrap,
+      )}
+    >
+      <span className={cn("size-2 shrink-0 rounded-full", dot)} aria-hidden />
+      {label}
+    </span>
+  )
+}
 
+/** Caixa única: número em destaque + rótulo em caixa alta (referência) */
 function StatBox({
   label,
   value,
@@ -57,21 +86,27 @@ function StatBox({
 }: {
   label: string
   value: number
-  variant: "neutral" | "success" | "error"
+  variant: "cenarios" | "testes" | "success" | "error"
 }) {
-  const box = cn(
-    "flex min-h-10 w-full max-w-[5rem] items-center justify-center rounded-lg px-2 py-1.5 text-lg font-bold tabular-nums sm:max-w-none",
-    variant === "neutral" &&
-      "bg-neutral-grey-100 text-text-primary dark:bg-neutral-grey-200 dark:text-text-primary",
-    variant === "success" &&
-      "bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300",
-    variant === "error" &&
-      "bg-red-100 text-destructive dark:bg-red-950/40 dark:text-red-300",
+  const surface = cn(
+    "flex w-full min-w-0 flex-col items-center justify-center rounded-lg px-1 py-2 sm:px-1.5 sm:py-2.5",
+    variant === "cenarios" &&
+      "bg-neutral-grey-100 dark:bg-neutral-grey-200",
+    variant === "testes" && "bg-secondary-100 dark:bg-secondary-800/50",
+    variant === "success" && "bg-primary-50 dark:bg-primary-950/45",
+    variant === "error" && "bg-red-100 dark:bg-red-950/40",
+  )
+  const numCls = cn(
+    "text-base font-bold tabular-nums sm:text-lg",
+    variant === "cenarios" && "text-text-primary",
+    variant === "testes" && "text-secondary-800 dark:text-secondary-100",
+    variant === "success" && "text-primary-800 dark:text-primary-200",
+    variant === "error" && "text-destructive dark:text-red-300",
   )
   return (
-    <div className="flex min-w-0 flex-col items-center gap-1.5">
-      <div className={box}>{value}</div>
-      <span className="text-center text-[11px] leading-tight text-text-secondary">
+    <div className={surface}>
+      <span className={numCls}>{value}</span>
+      <span className="mt-0.5 text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-text-secondary">
         {label}
       </span>
     </div>
@@ -80,7 +115,7 @@ function StatBox({
 
 function ProgressBar({ value }: { value: number }) {
   return (
-    <div className="h-2.5 w-full overflow-hidden rounded-full bg-neutral-grey-100 dark:bg-neutral-grey-200">
+    <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-grey-100 dark:bg-neutral-grey-200">
       <div
         className="h-full rounded-full bg-brand-primary transition-all duration-500"
         style={{ width: `${Math.min(100, value)}%` }}
@@ -89,91 +124,82 @@ function ProgressBar({ value }: { value: number }) {
   )
 }
 
-// ── Card ───────────────────────────────────────────────────────────────────
+function cargoLabel(classificacao: string | null): string {
+  const c = (classificacao ?? "").trim()
+  if (c) return c
+  return "Colaborador"
+}
 
 export interface EquipePerformanceCardProps {
   user: UserPerformanceData
-  /** Ordem de exibição (1 = Prioridade 1) */
   rank: number
 }
 
 export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps) {
+  const hasAnySistema = user.atividadePorSistema.length > 0
+  const detailRowsResolved = useMemo(() => {
+    if (!hasAnySistema) {
+      return FALLBACK_ROW_LABELS.map((label) => ({ label, value: "—" }))
+    }
+    const src = user.atividadePorSistema
+    return [0, 1, 2].map((i) => {
+      const row = src[i]
+      const label = row?.sistema?.trim() || FALLBACK_ROW_LABELS[i]
+      const value = row?.modulos?.length ? row.modulos.join(", ") : "—"
+      return { label, value }
+    })
+  }, [hasAnySistema, user.atividadePorSistema])
+
   return (
     <article
       className="flex flex-col overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card"
       aria-label={`Resumo de performance de ${user.name}`}
     >
-      {/* Cabeçalho verde: foto + nome + cargo + prioridade */}
-      <div className="bg-brand-primary px-4 pb-4 pt-4">
-        <div className="flex items-start gap-3">
-          <UserAvatar name={user.name} photoPath={user.photoPath} size={56} />
+      <div className="relative border-b border-border-default px-4 pb-3 pt-4">
+        <div className="flex items-start gap-3 pr-[7.5rem] sm:pr-28">
+          <UserAvatar name={user.name} photoPath={user.photoPath} size={52} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-bold leading-tight text-white">
-              {user.name}
-            </p>
-            <p className="mt-1 truncate text-sm text-white/90">
-              {user.classificacao ? (
-                <span>{user.classificacao}</span>
-              ) : (
-                <span className="italic text-white/70">Sem classificação</span>
-              )}
-            </p>
-            <span
-              className={cn(
-                "mt-2 inline-flex max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-100",
-              )}
-            >
-              Prioridade {rank}
-            </span>
+            <p className="truncate text-base font-bold leading-tight text-text-primary">{user.name}</p>
+            <p className="mt-0.5 truncate text-sm text-text-secondary">{cargoLabel(user.classificacao)}</p>
           </div>
+        </div>
+        <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
+          <RankLugarBadge rank={rank} />
         </div>
       </div>
 
-      {/* Sistemas / módulos — uma linha por sistema */}
-      <div className="border-b border-border-default px-4 py-3">
-        {user.atividadePorSistema.length > 0 ? (
-          <div className="space-y-1.5">
-            {user.atividadePorSistema.map(({ sistema, modulos }) => (
-              <p key={sistema} className="text-sm leading-snug text-text-primary">
-                <span className="font-medium">{sistema}:</span>{" "}
-                <span className="font-semibold">
-                  {modulos.length > 0 ? modulos.join(", ") : "—"}
-                </span>
-              </p>
-            ))}
+      <div className="space-y-2.5 px-4 py-3">
+        {detailRowsResolved.map((row) => (
+          <div
+            key={row.label}
+            className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm"
+          >
+            <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-text-secondary sm:text-xs">
+              {row.label}
+            </span>
+            <span className="min-w-0 text-right font-semibold text-text-primary">{row.value}</span>
           </div>
-        ) : (
-          <p className="text-sm italic text-text-secondary">
-            Nenhum sistema/módulo no período filtrado.
-          </p>
-        )}
+        ))}
       </div>
 
-      {/* Métricas em caixas */}
-      <div className="grid grid-cols-2 gap-3 px-3 py-4 sm:grid-cols-4 sm:gap-2 sm:px-4">
-        <StatBox label="Cenários" value={user.cenariosCriados} variant="neutral" />
-        <StatBox label="Testes" value={user.testesExecutados} variant="neutral" />
+      {/* Quatro métricas em uma linha (referência); colunas estreitas em mobile */}
+      <div className="grid grid-cols-4 gap-1.5 border-t border-border-default px-3 py-3 sm:gap-2 sm:px-4 sm:py-4">
+        <StatBox label="Cenários" value={user.cenariosCriados} variant="cenarios" />
+        <StatBox label="Testes" value={user.testesExecutados} variant="testes" />
         <StatBox label="Sucesso" value={user.sucessos} variant="success" />
         <StatBox label="Erros" value={user.errosEncontrados} variant="error" />
       </div>
 
-      {/* Automatizados — bloco com borda verde */}
-      <div className="mx-3 mb-4 mt-0 rounded-lg border-2 border-primary-200 bg-primary-50/60 p-3 dark:border-primary-700 dark:bg-primary-950/25 sm:mx-4">
+      <div className="border-t border-border-default px-4 pb-4 pt-3">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wide text-text-primary">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-text-secondary">
             Automatizados
           </span>
-          <span className="text-sm font-bold tabular-nums text-text-primary">
-            {user.testesAutomatizados} de {user.cenariosCriados}
+          <span className="text-xs font-semibold tabular-nums text-text-primary sm:text-sm">
+            {user.testesAutomatizados} de {user.cenariosCriados} - {user.percentualAutomatizado}%
           </span>
         </div>
         <ProgressBar value={user.percentualAutomatizado} />
-        <div className="mt-1.5 flex justify-end">
-          <span className="text-sm font-bold text-brand-primary dark:text-primary-400">
-            {user.percentualAutomatizado}%
-          </span>
-        </div>
       </div>
     </article>
   )
