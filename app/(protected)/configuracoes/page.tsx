@@ -2,13 +2,10 @@ export const dynamic = "force-dynamic"
 
 import Link from "next/link"
 import { Users, Monitor, Box, Building2, Sparkles, KeyRound } from "lucide-react"
-import { checkIsAdmin } from "@/lib/session"
 import { auth } from "@/lib/auth"
-import LimparBancoButton from "./LimparBancoButton"
 import JiraConfigButton from "./JiraConfigButton"
 
 export default async function ConfiguracoesPage() {
-  const isAdmin = await checkIsAdmin()
   const session = await auth()
   const currentEmail = session?.user?.email ?? ""
 
@@ -76,14 +73,6 @@ export default async function ConfiguracoesPage() {
 
           <JiraConfigButton defaultEmail={currentEmail} />
       </div>
-
-      {isAdmin && (
-        <div>
-          <div className="rounded-xl border border-neutral-grey-200 bg-surface-card p-6 shadow-card">
-            <LimparBancoButton />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
