@@ -45,8 +45,8 @@ function RankLugarBadge({ rank }: { rank: number }) {
     rank === 1
       ? {
           wrap:
-            "border-amber-400/50 bg-amber-100 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/45 dark:text-amber-50",
-          dot: "bg-amber-600 dark:bg-amber-400",
+            "border-2 border-amber-500/70 bg-amber-50 text-amber-950 shadow-sm dark:border-amber-400/60 dark:bg-amber-950/50 dark:text-amber-50",
+          dot: "bg-amber-500 dark:bg-amber-400",
         }
       : rank === 2
         ? {
@@ -169,9 +169,9 @@ export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps
       </div>
 
       <div className="space-y-2.5 px-4 py-3">
-        {detailRowsResolved.map((row) => (
+        {detailRowsResolved.map((row, rowIdx) => (
           <div
-            key={row.label}
+            key={`perf-detail-${rowIdx}-${row.label}`}
             className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm"
           >
             <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-text-secondary sm:text-xs">
