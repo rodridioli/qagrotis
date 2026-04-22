@@ -5,6 +5,7 @@ import { z } from "zod"
 import { requireSession, requireAdmin } from "@/lib/session"
 import { nextId } from "@/lib/db-utils"
 import { prisma } from "@/lib/prisma"
+import { aggregateHistoricoExecucoesErrosByCenarioId } from "@/lib/suite-historico-stats"
 
 export interface CenarioStep {
   acao: string
@@ -122,8 +123,23 @@ function toRecord(row: any): CenarioRecord {
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getCenarios(): Promise<CenarioRecord[]> {
-  const rows = await prisma.cenario.findMany({ orderBy: { createdAt: "asc" }, take: 2000 })
-  return rows.map(toRecord)
+  const [rows, activeSuites] = await Promise.all([
+    prisma.cenario.findMany({ orderBy: { createdAt: "asc" }, take: 2000 }),
+    prisma.suite.findMany({
+      where: { active: true },
+      select: { historico: true },
+    }),
+  ])
+  const fromHistorico = aggregateHistoricoExecucoesErrosByCenarioId(activeSuites)
+  return rows.map((row) => {
+    const rec = toRecord(row)
+    const agg = fromHistorico.get(rec.id)
+    return {
+      ...rec,
+      execucoes: agg?.execucoes ?? 0,
+      erros: agg?.erros ?? 0,
+    }
+  })
 }
 
 export async function getCenario(id: string): Promise<CenarioRecord | null> {
