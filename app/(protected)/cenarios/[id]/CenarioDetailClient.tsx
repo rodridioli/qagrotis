@@ -499,8 +499,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
 
       {/* ── Bloco 4: Dependências ── */}
       {depIds.length > 0 && <BlockCard title={`Dependências (${depIds.length})`}>
-          <div className="overflow-x-auto lg:overflow-visible rounded-lg border border-border-default">
-            <table className="w-full table-fixed text-sm">
+          <div className="min-w-0 overflow-x-auto rounded-lg border border-border-default">
+            <table className="w-full min-w-[48rem] table-fixed text-sm">
               <colgroup>
                 <col className="w-24" />
                 <col />

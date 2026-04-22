@@ -234,6 +234,9 @@ export default function EditarCenarioClient({
   function toggleManual() {
     const next = !manual
     setManual(next)
+    if (next && !descricao.trim() && objetivo.trim()) {
+      setDescricao(objetivo)
+    }
     if (!next) {
       if (activeTab === "manual") setActiveTab("cadastro")
       if (!automatizado && activeTab === "dependencias") setActiveTab("cadastro")
@@ -243,6 +246,9 @@ export default function EditarCenarioClient({
   function toggleAutomatizado() {
     const next = !automatizado
     setAutomatizado(next)
+    if (next && !objetivo.trim() && descricao.trim()) {
+      setObjetivo(descricao)
+    }
     if (!next) {
       if (activeTab === "automatizado") setActiveTab("cadastro")
       if (!manual && activeTab === "dependencias") setActiveTab("cadastro")
@@ -890,8 +896,8 @@ export default function EditarCenarioClient({
                 Nenhuma dependência adicionada.
               </div>
             ) : (
-              <div className="overflow-x-auto lg:overflow-visible">
-                <table className="w-full table-fixed text-sm">
+              <div className="min-w-0 overflow-x-auto">
+                <table className="w-full min-w-[44rem] table-fixed text-sm">
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50">
                       <th className="w-24 px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>

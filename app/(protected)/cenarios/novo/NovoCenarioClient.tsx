@@ -205,6 +205,9 @@ export default function NovoCenarioClient({
   function toggleManual() {
     const next = !manual
     setManual(next)
+    if (next && !descricao.trim() && objetivo.trim()) {
+      setDescricao(objetivo)
+    }
     if (!next) {
       if (activeTab === "manual") setActiveTab("cadastro")
       if (!automatizado && activeTab === "dependencias") setActiveTab("cadastro")
@@ -214,6 +217,9 @@ export default function NovoCenarioClient({
   function toggleAutomatizado() {
     const next = !automatizado
     setAutomatizado(next)
+    if (next && !objetivo.trim() && descricao.trim()) {
+      setObjetivo(descricao)
+    }
     if (!next) {
       if (activeTab === "automatizado") setActiveTab("cadastro")
       if (!manual && activeTab === "dependencias") setActiveTab("cadastro")
@@ -858,8 +864,8 @@ export default function NovoCenarioClient({
                 Nenhuma dependência adicionada.
               </div>
             ) : (
-              <div className="overflow-x-auto lg:overflow-visible">
-                <table className="w-full table-fixed text-sm">
+              <div className="min-w-0 overflow-x-auto">
+                <table className="w-full min-w-[48rem] table-fixed text-sm">
                   <colgroup>
                     <col className="w-24" /><col /><col className="w-24" /><col className="w-28" /><col className="w-28" /><col className="w-10" />
                   </colgroup>

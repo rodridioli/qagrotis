@@ -6,7 +6,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getPerformanceData } from "@/lib/actions/equipe"
+import { getPerformanceData, type UserPerformanceData } from "@/lib/actions/equipe"
 import { EquipePerformanceCard } from "@/components/equipe/EquipePerformanceCard"
 import {
   Select, SelectTrigger, SelectPopup, SelectItem,
@@ -24,19 +24,29 @@ interface Props {
   modulosPorSistema: Record<string, string[]>
 }
 
-type TabId = "performance" | "chapters" | "horarios" | "ferias"
+type TabId =
+  | "performance"
+  | "chapters"
+  | "horarios"
+  | "ferias"
+  | "ausencias"
+  | "metas"
+  | "aniversarios"
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "performance", label: "Performance",       icon: BarChart3 },
   { id: "chapters",   label: "Chapters",           icon: Users     },
   { id: "horarios",   label: "Horários",           icon: Clock     },
-  { id: "ferias",     label: "Férias e Ausências", icon: Calendar  },
+  { id: "ferias",     label: "Férias",             icon: Calendar  },
+  { id: "ausencias",  label: "Ausências",          icon: Calendar  },
+  { id: "metas",      label: "Metas",              icon: BarChart3 },
+  { id: "aniversarios", label: "Aniversários",     icon: Users     },
 ]
 
 const PERIODOS = [
   { value: "hoje",         label: "Hoje"          },
-  { value: "mes-atual",    label: "Mês Atual"     },
-  { value: "mes-anterior", label: "Mês Anterior"  },
+  { value: "mes-atual",    label: "Mês atual"     },
+  { value: "mes-anterior", label: "Mês anterior"  },
   { value: "ano",          label: "Ano"           },
 ]
 
@@ -305,7 +315,12 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
       )}
 
       {/* ── Abas WIP ── */}
-      {(activeTab === "chapters" || activeTab === "horarios" || activeTab === "ferias") && (
+      {(activeTab === "chapters" ||
+        activeTab === "horarios" ||
+        activeTab === "ferias" ||
+        activeTab === "ausencias" ||
+        activeTab === "metas" ||
+        activeTab === "aniversarios") && (
         <div className="flex items-center justify-center py-16">
           <p className="text-sm text-text-secondary">Em desenvolvimento.</p>
         </div>

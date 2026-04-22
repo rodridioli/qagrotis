@@ -40,109 +40,224 @@ export async function getPerformanceData(filters: {
     }
     const hasDateFilter = !!dateFilter.gte || !!dateFilter.lte
 
-    const [cenarios, profiles, createdUsers] = await Promise.all([
+    const [inactiveRecords, profiles, createdUsers, oauthUsers, cenarios, activeSuites] = await Promise.all([
+      prisma.inactiveUser.findMany({ select: { userId: true } }),
+      prisma.userProfile.findMany({ select: USER_PROFILE_READ_SELECT }),
+      prisma.createdUser.findMany({
+        select: { id: true, name: true, email: true, classificacao: true, photoPath: true },
+      }),
+      prisma.user.findMany({
+        select: { id: true, name: true, email: true, image: true },
+      }),
       prisma.cenario.findMany({
         where: {
           createdBy: { not: null },
           ...(filters.sistema ? { system: filters.sistema } : {}),
           ...(filters.modulo ? { module: filters.modulo } : {}),
-          ...(hasDateFilter ? { createdAt: dateFilter } : {}),
         },
         select: {
+          id: true,
           createdBy: true,
           system: true,
           module: true,
-          execucoes: true,
-          erros: true,
           tipo: true,
         },
       }),
-      prisma.userProfile.findMany({ select: USER_PROFILE_READ_SELECT }),
-      prisma.createdUser.findMany({
-        select: { id: true, name: true, email: true, classificacao: true, photoPath: true },
+      prisma.suite.findMany({
+        where: {
+          active: true,
+          ...(filters.sistema ? { sistema: filters.sistema } : {}),
+        },
+        select: { historico: true },
       }),
     ])
 
-    // Build lookup: email (lowercase) → { id, name, classificacao, photoPath }
-    type UserInfo = { id: string; name: string; classificacao: string | null; photoPath: string | null }
-    const byEmail = new Map<string, UserInfo>()
+    const normalize = (v: string | null | undefined) => (v ?? "").trim().toLowerCase()
+    const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
     const profileMap = new Map(profiles.map((p) => [p.userId, p]))
 
+    type UserInfo = { id: string; name: string; email: string; classificacao: string | null; photoPath: string | null; active: boolean }
+    const usersByEmail = new Map<string, UserInfo>()
+    const upsert = (base: {
+      id: string
+      name: string
+      email: string
+      classificacao?: string | null
+      photoPath?: string | null
+      active: boolean
+    }) => {
+      const p = profileMap.get(base.id)
+      const email = (p?.email ?? base.email).trim()
+      if (!email) return
+      usersByEmail.set(email.toLowerCase(), {
+        id: base.id,
+        name: p?.name ?? base.name,
+        email,
+        classificacao: p?.classificacao ?? base.classificacao ?? null,
+        photoPath: p?.photoPath ?? base.photoPath ?? null,
+        active: base.active && !inactiveIds.has(base.id),
+      })
+    }
+
     for (const u of MOCK_USERS) {
-      const p = profileMap.get(u.id)
-      byEmail.set((p?.email ?? u.email).toLowerCase(), {
+      upsert({
         id: u.id,
-        name: p?.name ?? u.name,
-        classificacao: p?.classificacao ?? null,
-        photoPath: p?.photoPath ?? null,
+        name: u.name,
+        email: u.email,
+        classificacao: null,
+        photoPath: null,
+        active: u.active,
       })
     }
     for (const u of createdUsers) {
-      const p = profileMap.get(u.id)
-      byEmail.set((p?.email ?? u.email).toLowerCase(), {
+      upsert({
         id: u.id,
-        name: p?.name ?? u.name,
-        classificacao: p?.classificacao ?? u.classificacao ?? null,
-        photoPath: p?.photoPath ?? u.photoPath ?? null,
+        name: u.name,
+        email: u.email,
+        classificacao: u.classificacao ?? null,
+        photoPath: u.photoPath ?? null,
+        active: true,
       })
     }
+    for (const u of oauthUsers) {
+      if (!u.email?.trim()) continue
+      if (!usersByEmail.has(u.email.toLowerCase())) {
+        upsert({
+          id: u.id,
+          name: u.name ?? u.email,
+          email: u.email,
+          classificacao: null,
+          photoPath: u.image ?? null,
+          active: true,
+        })
+      }
+    }
 
-    // Group cenários by createdBy
-    const grouped = new Map<string, typeof cenarios>()
+    const activeUsers = [...usersByEmail.values()].filter((u) => u.active)
+    const ownerByScenarioId = new Map<string, string>()
     for (const c of cenarios) {
       if (!c.createdBy) continue
-      const key = c.createdBy.toLowerCase()
-      if (!grouped.has(key)) grouped.set(key, [])
-      grouped.get(key)!.push(c)
+      ownerByScenarioId.set(c.id, c.createdBy.toLowerCase())
     }
 
-    const result: UserPerformanceData[] = []
-
-    for (const [createdByKey, userCenarios] of grouped.entries()) {
-      const info = byEmail.get(createdByKey)
-      const bySystem = new Map<string, Set<string>>()
-      for (const c of userCenarios) {
-        const sys = (c.system ?? "").trim()
-        if (!sys) continue
-        if (!bySystem.has(sys)) bySystem.set(sys, new Set())
-        const mod = (c.module ?? "").trim()
-        if (mod) bySystem.get(sys)!.add(mod)
+    const counters = new Map<string, {
+      cenariosCriados: number
+      testesExecutados: number
+      errosEncontrados: number
+      sucessos: number
+      testesAutomatizados: number
+      bySystem: Map<string, Set<string>>
+    }>()
+    const ensureCounter = (emailKey: string) => {
+      if (!counters.has(emailKey)) {
+        counters.set(emailKey, {
+          cenariosCriados: 0,
+          testesExecutados: 0,
+          errosEncontrados: 0,
+          sucessos: 0,
+          testesAutomatizados: 0,
+          bySystem: new Map(),
+        })
       }
-      const atividadePorSistema = [...bySystem.entries()]
-        .map(([sistema, modSet]) => ({
-          sistema,
-          modulos: [...modSet].sort((a, b) => a.localeCompare(b, "pt-BR")),
-        }))
-        .sort((a, b) => a.sistema.localeCompare(b.sistema, "pt-BR"))
-      const cenariosCriados = userCenarios.length
-      const testesExecutados = userCenarios.reduce((s, c) => s + c.execucoes, 0)
-      const errosEncontrados = userCenarios.reduce((s, c) => s + c.erros, 0)
-      const sucessos = Math.max(0, testesExecutados - errosEncontrados)
-      const testesAutomatizados = userCenarios.filter(
-        (c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto."
-      ).length
+      return counters.get(emailKey)!
+    }
+
+    // Cenários cadastrados por usuário (base para % automatizado e sistemas/módulos).
+    for (const c of cenarios) {
+      const owner = normalize(c.createdBy)
+      if (!owner) continue
+      const bucket = ensureCounter(owner)
+      bucket.cenariosCriados += 1
+      if (c.tipo === "Automatizado" || c.tipo === "Man./Auto.") {
+        bucket.testesAutomatizados += 1
+      }
+      const system = (c.system ?? "").trim()
+      const modulo = (c.module ?? "").trim()
+      if (system) {
+        if (!bucket.bySystem.has(system)) bucket.bySystem.set(system, new Set())
+        if (modulo) bucket.bySystem.get(system)!.add(modulo)
+      }
+    }
+
+    const parseHistoricoTimestamp = (h: { timestamp?: number; data?: string; hora?: string }) => {
+      if (typeof h.timestamp === "number" && Number.isFinite(h.timestamp)) return h.timestamp
+      if (!h.data) return 0
+      const [dd, mm, yyyy] = h.data.split("/")
+      if (!dd || !mm || !yyyy) return 0
+      const hour = h.hora?.slice(0, 2) ?? "00"
+      const minute = h.hora?.slice(3, 5) ?? "00"
+      const d = new Date(`${yyyy}-${mm}-${dd}T${hour}:${minute}:00`)
+      return Number.isNaN(d.getTime()) ? 0 : d.getTime()
+    }
+
+    // Testes/sucessos/erros devem vir do histórico de todas as suítes ativas.
+    for (const suite of activeSuites) {
+      const historico = (suite.historico as unknown as Array<{
+        id: string
+        module?: string
+        timestamp?: number
+        data?: string
+        hora?: string
+        resultado: "Sucesso" | "Erro" | "Pendente"
+      }>) ?? []
+      for (const h of historico) {
+        if (filters.modulo && normalize(h.module) !== normalize(filters.modulo)) continue
+        const ts = parseHistoricoTimestamp(h)
+        if (hasDateFilter) {
+          if (dateFilter.gte && ts < dateFilter.gte.getTime()) continue
+          if (dateFilter.lte && ts > dateFilter.lte.getTime()) continue
+        }
+        const owner = ownerByScenarioId.get(h.id)
+        if (!owner) continue
+        const bucket = ensureCounter(owner)
+        bucket.testesExecutados += 1
+        if (h.resultado === "Erro") bucket.errosEncontrados += 1
+        if (h.resultado === "Sucesso") bucket.sucessos += 1
+      }
+    }
+
+    const result: UserPerformanceData[] = activeUsers.map((u) => {
+      const key = u.email.toLowerCase()
+      const bucket = counters.get(key)
+      const cenariosCriados = bucket?.cenariosCriados ?? 0
+      const testesAutomatizados = bucket?.testesAutomatizados ?? 0
       const percentualAutomatizado =
         cenariosCriados > 0 ? Math.round((testesAutomatizados / cenariosCriados) * 100) : 0
-      const score = testesExecutados * 10 + testesAutomatizados * 20 + cenariosCriados * 5
+      const atividadePorSistema = bucket
+        ? [...bucket.bySystem.entries()]
+            .map(([sistema, modSet]) => ({
+              sistema,
+              modulos: [...modSet].sort((a, b) => a.localeCompare(b, "pt-BR")),
+            }))
+            .sort((a, b) => a.sistema.localeCompare(b.sistema, "pt-BR"))
+        : []
 
-      result.push({
-        userId: info?.id ?? createdByKey,
-        name: info?.name ?? createdByKey,
-        email: createdByKey,
-        classificacao: info?.classificacao ?? null,
-        photoPath: info?.photoPath ?? null,
+      return {
+        userId: u.id,
+        name: u.name,
+        email: u.email,
+        classificacao: u.classificacao,
+        photoPath: u.photoPath,
         atividadePorSistema,
         cenariosCriados,
-        testesExecutados,
-        errosEncontrados,
-        sucessos,
+        testesExecutados: bucket?.testesExecutados ?? 0,
+        errosEncontrados: bucket?.errosEncontrados ?? 0,
+        sucessos: bucket?.sucessos ?? 0,
         testesAutomatizados,
         percentualAutomatizado,
-        score,
-      })
-    }
+        score:
+          (bucket?.testesExecutados ?? 0) * 1000000 +
+          percentualAutomatizado * 1000 +
+          cenariosCriados,
+      }
+    })
 
-    return result.sort((a, b) => b.score - a.score)
+    return result.sort((a, b) =>
+      (b.testesExecutados - a.testesExecutados) ||
+      (b.percentualAutomatizado - a.percentualAutomatizado) ||
+      (b.cenariosCriados - a.cenariosCriados) ||
+      a.name.localeCompare(b.name, "pt-BR")
+    )
   } catch (e) {
     console.error("[getPerformanceData]", e)
     return []

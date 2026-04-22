@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { PanelsTopLeft } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -102,9 +103,7 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
         className="flex flex-col items-center gap-3 rounded-xl bg-surface-card p-8 shadow-card transition-colors hover:bg-neutral-grey-50 w-full"
       >
         <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
-          <svg viewBox="0 0 32 32" fill="currentColor" className="size-6" aria-hidden="true">
-            <path d="M15.947 0C12.024.013 8.32 1.518 5.558 4.25L.44 9.345a1.498 1.498 0 000 2.122l5.118 5.094a1.507 1.507 0 002.127 0l4.647-4.624a3.01 3.01 0 014.254 0l4.647 4.624a1.507 1.507 0 002.127 0l5.118-5.094a1.498 1.498 0 000-2.122L23.09 4.098C20.38 1.42 16.76-.012 15.947 0zm.053 11.377l-4.647 4.624a1.507 1.507 0 000 2.122l4.647 4.624a1.507 1.507 0 002.127 0l4.647-4.624a1.507 1.507 0 000-2.122l-4.647-4.624a1.507 1.507 0 00-2.127 0z"/>
-          </svg>
+          <PanelsTopLeft className="size-6" />
         </div>
         <span className="font-semibold text-text-primary">Integração Jira</span>
       </button>

@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink, Play } from "lucide-react"
+import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink, Play, Power } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -641,6 +641,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                 onClick={() => setEncerrarOpen(true)}
                 disabled={isSaving || isEncerrandoOuReabrindo}
               >
+                <Power className="size-4" />
                 Encerrar Suíte
               </Button>
             )}
