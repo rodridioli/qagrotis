@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { PhotoUpload } from "@/components/qagrotis/PhotoUpload"
 import { atualizarQaUser, type QaUserProfile } from "@/lib/actions/usuarios"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
 interface Props {
@@ -240,14 +241,22 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
               <label htmlFor="dataNascimento" className="text-sm font-medium text-text-primary">
                 Data de Nascimento
               </label>
-              <Input
-                id="dataNascimento"
-                type="date"
-                value={dataNascimento}
-                onChange={(e) => setDataNascimento(e.target.value)}
-                disabled={isPending}
-                className="w-full min-w-0"
-              />
+              <div className="relative w-full min-w-0">
+                <Input
+                  id="dataNascimento"
+                  type="date"
+                  value={dataNascimento}
+                  onChange={(e) => setDataNascimento(e.target.value)}
+                  disabled={isPending}
+                  className={cn(
+                    "w-full min-w-0 pr-10 relative",
+                    "[&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3",
+                    "[&::-webkit-calendar-picker-indicator]:top-1/2 [&::-webkit-calendar-picker-indicator]:-translate-y-1/2",
+                    "[&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100",
+                    "[&::-webkit-calendar-picker-indicator]:size-4",
+                  )}
+                />
+              </div>
             </div>
           </div>
 
