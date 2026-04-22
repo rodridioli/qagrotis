@@ -15,39 +15,10 @@ import {
 } from "@/components/ui/select"
 import { PhotoUpload } from "@/components/qagrotis/PhotoUpload"
 import { criarQaUser, atualizarQaUser } from "@/lib/actions/usuarios"
+import { generateSecurePassword } from "@/lib/generate-secure-password"
+import { inputNativePickerRightClassName } from "@/lib/input-native-picker-classes"
 import { FORMATOS_TRABALHO } from "@/lib/usuario-trabalho"
 import { toast } from "sonner"
-
-function generateSecurePassword(): string {
-  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"
-  const lower = "abcdefghjkmnpqrstuvwxyz"
-  const digits = "23456789"
-  const special = "!@#$%&*"
-  const all = upper + lower + digits + special
-  const arr = new Uint8Array(12)
-  crypto.getRandomValues(arr)
-  const chars = [
-    upper[arr[0] % upper.length],
-    upper[arr[1] % upper.length],
-    lower[arr[2] % lower.length],
-    lower[arr[3] % lower.length],
-    digits[arr[4] % digits.length],
-    digits[arr[5] % digits.length],
-    special[arr[6] % special.length],
-    special[arr[7] % special.length],
-    all[arr[8] % all.length],
-    all[arr[9] % all.length],
-    all[arr[10] % all.length],
-    all[arr[11] % all.length],
-  ]
-  const shuffleArr = new Uint8Array(chars.length)
-  crypto.getRandomValues(shuffleArr)
-  for (let i = chars.length - 1; i > 0; i--) {
-    const j = shuffleArr[i] % (i + 1)
-    ;[chars[i], chars[j]] = [chars[j], chars[i]]
-  }
-  return chars.join("")
-}
 
 export default function NovoUsuarioForm() {
   const router = useRouter()
@@ -60,7 +31,7 @@ export default function NovoUsuarioForm() {
   const [dataNascimento, setDataNascimento] = useState("")
   const [horarioEntrada, setHorarioEntrada] = useState("")
   const [horarioSaida, setHorarioSaida] = useState("")
-  const [formatoTrabalho, setFormatoTrabalho] = useState("")
+  const [formatoTrabalho, setFormatoTrabalho] = useState<string>("Presencial")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
@@ -255,21 +226,23 @@ export default function NovoUsuarioForm() {
               <label htmlFor="dataNascimento" className="text-sm font-medium text-text-primary">
                 Data de Nascimento
               </label>
-              <Input
-                id="dataNascimento"
-                type="date"
-                value={dataNascimento}
-                onChange={(e) => setDataNascimento(e.target.value)}
-                disabled={isPending}
-                className="w-full min-w-0 sm:max-w-[12.5rem]"
-              />
+              <div className="relative w-full min-w-0">
+                <Input
+                  id="dataNascimento"
+                  type="date"
+                  value={dataNascimento}
+                  onChange={(e) => setDataNascimento(e.target.value)}
+                  disabled={isPending}
+                  className={inputNativePickerRightClassName()}
+                />
+              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-start">
             <div className="min-w-0 space-y-1.5">
               <label htmlFor="horarioEntrada" className="text-sm font-medium text-text-primary">
-                Horário Entrada
+                Horário de Entrada
               </label>
               <Input
                 id="horarioEntrada"
@@ -277,7 +250,7 @@ export default function NovoUsuarioForm() {
                 value={horarioEntrada}
                 onChange={(e) => setHorarioEntrada(e.target.value)}
                 disabled={isPending}
-                className="w-full min-w-0"
+                className={inputNativePickerRightClassName()}
               />
             </div>
             <div className="min-w-0 space-y-1.5">
@@ -290,7 +263,7 @@ export default function NovoUsuarioForm() {
                 value={horarioSaida}
                 onChange={(e) => setHorarioSaida(e.target.value)}
                 disabled={isPending}
-                className="w-full min-w-0"
+                className={inputNativePickerRightClassName()}
               />
             </div>
             <div className="min-w-0 space-y-1.5">
@@ -298,15 +271,14 @@ export default function NovoUsuarioForm() {
                 Formato
               </label>
               <Select
-                value={formatoTrabalho || "__none__"}
-                onValueChange={(v) => setFormatoTrabalho(v === "__none__" ? "" : (v ?? ""))}
+                value={formatoTrabalho}
+                onValueChange={(v) => setFormatoTrabalho(v ?? "Presencial")}
                 disabled={isPending}
               >
                 <SelectTrigger id="formatoTrabalho" className="w-full">
-                  <SelectValue placeholder="Selecionar…" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectPopup>
-                  <SelectItem value="__none__">Selecionar…</SelectItem>
                   {FORMATOS_TRABALHO.map((f) => (
                     <SelectItem key={f} value={f}>
                       {f}
@@ -319,7 +291,7 @@ export default function NovoUsuarioForm() {
 
           {/* ── Password section ── */}
           <div className="border-t border-border-default pt-4 space-y-4">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-medium text-text-primary">
                 Senha de acesso <span className="text-destructive">*</span>
               </p>
@@ -336,7 +308,7 @@ export default function NovoUsuarioForm() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label htmlFor="password" className="text-sm font-medium text-text-primary">Senha</label>
+                <label htmlFor="password" className="text-sm font-medium text-text-primary">Nova senha</label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -358,7 +330,7 @@ export default function NovoUsuarioForm() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label htmlFor="confirmPassword" className="text-sm font-medium text-text-primary">Confirmar senha</label>
+                <label htmlFor="confirmPassword" className="text-sm font-medium text-text-primary">Confirmar nova senha</label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"

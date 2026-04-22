@@ -1,9 +1,0 @@
-import { redirect } from "next/navigation"
-import { checkIsAdmin } from "@/lib/session"
-import NovoUsuarioForm from "./NovoUsuarioForm"
-
-export default async function NovoUsuarioPage() {
-  const isAdmin = await checkIsAdmin()
-  if (!isAdmin) redirect("/configuracoes/usuarios")
-  return <NovoUsuarioForm />
-}

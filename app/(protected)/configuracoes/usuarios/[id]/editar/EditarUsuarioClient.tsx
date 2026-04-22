@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Check, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Check, Eye, EyeOff, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -16,7 +16,8 @@ import {
 import { PhotoUpload } from "@/components/qagrotis/PhotoUpload"
 import { atualizarQaUser, type QaUserProfile } from "@/lib/actions/usuarios"
 import { FORMATOS_TRABALHO } from "@/lib/usuario-trabalho"
-import { cn } from "@/lib/utils"
+import { generateSecurePassword } from "@/lib/generate-secure-password"
+import { inputNativePickerRightClassName } from "@/lib/input-native-picker-classes"
 import { toast } from "sonner"
 
 interface Props {
@@ -55,6 +56,12 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
   function handlePhotoRemove() {
     setPhotoFile(null)
     setPhotoPreview(null)
+  }
+
+  function handleGeneratePassword() {
+    const pwd = generateSecurePassword()
+    setPassword(pwd)
+    setConfirmPassword(pwd)
   }
 
   function handleSave() {
@@ -184,30 +191,31 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
             />
           </div>
 
-          {/* Tipo + Cargo + Data de Nascimento — mesma linha (desktop); mobile-first em coluna */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-start">
-            <div className="min-w-0 space-y-1.5">
-              <label htmlFor="tipo" className="text-sm font-medium text-text-primary">Tipo</label>
-              {isAdmin ? (
-                <Select value={tipo} onValueChange={(v) => setTipo(v ?? initialProfile.type)} disabled={isPending}>
-                  <SelectTrigger id="tipo" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectPopup>
-                    <SelectItem value="Padrão">Padrão</SelectItem>
-                    <SelectItem value="Administrador">Administrador</SelectItem>
-                  </SelectPopup>
-                </Select>
-              ) : (
-                <div
-                  id="tipo"
-                  className="flex h-9 w-full items-center rounded-custom border border-border-default bg-surface-input px-3 text-sm text-text-secondary"
-                >
-                  {tipo}
-                </div>
-              )}
-            </div>
+          <div className="space-y-1.5">
+            <label htmlFor="tipo" className="text-sm font-medium text-text-primary">
+              Tipo <span className="text-destructive">*</span>
+            </label>
+            {isAdmin ? (
+              <Select value={tipo} onValueChange={(v) => setTipo(v ?? initialProfile.type)} disabled={isPending}>
+                <SelectTrigger id="tipo" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectPopup>
+                  <SelectItem value="Padrão">Padrão</SelectItem>
+                  <SelectItem value="Administrador">Administrador</SelectItem>
+                </SelectPopup>
+              </Select>
+            ) : (
+              <div
+                id="tipo"
+                className="flex h-9 w-full items-center rounded-custom border border-border-default bg-surface-input px-3 text-sm text-text-secondary"
+              >
+                {tipo}
+              </div>
+            )}
+          </div>
 
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
             <div className="min-w-0 space-y-1.5">
               <label htmlFor="cargo" className="text-sm font-medium text-text-primary">
                 Cargo
@@ -243,13 +251,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
                   value={dataNascimento}
                   onChange={(e) => setDataNascimento(e.target.value)}
                   disabled={isPending}
-                  className={cn(
-                    "w-full min-w-0 pr-10 relative",
-                    "[&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3",
-                    "[&::-webkit-calendar-picker-indicator]:top-1/2 [&::-webkit-calendar-picker-indicator]:-translate-y-1/2",
-                    "[&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100",
-                    "[&::-webkit-calendar-picker-indicator]:size-4",
-                  )}
+                  className={inputNativePickerRightClassName()}
                 />
               </div>
             </div>
@@ -258,7 +260,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-start">
             <div className="min-w-0 space-y-1.5">
               <label htmlFor="horarioEntrada" className="text-sm font-medium text-text-primary">
-                Horário Entrada
+                Horário de Entrada
               </label>
               <Input
                 id="horarioEntrada"
@@ -266,7 +268,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
                 value={horarioEntrada}
                 onChange={(e) => setHorarioEntrada(e.target.value)}
                 disabled={isPending}
-                className="w-full min-w-0"
+                className={inputNativePickerRightClassName()}
               />
             </div>
             <div className="min-w-0 space-y-1.5">
@@ -279,7 +281,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
                 value={horarioSaida}
                 onChange={(e) => setHorarioSaida(e.target.value)}
                 disabled={isPending}
-                className="w-full min-w-0"
+                className={inputNativePickerRightClassName()}
               />
             </div>
             <div className="min-w-0 space-y-1.5">
@@ -308,10 +310,22 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
 
           {/* ── Password section ── */}
           <div className="border-t border-border-default pt-4 space-y-4">
-            <p className="text-sm font-medium text-text-primary">
-              Alterar senha{" "}
-              <span className="text-xs font-normal text-text-secondary">(opcional)</span>
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-text-primary">
+                Alterar senha{" "}
+                <span className="text-xs font-normal text-text-secondary">(opcional)</span>
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleGeneratePassword}
+                disabled={isPending}
+              >
+                <RefreshCw className="size-3.5" />
+                Gerar senha segura
+              </Button>
+            </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label htmlFor="password" className="text-sm font-medium text-text-primary">Nova senha</label>
