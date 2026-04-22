@@ -65,6 +65,26 @@ function formatDataNascimentoBr(iso: string): string {
   return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`
 }
 
+/** Mês do aniversário (1–12) a partir de `yyyy-mm-dd`. */
+function parseMesNascimento(iso: string): number | null {
+  const m = parseInt(iso.split("-")[1] ?? "", 10)
+  if (!Number.isFinite(m) || m < 1 || m > 12) return null
+  return m
+}
+
+function parseDiaNascimento(iso: string): number {
+  const d = parseInt(iso.split("-")[2] ?? "", 10)
+  return Number.isFinite(d) ? d : 0
+}
+
+/** Cabeçalho do grupo (ex.: Janeiro). */
+function tituloMesNascimentoPt(month1to12: number): string {
+  const label = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" }).format(
+    new Date(Date.UTC(2000, month1to12 - 1, 1)),
+  )
+  return label.length ? label.charAt(0).toUpperCase() + label.slice(1) : String(month1to12)
+}
+
 function getDateRange(periodo: string): { dataInicio?: string; dataFim?: string } {
   const now = new Date()
   const pad = (n: number) => String(n).padStart(2, "0")
@@ -204,6 +224,29 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
     applied.modulo  !== "todos",
     applied.periodo !== "mes-atual",
   ].filter(Boolean).length
+
+  const aniversariantesPorMes = useMemo(() => {
+    const byMonth = new Map<number, EquipeUsuarioCadastro[]>()
+    for (const u of aniversariantes) {
+      const iso = u.dataNascimentoIso
+      if (!iso) continue
+      const month = parseMesNascimento(iso)
+      if (month == null) continue
+      if (!byMonth.has(month)) byMonth.set(month, [])
+      byMonth.get(month)!.push(u)
+    }
+    const months = [...byMonth.keys()].sort((a, b) => a - b)
+    return months.map((month) => ({
+      month,
+      titulo: tituloMesNascimentoPt(month),
+      users: (byMonth.get(month) ?? []).sort((a, b) => {
+        const da = parseDiaNascimento(a.dataNascimentoIso ?? "")
+        const db = parseDiaNascimento(b.dataNascimentoIso ?? "")
+        if (da !== db) return da - db
+        return a.name.localeCompare(b.name, "pt-BR")
+      }),
+    }))
+  }, [aniversariantes])
 
   useEffect(() => {
     if (activeTab !== "performance") return
@@ -379,17 +422,31 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {aniversariantes.map((u) => (
-                <EquipeAniversarioCard
-                  key={u.userId}
-                  name={u.name}
-                  classificacao={u.classificacao}
-                  photoPath={u.photoPath}
-                  dataNascimentoLabel={
-                    u.dataNascimentoIso ? formatDataNascimentoBr(u.dataNascimentoIso) : "—"
-                  }
-                />
+            <div className="space-y-8">
+              {aniversariantesPorMes.map(({ month, titulo, users }) => (
+                <section key={month} aria-labelledby={`mes-aniversario-${month}`} className="space-y-4">
+                  <div className="border-b border-border-default pb-2">
+                    <h2
+                      id={`mes-aniversario-${month}`}
+                      className="text-sm font-semibold uppercase tracking-wide text-text-secondary"
+                    >
+                      {titulo}
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {users.map((u) => (
+                      <EquipeAniversarioCard
+                        key={u.userId}
+                        name={u.name}
+                        classificacao={u.classificacao}
+                        photoPath={u.photoPath}
+                        dataNascimentoLabel={
+                          u.dataNascimentoIso ? formatDataNascimentoBr(u.dataNascimentoIso) : "—"
+                        }
+                      />
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           )}
