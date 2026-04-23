@@ -16,10 +16,10 @@ import {
   listEquipeChapters,
   listEquipeChapterAuthorOptions,
   deleteEquipeChapter,
-  getEquipeChapterAuthorRanking,
+  getEquipeChapterAuthorRankingPage,
   type EquipeChapterAuthorOption,
   type EquipeChapterListRow,
-  type EquipeChapterRankingRow,
+  type EquipeChapterRankingPage,
 } from "@/lib/actions/equipe-chapters"
 
 export interface EquipeChaptersSectionProps {
@@ -28,7 +28,8 @@ export interface EquipeChaptersSectionProps {
 
 export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
   const [rows, setRows] = React.useState<EquipeChapterListRow[]>([])
-  const [ranking, setRanking] = React.useState<EquipeChapterRankingRow[]>([])
+  const [rankingData, setRankingData] = React.useState<EquipeChapterRankingPage | null>(null)
+  const [rankingBusy, setRankingBusy] = React.useState(false)
   const [authorOptions, setAuthorOptions] = React.useState<EquipeChapterAuthorOption[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -41,19 +42,31 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [deleteRow, setDeleteRow] = React.useState<EquipeChapterListRow | null>(null)
 
+  const loadRankingPage = React.useCallback(async (page: number) => {
+    setRankingBusy(true)
+    try {
+      const rank = await getEquipeChapterAuthorRankingPage(page)
+      setRankingData(rank)
+    } catch (e) {
+      console.error("[EquipeChaptersSection] ranking página", e)
+    } finally {
+      setRankingBusy(false)
+    }
+  }, [])
+
   const refetch = React.useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const [list, rank] = await Promise.all([
         listEquipeChapters(),
-        getEquipeChapterAuthorRanking(),
+        getEquipeChapterAuthorRankingPage(1),
       ])
       setRows(list)
-      setRanking(rank)
+      setRankingData(rank)
     } catch {
       setRows([])
-      setRanking([])
+      setRankingData(null)
       setError("Não foi possível carregar os chapters. Tente novamente em instantes.")
     }
     try {
@@ -172,7 +185,7 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
           <p className="text-center text-sm text-destructive">{error}</p>
         </div>
       ) : (
-        <div className="grid min-w-0 gap-4 xl:grid-cols-[1fr_minmax(15rem,18.5rem)] xl:items-start">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[1fr_minmax(16rem,22rem)] xl:items-start">
           <div className="min-w-0">
             <EquipeChaptersTable
               rows={filtered}
@@ -181,7 +194,12 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
               onRequestDelete={requestDelete}
             />
           </div>
-          <EquipeChapterRanking entries={ranking} className="min-w-0 xl:sticky xl:top-4" />
+          <EquipeChapterRanking
+            data={rankingData}
+            loading={rankingBusy}
+            onPageChange={(p) => void loadRankingPage(p)}
+            className="min-w-0 xl:sticky xl:top-4"
+          />
         </div>
       )}
 

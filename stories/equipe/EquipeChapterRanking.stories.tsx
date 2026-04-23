@@ -1,12 +1,26 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
+import * as React from "react"
 import { EquipeChapterRanking } from "@/components/equipe/EquipeChapterRanking"
-import type { EquipeChapterRankingRow } from "@/lib/actions/equipe-chapters"
+import type { EquipeChapterRankingPage, EquipeChapterRankingRow } from "@/lib/actions/equipe-chapters"
+import { EQUIPE_CHAPTER_RANKING_PAGE_SIZE } from "@/lib/actions/equipe-chapters"
 
-const top3: EquipeChapterRankingRow[] = [
-  { position: 1, userId: "U-01", name: "Cibele Esmaniotto", photoPath: null, points: 5 },
-  { position: 2, userId: "U-02", name: "Ana Silva", photoPath: null, points: 3 },
-  { position: 3, userId: "U-03", name: "Bruno Costa", photoPath: null, points: 2 },
-]
+function makeRows(startPos: number, count: number, pointsBase: number): EquipeChapterRankingRow[] {
+  return Array.from({ length: count }, (_, i) => ({
+    position: startPos + i,
+    userId: `U-${String(startPos + i).padStart(2, "0")}`,
+    name: `Usuário ${startPos + i}`,
+    photoPath: null,
+    points: Math.max(1, pointsBase - i),
+  }))
+}
+
+const primeiraPagina: EquipeChapterRankingPage = {
+  rows: makeRows(1, 10, 20),
+  page: 1,
+  pageSize: EQUIPE_CHAPTER_RANKING_PAGE_SIZE,
+  totalItems: 24,
+  totalPages: 3,
+}
 
 const meta: Meta<typeof EquipeChapterRanking> = {
   title: "Equipe/EquipeChapterRanking",
@@ -20,16 +34,51 @@ const meta: Meta<typeof EquipeChapterRanking> = {
 export default meta
 type Story = StoryObj<typeof EquipeChapterRanking>
 
-export const PodioCompleto: Story = {
-  args: { entries: top3 },
+export const PrimeiraPaginaComPaginacao: Story = {
+  render: () => {
+    const [data, setData] = React.useState<EquipeChapterRankingPage>(primeiraPagina)
+    return (
+      <div className="max-w-sm">
+        <EquipeChapterRanking
+          data={data}
+          onPageChange={(p) => {
+            const start = (p - 1) * EQUIPE_CHAPTER_RANKING_PAGE_SIZE
+            const remaining = Math.max(0, 24 - start)
+            const n = Math.min(EQUIPE_CHAPTER_RANKING_PAGE_SIZE, remaining)
+            setData({
+              ...primeiraPagina,
+              page: p,
+              rows: makeRows(start + 1, n, 20 - start),
+            })
+          }}
+        />
+      </div>
+    )
+  },
 }
 
 export const SoPrimeiroLugar: Story = {
   args: {
-    entries: [{ position: 1, userId: "U-01", name: "Cibele Esmaniotto", photoPath: null, points: 1 }],
+    data: {
+      rows: [{ position: 1, userId: "U-01", name: "Cibele Esmaniotto", photoPath: null, points: 7 }],
+      page: 1,
+      pageSize: EQUIPE_CHAPTER_RANKING_PAGE_SIZE,
+      totalItems: 1,
+      totalPages: 1,
+    },
+    onPageChange: () => {},
   },
 }
 
 export const SemDados: Story = {
-  args: { entries: [] },
+  args: {
+    data: {
+      rows: [],
+      page: 1,
+      pageSize: EQUIPE_CHAPTER_RANKING_PAGE_SIZE,
+      totalItems: 0,
+      totalPages: 1,
+    },
+    onPageChange: () => {},
+  },
 }

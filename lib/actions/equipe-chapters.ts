@@ -82,13 +82,23 @@ export interface EquipeChapterListRow {
   authors: EquipeChapterAuthorDisplay[]
 }
 
-/** Top 3 autores por quantidade de participações em chapters (1 ponto por chapter em que aparece). */
+/** Uma linha do ranking (posição global no pódio geral). */
 export interface EquipeChapterRankingRow {
-  position: 1 | 2 | 3
+  position: number
   userId: string
   name: string
   photoPath: string | null
   points: number
+}
+
+export const EQUIPE_CHAPTER_RANKING_PAGE_SIZE = 10
+
+export interface EquipeChapterRankingPage {
+  rows: EquipeChapterRankingRow[]
+  page: number
+  pageSize: number
+  totalItems: number
+  totalPages: number
 }
 
 function chapterPrismaUserMessage(e: unknown, fallback: string): string {
@@ -179,19 +189,30 @@ export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
 }
 
 /**
- * Ranking dos 3 autores com mais participações em chapters.
- * Cada linha em `EquipeChapterAuthor` conta 1 ponto para aquele `userId`.
+ * Ranking paginado: cada linha em `EquipeChapterAuthor` conta 1 ponto para o `userId`.
+ * `page` é 1-based; `pageSize` = {@link EQUIPE_CHAPTER_RANKING_PAGE_SIZE}.
  */
-export async function getEquipeChapterAuthorRanking(): Promise<EquipeChapterRankingRow[]> {
+export async function getEquipeChapterAuthorRankingPage(
+  page: number = 1,
+): Promise<EquipeChapterRankingPage> {
   await requireSession()
   await ensureEquipeChapterTables()
+  const pageSize = EQUIPE_CHAPTER_RANKING_PAGE_SIZE
+  const empty = (): EquipeChapterRankingPage => ({
+    rows: [],
+    page: 1,
+    pageSize,
+    totalItems: 0,
+    totalPages: 1,
+  })
+
   try {
     const links = await prisma.equipeChapterAuthor.findMany({ select: { userId: true } })
     const tally = new Map<string, number>()
     for (const { userId } of links) {
       tally.set(userId, (tally.get(userId) ?? 0) + 1)
     }
-    if (tally.size === 0) return []
+    if (tally.size === 0) return empty()
 
     const meta = await userDisplayMetaById()
     const sorted = [...tally.entries()]
@@ -205,18 +226,33 @@ export async function getEquipeChapterAuthorRanking(): Promise<EquipeChapterRank
         if (b.points !== a.points) return b.points - a.points
         return a.name.localeCompare(b.name, "pt-BR")
       })
-      .slice(0, 3)
 
-    return sorted.map((row, i) => ({
-      position: (i + 1) as EquipeChapterRankingRow["position"],
+    const totalItems = sorted.length
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+    const safePage =
+      typeof page === "number" && Number.isFinite(page) && page >= 1
+        ? Math.min(Math.floor(page), totalPages)
+        : 1
+    const start = (safePage - 1) * pageSize
+    const slice = sorted.slice(start, start + pageSize)
+    const rows: EquipeChapterRankingRow[] = slice.map((row, i) => ({
+      position: start + i + 1,
       userId: row.userId,
       name: row.name,
       photoPath: row.photoPath,
       points: row.points,
     }))
+
+    return {
+      rows,
+      page: safePage,
+      pageSize,
+      totalItems,
+      totalPages,
+    }
   } catch (e) {
-    console.error("[getEquipeChapterAuthorRanking]", e)
-    return []
+    console.error("[getEquipeChapterAuthorRankingPage]", e)
+    return empty()
   }
 }
 
