@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { ChevronDown, ChevronUp, Filter, X } from "lucide-react"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export function AtualizacoesClient({ entries }: Props) {
+  const router = useRouter()
   const [search, setSearch] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -42,6 +44,14 @@ export function AtualizacoesClient({ entries }: Props) {
   const [pendingTag, setPendingTag] = useState("")
   const [pendingDateFrom, setPendingDateFrom] = useState("")
   const [pendingDateTo, setPendingDateTo] = useState("")
+
+  useEffect(() => {
+    function onPageShow(e: PageTransitionEvent) {
+      if (e.persisted) router.refresh()
+    }
+    window.addEventListener("pageshow", onPageShow)
+    return () => window.removeEventListener("pageshow", onPageShow)
+  }, [router])
 
   const activeFilterCount = [filterTag, filterDateFrom, filterDateTo].filter(Boolean).length
 

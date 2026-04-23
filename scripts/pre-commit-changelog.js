@@ -46,6 +46,17 @@ const changes = commits.map(s =>
     .trim()
 )
 
+function sameChangeList(a, b) {
+  if (!a?.length || !b?.length || a.length !== b.length) return false
+  return a.every((c, i) => c === b[i])
+}
+
+// Evita duplicar a mesma lista em redeploys (ex.: CI sem commit do json atualizado)
+if (data.some((e) => sameChangeList(e.changes, changes))) {
+  console.log("Changelog já contém esta lista de mudanças. Nada adicionado.")
+  process.exit(0)
+}
+
 const today = new Date().toISOString().split("T")[0]
 
 const newEntry = {

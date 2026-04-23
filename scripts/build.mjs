@@ -121,6 +121,21 @@ Para build sem migrate: SKIP_PRISMA_MIGRATE=1 npm run build
   console.info("[build] DATABASE_URL não definida ou placeholder — pulando prisma migrate deploy.")
 }
 
+// Changelog: Vercel não executa o hook npm "predeploy" — gerar aqui garante json atual no bundle.
+const changelogScript = join(root, "scripts", "pre-commit-changelog.js")
+if (existsSync(changelogScript)) {
+  console.info("[build] Changelog — verificando commits git (scripts/pre-commit-changelog.js)…")
+  const chlog = spawnSync(process.execPath, [changelogScript], {
+    cwd: root,
+    stdio: "inherit",
+    encoding: "utf8",
+    shell: false,
+  })
+  if (chlog.status !== 0 && chlog.status != null) {
+    console.warn("[build] pre-commit-changelog.js saiu com código", chlog.status, "— build continua.")
+  }
+}
+
 const build = spawnSync("npx", ["next", "build"], {
   cwd: root,
   stdio: "inherit",
