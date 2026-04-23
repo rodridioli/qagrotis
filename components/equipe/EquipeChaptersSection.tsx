@@ -17,10 +17,12 @@ import {
   listEquipeChapterAuthorOptions,
   deleteEquipeChapter,
   getEquipeChapterAuthorRankingPage,
-  type EquipeChapterAuthorOption,
-  type EquipeChapterListRow,
-  type EquipeChapterRankingPage,
 } from "@/lib/actions/equipe-chapters"
+import type {
+  EquipeChapterAuthorOption,
+  EquipeChapterListRow,
+  EquipeChapterRankingPage,
+} from "@/lib/equipe-chapters-shared"
 
 export interface EquipeChaptersSectionProps {
   isAdmin: boolean

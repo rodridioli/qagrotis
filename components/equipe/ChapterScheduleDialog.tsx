@@ -13,11 +13,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ChapterAuthorsMultiCombobox } from "@/components/equipe/ChapterAuthorsMultiCombobox"
-import {
-  createEquipeChapter,
-  updateEquipeChapter,
-  type EquipeChapterAuthorOption,
-} from "@/lib/actions/equipe-chapters"
+import { createEquipeChapter, updateEquipeChapter } from "@/lib/actions/equipe-chapters"
+import type { EquipeChapterAuthorOption } from "@/lib/equipe-chapters-shared"
 import { isValidCalendarYmd, todayYmdBrazil } from "@/lib/equipe-chapter-dates"
 import { inputNativePickerRightClassName } from "@/lib/input-native-picker-classes"
 

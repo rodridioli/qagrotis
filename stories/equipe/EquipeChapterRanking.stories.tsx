@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import * as React from "react"
 import { EquipeChapterRanking } from "@/components/equipe/EquipeChapterRanking"
-import type { EquipeChapterRankingPage, EquipeChapterRankingRow } from "@/lib/actions/equipe-chapters"
-import { EQUIPE_CHAPTER_RANKING_PAGE_SIZE } from "@/lib/actions/equipe-chapters"
+import {
+  EQUIPE_CHAPTER_RANKING_PAGE_SIZE,
+  type EquipeChapterRankingPage,
+  type EquipeChapterRankingRow,
+} from "@/lib/equipe-chapters-shared"
 
 function makeRows(startPos: number, count: number, pointsBase: number): EquipeChapterRankingRow[] {
   return Array.from({ length: count }, (_, i) => ({

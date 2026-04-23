@@ -3,7 +3,7 @@
 import * as React from "react"
 import { ChevronDown, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { EquipeChapterAuthorOption } from "@/lib/actions/equipe-chapters"
+import type { EquipeChapterAuthorOption } from "@/lib/equipe-chapters-shared"
 
 export interface ChapterAuthorsMultiComboboxProps {
   options: EquipeChapterAuthorOption[]

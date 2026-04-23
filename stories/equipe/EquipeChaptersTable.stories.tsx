@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { EquipeChaptersTable } from "@/components/equipe/EquipeChaptersTable"
-import type { EquipeChapterListRow } from "@/lib/actions/equipe-chapters"
+import type { EquipeChapterListRow } from "@/lib/equipe-chapters-shared"
 
 const sampleRows: EquipeChapterListRow[] = [
   {

@@ -3,7 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import { Trophy } from "lucide-react"
-import type { EquipeChapterRankingPage } from "@/lib/actions/equipe-chapters"
+import type { EquipeChapterRankingPage } from "@/lib/equipe-chapters-shared"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { cn } from "@/lib/utils"
 

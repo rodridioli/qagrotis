@@ -12,6 +12,14 @@ import {
 import { getQaUsers } from "@/lib/actions/usuarios"
 import { ensureEquipeChapterTables } from "@/lib/prisma-schema-ensure"
 import { requireAdmin, requireSession } from "@/lib/session"
+import {
+  EQUIPE_CHAPTER_RANKING_PAGE_SIZE,
+  type EquipeChapterAuthorDisplay,
+  type EquipeChapterAuthorOption,
+  type EquipeChapterListRow,
+  type EquipeChapterRankingPage,
+  type EquipeChapterRankingRow,
+} from "@/lib/equipe-chapters-shared"
 
 /** Shape retornado por `findMany` com `authors` (evita implicit any sem client gerado). */
 interface EquipeChapterAuthorLink {
@@ -57,49 +65,6 @@ function normalizeHyperlink(
 const updateSchema = createSchema.extend({
   id: idSchema,
 })
-
-export interface EquipeChapterAuthorOption {
-  id: string
-  name: string
-}
-
-/** Autor na listagem de chapters (foto + nome; inclui inativos no histórico). */
-export interface EquipeChapterAuthorDisplay {
-  userId: string
-  name: string
-  photoPath: string | null
-}
-
-export interface EquipeChapterListRow {
-  id: string
-  edicao: number
-  dataYmd: string
-  tema: string
-  autoresLabel: string
-  hyperlink: string | null
-  authorIds: string[]
-  /** Ordem estável: mesma ordem persistida em `EquipeChapterAuthor` (createMany). */
-  authors: EquipeChapterAuthorDisplay[]
-}
-
-/** Uma linha do ranking (posição global no pódio geral). */
-export interface EquipeChapterRankingRow {
-  position: number
-  userId: string
-  name: string
-  photoPath: string | null
-  points: number
-}
-
-export const EQUIPE_CHAPTER_RANKING_PAGE_SIZE = 10
-
-export interface EquipeChapterRankingPage {
-  rows: EquipeChapterRankingRow[]
-  page: number
-  pageSize: number
-  totalItems: number
-  totalPages: number
-}
 
 function chapterPrismaUserMessage(e: unknown, fallback: string): string {
   const code = typeof e === "object" && e !== null && "code" in e ? String((e as { code: string }).code) : ""
@@ -190,7 +155,7 @@ export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
 
 /**
  * Ranking paginado: cada linha em `EquipeChapterAuthor` conta 1 ponto para o `userId`.
- * `page` é 1-based; `pageSize` = {@link EQUIPE_CHAPTER_RANKING_PAGE_SIZE}.
+ * `page` é 1-based; `pageSize` fixo (`EQUIPE_CHAPTER_RANKING_PAGE_SIZE` em `lib/equipe-chapters-shared`).
  */
 export async function getEquipeChapterAuthorRankingPage(
   page: number = 1,

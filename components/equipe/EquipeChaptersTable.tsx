@@ -9,7 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import type { EquipeChapterListRow } from "@/lib/actions/equipe-chapters"
+import type { EquipeChapterListRow } from "@/lib/equipe-chapters-shared"
 
 export interface EquipeChaptersTableProps {
   rows: EquipeChapterListRow[]

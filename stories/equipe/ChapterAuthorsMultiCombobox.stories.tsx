@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import * as React from "react"
 import { ChapterAuthorsMultiCombobox } from "@/components/equipe/ChapterAuthorsMultiCombobox"
-import type { EquipeChapterAuthorOption } from "@/lib/actions/equipe-chapters"
+import type { EquipeChapterAuthorOption } from "@/lib/equipe-chapters-shared"
 
 const options: EquipeChapterAuthorOption[] = [
   { id: "u1", name: "Ana Silva" },
