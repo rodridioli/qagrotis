@@ -11,12 +11,15 @@ import {
   type ChapterScheduleInitial,
 } from "@/components/equipe/ChapterScheduleDialog"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
+import { EquipeChapterRanking } from "@/components/equipe/EquipeChapterRanking"
 import {
   listEquipeChapters,
   listEquipeChapterAuthorOptions,
   deleteEquipeChapter,
+  getEquipeChapterAuthorRanking,
   type EquipeChapterAuthorOption,
   type EquipeChapterListRow,
+  type EquipeChapterRankingRow,
 } from "@/lib/actions/equipe-chapters"
 
 export interface EquipeChaptersSectionProps {
@@ -25,6 +28,7 @@ export interface EquipeChaptersSectionProps {
 
 export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
   const [rows, setRows] = React.useState<EquipeChapterListRow[]>([])
+  const [ranking, setRanking] = React.useState<EquipeChapterRankingRow[]>([])
   const [authorOptions, setAuthorOptions] = React.useState<EquipeChapterAuthorOption[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -41,10 +45,15 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
     setLoading(true)
     setError(null)
     try {
-      const list = await listEquipeChapters()
+      const [list, rank] = await Promise.all([
+        listEquipeChapters(),
+        getEquipeChapterAuthorRanking(),
+      ])
       setRows(list)
+      setRanking(rank)
     } catch {
       setRows([])
+      setRanking([])
       setError("Não foi possível carregar os chapters. Tente novamente em instantes.")
     }
     try {
@@ -163,12 +172,17 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
           <p className="text-center text-sm text-destructive">{error}</p>
         </div>
       ) : (
-        <EquipeChaptersTable
-          rows={filtered}
-          isAdmin={isAdmin}
-          onEdit={openEdit}
-          onRequestDelete={requestDelete}
-        />
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[1fr_minmax(15rem,18.5rem)] xl:items-start">
+          <div className="min-w-0">
+            <EquipeChaptersTable
+              rows={filtered}
+              isAdmin={isAdmin}
+              onEdit={openEdit}
+              onRequestDelete={requestDelete}
+            />
+          </div>
+          <EquipeChapterRanking entries={ranking} className="min-w-0 xl:sticky xl:top-4" />
+        </div>
       )}
 
       <ChapterScheduleDialog

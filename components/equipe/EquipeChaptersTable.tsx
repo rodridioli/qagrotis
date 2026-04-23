@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { ExternalLink, MoreVertical, Pencil, Trash2 } from "lucide-react"
 import {
   DropdownMenu,
@@ -31,6 +32,16 @@ function formatDataPt(ymd: string): string {
   const [y, m, d] = ymd.split("-")
   if (!y || !m || !d) return ymd
   return `${d}/${m}/${y}`
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase() || "?"
 }
 
 /**
@@ -77,8 +88,35 @@ export function EquipeChaptersTable({ rows, isAdmin, onEdit, onRequestDelete }: 
                 <td className="max-w-[12rem] px-3 py-3 text-text-primary sm:max-w-md sm:px-4">
                   <span className="line-clamp-3 sm:line-clamp-2">{r.tema}</span>
                 </td>
-                <td className="min-w-[8rem] max-w-[14rem] px-3 py-3 text-text-secondary sm:px-4">
-                  <span className="line-clamp-3 text-sm sm:line-clamp-2">{r.autoresLabel}</span>
+                <td className="min-w-0 max-w-[min(100%,20rem)] px-3 py-3 sm:max-w-none sm:px-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {(r.authors?.length ? r.authors : []).map((a) => (
+                      <span
+                        key={a.userId}
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border-default bg-surface-input py-0.5 pl-0.5 pr-2 text-xs text-text-primary"
+                        title={a.name}
+                      >
+                        {a.photoPath ? (
+                          <Image
+                            src={a.photoPath}
+                            alt={a.name}
+                            width={24}
+                            height={24}
+                            unoptimized
+                            className="size-6 shrink-0 rounded-full object-cover"
+                          />
+                        ) : (
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-[10px] font-semibold text-brand-primary">
+                            {getInitials(a.name)}
+                          </span>
+                        )}
+                        <span className="min-w-0 max-w-[10rem] truncate font-medium sm:max-w-[12rem]">{a.name}</span>
+                      </span>
+                    ))}
+                    {(!r.authors || r.authors.length === 0) && r.autoresLabel ? (
+                      <span className="line-clamp-2 text-sm text-text-secondary">{r.autoresLabel}</span>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="px-2 py-3 text-center sm:px-3">
                   {canLink ? (

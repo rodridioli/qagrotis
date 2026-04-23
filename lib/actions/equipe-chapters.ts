@@ -63,6 +63,13 @@ export interface EquipeChapterAuthorOption {
   name: string
 }
 
+/** Autor na listagem de chapters (foto + nome; inclui inativos no histórico). */
+export interface EquipeChapterAuthorDisplay {
+  userId: string
+  name: string
+  photoPath: string | null
+}
+
 export interface EquipeChapterListRow {
   id: string
   edicao: number
@@ -71,6 +78,17 @@ export interface EquipeChapterListRow {
   autoresLabel: string
   hyperlink: string | null
   authorIds: string[]
+  /** Ordem estável: mesma ordem persistida em `EquipeChapterAuthor` (createMany). */
+  authors: EquipeChapterAuthorDisplay[]
+}
+
+/** Top 3 autores por quantidade de participações em chapters (1 ponto por chapter em que aparece). */
+export interface EquipeChapterRankingRow {
+  position: 1 | 2 | 3
+  userId: string
+  name: string
+  photoPath: string | null
+  points: number
 }
 
 function chapterPrismaUserMessage(e: unknown, fallback: string): string {
@@ -87,15 +105,15 @@ async function activeAuthorIdSet(): Promise<Set<string>> {
   return new Set(users.filter((u) => u.active).map((u) => u.id))
 }
 
-/** Nomes para rótulos na listagem de chapters — inclui inativos (histórico do chapter). */
-function nameByUserIdMapForDisplay(): Promise<Map<string, string>> {
-  return getQaUsers().then((users) => {
-    const m = new Map<string, string>()
-    for (const u of users) {
-      m.set(u.id, (u.name || u.email || u.id).trim() || u.id)
-    }
-    return m
-  })
+/** Nome e foto para UI de chapters — inclui inativos (histórico). */
+async function userDisplayMetaById(): Promise<Map<string, { name: string; photoPath: string | null }>> {
+  const users = await getQaUsers()
+  const m = new Map<string, { name: string; photoPath: string | null }>()
+  for (const u of users) {
+    const name = (u.name || u.email || u.id).trim() || u.id
+    m.set(u.id, { name, photoPath: u.photoPath ?? null })
+  }
+  return m
 }
 
 /** Autores ativos para multi-select (mesma base que /configuracoes/usuarios). */
@@ -118,7 +136,7 @@ export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
       orderBy: [{ data: "asc" }, { createdAt: "asc" }],
     })) as EquipeChapterWithAuthors[]
 
-    const names = await nameByUserIdMapForDisplay()
+    const meta = await userDisplayMetaById()
     const editionById = new Map<string, number>()
     chapters.forEach((c: EquipeChapterWithAuthors, i: number) => editionById.set(c.id, i + 1))
 
@@ -131,8 +149,16 @@ export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
 
     return rowsDesc.map((c: EquipeChapterWithAuthors) => {
       const authorIds = c.authors.map((a: EquipeChapterAuthorLink) => a.userId)
-      const autoresLabel = authorIds
-        .map((id: string) => names.get(id) ?? id)
+      const authors: EquipeChapterAuthorDisplay[] = authorIds.map((id: string) => {
+        const row = meta.get(id)
+        return {
+          userId: id,
+          name: row?.name ?? id,
+          photoPath: row?.photoPath ?? null,
+        }
+      })
+      const autoresLabel = [...authors]
+        .map((a) => a.name)
         .sort((a: string, b: string) => a.localeCompare(b, "pt-BR"))
         .join(", ")
       return {
@@ -143,10 +169,53 @@ export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
         autoresLabel,
         hyperlink: c.hyperlink,
         authorIds,
+        authors,
       }
     })
   } catch (e) {
     console.error("[listEquipeChapters]", e)
+    return []
+  }
+}
+
+/**
+ * Ranking dos 3 autores com mais participações em chapters.
+ * Cada linha em `EquipeChapterAuthor` conta 1 ponto para aquele `userId`.
+ */
+export async function getEquipeChapterAuthorRanking(): Promise<EquipeChapterRankingRow[]> {
+  await requireSession()
+  await ensureEquipeChapterTables()
+  try {
+    const links = await prisma.equipeChapterAuthor.findMany({ select: { userId: true } })
+    const tally = new Map<string, number>()
+    for (const { userId } of links) {
+      tally.set(userId, (tally.get(userId) ?? 0) + 1)
+    }
+    if (tally.size === 0) return []
+
+    const meta = await userDisplayMetaById()
+    const sorted = [...tally.entries()]
+      .map(([userId, points]) => ({
+        userId,
+        points,
+        name: meta.get(userId)?.name ?? userId,
+        photoPath: meta.get(userId)?.photoPath ?? null,
+      }))
+      .sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points
+        return a.name.localeCompare(b.name, "pt-BR")
+      })
+      .slice(0, 3)
+
+    return sorted.map((row, i) => ({
+      position: (i + 1) as EquipeChapterRankingRow["position"],
+      userId: row.userId,
+      name: row.name,
+      photoPath: row.photoPath,
+      points: row.points,
+    }))
+  } catch (e) {
+    console.error("[getEquipeChapterAuthorRanking]", e)
     return []
   }
 }

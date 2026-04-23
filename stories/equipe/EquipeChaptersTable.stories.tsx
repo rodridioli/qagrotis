@@ -11,6 +11,10 @@ const sampleRows: EquipeChapterListRow[] = [
     autoresLabel: "Ana Silva, Bruno Costa",
     hyperlink: "https://example.com/slides",
     authorIds: ["u1", "u2"],
+    authors: [
+      { userId: "u1", name: "Ana Silva", photoPath: null },
+      { userId: "u2", name: "Bruno Costa", photoPath: null },
+    ],
   },
   {
     id: "2",
@@ -20,6 +24,7 @@ const sampleRows: EquipeChapterListRow[] = [
     autoresLabel: "Carla M.",
     hyperlink: null,
     authorIds: ["u3"],
+    authors: [{ userId: "u3", name: "Carla M.", photoPath: null }],
   },
   {
     id: "3",
@@ -29,6 +34,7 @@ const sampleRows: EquipeChapterListRow[] = [
     autoresLabel: "Diego",
     hyperlink: "https://notion.so/doc",
     authorIds: ["u4"],
+    authors: [{ userId: "u4", name: "Diego", photoPath: null }],
   },
 ]
 
