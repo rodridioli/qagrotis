@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
+import { resolveJiraCredentialsForRequest } from "@/lib/jira-credentials-db"
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -10,22 +11,20 @@ export async function POST(req: NextRequest) {
   catch { return new Response("FormData inválido.", { status: 400 }) }
 
   const issueKey = formData.get("issueKey") as string
-  let jiraUrl   = formData.get("jiraUrl")   as string | null ?? ""
-  let email     = formData.get("email")     as string | null ?? ""
-  let apiToken  = formData.get("apiToken")  as string | null ?? ""
+  const jiraUrlField = (formData.get("jiraUrl") as string | null) ?? ""
+  const emailField = (formData.get("email") as string | null) ?? ""
+  const apiTokenField = (formData.get("apiToken") as string | null) ?? ""
 
-  if (!jiraUrl || !email || !apiToken) {
-    const { cookies } = await import("next/headers")
-    const cookieStore = await cookies()
-    jiraUrl  = jiraUrl  || cookieStore.get("jira_url")?.value   || ""
-    email    = email    || cookieStore.get("jira_email")?.value || ""
-    apiToken = apiToken || cookieStore.get("jira_token")?.value || ""
-  }
-
-  if (!jiraUrl || !issueKey || !apiToken || !email) {
+  const resolved = await resolveJiraCredentialsForRequest(session.user.id, {
+    jiraUrl: jiraUrlField || undefined,
+    email: emailField || undefined,
+    apiToken: apiTokenField || undefined,
+  })
+  if (!resolved || !issueKey) {
     return new Response("Campos obrigatórios ausentes. Configure a Integração Jira em Configurações.", { status: 400 })
   }
 
+  const { jiraUrl, jiraEmail: email, apiToken } = resolved
   const base = jiraUrl.replace(/\/$/, "")
   const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64")
 

@@ -122,7 +122,6 @@ export default function NovoCenarioClient({
   const [isCredencialPending, startCredencialTransition] = useTransition()
 
   // ── Teste Automatizado fields ────────────────────────────────────────────────
-  const [objetivo, setObjetivo] = useState("")
   const [urlScript, setUrlScript] = useState("")
   const [steps, setSteps] = useState<Step[]>([])
   const draggedStepId = useRef<number | null>(null)
@@ -205,9 +204,6 @@ export default function NovoCenarioClient({
   function toggleManual() {
     const next = !manual
     setManual(next)
-    if (next && !descricao.trim() && objetivo.trim()) {
-      setDescricao(objetivo)
-    }
     if (!next) {
       if (activeTab === "manual") setActiveTab("cadastro")
       if (!automatizado && activeTab === "dependencias") setActiveTab("cadastro")
@@ -217,9 +213,6 @@ export default function NovoCenarioClient({
   function toggleAutomatizado() {
     const next = !automatizado
     setAutomatizado(next)
-    if (next && !objetivo.trim() && descricao.trim()) {
-      setObjetivo(descricao)
-    }
     if (!next) {
       if (activeTab === "automatizado") setActiveTab("cadastro")
       if (!manual && activeTab === "dependencias") setActiveTab("cadastro")
@@ -277,7 +270,7 @@ export default function NovoCenarioClient({
     }
 
     if (automatizado) {
-      if (!objetivo.trim()) { toast.error("Descrição é obrigatória."); setActiveTab("automatizado"); return false }
+      if (!descricao.trim()) { toast.error("Descrição é obrigatória."); setActiveTab("automatizado"); return false }
       if (!credencialId) {
         setCredencialError("Credenciais é obrigatório.")
         setActiveTab("automatizado")
@@ -311,7 +304,7 @@ export default function NovoCenarioClient({
             resultadoEsperado: resultadoEsperado.trim(),
             tipo,
             urlAmbiente: "",
-            objetivo: objetivo.trim(),
+            objetivo: descricao.trim(),
             urlScript: urlScript.trim(),
             usuarioTeste: "",
             senhaTeste: "",
@@ -368,7 +361,7 @@ export default function NovoCenarioClient({
       ``,
       `#### **Descrição**`,
       ``,
-      objetivo.trim() || "Não informado.",
+      descricao.trim() || "Não informado.",
       ``,
       `#### **Pré-condições**`,
       ``,
@@ -623,7 +616,7 @@ export default function NovoCenarioClient({
               </label>
               <Input
                 value={scenarioName}
-                onChange={(e) => setScenarioName(e.target.value)}
+                onChange={(e) => { setScenarioName(e.target.value); setHasSaved(false) }}
                 placeholder="Nome do cenário de teste"
               />
             </div>
@@ -634,7 +627,7 @@ export default function NovoCenarioClient({
               </label>
               <AutoResizeTextarea
                 value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
+                onChange={(e) => { setDescricao(e.target.value); setHasSaved(false) }}
                 placeholder="Descrição do cenário de teste..."
                 className="min-h-[100px]"
               />
@@ -693,7 +686,7 @@ export default function NovoCenarioClient({
               </label>
               <Input
                 value={scenarioName}
-                onChange={(e) => setScenarioName(e.target.value)}
+                onChange={(e) => { setScenarioName(e.target.value); setHasSaved(false) }}
                 placeholder="Nome do cenário de teste"
               />
             </div>
@@ -720,14 +713,14 @@ export default function NovoCenarioClient({
 
             <div className="border-t border-border-default" />
 
-            {/* Descrição (campo objetivo) */}
+            {/* Descrição (mesmo estado que Teste Manual) */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
                 Descrição <span className="text-destructive">*</span>
               </label>
               <AutoResizeTextarea
-                value={objetivo}
-                onChange={(e) => { setObjetivo(e.target.value); setHasSaved(false) }}
+                value={descricao}
+                onChange={(e) => { setDescricao(e.target.value); setHasSaved(false) }}
                 placeholder="Descrição do cenário de teste..."
                 className="min-h-[100px]"
               />

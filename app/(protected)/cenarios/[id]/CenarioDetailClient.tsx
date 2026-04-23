@@ -160,26 +160,36 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
   const manualInputRef = useRef<HTMLInputElement>(null)
   const autoInputRef = useRef<HTMLInputElement>(null)
 
-  // Carrega evidências salvas na sessão ao abrir o cenário
+  const steps = cenario.steps ?? []
+  const depIds = cenario.deps ?? []
+  const isAutomatizado = cenario.tipo === "Automatizado" || cenario.tipo === "Man./Auto."
+  const viewOnly = cenario.active === false
+  const allowEvidencias = !viewOnly
+
+  // Carrega evidências salvas na sessão ao abrir o cenário (só quando edição permitida)
   useEffect(() => {
+    if (viewOnly) return
     try {
       const m = sessionStorage.getItem(evStorageKey(cenario.id, "manual"))
       const a = sessionStorage.getItem(evStorageKey(cenario.id, "auto"))
       if (m) setManualEvs(JSON.parse(m))
       if (a) setAutoEvs(JSON.parse(a))
     } catch { /* ignore */ }
-  }, [cenario.id])
+  }, [cenario.id, viewOnly])
 
   // Persiste evidências na sessão sempre que mudam
   useEffect(() => {
+    if (viewOnly) return
     sessionStorage.setItem(evStorageKey(cenario.id, "manual"), JSON.stringify(manualEvs))
-  }, [cenario.id, manualEvs])
+  }, [cenario.id, manualEvs, viewOnly])
 
   useEffect(() => {
+    if (viewOnly) return
     sessionStorage.setItem(evStorageKey(cenario.id, "auto"), JSON.stringify(autoEvs))
-  }, [cenario.id, autoEvs])
+  }, [cenario.id, autoEvs, viewOnly])
 
   async function handleManualFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    if (viewOnly) return
     const files = Array.from(e.target.files ?? [])
     const evFiles = await Promise.all(files.map(fileToEvFile))
     setManualEvs((prev) => [...prev, ...evFiles])
@@ -187,17 +197,12 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
   }
 
   async function handleAutoFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    if (viewOnly) return
     const files = Array.from(e.target.files ?? [])
     const evFiles = await Promise.all(files.map(fileToEvFile))
     setAutoEvs((prev) => [...prev, ...evFiles])
     e.target.value = ""
   }
-
-  const steps = cenario.steps ?? []
-  const depIds = cenario.deps ?? []
-  const isAutomatizado = cenario.tipo === "Automatizado" || cenario.tipo === "Man./Auto."
-  // Cenário inativo = somente visualização, sem botões de ação
-  const viewOnly = cenario.active === false
 
   async function handleResult(resultado: "Sucesso" | "Erro") {
     if (!suite) return
@@ -335,22 +340,28 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
 
         {/* ── Evidências Teste Manual ── */}
         <div className="border-t border-border-default pt-4">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 gap-2">
             <span className="text-xs font-semibold text-text-secondary">
               Evidências{manualEvs.length > 0 ? ` (${manualEvs.length})` : ""}
             </span>
-            <Button variant="outline" onClick={() => manualInputRef.current?.click()}>
-              <Paperclip className="size-4" />
-              Anexar Evidências
-            </Button>
-            <input
-              ref={manualInputRef}
-              type="file"
-              multiple
-              accept="image/*,application/pdf"
-              className="hidden"
-              onChange={handleManualFiles}
-            />
+            {allowEvidencias ? (
+              <>
+                <Button variant="outline" onClick={() => manualInputRef.current?.click()}>
+                  <Paperclip className="size-4" />
+                  Anexar Evidências
+                </Button>
+                <input
+                  ref={manualInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={handleManualFiles}
+                />
+              </>
+            ) : (
+              <span className="text-xs text-text-secondary">Somente visualização</span>
+            )}
           </div>
           {manualEvs.length > 0 ? (
             <div className="flex flex-wrap gap-2">
@@ -361,13 +372,15 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                 >
                   <Paperclip className="size-3 shrink-0 text-text-secondary" />
                   <span className="max-w-40 truncate">{f.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => setManualEvs((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="text-text-secondary hover:text-destructive transition-colors"
-                  >
-                    <X className="size-3" />
-                  </button>
+                  {allowEvidencias && (
+                    <button
+                      type="button"
+                      onClick={() => setManualEvs((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="text-text-secondary hover:text-destructive transition-colors"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  )}
                 </span>
               ))}
             </div>
@@ -453,22 +466,28 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
 
             {/* ── Evidências Automação ── */}
             <div className="border-t border-border-default pt-4">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-2 gap-2">
                 <span className="text-xs font-semibold text-text-secondary">
                   Evidências{autoEvs.length > 0 ? ` (${autoEvs.length})` : ""}
                 </span>
-                <Button variant="outline" onClick={() => autoInputRef.current?.click()}>
-                  <Paperclip className="size-4" />
-                  Anexar Evidências
-                </Button>
-                <input
-                  ref={autoInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*,application/pdf"
-                  className="hidden"
-                  onChange={handleAutoFiles}
-                />
+                {allowEvidencias ? (
+                  <>
+                    <Button variant="outline" onClick={() => autoInputRef.current?.click()}>
+                      <Paperclip className="size-4" />
+                      Anexar Evidências
+                    </Button>
+                    <input
+                      ref={autoInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      onChange={handleAutoFiles}
+                    />
+                  </>
+                ) : (
+                  <span className="text-xs text-text-secondary">Somente visualização</span>
+                )}
               </div>
               {autoEvs.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
@@ -479,13 +498,15 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                     >
                       <Paperclip className="size-3 shrink-0 text-text-secondary" />
                       <span className="max-w-40 truncate">{f.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setAutoEvs((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="text-text-secondary hover:text-destructive transition-colors"
-                      >
-                        <X className="size-3" />
-                      </button>
+                      {allowEvidencias && (
+                        <button
+                          type="button"
+                          onClick={() => setAutoEvs((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="text-text-secondary hover:text-destructive transition-colors"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      )}
                     </span>
                   ))}
                 </div>

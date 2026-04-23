@@ -19,25 +19,15 @@ interface Props {
 
 export default function JiraConfigButton({ defaultEmail = "" }: Props) {
   const [open, setOpen] = useState(false)
-  const [jiraUrl, setJiraUrl] = useState(() =>
-    typeof window !== "undefined"
-      ? localStorage.getItem("jira_url") || "https://agrotis.atlassian.net/"
-      : "https://agrotis.atlassian.net/"
-  )
-  const [email, setEmail] = useState(() =>
-    typeof window !== "undefined"
-      ? localStorage.getItem("jira_email") || defaultEmail
-      : defaultEmail
-  )
-  const [token, setToken] = useState(() =>
-    typeof window !== "undefined" ? localStorage.getItem("jira_token") || "" : ""
-  )
+  const [jiraUrl, setJiraUrl] = useState("https://agrotis.atlassian.net/")
+  const [email, setEmail] = useState(defaultEmail)
+  const [token, setToken] = useState("")
+  const [hasStoredToken, setHasStoredToken] = useState(false)
   const [saving, setSaving] = useState(false)
 
   async function handleOpen() {
-    setJiraUrl(localStorage.getItem("jira_url") || "https://agrotis.atlassian.net/")
-    setEmail(localStorage.getItem("jira_email") || defaultEmail)
-    setToken(localStorage.getItem("jira_token") || "")
+    setToken("")
+    setHasStoredToken(false)
     try {
       const r = await fetch("/api/jira/credentials", { credentials: "same-origin" })
       if (r.ok) {
@@ -46,45 +36,70 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
           jiraEmail?: string
           hasToken?: boolean
         }
-        if (d.jiraUrl) setJiraUrl(d.jiraUrl)
-        if (d.jiraEmail) setEmail(d.jiraEmail)
-        if (d.hasToken) localStorage.setItem("jira_cookie_ok", "1")
+        setJiraUrl(d.jiraUrl?.trim() || "https://agrotis.atlassian.net/")
+        setEmail(d.jiraEmail?.trim() || defaultEmail)
+        setHasStoredToken(!!d.hasToken)
+      } else {
+        setJiraUrl("https://agrotis.atlassian.net/")
+        setEmail(defaultEmail)
       }
     } catch {
-      /* ignora rede */
+      setJiraUrl("https://agrotis.atlassian.net/")
+      setEmail(defaultEmail)
     }
     setOpen(true)
   }
 
   async function handleSave() {
-    if (!jiraUrl.trim() || !email.trim() || !token.trim()) {
-      toast.error("Todos os campos são obrigatórios.")
+    if (!jiraUrl.trim() || !email.trim()) {
+      toast.error("URL e e-mail são obrigatórios.")
+      return
+    }
+    if (!token.trim() && !hasStoredToken) {
+      toast.error("Informe o API Token.")
       return
     }
     setSaving(true)
     try {
-      // First validate credentials against Jira
-      const validateRes = await fetch("/api/jira", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "fetch", jiraUrl: jiraUrl.trim(), issueKey: "TEST-1", email: email.trim(), apiToken: token.trim() }),
-      })
-      if (!validateRes.ok && validateRes.status !== 404 && (validateRes.status === 401 || validateRes.status === 403)) {
-        toast.error("Credenciais inválidas. Verifique o e-mail e o API Token.")
-        return
+      if (token.trim()) {
+        const validateRes = await fetch("/api/jira", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "fetch",
+            jiraUrl: jiraUrl.trim(),
+            issueKey: "TEST-1",
+            email: email.trim(),
+            apiToken: token.trim(),
+          }),
+        })
+        if (!validateRes.ok && validateRes.status !== 404 && (validateRes.status === 401 || validateRes.status === 403)) {
+          toast.error("Credenciais inválidas. Verifique o e-mail e o API Token.")
+          return
+        }
       }
-      // Save to httpOnly cookies (secure, not accessible by JS)
+
       const saveRes = await fetch("/api/jira/credentials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jiraUrl: jiraUrl.trim(), jiraEmail: email.trim(), jiraToken: token.trim() }),
+        body: JSON.stringify({
+          jiraUrl: jiraUrl.trim(),
+          jiraEmail: email.trim(),
+          ...(token.trim() ? { jiraToken: token.trim() } : {}),
+        }),
       })
-      if (!saveRes.ok) throw new Error("Erro ao salvar credenciais.")
-      // Keep localStorage for backward compat with existing code that reads it
-      localStorage.setItem("jira_url", jiraUrl.trim())
-      localStorage.setItem("jira_email", email.trim())
-      localStorage.setItem("jira_token", token.trim())
-      localStorage.setItem("jira_cookie_ok", "1")
+      if (!saveRes.ok) {
+        const t = await saveRes.text().catch(() => "")
+        throw new Error(t || "Erro ao salvar credenciais.")
+      }
+
+      try {
+        ;["jira_url", "jira_email", "jira_token", "jira_cookie_ok"].forEach((k) => localStorage.removeItem(k))
+      } catch {
+        /* ignore */
+      }
+      setHasStoredToken(true)
+      setToken("")
       window.dispatchEvent(new Event("jira-credentials-synced"))
       toast.success("Configuração do Jira salva com sucesso.")
       setOpen(false)
@@ -115,7 +130,9 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
           </DialogHeader>
           <div className="flex flex-col gap-4 py-2">
             <p className="text-sm text-text-secondary">
-              Configure as credenciais para exportar históricos e usar o Gerador com issues do Jira. URL, e-mail e token são gravados em cookies seguros no servidor (persistem mesmo se você limpar apenas o armazenamento local do site).
+              Suas credenciais ficam vinculadas à sua conta e armazenadas no banco de dados (URL, e-mail e token de API).
+              Cada usuário configura o próprio acesso ao Jira. O token não é exibido depois de salvo; para trocá-lo,
+              informe um novo API Token.
             </p>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">URL do Jira <span className="text-destructive">*</span></label>
@@ -126,8 +143,8 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
               <Input placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">API Token <span className="text-destructive">*</span></label>
-              <Input type="password" placeholder="••••••••••••••••••••" value={token} onChange={(e) => setToken(e.target.value)} />
+              <label className="text-sm font-medium text-text-primary">API Token {!hasStoredToken && <span className="text-destructive">*</span>}</label>
+              <Input type="password" placeholder={hasStoredToken ? "Deixe em branco para manter o token atual" : "••••••••••••••••••••"} value={token} onChange={(e) => setToken(e.target.value)} />
               <p className="text-xs text-text-secondary">
                 Gere em{" "}
                 <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener noreferrer" className="text-brand-primary underline">
@@ -138,7 +155,10 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
           </div>
           <DialogFooter showCloseButton={false}>
             <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving || !jiraUrl.trim() || !email.trim() || !token.trim()}>
+            <Button
+              onClick={handleSave}
+              disabled={saving || !jiraUrl.trim() || !email.trim() || (!token.trim() && !hasStoredToken)}
+            >
               {saving ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>

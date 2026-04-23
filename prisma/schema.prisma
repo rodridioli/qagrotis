@@ -213,6 +213,16 @@ model CreatedUser {
   createdAt        DateTime  @default(now())
 }
 
+/// Credenciais Jira por usuário (mesmo userId da sessão: CreatedUser ou fallback OAuth).
+model UserJiraCredentials {
+  userId    String   @id
+  jiraUrl   String
+  jiraEmail String
+  apiToken  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // Profile overrides for both mock and created users (name, email, type, photo)
 model UserProfile {
   userId          String    @id

@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
+import { resolveJiraCredentialsForRequest } from "@/lib/jira-credentials-db"
 
 // GET is no longer supported - all Jira calls use POST with action field
 // This handler prevents 404 errors from cached old code
@@ -29,23 +30,17 @@ export async function POST(req: NextRequest) {
 
   const action = body.action ?? "update"
   const issueKey = body.issueKey
-  let jiraUrl = body.jiraUrl
-  let apiToken = body.apiToken
-  let email = body.email
 
-  // If credentials not in body, try server-side cookies (httpOnly, not accessible from JS)
-  if (!jiraUrl || !apiToken || !email) {
-    const { cookies } = await import("next/headers")
-    const cookieStore = await cookies()
-    jiraUrl   = jiraUrl   || cookieStore.get("jira_url")?.value   || ""
-    email     = email     || cookieStore.get("jira_email")?.value || ""
-    apiToken  = apiToken  || cookieStore.get("jira_token")?.value || ""
-  }
-
-  if (!jiraUrl || !issueKey || !apiToken || !email) {
+  const resolved = await resolveJiraCredentialsForRequest(session.user.id, {
+    jiraUrl: body.jiraUrl,
+    email: body.email,
+    apiToken: body.apiToken,
+  })
+  if (!resolved || !issueKey) {
     return new Response("Campos obrigatórios ausentes. Configure a Integração Jira em Configurações.", { status: 400 })
   }
 
+  const { jiraUrl, jiraEmail: email, apiToken } = resolved
   const base = jiraUrl.replace(/\/$/, "")
   const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64")
 

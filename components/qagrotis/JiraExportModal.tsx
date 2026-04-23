@@ -68,14 +68,6 @@ function buildContent(cenario: CenarioRecord, manualNames: string[], autoNames: 
   return lines.join("\n")
 }
 
-function getJiraCredentials() {
-  return {
-    jiraUrl: localStorage.getItem("jira_url") ?? "",
-    email: localStorage.getItem("jira_email") ?? "",
-    apiToken: localStorage.getItem("jira_token") ?? "",
-  }
-}
-
 async function uploadFilesToJira(issueKey: string, files: File[]): Promise<string[]> {
   if (files.length === 0) return []
   const fd = new FormData()
@@ -111,11 +103,17 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
     const key = parseIssueKey(issueInput)
     if (!key) { toast.error("Informe a URL ou chave da issue."); return }
 
-    const creds = getJiraCredentials()
-    if (!creds.jiraUrl || !creds.email || !creds.apiToken) {
-      toast.error("Configure a Integração Jira em Configurações antes de exportar.", {
-        action: { label: "Configurar", onClick: () => router.push("/configuracoes") },
-      })
+    try {
+      const cr = await fetch("/api/jira/credentials", { credentials: "same-origin" })
+      const cfg = cr.ok ? ((await cr.json()) as { configured?: boolean }) : null
+      if (!cfg?.configured) {
+        toast.error("Configure a Integração Jira em Configurações antes de exportar.", {
+          action: { label: "Configurar", onClick: () => router.push("/configuracoes") },
+        })
+        return
+      }
+    } catch {
+      toast.error("Não foi possível verificar a integração Jira.")
       return
     }
 
@@ -124,7 +122,7 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
       const res = await fetch("/api/jira", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "fetch", jiraUrl: creds.jiraUrl, issueKey: key, email: creds.email, apiToken: creds.apiToken }),
+        body: JSON.stringify({ action: "fetch", issueKey: key }),
       })
       if (!res.ok) {
         const err = await res.text()
@@ -135,7 +133,7 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
       if (data.hasContent) {
         setExisting(data)
       } else {
-        await doExport(key, creds, "replace")
+        await doExport(key, "replace")
       }
     } catch {
       toast.error("Não foi possível conectar ao Jira.")
@@ -146,7 +144,6 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
 
   async function doExport(
     issueKey: string,
-    creds: { jiraUrl: string; email: string; apiToken: string },
     mode: "replace" | "append",
   ) {
     setLoading(true)
@@ -163,7 +160,7 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
       const res = await fetch("/api/jira", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jiraUrl: creds.jiraUrl, issueKey, apiToken: creds.apiToken, email: creds.email, content, mode }),
+        body: JSON.stringify({ issueKey, content, mode }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error((data as string) || "Erro ao enviar para o Jira.")
@@ -259,13 +256,13 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
             <Button variant="outline" onClick={() => setExisting(null)} disabled={loading}>Cancelar</Button>
             <Button
               variant="outline"
-              onClick={() => { const creds = getJiraCredentials(); doExport(issueKey, creds, "replace") }}
+              onClick={() => { void doExport(issueKey, "replace") }}
               disabled={loading}
             >
               {loading ? "Enviando..." : "Substituir"}
             </Button>
             <Button
-              onClick={() => { const creds = getJiraCredentials(); doExport(issueKey, creds, "append") }}
+              onClick={() => { void doExport(issueKey, "append") }}
               disabled={loading}
             >
               {loading ? "Enviando..." : "Acrescentar"}

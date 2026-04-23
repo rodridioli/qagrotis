@@ -163,15 +163,20 @@ export function SuiteForm({
     ].join("\n")
   }
 
-  function handleExportarJira() {
+  async function handleExportarJira() {
     const selected = sortedHistorico.filter((h) => selectedHistorico.has(h._originalIdx))
     if (selected.length === 0) return
-    // Check Jira credentials before opening modal
-    const creds = getJiraCredentials()
-    if (!creds.jiraUrl || !creds.email || !creds.apiToken) {
-      toast.error("Configure a Integração Jira em Configurações antes de exportar.", {
-        action: { label: "Configurar", onClick: () => router.push("/configuracoes") },
-      })
+    try {
+      const r = await fetch("/api/jira/credentials", { credentials: "same-origin" })
+      const d = r.ok ? ((await r.json()) as { configured?: boolean }) : null
+      if (!d?.configured) {
+        toast.error("Configure a Integração Jira em Configurações antes de exportar.", {
+          action: { label: "Configurar", onClick: () => router.push("/configuracoes") },
+        })
+        return
+      }
+    } catch {
+      toast.error("Não foi possível verificar a integração Jira.")
       return
     }
     // Build content and open modal
@@ -257,14 +262,6 @@ export function SuiteForm({
     setJiraModalOpen(true)
   }
 
-  function getJiraCredentials() {
-    return {
-      jiraUrl: localStorage.getItem("jira_url") ?? "",
-      email: localStorage.getItem("jira_email") ?? "",
-      apiToken: localStorage.getItem("jira_token") ?? "",
-    }
-  }
-
   function parseIssueKey(input: string): string {
     // Accept full URL or bare key
     const trimmed = input.trim()
@@ -275,9 +272,15 @@ export function SuiteForm({
   async function handleJiraExport() {
     const issueKey = parseIssueKey(jiraIssueInput)
     if (!issueKey) { toast.error("Informe a URL ou chave da issue."); return }
-    const creds = getJiraCredentials()
-    if (!creds.jiraUrl || !creds.email || !creds.apiToken) {
-      toast.error("Configure a Integração Jira em Configurações antes de exportar.")
+    try {
+      const cr = await fetch("/api/jira/credentials", { credentials: "same-origin" })
+      const cfg = cr.ok ? ((await cr.json()) as { configured?: boolean }) : null
+      if (!cfg?.configured) {
+        toast.error("Configure a Integração Jira em Configurações antes de exportar.")
+        return
+      }
+    } catch {
+      toast.error("Não foi possível verificar a integração Jira.")
       return
     }
     setJiraLoading(true)
@@ -286,7 +289,7 @@ export function SuiteForm({
       const res = await fetch("/api/jira", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "fetch", jiraUrl: creds.jiraUrl, issueKey, email: creds.email, apiToken: creds.apiToken }),
+        body: JSON.stringify({ action: "fetch", issueKey }),
       })
       if (!res.ok) {
         const err = await res.text()
@@ -299,7 +302,7 @@ export function SuiteForm({
         setJiraExisting(data)
       } else {
         // No existing content — send directly
-        await sendToJira(issueKey, creds, "replace")
+        await sendToJira(issueKey, "replace")
       }
     } catch {
       toast.error("Não foi possível conectar ao Jira.")
@@ -308,7 +311,7 @@ export function SuiteForm({
     }
   }
 
-  async function sendToJira(issueKey: string, creds: { jiraUrl: string; email: string; apiToken: string }, mode: "replace" | "append") {
+  async function sendToJira(issueKey: string, mode: "replace" | "append") {
     setJiraLoading(true)
     try {
       // Upload evidence files and replace filenames with inline image markdown
@@ -340,7 +343,7 @@ export function SuiteForm({
       const res = await fetch("/api/jira", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jiraUrl: creds.jiraUrl, issueKey, apiToken: creds.apiToken, email: creds.email, content: contentToSend, mode, deleteAttachmentIds }),
+        body: JSON.stringify({ issueKey, content: contentToSend, mode, deleteAttachmentIds }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error((data as string) || "Erro ao enviar para o Jira.")
@@ -353,6 +356,8 @@ export function SuiteForm({
       setJiraIssueInput("")
       setJiraExisting(null)
       setJiraEvidences([])
+      setSelectedHistorico(new Set())
+      setSelectedCenarios(new Set())
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao conectar com o Jira.")
     } finally {
@@ -1247,13 +1252,13 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             </Button>
             <Button
               variant="outline"
-              onClick={() => { const creds = getJiraCredentials(); sendToJira(parseIssueKey(jiraIssueInput), creds, "replace") }}
+              onClick={() => { void sendToJira(parseIssueKey(jiraIssueInput), "replace") }}
               disabled={jiraLoading}
             >
               {jiraLoading ? "Enviando..." : "Substituir"}
             </Button>
             <Button
-              onClick={() => { const creds = getJiraCredentials(); sendToJira(parseIssueKey(jiraIssueInput), creds, "append") }}
+              onClick={() => { void sendToJira(parseIssueKey(jiraIssueInput), "append") }}
               disabled={jiraLoading}
             >
               {jiraLoading ? "Enviando..." : "Acrescentar"}

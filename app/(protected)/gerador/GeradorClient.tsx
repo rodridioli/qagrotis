@@ -63,47 +63,21 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const [jiraInput, setJiraInput] = useState("")
   const [jiraConfigured, setJiraConfigured] = useState(false)
 
-  // Jira: token pode estar só em cookie httpOnly (após salvar em Configurações).
   function refreshJiraConfigured() {
-    try {
-      const url = localStorage.getItem("jira_url")
-      const email = localStorage.getItem("jira_email")
-      const token = localStorage.getItem("jira_token")
-      const cookieOk = localStorage.getItem("jira_cookie_ok") === "1"
-      setJiraConfigured(!!(url?.trim() && email?.trim() && (token?.trim() || cookieOk)))
-    } catch {
-      setJiraConfigured(false)
-    }
+    fetch("/api/jira/credentials", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { configured?: boolean } | null) => {
+        setJiraConfigured(!!d?.configured)
+      })
+      .catch(() => setJiraConfigured(false))
   }
 
   useEffect(() => {
+    if (sessionStatus !== "authenticated") return
     refreshJiraConfigured()
     const onSync = () => refreshJiraConfigured()
     window.addEventListener("jira-credentials-synced", onSync)
     return () => window.removeEventListener("jira-credentials-synced", onSync)
-  }, [])
-
-  // Sincroniza URL/e-mail do servidor (cookies) para o localStorage só nesta tela — evita fetch global no layout.
-  useEffect(() => {
-    if (sessionStatus !== "authenticated") return
-    let cancelled = false
-    fetch("/api/jira/credentials", { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { configured?: boolean; jiraUrl?: string; jiraEmail?: string } | null) => {
-        if (cancelled || !d?.configured) return
-        try {
-          if (d.jiraUrl) localStorage.setItem("jira_url", d.jiraUrl)
-          if (d.jiraEmail) localStorage.setItem("jira_email", d.jiraEmail)
-          localStorage.setItem("jira_cookie_ok", "1")
-          window.dispatchEvent(new Event("jira-credentials-synced"))
-        } catch {
-          /* storage indisponível */
-        }
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
   }, [sessionStatus])
   const activeIntegracoes = useMemo(() => integracoes.filter(i => i.active !== false), [integracoes])
   const [aiProvider, setAiProvider] = useState<string>(() => {
@@ -269,9 +243,6 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     const jiraAttachments: { list: { name: string; dataUrl: string }[] } = { list: [] }
     if (jiraInput.trim()) {
       try {
-        const jiraUrl = localStorage.getItem("jira_url") ?? ""
-        const jiraEmail = localStorage.getItem("jira_email") ?? ""
-        const jiraToken = localStorage.getItem("jira_token") ?? ""
         // Extract issue key from full URL or use as-is
         const issueKey = jiraInput.trim().includes("/")
           ? jiraInput.trim().split("/").pop() ?? jiraInput.trim()
@@ -279,7 +250,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         const jiraRes = await fetch(api("/api/jira"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "fetch", jiraUrl, issueKey, email: jiraEmail, apiToken: jiraToken }),
+          body: JSON.stringify({ action: "fetch", issueKey }),
         })
         if (jiraRes.ok) {
           const jiraData = await jiraRes.json() as {

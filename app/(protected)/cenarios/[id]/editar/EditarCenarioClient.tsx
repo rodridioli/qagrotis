@@ -109,8 +109,10 @@ export default function EditarCenarioClient({
   const [manual, setManual] = useState(initialTipo === "Manual" || initialTipo === "Man./Auto.")
   const [automatizado, setAutomatizado] = useState(initialTipo === "Automatizado" || initialTipo === "Man./Auto.")
 
-  // ── Teste Manual fields ──────────────────────────────────────────────────────
-  const [descricao, setDescricao] = useState(cenario.descricao ?? "")
+  // ── Teste Manual fields (descrição única partilhada com aba Automatizado) ─────
+  const [descricao, setDescricao] = useState(
+    () => (cenario.descricao?.trim() || cenario.objetivo?.trim() || ""),
+  )
   const [regraDeNegocio, setRegraDeNegocio] = useState(cenario.regraDeNegocio ?? "")
   const [preCondicoes, setPreCondicoes] = useState(cenario.preCondicoes ?? "")
   const [bdd, setBdd] = useState(cenario.bdd ?? "")
@@ -132,7 +134,6 @@ export default function EditarCenarioClient({
   const [urlAmbiente] = useState(cenario.urlAmbiente ?? "")
   const [usuarioTeste] = useState(cenario.usuarioTeste ?? "")
   const [senhaTeste] = useState(cenario.senhaTeste ?? "")
-  const [objetivo, setObjetivo] = useState(cenario.objetivo ?? "")
   const [urlScript, setUrlScript] = useState(cenario.urlScript ?? "")
   const [steps, setSteps] = useState<Step[]>(
     (cenario.steps ?? []).map((s, i) => ({ id: i + 1, acao: s.acao, resultado: s.resultado }))
@@ -234,9 +235,6 @@ export default function EditarCenarioClient({
   function toggleManual() {
     const next = !manual
     setManual(next)
-    if (next && !descricao.trim() && objetivo.trim()) {
-      setDescricao(objetivo)
-    }
     if (!next) {
       if (activeTab === "manual") setActiveTab("cadastro")
       if (!automatizado && activeTab === "dependencias") setActiveTab("cadastro")
@@ -246,9 +244,6 @@ export default function EditarCenarioClient({
   function toggleAutomatizado() {
     const next = !automatizado
     setAutomatizado(next)
-    if (next && !objetivo.trim() && descricao.trim()) {
-      setObjetivo(descricao)
-    }
     if (!next) {
       if (activeTab === "automatizado") setActiveTab("cadastro")
       if (!manual && activeTab === "dependencias") setActiveTab("cadastro")
@@ -307,7 +302,7 @@ export default function EditarCenarioClient({
     }
 
     if (automatizado) {
-      if (!objetivo.trim()) { toast.error("Descrição é obrigatória."); setActiveTab("automatizado"); return false }
+      if (!descricao.trim()) { toast.error("Descrição é obrigatória."); setActiveTab("automatizado"); return false }
       if (!credencialId) {
         setCredencialError("Credenciais é obrigatório.")
         setActiveTab("automatizado")
@@ -341,7 +336,7 @@ export default function EditarCenarioClient({
             resultadoEsperado: resultadoEsperado.trim(),
             tipo,
             urlAmbiente: urlAmbiente.trim(),
-            objetivo: objetivo.trim(),
+            objetivo: descricao.trim(),
             urlScript: urlScript.trim(),
             usuarioTeste: usuarioTeste.trim(),
             senhaTeste: senhaTeste.trim(),
@@ -396,7 +391,7 @@ export default function EditarCenarioClient({
       ``,
       `#### **Descrição**`,
       ``,
-      objetivo.trim() || "Não informado.",
+      descricao.trim() || "Não informado.",
       ``,
       `#### **Pré-condições**`,
       ``,
@@ -655,7 +650,7 @@ export default function EditarCenarioClient({
               </label>
               <Input
                 value={scenarioName}
-                onChange={(e) => setScenarioName(e.target.value)}
+                onChange={(e) => { setScenarioName(e.target.value); setHasSaved(false) }}
                 placeholder="Nome do cenário de teste"
               />
             </div>
@@ -666,7 +661,7 @@ export default function EditarCenarioClient({
               </label>
               <AutoResizeTextarea
                 value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
+                onChange={(e) => { setDescricao(e.target.value); setHasSaved(false) }}
                 placeholder="Descrição do cenário de teste..."
                 className="min-h-[100px]"
               />
@@ -725,7 +720,7 @@ export default function EditarCenarioClient({
               </label>
               <Input
                 value={scenarioName}
-                onChange={(e) => setScenarioName(e.target.value)}
+                onChange={(e) => { setScenarioName(e.target.value); setHasSaved(false) }}
                 placeholder="Nome do cenário de teste"
               />
             </div>
@@ -752,14 +747,14 @@ export default function EditarCenarioClient({
 
             <div className="border-t border-border-default" />
 
-            {/* Descrição (campo objetivo) */}
+            {/* Descrição (mesmo estado que Teste Manual) */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
                 Descrição <span className="text-destructive">*</span>
               </label>
               <AutoResizeTextarea
-                value={objetivo}
-                onChange={(e) => { setObjetivo(e.target.value); setHasSaved(false) }}
+                value={descricao}
+                onChange={(e) => { setDescricao(e.target.value); setHasSaved(false) }}
                 placeholder="Descrição do cenário de teste..."
                 className="min-h-[100px]"
               />
