@@ -260,6 +260,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     setApiError(null)
     setIsEditing(false)
     setLoading(true)
+    setActiveTab("cenarios")
 
     // Fetch Jira issue content if URL/key provided
     let jiraContext = contexto.trim()
@@ -341,8 +342,6 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
       setLoading(false)
       return
     }
-
-    setActiveTab("cenarios")
 
     try {
       const res = await fetch(api("/api/gerador"), {
