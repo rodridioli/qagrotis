@@ -97,42 +97,49 @@ export function ChapterScheduleDialog({
 
     const ymd = dataYmd.trim()
 
-    startTransition(async () => {
-      if (mode === "create") {
-        const res = await createEquipeChapter({
-          tema: tema.trim(),
-          dataYmd: ymd,
-          authorIds,
-          hyperlink: hyperlink.trim() || undefined,
-        })
-        if (res.error) {
-          toast.error(res.error)
-          return
-        }
-        toast.success("Chapter agendado.")
-        onOpenChange(false)
-        onSuccess()
-        return
-      }
+    startTransition(() => {
+      void (async () => {
+        try {
+          if (mode === "create") {
+            const res = await createEquipeChapter({
+              tema: tema.trim(),
+              dataYmd: ymd,
+              authorIds,
+              hyperlink: hyperlink.trim() || undefined,
+            })
+            if (res.error) {
+              toast.error(res.error)
+              return
+            }
+            toast.success("Chapter agendado.")
+            onOpenChange(false)
+            onSuccess()
+            return
+          }
 
-      if (!initial?.id) {
-        toast.error("Chapter inválido.")
-        return
-      }
-      const res = await updateEquipeChapter({
-        id: initial.id,
-        tema: tema.trim(),
-        dataYmd: ymd,
-        authorIds,
-        hyperlink: hyperlink.trim() || undefined,
-      })
-      if (res.error) {
-        toast.error(res.error)
-        return
-      }
-      toast.success("Chapter atualizado.")
-      onOpenChange(false)
-      onSuccess()
+          if (!initial?.id) {
+            toast.error("Chapter inválido.")
+            return
+          }
+          const res = await updateEquipeChapter({
+            id: initial.id,
+            tema: tema.trim(),
+            dataYmd: ymd,
+            authorIds,
+            hyperlink: hyperlink.trim() || undefined,
+          })
+          if (res.error) {
+            toast.error(res.error)
+            return
+          }
+          toast.success("Chapter atualizado.")
+          onOpenChange(false)
+          onSuccess()
+        } catch (e) {
+          console.error("[ChapterScheduleDialog] salvar", e)
+          toast.error("Não foi possível salvar. Verifique a conexão e tente novamente.")
+        }
+      })()
     })
   }
 

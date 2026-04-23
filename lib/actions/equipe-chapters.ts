@@ -12,6 +12,22 @@ import {
 import { getQaUsers } from "@/lib/actions/usuarios"
 import { requireAdmin, requireSession } from "@/lib/session"
 
+/** Shape retornado por `findMany` com `authors` (evita implicit any sem client gerado). */
+interface EquipeChapterAuthorLink {
+  userId: string
+}
+
+interface EquipeChapterWithAuthors {
+  id: string
+  data: Date
+  createdAt: Date
+  tema: string
+  hyperlink: string | null
+  authors: EquipeChapterAuthorLink[]
+}
+
+type EquipeChapterDbTx = Pick<typeof prisma, "equipeChapter" | "equipeChapterAuthor">
+
 const idSchema = z.string().min(1).max(128)
 
 const createSchema = z.object({
@@ -84,27 +100,27 @@ export async function listEquipeChapterAuthorOptions(): Promise<EquipeChapterAut
 export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
   await requireSession()
 
-  const chapters = await prisma.equipeChapter.findMany({
+  const chapters = (await prisma.equipeChapter.findMany({
     include: { authors: true },
     orderBy: [{ data: "asc" }, { createdAt: "asc" }],
-  })
+  })) as EquipeChapterWithAuthors[]
 
   const names = await nameByUserIdMap()
   const editionById = new Map<string, number>()
-  chapters.forEach((c, i) => editionById.set(c.id, i + 1))
+  chapters.forEach((c: EquipeChapterWithAuthors, i: number) => editionById.set(c.id, i + 1))
 
-  const rowsDesc = [...chapters].sort((a, b) => {
+  const rowsDesc = [...chapters].sort((a: EquipeChapterWithAuthors, b: EquipeChapterWithAuthors) => {
     const ta = a.data.getTime()
     const tb = b.data.getTime()
     if (tb !== ta) return tb - ta
     return b.createdAt.getTime() - a.createdAt.getTime()
   })
 
-  return rowsDesc.map((c) => {
-    const authorIds = c.authors.map((a) => a.userId)
+  return rowsDesc.map((c: EquipeChapterWithAuthors) => {
+    const authorIds = c.authors.map((a: EquipeChapterAuthorLink) => a.userId)
     const autoresLabel = authorIds
-      .map((id) => names.get(id) ?? id)
-      .sort((a, b) => a.localeCompare(b, "pt-BR"))
+      .map((id: string) => names.get(id) ?? id)
+      .sort((a: string, b: string) => a.localeCompare(b, "pt-BR"))
       .join(", ")
     return {
       id: c.id,
@@ -127,32 +143,32 @@ export async function createEquipeChapter(
     return { error: "Não autenticado." }
   }
 
-  const parsed = createSchema.safeParse(input)
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
-  }
-  const { tema, dataYmd, authorIds } = parsed.data
-  const linkNorm = normalizeHyperlink(parsed.data.hyperlink)
-  if (!linkNorm.ok) return { error: linkNorm.error }
-  const hyperlink = linkNorm.value
-
-  if (!isValidNewChapterDate(dataYmd)) {
-    return { error: "Data inválida." }
-  }
-
-  const data = parseYmdToDbDate(dataYmd)
-  if (!data) return { error: "Data inválida." }
-
-  const allowed = await activeAuthorIdSet()
-  const filteredAuthors = authorIds.filter((id) => allowed.has(id))
-  if (filteredAuthors.length === 0) {
-    return { error: "Selecione pelo menos um autor ativo." }
-  }
-
   try {
-    const created = await prisma.$transaction(async (tx) => {
+    const parsed = createSchema.safeParse(input)
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+    }
+    const { tema, dataYmd, authorIds } = parsed.data
+    const linkNorm = normalizeHyperlink(parsed.data.hyperlink)
+    if (!linkNorm.ok) return { error: linkNorm.error }
+    const hyperlink = linkNorm.value
+
+    if (!isValidNewChapterDate(dataYmd)) {
+      return { error: "Data inválida." }
+    }
+
+    const data = parseYmdToDbDate(dataYmd)
+    if (!data) return { error: "Data inválida." }
+
+    const allowed = await activeAuthorIdSet()
+    const filteredAuthors = authorIds.filter((id) => allowed.has(id))
+    if (filteredAuthors.length === 0) {
+      return { error: "Selecione pelo menos um autor ativo." }
+    }
+
+    const created = await prisma.$transaction(async (tx: EquipeChapterDbTx) => {
       const ch = await tx.equipeChapter.create({
-        data: { tema, data, hyperlink },
+        data: { tema, data, hyperlink: hyperlink ?? null },
         select: { id: true },
       })
       await tx.equipeChapterAuthor.createMany({
@@ -161,7 +177,11 @@ export async function createEquipeChapter(
       })
       return ch
     })
-    revalidatePath("/equipe")
+    try {
+      revalidatePath("/equipe")
+    } catch (revErr) {
+      console.error("[createEquipeChapter] revalidatePath", revErr)
+    }
     return { id: created.id }
   } catch (e) {
     console.error("[createEquipeChapter]", e)
@@ -178,48 +198,52 @@ export async function updateEquipeChapter(
     return { error: "Não autorizado." }
   }
 
-  const parsed = updateSchema.safeParse(input)
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
-  }
-  const { id, tema, dataYmd, authorIds } = parsed.data
-  const linkNorm = normalizeHyperlink(parsed.data.hyperlink)
-  if (!linkNorm.ok) return { error: linkNorm.error }
-  const hyperlink = linkNorm.value
-
-  const existing = await prisma.equipeChapter.findUnique({
-    where: { id },
-    select: { data: true },
-  })
-  if (!existing) return { error: "Chapter não encontrado." }
-
-  const prevYmd = ymdFromDbDate(existing.data)
-  if (!isValidUpdatedChapterDate(dataYmd, prevYmd)) {
-    return { error: "Data inválida." }
-  }
-
-  const data = parseYmdToDbDate(dataYmd)
-  if (!data) return { error: "Data inválida." }
-
-  const allowed = await activeAuthorIdSet()
-  const filteredAuthors = authorIds.filter((aid) => allowed.has(aid))
-  if (filteredAuthors.length === 0) {
-    return { error: "Selecione pelo menos um autor ativo." }
-  }
-
   try {
-    await prisma.$transaction(async (tx) => {
+    const parsed = updateSchema.safeParse(input)
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+    }
+    const { id, tema, dataYmd, authorIds } = parsed.data
+    const linkNorm = normalizeHyperlink(parsed.data.hyperlink)
+    if (!linkNorm.ok) return { error: linkNorm.error }
+    const hyperlink = linkNorm.value
+
+    const existing = await prisma.equipeChapter.findUnique({
+      where: { id },
+      select: { data: true },
+    })
+    if (!existing) return { error: "Chapter não encontrado." }
+
+    const prevYmd = ymdFromDbDate(existing.data)
+    if (!isValidUpdatedChapterDate(dataYmd, prevYmd)) {
+      return { error: "Data inválida." }
+    }
+
+    const data = parseYmdToDbDate(dataYmd)
+    if (!data) return { error: "Data inválida." }
+
+    const allowed = await activeAuthorIdSet()
+    const filteredAuthors = authorIds.filter((aid) => allowed.has(aid))
+    if (filteredAuthors.length === 0) {
+      return { error: "Selecione pelo menos um autor ativo." }
+    }
+
+    await prisma.$transaction(async (tx: EquipeChapterDbTx) => {
       await tx.equipeChapterAuthor.deleteMany({ where: { chapterId: id } })
       await tx.equipeChapter.update({
         where: { id },
-        data: { tema, data, hyperlink },
+        data: { tema, data, hyperlink: hyperlink ?? null },
       })
       await tx.equipeChapterAuthor.createMany({
         data: filteredAuthors.map((userId) => ({ chapterId: id, userId })),
         skipDuplicates: true,
       })
     })
-    revalidatePath("/equipe")
+    try {
+      revalidatePath("/equipe")
+    } catch (revErr) {
+      console.error("[updateEquipeChapter] revalidatePath", revErr)
+    }
     return {}
   } catch (e) {
     console.error("[updateEquipeChapter]", e)
@@ -239,7 +263,11 @@ export async function deleteEquipeChapter(id: string): Promise<{ error?: string 
 
   try {
     await prisma.equipeChapter.delete({ where: { id } })
-    revalidatePath("/equipe")
+    try {
+      revalidatePath("/equipe")
+    } catch (revErr) {
+      console.error("[deleteEquipeChapter] revalidatePath", revErr)
+    }
     return {}
   } catch (e) {
     console.error("[deleteEquipeChapter]", e)
