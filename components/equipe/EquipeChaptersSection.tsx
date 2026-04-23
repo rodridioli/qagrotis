@@ -12,6 +12,7 @@ import {
 } from "@/components/equipe/ChapterScheduleDialog"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { EquipeChapterRanking } from "@/components/equipe/EquipeChapterRanking"
+import { ChapterRatingDialog } from "@/components/equipe/ChapterRatingDialog"
 import {
   listEquipeChapters,
   listEquipeChapterAuthorOptions,
@@ -45,6 +46,8 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
 
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [deleteRow, setDeleteRow] = React.useState<EquipeChapterListRow | null>(null)
+
+  const [ratingRow, setRatingRow] = React.useState<EquipeChapterListRow | null>(null)
 
   const [chaptersPage, setChaptersPage] = React.useState(1)
 
@@ -214,6 +217,7 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
               isAdmin={isAdmin}
               onEdit={openEdit}
               onRequestDelete={requestDelete}
+              onOpenRating={(row) => setRatingRow(row)}
               footer={
                 filtered.length > EQUIPE_CHAPTERS_TABLE_PAGE_SIZE ? (
                   <TablePagination
@@ -243,6 +247,16 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
         initial={editInitial}
         authorOptions={authorOptions}
         onSuccess={() => void refetch()}
+      />
+
+      <ChapterRatingDialog
+        open={!!ratingRow}
+        onOpenChange={(o) => {
+          if (!o) setRatingRow(null)
+        }}
+        chapterId={ratingRow?.id ?? ""}
+        tema={ratingRow?.tema ?? ""}
+        onSubmitted={() => void refetch()}
       />
 
       <ConfirmDialog

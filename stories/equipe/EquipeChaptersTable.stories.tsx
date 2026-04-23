@@ -20,6 +20,8 @@ const sampleRows: EquipeChapterListRow[] = [
       { userId: "u1", name: "Ana Silva", photoPath: null },
       { userId: "u2", name: "Bruno Costa", photoPath: null },
     ],
+    ratingAvg: 4.3,
+    ratingCount: 155,
   },
   {
     id: "2",
@@ -30,6 +32,8 @@ const sampleRows: EquipeChapterListRow[] = [
     hyperlink: null,
     authorIds: ["u3"],
     authors: [{ userId: "u3", name: "Carla M.", photoPath: null }],
+    ratingAvg: null,
+    ratingCount: 0,
   },
   {
     id: "3",
@@ -40,6 +44,8 @@ const sampleRows: EquipeChapterListRow[] = [
     hyperlink: "https://notion.so/doc",
     authorIds: ["u4"],
     authors: [{ userId: "u4", name: "Diego", photoPath: null }],
+    ratingAvg: 5,
+    ratingCount: 1,
   },
 ]
 
@@ -58,6 +64,7 @@ export const Default: Story = {
     isAdmin: false,
     onEdit: () => {},
     onRequestDelete: () => {},
+    onOpenRating: () => {},
   },
 }
 
@@ -67,6 +74,7 @@ export const AdminActions: Story = {
     isAdmin: true,
     onEdit: () => {},
     onRequestDelete: () => {},
+    onOpenRating: () => {},
   },
 }
 
@@ -76,6 +84,7 @@ export const Empty: Story = {
     isAdmin: false,
     onEdit: () => {},
     onRequestDelete: () => {},
+    onOpenRating: () => {},
   },
 }
 
@@ -86,6 +95,8 @@ const manyRows: EquipeChapterListRow[] = Array.from({ length: 24 }, (_, i) => {
     id: `row-${i + 1}`,
     edicao: i + 1,
     tema: `${base.tema} (${i + 1})`,
+    ratingAvg: i % 4 === 0 ? 4.2 : i % 4 === 1 ? null : i % 4 === 2 ? 3.5 : 1,
+    ratingCount: i % 4 === 1 ? 0 : 3 + (i % 7),
   }
 })
 
@@ -101,6 +112,7 @@ export const ComPaginacao: Story = {
         isAdmin
         onEdit={() => {}}
         onRequestDelete={() => {}}
+        onOpenRating={() => {}}
         footer={
           <TablePagination
             currentPage={page}

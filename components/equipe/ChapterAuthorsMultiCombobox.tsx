@@ -84,7 +84,7 @@ export function ChapterAuthorsMultiCombobox({
   return (
     <div ref={containerRef} className={cn("relative space-y-2", className)}>
       <span className="text-sm font-medium text-text-primary" id={`${idPrefix}-authors-label`}>
-        Autor(res) <span className="text-destructive">*</span>
+        Autor(es) <span className="text-destructive">*</span>
       </span>
       <button
         type="button"

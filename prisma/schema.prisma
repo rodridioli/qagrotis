@@ -263,8 +263,24 @@ model EquipeChapter {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   authors   EquipeChapterAuthor[]
+  ratings   EquipeChapterRating[]
 
   @@index([data])
+}
+
+/** Avaliação anónima na UI (autor guardado como userId no servidor). */
+model EquipeChapterRating {
+  id        String   @id @default(cuid())
+  chapterId String
+  userId    String
+  stars     Int
+  comment   String   @default("")
+  createdAt DateTime @default(now())
+
+  chapter EquipeChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@index([chapterId])
+  @@index([chapterId, createdAt])
 }
 
 model EquipeChapterAuthor {

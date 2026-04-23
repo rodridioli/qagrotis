@@ -26,6 +26,17 @@ export interface EquipeChapterListRow {
   authorIds: string[]
   /** Ordem estável: mesma ordem persistida em `EquipeChapterAuthor` (createMany). */
   authors: EquipeChapterAuthorDisplay[]
+  /** Média 0–5; `null` se ainda não há avaliações. */
+  ratingAvg: number | null
+  ratingCount: number
+}
+
+/** Avaliação devolvida à UI (sem identificar o utilizador). */
+export interface EquipeChapterRatingEntry {
+  id: string
+  stars: number
+  comment: string
+  createdAt: string
 }
 
 /** Uma linha do ranking (posição global no pódio geral). */

@@ -17,6 +17,7 @@ import {
   type EquipeChapterAuthorDisplay,
   type EquipeChapterAuthorOption,
   type EquipeChapterListRow,
+  type EquipeChapterRatingEntry,
   type EquipeChapterRankingPage,
   type EquipeChapterRankingRow,
 } from "@/lib/equipe-chapters-shared"
@@ -122,6 +123,21 @@ export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
       return b.createdAt.getTime() - a.createdAt.getTime()
     })
 
+    const ratingAgg = new Map<string, { sum: number; count: number }>()
+    try {
+      const ratingRows = await prisma.equipeChapterRating.findMany({
+        select: { chapterId: true, stars: true },
+      })
+      for (const rr of ratingRows) {
+        const cur = ratingAgg.get(rr.chapterId) ?? { sum: 0, count: 0 }
+        cur.sum += rr.stars
+        cur.count += 1
+        ratingAgg.set(rr.chapterId, cur)
+      }
+    } catch {
+      /* tabela ainda inexistente ou erro transitório */
+    }
+
     return rowsDesc.map((c: EquipeChapterWithAuthors) => {
       const authorIds = c.authors.map((a: EquipeChapterAuthorLink) => a.userId)
       const authors: EquipeChapterAuthorDisplay[] = authorIds.map((id: string) => {
@@ -136,6 +152,9 @@ export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
         .map((a) => a.name)
         .sort((a: string, b: string) => a.localeCompare(b, "pt-BR"))
         .join(", ")
+      const agg = ratingAgg.get(c.id)
+      const ratingCount = agg?.count ?? 0
+      const ratingAvg = ratingCount > 0 ? agg!.sum / ratingCount : null
       return {
         id: c.id,
         edicao: editionById.get(c.id) ?? 0,
@@ -145,6 +164,8 @@ export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
         hyperlink: c.hyperlink,
         authorIds,
         authors,
+        ratingAvg,
+        ratingCount,
       }
     })
   } catch (e) {
@@ -355,6 +376,74 @@ export async function updateEquipeChapter(
   } catch (e) {
     console.error("[updateEquipeChapter]", e)
     return { error: chapterPrismaUserMessage(e, "Não foi possível atualizar o chapter.") }
+  }
+}
+
+const ratingCreateSchema = z.object({
+  chapterId: idSchema,
+  stars: z.coerce.number().int().min(0, "Avaliação mínima: 0 estrelas.").max(5, "Avaliação máxima: 5 estrelas."),
+  comment: z.string().max(2000, "Comentário muito longo.").optional().default(""),
+})
+
+export async function listChapterRatings(chapterId: string): Promise<EquipeChapterRatingEntry[]> {
+  await requireSession()
+  await ensureEquipeChapterTables()
+  const r = idSchema.safeParse(chapterId)
+  if (!r.success) return []
+  try {
+    const rows = await prisma.equipeChapterRating.findMany({
+      where: { chapterId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, stars: true, comment: true, createdAt: true },
+    })
+    return rows.map((row) => ({
+      id: row.id,
+      stars: row.stars,
+      comment: row.comment,
+      createdAt: row.createdAt.toISOString(),
+    }))
+  } catch (e) {
+    console.error("[listChapterRatings]", e)
+    return []
+  }
+}
+
+export async function createChapterRating(
+  input: z.infer<typeof ratingCreateSchema>,
+): Promise<{ error?: string }> {
+  try {
+    const session = await requireSession()
+    const uid = session.user?.id
+    if (!uid) return { error: "Não autenticado." }
+    await ensureEquipeChapterTables()
+    const parsed = ratingCreateSchema.safeParse(input)
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+    }
+    const { chapterId, stars, comment } = parsed.data
+    const exists = await prisma.equipeChapter.findUnique({
+      where: { id: chapterId },
+      select: { id: true },
+    })
+    if (!exists) return { error: "Chapter não encontrado." }
+
+    await prisma.equipeChapterRating.create({
+      data: {
+        chapterId,
+        userId: uid,
+        stars,
+        comment: (comment ?? "").trim(),
+      },
+    })
+    try {
+      revalidatePath("/equipe")
+    } catch (revErr) {
+      console.error("[createChapterRating] revalidatePath", revErr)
+    }
+    return {}
+  } catch (e) {
+    console.error("[createChapterRating]", e)
+    return { error: chapterPrismaUserMessage(e, "Não foi possível guardar a avaliação.") }
   }
 }
 

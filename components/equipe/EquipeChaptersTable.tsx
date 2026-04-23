@@ -10,12 +10,14 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 import type { EquipeChapterListRow } from "@/lib/equipe-chapters-shared"
+import { ChapterStarsSummary } from "@/components/equipe/ChapterStarsSummary"
 
 export interface EquipeChaptersTableProps {
   rows: EquipeChapterListRow[]
   isAdmin: boolean
   onEdit: (row: EquipeChapterListRow) => void
   onRequestDelete: (row: EquipeChapterListRow) => void
+  onOpenRating?: (row: EquipeChapterListRow) => void
   /** Rodapé dentro do mesmo card (ex.: paginação). */
   footer?: React.ReactNode
 }
@@ -49,7 +51,14 @@ function getInitials(name: string): string {
 /**
  * Tabela de chapters (padrão visual alinhado a EquipeHorariosTable).
  */
-export function EquipeChaptersTable({ rows, isAdmin, onEdit, onRequestDelete, footer }: EquipeChaptersTableProps) {
+export function EquipeChaptersTable({
+  rows,
+  isAdmin,
+  onEdit,
+  onRequestDelete,
+  onOpenRating,
+  footer,
+}: EquipeChaptersTableProps) {
   if (rows.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card">
@@ -67,7 +76,10 @@ export function EquipeChaptersTable({ rows, isAdmin, onEdit, onRequestDelete, fo
             <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Edição</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Data</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Tema</th>
-            <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Autor(res)</th>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Autor(es)</th>
+            <th className="min-w-[7rem] px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">
+              Avaliação
+            </th>
             <th className="w-12 px-2 py-3 text-center text-xs font-semibold text-text-secondary sm:px-3">Link</th>
             {isAdmin ? (
               <th className="w-12 px-2 py-3 text-center text-xs font-semibold text-text-secondary sm:px-3">
@@ -120,6 +132,17 @@ export function EquipeChaptersTable({ rows, isAdmin, onEdit, onRequestDelete, fo
                       <span className="line-clamp-2 text-sm text-text-secondary">{r.autoresLabel}</span>
                     ) : null}
                   </div>
+                </td>
+                <td className="min-w-0 px-3 py-3 sm:px-4">
+                  <button
+                    type="button"
+                    className="w-full max-w-[11rem] rounded-lg border border-transparent px-1 py-1 text-left transition-colors hover:border-border-default hover:bg-neutral-grey-50"
+                    onClick={() => onOpenRating?.(r)}
+                    disabled={!onOpenRating}
+                    aria-label={`Avaliações do chapter: média ${r.ratingAvg ?? "sem notas"}`}
+                  >
+                    <ChapterStarsSummary avg={r.ratingAvg} count={r.ratingCount} />
+                  </button>
                 </td>
                 <td className="px-2 py-3 text-center sm:px-3">
                   {canLink ? (

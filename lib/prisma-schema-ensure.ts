@@ -109,6 +109,24 @@ CREATE TABLE IF NOT EXISTS "EquipeChapterAuthor" (
     await prisma.$executeRawUnsafe(
       `CREATE INDEX IF NOT EXISTS "EquipeChapterAuthor_userId_idx" ON "EquipeChapterAuthor"("userId")`,
     )
+    await prisma.$executeRawUnsafe(`
+CREATE TABLE IF NOT EXISTS "EquipeChapterRating" (
+    "id" TEXT NOT NULL,
+    "chapterId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "stars" INTEGER NOT NULL,
+    "comment" TEXT NOT NULL DEFAULT '',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "EquipeChapterRating_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "EquipeChapterRating_chapterId_fkey" FOREIGN KEY ("chapterId") REFERENCES "EquipeChapter" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+`)
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "EquipeChapterRating_chapterId_idx" ON "EquipeChapterRating"("chapterId")`,
+    )
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "EquipeChapterRating_chapterId_createdAt_idx" ON "EquipeChapterRating"("chapterId", "createdAt")`,
+    )
     g.__qagrotisEnsuredEquipeChapters = true
   } catch (e) {
     console.error("[prisma-schema-ensure] EquipeChapter tables", e)
