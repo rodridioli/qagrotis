@@ -87,11 +87,12 @@ async function activeAuthorIdSet(): Promise<Set<string>> {
   return new Set(users.filter((u) => u.active).map((u) => u.id))
 }
 
-function nameByUserIdMap(): Promise<Map<string, string>> {
+/** Nomes para rótulos na listagem de chapters — inclui inativos (histórico do chapter). */
+function nameByUserIdMapForDisplay(): Promise<Map<string, string>> {
   return getQaUsers().then((users) => {
     const m = new Map<string, string>()
     for (const u of users) {
-      if (u.active) m.set(u.id, u.name.trim() || u.email || u.id)
+      m.set(u.id, (u.name || u.email || u.id).trim() || u.id)
     }
     return m
   })
@@ -117,7 +118,7 @@ export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
       orderBy: [{ data: "asc" }, { createdAt: "asc" }],
     })) as EquipeChapterWithAuthors[]
 
-    const names = await nameByUserIdMap()
+    const names = await nameByUserIdMapForDisplay()
     const editionById = new Map<string, number>()
     chapters.forEach((c: EquipeChapterWithAuthors, i: number) => editionById.set(c.id, i + 1))
 
