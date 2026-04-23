@@ -332,15 +332,15 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                   {pageItems.map((s) => (
                     <tr
                       key={s.id}
-                      className="group border-b border-border-default last:border-0 transition-colors"
+                      className="border-b border-border-default last:border-0 transition-colors"
                     >
                       {showBulkActions && (
-                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 group-hover:bg-neutral-grey-50">
+                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3">
                           <Checkbox checked={selectedIds.has(s.id)} onChange={() => toggleRow(s.id)} />
                         </td>
                       )}
                       <td className={cn(
-                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap group-hover:bg-neutral-grey-50",
+                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap",
                         showBulkActions ? "left-10" : "left-0"
                       )}>
                         {s.active ? (
@@ -351,23 +351,23 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                           <span>{s.id}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 truncate font-medium text-text-primary" title={s.suiteName}>{s.suiteName}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-text-secondary">{s.versao}</td>
-                      <td className="px-4 py-3 text-text-secondary truncate" title={s.modulo}>{s.modulo}</td>
-                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary">
+                      <td className="bg-surface-card px-4 py-3 truncate font-medium text-text-primary" title={s.suiteName}>{s.suiteName}</td>
+                      <td className="bg-surface-card px-4 py-3 whitespace-nowrap text-text-secondary">{s.versao}</td>
+                      <td className="bg-surface-card px-4 py-3 text-text-secondary truncate" title={s.modulo}>{s.modulo}</td>
+                      <td className="bg-surface-card px-4 py-3 text-center tabular-nums text-text-secondary">
                         {s.historicoCount}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="bg-surface-card px-4 py-3">
                         <AutomacaoBar pct={s.cenarios.length === 0 ? 0 : Math.round(s.cenarios.filter((c) => c.tipo === "Automatizado" || c.tipo === "Man./Auto.").length / s.cenarios.length * 100)} />
                       </td>
-                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary">
+                      <td className="bg-surface-card px-4 py-3 text-center tabular-nums text-text-secondary">
                         {s.historicoErros}
                       </td>
-                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary">{s.cenarios.length}</td>
-                      <td className="px-4 py-3">
+                      <td className="bg-surface-card px-4 py-3 text-center tabular-nums text-text-secondary">{s.cenarios.length}</td>
+                      <td className="bg-surface-card px-4 py-3">
                         <SuiteSituacaoBadge situacao={derivarSituacao(s)} />
                       </td>
-                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
+                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
                         {filters.apenasInativos ? (
                           <button
                             type="button"

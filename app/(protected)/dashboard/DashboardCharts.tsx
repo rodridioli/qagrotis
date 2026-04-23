@@ -9,6 +9,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
 import { cn } from "@/lib/utils"
+import { RankingPositionBadge } from "@/components/qagrotis/RankingPositionBadge"
 import {
   Select,
   SelectTrigger,
@@ -284,38 +285,37 @@ export function DashboardCharts({
             <div className="mt-1 overflow-hidden">
                <table className="qagrotis-table-row-hover-subtle w-full text-left">
                  <thead>
-                   <tr className="border-b border-border-default/50 text-[10px] font-bold uppercase tracking-wider text-text-secondary/70">
-                     <th className="pb-2 pr-2 font-bold">Pos</th>
-                     <th className="pb-2 font-bold px-2">Usuário</th>
-                     <th className="pb-2 text-right font-bold">Total</th>
+                   <tr className="border-b border-border-default/50">
+                     <th className="pb-2 pr-2 text-left text-[10px] font-semibold text-text-secondary sm:text-[11px]">
+                       Pos
+                     </th>
+                     <th className="px-2 pb-2 text-left text-[10px] font-semibold text-text-secondary sm:text-[11px]">
+                       Usuário
+                     </th>
+                     <th className="pb-2 text-right text-[10px] font-semibold text-text-secondary sm:text-[11px]">
+                       Qtd.
+                     </th>
                    </tr>
                  </thead>
                  <tbody className="divide-y divide-border-default/30">
                    {rankingData.map((item, i) => {
                      const { displayName, photoPath } = resolveUser(item.createdBy)
-                     const isTop1 = i === 0
-                     const posLabel = isTop1 ? "1°" : i === 1 ? "2°" : i === 2 ? "3°" : `${i + 1}°`
-                     
+                     const position = i + 1
                      return (
-                       <tr key={item.createdBy} className="group transition-colors">
-                         <td className="py-2.5 pr-2">
-                           <span className={cn(
-                             "inline-flex size-6 items-center justify-center rounded-md text-[10px] font-bold",
-                             isTop1 ? "bg-brand-primary text-white" : "bg-neutral-grey-100 text-text-secondary"
-                           )}>
-                             {posLabel}
-                           </span>
+                       <tr key={item.createdBy} className="transition-colors">
+                         <td className="py-2.5 pr-2 align-middle">
+                           <RankingPositionBadge position={position} />
                          </td>
                          <td className="py-2.5 px-2">
-                           <div className="flex items-center gap-2.5 min-w-0">
+                           <div className="flex min-w-0 items-center gap-2.5">
                              <Avatar displayName={displayName} photoPath={photoPath} colorIndex={i} size="sm" />
-                             <span className="truncate text-xs font-medium text-text-primary group-hover:text-brand-primary transition-colors">
+                             <span className="truncate text-xs font-normal text-text-primary">
                                {displayName}
                              </span>
                            </div>
                          </td>
-                         <td className="py-2.5 text-right">
-                           <span className="text-xs font-bold text-text-primary">
+                         <td className="py-2.5 text-right align-middle">
+                           <span className="text-xs font-normal tabular-nums text-text-primary">
                              {item.count}
                            </span>
                          </td>

@@ -423,10 +423,10 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
                   {pageItems.map((c) => (
                     <tr
                       key={c.id}
-                      className="group border-b border-border-default last:border-0 transition-colors"
+                      className="border-b border-border-default last:border-0 transition-colors"
                     >
                       {showBulkActions && (
-                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 group-hover:bg-neutral-grey-50">
+                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3">
                           <Checkbox
                             checked={selectedIds.has(c.id)}
                             onChange={() => toggleRow(c.id)}
@@ -434,7 +434,7 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
                         </td>
                       )}
                       <td className={cn(
-                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap group-hover:bg-neutral-grey-50",
+                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap",
                         showBulkActions ? "left-10" : "left-0"
                       )}>
                         {c.active ? (
@@ -445,17 +445,17 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
                           <span className="font-medium">{c.id}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 min-w-0">
+                      <td className="min-w-0 bg-surface-card px-4 py-3">
                         <span className="block truncate text-text-primary" title={c.scenarioName}>{c.scenarioName}</span>
                       </td>
-                      <td className="px-4 py-3 text-text-secondary truncate" title={c.module}>{c.module}</td>
-                      <td className="px-4 py-3 text-text-secondary truncate" title={c.client}>{c.client}</td>
-                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary">{c.execucoes}</td>
-                      <td className="px-4 py-3 text-center tabular-nums text-text-secondary">{c.erros}</td>
-                      <td className="px-4 py-3">
+                      <td className="bg-surface-card px-4 py-3 text-text-secondary truncate" title={c.module}>{c.module}</td>
+                      <td className="bg-surface-card px-4 py-3 text-text-secondary truncate" title={c.client}>{c.client}</td>
+                      <td className="bg-surface-card px-4 py-3 text-center tabular-nums text-text-secondary">{c.execucoes}</td>
+                      <td className="bg-surface-card px-4 py-3 text-center tabular-nums text-text-secondary">{c.erros}</td>
+                      <td className="bg-surface-card px-4 py-3">
                         <CenarioTipoBadge tipo={c.tipo as "Automatizado" | "Manual" | "Man./Auto."} />
                       </td>
-                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 group-hover:bg-neutral-grey-50">
+                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
                         {filters.apenasInativos ? (
                           <button
                             type="button"

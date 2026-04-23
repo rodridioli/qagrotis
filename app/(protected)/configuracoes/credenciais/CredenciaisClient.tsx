@@ -213,8 +213,8 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                 </thead>
                 <tbody>
                   {paginated.map((c) => (
-                    <tr key={c.id} className="group border-b border-border-default last:border-0 transition-colors">
-                      <td className="px-4 py-3 font-medium whitespace-nowrap">
+                    <tr key={c.id} className="border-b border-border-default last:border-0 transition-colors">
+                      <td className="bg-surface-card px-4 py-3 font-medium whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => openEditar(c)}
@@ -223,12 +223,12 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                           {c.id}
                         </button>
                       </td>
-                      <td className="px-4 py-3 font-medium text-text-primary">{c.nome}</td>
-                      <td className="max-w-xs truncate px-4 py-3 text-text-secondary" title={c.urlAmbiente ?? undefined}>
+                      <td className="bg-surface-card px-4 py-3 font-medium text-text-primary">{c.nome}</td>
+                      <td className="max-w-xs truncate bg-surface-card px-4 py-3 text-text-secondary" title={c.urlAmbiente ?? undefined}>
                         {c.urlAmbiente ?? <span className="italic text-text-secondary/60">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-text-secondary">{c.usuario}</td>
-                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
+                      <td className="bg-surface-card px-4 py-3 text-text-secondary">{c.usuario}</td>
+                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             render={

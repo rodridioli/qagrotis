@@ -3,7 +3,7 @@
 import * as React from "react"
 import { ChevronDown, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { EquipeChapterAuthorOption } from "@/lib/equipe-chapters-shared"
+import type { EquipeChapterAuthorDisplay, EquipeChapterAuthorOption } from "@/lib/equipe-chapters-shared"
 
 export interface ChapterAuthorsMultiComboboxProps {
   options: EquipeChapterAuthorOption[]
@@ -12,13 +12,21 @@ export interface ChapterAuthorsMultiComboboxProps {
   disabled?: boolean
   idPrefix: string
   className?: string
+  /** Autores já gravados no chapter (inclui inativos), para rótulo quando não estão em `options`. */
+  resolvedAuthors?: EquipeChapterAuthorDisplay[]
 }
 
-function summaryLabel(options: EquipeChapterAuthorOption[], ids: string[]): string {
+function summaryLabel(
+  options: EquipeChapterAuthorOption[],
+  ids: string[],
+  resolvedAuthors?: EquipeChapterAuthorDisplay[],
+): string {
   if (ids.length === 0) return "Selecionar autor(es)…"
-  const names = ids
-    .map((id) => options.find((o) => o.id === id)?.name ?? id)
-    .filter(Boolean)
+  const nameFor = (id: string) =>
+    options.find((o) => o.id === id)?.name ??
+    resolvedAuthors?.find((a) => a.userId === id)?.name ??
+    id
+  const names = ids.map((id) => nameFor(id)).filter(Boolean)
   if (names.length === 1) return names[0]!
   if (names.length === 2) return `${names[0]}, ${names[1]}`
   return `${names[0]} +${names.length - 1}`
@@ -34,6 +42,7 @@ export function ChapterAuthorsMultiCombobox({
   disabled,
   idPrefix,
   className,
+  resolvedAuthors,
 }: ChapterAuthorsMultiComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [q, setQ] = React.useState("")
@@ -70,7 +79,7 @@ export function ChapterAuthorsMultiCombobox({
     onChange([...next])
   }
 
-  const label = summaryLabel(options, value)
+  const label = summaryLabel(options, value, resolvedAuthors)
 
   return (
     <div ref={containerRef} className={cn("relative space-y-2", className)}>

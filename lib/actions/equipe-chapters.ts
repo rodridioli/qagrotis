@@ -312,8 +312,26 @@ export async function updateEquipeChapter(
     if (!data) return { error: "Data inválida." }
 
     const allowed = await activeAuthorIdSet()
-    const filteredAuthors = authorIds.filter((aid) => allowed.has(aid))
-    if (filteredAuthors.length === 0) {
+    const existingLinks = await prisma.equipeChapterAuthor.findMany({
+      where: { chapterId: id },
+      select: { userId: true },
+    })
+    const inactiveAlreadyOnChapter = new Set(
+      existingLinks.map((l) => l.userId).filter((uid) => !allowed.has(uid)),
+    )
+    const finalAuthorIds: string[] = []
+    const seen = new Set<string>()
+    for (const uid of authorIds) {
+      if (seen.has(uid)) continue
+      if (allowed.has(uid)) {
+        finalAuthorIds.push(uid)
+        seen.add(uid)
+      } else if (inactiveAlreadyOnChapter.has(uid)) {
+        finalAuthorIds.push(uid)
+        seen.add(uid)
+      }
+    }
+    if (!finalAuthorIds.some((uid) => allowed.has(uid))) {
       return { error: "Selecione pelo menos um autor ativo." }
     }
 
@@ -324,7 +342,7 @@ export async function updateEquipeChapter(
         data: { tema, data, hyperlink: hyperlink ?? null },
       })
       await tx.equipeChapterAuthor.createMany({
-        data: filteredAuthors.map((userId) => ({ chapterId: id, userId })),
+        data: finalAuthorIds.map((userId) => ({ chapterId: id, userId })),
         skipDuplicates: true,
       })
     })

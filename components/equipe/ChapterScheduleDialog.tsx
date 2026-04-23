@@ -14,7 +14,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ChapterAuthorsMultiCombobox } from "@/components/equipe/ChapterAuthorsMultiCombobox"
 import { createEquipeChapter, updateEquipeChapter } from "@/lib/actions/equipe-chapters"
-import type { EquipeChapterAuthorOption } from "@/lib/equipe-chapters-shared"
+import type {
+  EquipeChapterAuthorDisplay,
+  EquipeChapterAuthorOption,
+} from "@/lib/equipe-chapters-shared"
 import { isValidCalendarYmd, todayYmdBrazil } from "@/lib/equipe-chapter-dates"
 import { inputNativePickerRightClassName } from "@/lib/input-native-picker-classes"
 
@@ -24,6 +27,8 @@ export type ChapterScheduleInitial = {
   dataYmd: string
   authorIds: string[]
   hyperlink: string | null
+  /** Autores persistidos (inclui inativos) — editar: rótulo e bloqueio do multi-select. */
+  authors?: EquipeChapterAuthorDisplay[]
 }
 
 export interface ChapterScheduleDialogProps {
@@ -56,6 +61,13 @@ export function ChapterScheduleDialog({
   const [authorIds, setAuthorIds] = React.useState<string[]>([])
   const [dataYmd, setDataYmd] = React.useState("")
   const [hyperlink, setHyperlink] = React.useState("")
+
+  const authorOptionsReady = authorOptions.length > 0
+  const lockAuthorsField = React.useMemo(() => {
+    if (mode !== "edit" || !initial?.authorIds?.length || !authorOptionsReady) return false
+    return initial.authorIds.some((id) => !authorOptions.some((o) => o.id === id))
+  }, [mode, initial, authorOptions, authorOptionsReady])
+  const authorsFieldDisabledUntilOptions = mode === "edit" && !authorOptionsReady
 
   React.useEffect(() => {
     if (!open) return
@@ -168,8 +180,15 @@ export function ChapterScheduleDialog({
             options={authorOptions}
             value={authorIds}
             onChange={setAuthorIds}
-            disabled={isPending}
+            disabled={isPending || lockAuthorsField || authorsFieldDisabledUntilOptions}
+            resolvedAuthors={mode === "edit" && initial?.authors?.length ? initial.authors : undefined}
           />
+          {lockAuthorsField ? (
+            <p className="text-xs text-text-secondary">
+              Há autor inativo neste chapter. O nome é exibido para referência; altere autores após reativar o
+              cadastro em Configurações.
+            </p>
+          ) : null}
 
           <div className="space-y-1.5">
             <label htmlFor="chapter-data" className="text-sm font-medium text-text-primary">

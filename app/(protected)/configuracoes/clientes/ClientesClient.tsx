@@ -376,10 +376,10 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                     return (
                       <tr
                         key={c.id}
-                        className="group border-b border-border-default last:border-0"
+                        className="border-b border-border-default last:border-0 transition-colors"
                       >
                         {showBulkActions && (
-                          <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
+                          <td className="sticky left-0 z-10 bg-surface-card px-4 py-3">
                             <Checkbox
                               checked={selectedIds.has(c.id)}
                               onChange={() => toggleRow(c.id)}
@@ -387,7 +387,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                           </td>
                         )}
                         <td className={cn(
-                          "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap transition-colors group-hover:bg-neutral-grey-50",
+                          "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap",
                           showBulkActions ? "left-10" : "left-0"
                         )}>
                           {c.active ? (
@@ -396,14 +396,14 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                             <span>{c.id}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-medium text-text-primary truncate transition-colors group-hover:bg-neutral-grey-50" title={c.nomeFantasia}>{c.nomeFantasia}</td>
-                        <td className="px-4 py-3 text-text-secondary truncate transition-colors group-hover:bg-neutral-grey-50" title={c.razaoSocial ?? undefined}>
+                        <td className="bg-surface-card px-4 py-3 font-medium text-text-primary truncate" title={c.nomeFantasia}>{c.nomeFantasia}</td>
+                        <td className="bg-surface-card px-4 py-3 text-text-secondary truncate" title={c.razaoSocial ?? undefined}>
                           {c.razaoSocial ?? <span className="italic text-text-secondary/60">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-text-secondary truncate transition-colors group-hover:bg-neutral-grey-50" title={c.cpfCnpj ?? undefined}>
+                        <td className="bg-surface-card px-4 py-3 text-text-secondary truncate" title={c.cpfCnpj ?? undefined}>
                           {c.cpfCnpj ?? <span className="italic text-text-secondary/60">—</span>}
                         </td>
-                        <td className="px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
+                        <td className="bg-surface-card px-4 py-3">
                           {sistemas.length === 0 ? (
                             <span className="italic text-text-secondary/60 text-sm">—</span>
                           ) : (
@@ -414,7 +414,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                             </div>
                           )}
                         </td>
-                        <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
+                        <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
                           {apenasInativos ? (
                             <button
                               type="button"

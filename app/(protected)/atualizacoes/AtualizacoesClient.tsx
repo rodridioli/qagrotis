@@ -149,9 +149,9 @@ export function AtualizacoesClient({ entries }: Props) {
                     return (
                       <tr
                         key={entry.version}
-                        className="group border-b border-border-default last:border-0"
+                        className="border-b border-border-default last:border-0 transition-colors"
                       >
-                        <td className="px-4 py-3 whitespace-nowrap transition-colors group-hover:bg-neutral-grey-50">
+                        <td className="bg-surface-card px-4 py-3 whitespace-nowrap">
                           <span className="font-mono text-sm font-semibold text-text-primary">
                             v{entry.version}
                           </span>
@@ -161,11 +161,11 @@ export function AtualizacoesClient({ entries }: Props) {
                             </p>
                           )}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-text-secondary transition-colors group-hover:bg-neutral-grey-50">{formatDate(entry.date)}</td>
-                        <td className="px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
+                        <td className="bg-surface-card px-4 py-3 whitespace-nowrap text-text-secondary">{formatDate(entry.date)}</td>
+                        <td className="bg-surface-card px-4 py-3">
                           <ChangelogTagBadge tag={entry.tag} />
                         </td>
-                        <td className="px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
+                        <td className="bg-surface-card px-4 py-3">
                           {isExpanded ? (
                             <ul className="space-y-1.5">
                               {entry.changes.map((c, i) => (
@@ -186,7 +186,7 @@ export function AtualizacoesClient({ entries }: Props) {
                             </p>
                           )}
                         </td>
-                        <td className="px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
+                        <td className="bg-surface-card px-4 py-3">
                           {hasMore && (
                             <button
                               type="button"

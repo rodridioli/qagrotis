@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import * as React from "react"
 import { ChapterAuthorsMultiCombobox } from "@/components/equipe/ChapterAuthorsMultiCombobox"
-import type { EquipeChapterAuthorOption } from "@/lib/equipe-chapters-shared"
+import type { EquipeChapterAuthorDisplay, EquipeChapterAuthorOption } from "@/lib/equipe-chapters-shared"
 
 const options: EquipeChapterAuthorOption[] = [
   { id: "u1", name: "Ana Silva" },
@@ -44,4 +44,22 @@ function Stateful() {
 
 export const Default: Story = {
   render: () => <Stateful />,
+}
+
+/** Autor inativo (U-13) não está em `options`; `resolvedAuthors` fornece o nome no rótulo. */
+export const AutorInativoResolvido: Story = {
+  render: () => (
+    <div className="max-w-md p-4">
+      <ChapterAuthorsMultiCombobox
+        idPrefix="story-inactive"
+        options={options}
+        value={["U-13"]}
+        onChange={() => {}}
+        disabled
+        resolvedAuthors={[
+          { userId: "U-13", name: "Maria Inativa (exemplo)", photoPath: null },
+        ] satisfies EquipeChapterAuthorDisplay[]}
+      />
+    </div>
+  ),
 }

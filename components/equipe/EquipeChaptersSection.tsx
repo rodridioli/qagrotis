@@ -150,6 +150,7 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
       dataYmd: row.dataYmd,
       authorIds: [...row.authorIds],
       hyperlink: row.hyperlink,
+      authors: row.authors,
     })
     setScheduleOpen(true)
   }

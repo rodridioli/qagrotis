@@ -4,6 +4,7 @@ import * as React from "react"
 import Image from "next/image"
 import { Trophy } from "lucide-react"
 import type { EquipeChapterRankingPage } from "@/lib/equipe-chapters-shared"
+import { RankingPositionBadge } from "@/components/qagrotis/RankingPositionBadge"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { cn } from "@/lib/utils"
 
@@ -15,10 +16,6 @@ function getInitials(name: string): string {
     .map((n) => n[0])
     .join("")
     .toUpperCase() || "?"
-}
-
-function posLabel(n: number): string {
-  return `${n}°`
 }
 
 export interface EquipeChapterRankingProps {
@@ -73,19 +70,7 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
                       className="border-b border-border-default last:border-b-0 transition-colors"
                     >
                       <td className="px-2 py-1.5 align-middle sm:px-3 sm:py-2">
-                        <span
-                          className={cn(
-                            "inline-flex min-w-[1.75rem] items-center justify-center rounded-md px-1 py-0.5 text-[10px] font-bold tabular-nums sm:text-[11px]",
-                            e.position === 1 &&
-                              "bg-brand-primary text-primary-foreground ring-1 ring-brand-primary/30",
-                            e.position === 2 && "bg-primary-100 text-brand-primary",
-                            e.position === 3 && "border border-border-default bg-surface-input text-text-primary",
-                            e.position > 3 && "bg-neutral-grey-100 text-text-secondary",
-                          )}
-                          aria-hidden
-                        >
-                          {posLabel(e.position)}
-                        </span>
+                        <RankingPositionBadge position={e.position} />
                       </td>
                       <td className="min-w-0 px-2 py-1.5 align-middle sm:px-3 sm:py-2">
                         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">

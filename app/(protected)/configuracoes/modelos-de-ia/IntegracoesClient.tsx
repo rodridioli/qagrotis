@@ -372,10 +372,10 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                   {pageItems.map((item) => (
                     <tr
                       key={item.id}
-                      className="group border-b border-border-default last:border-0"
+                      className="border-b border-border-default last:border-0 transition-colors"
                     >
                       {showBulkActions && (
-                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
+                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3">
                           <Checkbox
                             checked={selectedIds.has(item.id)}
                             onChange={() => toggleRow(item.id)}
@@ -383,7 +383,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                         </td>
                       )}
                       <td className={cn(
-                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap transition-colors group-hover:bg-neutral-grey-50",
+                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap",
                         showBulkActions ? "left-10" : "left-0"
                       )}>
                         {item.active && isAdmin ? (
@@ -394,13 +394,13 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                           <span>{item.id}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 truncate capitalize text-text-primary transition-colors group-hover:bg-neutral-grey-50" title={item.provider}>
+                      <td className="bg-surface-card px-4 py-3 truncate capitalize text-text-primary" title={item.provider}>
                         {item.provider}
                       </td>
-                      <td className="px-4 py-3 truncate text-text-secondary font-mono text-xs transition-colors group-hover:bg-neutral-grey-50" title={item.model}>
+                      <td className="bg-surface-card px-4 py-3 truncate text-text-secondary font-mono text-xs" title={item.model}>
                         {item.model}
                       </td>
-                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
+                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
                         {filters.apenasInativos ? (
                           <button
                             type="button"

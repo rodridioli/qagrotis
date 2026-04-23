@@ -335,10 +335,10 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                     return (
                       <tr
                         key={s.id}
-                        className="group border-b border-border-default last:border-0"
+                          className="border-b border-border-default last:border-0 transition-colors"
                       >
                         {showBulkActions && (
-                          <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 transition-colors group-hover:bg-neutral-grey-50">
+                          <td className="sticky left-0 z-10 bg-surface-card px-4 py-3">
                             <Checkbox
                               checked={selectedIds.has(s.id)}
                               onChange={() => toggleRow(s.id)}
@@ -346,7 +346,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                           </td>
                         )}
                         <td className={cn(
-                          "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap transition-colors group-hover:bg-neutral-grey-50",
+                          "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap",
                           showBulkActions ? "left-10" : "left-0"
                         )}>
                           {s.active && isAdmin ? (
@@ -355,11 +355,11 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                             <span>{s.id}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-medium text-text-primary truncate transition-colors group-hover:bg-neutral-grey-50" title={s.name}>{s.name}</td>
-                        <td className="px-4 py-3 text-text-secondary truncate transition-colors group-hover:bg-neutral-grey-50" title={s.description ?? undefined}>
+                        <td className="bg-surface-card px-4 py-3 font-medium text-text-primary truncate" title={s.name}>{s.name}</td>
+                        <td className="bg-surface-card px-4 py-3 text-text-secondary truncate" title={s.description ?? undefined}>
                           {s.description ?? <span className="italic text-text-secondary/60">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-center tabular-nums transition-colors group-hover:bg-neutral-grey-50">
+                        <td className="bg-surface-card px-4 py-3 text-center tabular-nums">
                           {modulosDoSistema.length > 0 ? (
                             <button
                               type="button"
@@ -374,7 +374,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                             <span className="text-text-secondary/60 italic text-sm">0</span>
                           )}
                         </td>
-                        <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4 transition-colors group-hover:bg-neutral-grey-50">
+                        <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
                           {filters.apenasInativos ? (
                             <button
                               type="button"
