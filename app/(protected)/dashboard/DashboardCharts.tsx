@@ -287,7 +287,7 @@ export function DashboardCharts({
                  <thead>
                    <tr className="border-b border-border-default/50">
                      <th className="pb-2 pr-2 text-left text-[10px] font-semibold text-text-secondary sm:text-[11px]">
-                       Pos
+                       Pos.
                      </th>
                      <th className="px-2 pb-2 text-left text-[10px] font-semibold text-text-secondary sm:text-[11px]">
                        Usuário
