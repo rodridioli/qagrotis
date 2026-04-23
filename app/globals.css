@@ -467,3 +467,28 @@
   100% { opacity: 0; transform: scale(0.6) rotate(18deg); }
 }
 
+/* ── Tabelas: hover da linha em todas as células (border-collapse + colunas sticky) ──
+   `tr:hover` com background não pinta de forma confiável todas as <td>; força o fundo
+   em cada célula usando os tokens --neutral-grey-* já remapeados em :root / .dark. */
+@layer utilities {
+  .qagrotis-table-row-hover tbody > tr:hover > td,
+  .qagrotis-table-row-hover tbody > tr:hover > th {
+    background-color: var(--neutral-grey-50) !important;
+  }
+
+  .qagrotis-table-row-hover-subtle tbody > tr:hover > td,
+  .qagrotis-table-row-hover-subtle tbody > tr:hover > th {
+    background-color: color-mix(in srgb, var(--neutral-grey-50) 50%, transparent) !important;
+  }
+
+  .qagrotis-table-row-hover-muted tbody > tr:hover > td,
+  .qagrotis-table-row-hover-muted tbody > tr:hover > th {
+    background-color: color-mix(in srgb, var(--neutral-grey-50) 80%, transparent) !important;
+  }
+
+  .dark .qagrotis-table-row-hover-muted tbody > tr:hover > td,
+  .dark .qagrotis-table-row-hover-muted tbody > tr:hover > th {
+    background-color: color-mix(in srgb, var(--neutral-grey-900) 25%, transparent) !important;
+  }
+}
+

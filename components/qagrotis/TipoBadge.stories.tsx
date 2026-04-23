@@ -80,7 +80,7 @@ export const TabelaUsuariosAdmin: Story = {
     const currentUserId = "U-00"
     return (
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="qagrotis-table-row-hover w-full text-sm">
           <thead>
             <tr className="border-b border-border-default bg-neutral-grey-50">
               <th className="px-4 py-3 text-left">
@@ -97,7 +97,7 @@ export const TabelaUsuariosAdmin: Story = {
             {SAMPLE_USERS.map((u) => {
               const isSelf = u.id === currentUserId
               return (
-                <tr key={u.id} className="border-b border-border-default last:border-0 hover:bg-neutral-grey-50 transition-colors">
+                <tr key={u.id} className="border-b border-border-default last:border-0 transition-colors">
                   <td className="px-4 py-3">
                     <Checkbox
                       checked={false}
@@ -158,7 +158,7 @@ export const TabelaUsuariosPadrao: Story = {
     const currentUserId = "U-01"
     return (
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="qagrotis-table-row-hover w-full text-sm">
           <thead>
             <tr className="border-b border-border-default bg-neutral-grey-50">
               <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Id</th>
@@ -172,7 +172,7 @@ export const TabelaUsuariosPadrao: Story = {
             {SAMPLE_USERS.map((u) => {
               const isSelf = u.id === currentUserId
               return (
-                <tr key={u.id} className="border-b border-border-default last:border-0 hover:bg-neutral-grey-50 transition-colors">
+                <tr key={u.id} className="border-b border-border-default last:border-0 transition-colors">
                   <td className="px-4 py-3 font-medium text-text-secondary">{u.id}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

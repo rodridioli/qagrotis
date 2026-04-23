@@ -201,7 +201,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="qagrotis-table-row-hover w-full text-sm">
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
@@ -213,7 +213,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                 </thead>
                 <tbody>
                   {paginated.map((c) => (
-                    <tr key={c.id} className="group border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
+                    <tr key={c.id} className="group border-b border-border-default last:border-0 transition-colors">
                       <td className="px-4 py-3 font-medium whitespace-nowrap">
                         <button
                           type="button"

@@ -1,6 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
+import * as React from "react"
 import { EquipeChaptersTable } from "@/components/equipe/EquipeChaptersTable"
-import type { EquipeChapterListRow } from "@/lib/equipe-chapters-shared"
+import { TablePagination } from "@/components/qagrotis/TablePagination"
+import {
+  EQUIPE_CHAPTERS_TABLE_PAGE_SIZE,
+  type EquipeChapterListRow,
+} from "@/lib/equipe-chapters-shared"
 
 const sampleRows: EquipeChapterListRow[] = [
   {
@@ -71,5 +76,41 @@ export const Empty: Story = {
     isAdmin: false,
     onEdit: () => {},
     onRequestDelete: () => {},
+  },
+}
+
+const manyRows: EquipeChapterListRow[] = Array.from({ length: 24 }, (_, i) => {
+  const base = sampleRows[i % sampleRows.length]!
+  return {
+    ...base,
+    id: `row-${i + 1}`,
+    edicao: i + 1,
+    tema: `${base.tema} (${i + 1})`,
+  }
+})
+
+export const ComPaginacao: Story = {
+  render: () => {
+    const [page, setPage] = React.useState(1)
+    const totalPages = Math.max(1, Math.ceil(manyRows.length / EQUIPE_CHAPTERS_TABLE_PAGE_SIZE))
+    const start = (page - 1) * EQUIPE_CHAPTERS_TABLE_PAGE_SIZE
+    const slice = manyRows.slice(start, start + EQUIPE_CHAPTERS_TABLE_PAGE_SIZE)
+    return (
+      <EquipeChaptersTable
+        rows={slice}
+        isAdmin
+        onEdit={() => {}}
+        onRequestDelete={() => {}}
+        footer={
+          <TablePagination
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={manyRows.length}
+            itemsPerPage={EQUIPE_CHAPTERS_TABLE_PAGE_SIZE}
+            onPageChange={setPage}
+          />
+        }
+      />
+    )
   },
 }

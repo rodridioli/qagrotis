@@ -189,7 +189,7 @@ function GridPage() {
         description="O Tailwind v4 utiliza os breakpoints padrão — combinar com grid-cols para layouts responsivos."
       >
         <div className="overflow-hidden rounded-custom border border-border-default bg-surface-card shadow-card">
-          <table className="w-full text-sm">
+          <table className="qagrotis-table-row-hover w-full text-sm">
             <thead className="border-b border-border-default bg-surface-default">
               <tr>
                 {["Prefix", "Mín. Width", "Uso típico"].map((h) => (
@@ -211,7 +211,7 @@ function GridPage() {
                 { prefix: "xl:",    width: "1280px", usage: "Widescreen" },
                 { prefix: "2xl:",   width: "1536px", usage: "Ultra-wide" },
               ].map((row) => (
-                <tr key={row.prefix} className="transition-colors hover:bg-surface-default">
+                <tr key={row.prefix} className="transition-colors">
                   <td className="px-5 py-3 font-mono text-xs font-semibold text-brand-primary">
                     {row.prefix}
                   </td>

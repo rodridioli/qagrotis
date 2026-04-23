@@ -52,7 +52,7 @@ export function EquipeHorariosTable({ rows }: EquipeHorariosTableProps) {
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
-      <table className="w-full min-w-[320px] text-sm">
+      <table className="qagrotis-table-row-hover-muted w-full min-w-[320px] text-sm">
         <thead>
           <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
             <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">
@@ -76,7 +76,7 @@ export function EquipeHorariosTable({ rows }: EquipeHorariosTableProps) {
           {rows.map((u) => (
             <tr
               key={u.userId}
-              className="border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/80 dark:hover:bg-neutral-grey-900/25"
+              className="border-b border-border-default last:border-b-0 transition-colors"
             >
               <td className="px-3 py-3 sm:px-4">
                 <div className="flex min-w-0 max-w-[14rem] items-center gap-2.5 sm:max-w-none">

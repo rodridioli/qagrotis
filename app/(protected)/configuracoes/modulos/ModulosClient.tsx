@@ -308,7 +308,7 @@ export default function ModulosClient({ initialModulos: initialModulosParam, ini
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-180 table-fixed text-sm">
+              <table className="qagrotis-table-row-hover w-full min-w-180 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />

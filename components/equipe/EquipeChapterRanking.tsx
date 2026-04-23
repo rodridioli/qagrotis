@@ -29,7 +29,7 @@ export interface EquipeChapterRankingProps {
 }
 
 /**
- * Ranking de autores por participação em chapters (paginado, 10 por página).
+ * Ranking de autores por participação em chapters (paginado no servidor, 10 por página).
  */
 export function EquipeChapterRanking({ data, loading, onPageChange, className }: EquipeChapterRankingProps) {
   return (
@@ -52,17 +52,17 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[240px] table-fixed text-left">
+              <table className="qagrotis-table-row-hover-muted w-full min-w-[240px] table-fixed text-left">
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
-                    <th className="w-11 px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-text-secondary sm:w-12 sm:px-3 sm:py-2.5 sm:text-[11px]">
-                      Pos
+                    <th className="w-11 px-2 py-2 text-left text-[10px] font-semibold text-text-secondary sm:w-12 sm:px-3 sm:py-2.5 sm:text-[11px]">
+                      Pos.
                     </th>
-                    <th className="px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-text-secondary sm:px-3 sm:py-2.5 sm:text-[11px]">
+                    <th className="px-2 py-2 text-left text-[10px] font-semibold text-text-secondary sm:px-3 sm:py-2.5 sm:text-[11px]">
                       Usuário
                     </th>
-                    <th className="w-11 px-2 py-2 text-right text-[10px] font-semibold uppercase tracking-wide text-text-secondary sm:w-14 sm:px-3 sm:py-2.5 sm:text-[11px]">
-                      Total
+                    <th className="w-11 px-2 py-2 text-right text-[10px] font-semibold text-text-secondary sm:w-14 sm:px-3 sm:py-2.5 sm:text-[11px]">
+                      Pts.
                     </th>
                   </tr>
                 </thead>
@@ -70,11 +70,18 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
                   {data.rows.map((e) => (
                     <tr
                       key={e.userId}
-                      className="border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/80 dark:hover:bg-neutral-grey-900/25"
+                      className="border-b border-border-default last:border-b-0 transition-colors"
                     >
                       <td className="px-2 py-1.5 align-middle sm:px-3 sm:py-2">
                         <span
-                          className="inline-flex min-w-[1.75rem] items-center justify-center rounded-md bg-brand-primary px-1 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground sm:text-[11px]"
+                          className={cn(
+                            "inline-flex min-w-[1.75rem] items-center justify-center rounded-md px-1 py-0.5 text-[10px] font-bold tabular-nums sm:text-[11px]",
+                            e.position === 1 &&
+                              "bg-brand-primary text-primary-foreground ring-1 ring-brand-primary/30",
+                            e.position === 2 && "bg-primary-100 text-brand-primary",
+                            e.position === 3 && "border border-border-default bg-surface-input text-text-primary",
+                            e.position > 3 && "bg-neutral-grey-100 text-text-secondary",
+                          )}
                           aria-hidden
                         >
                           {posLabel(e.position)}
@@ -93,14 +100,14 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
                             />
                           ) : (
                             <div
-                              className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-[9px] font-semibold text-brand-primary sm:size-7 sm:text-[10px]"
+                              className="flex size-6 shrink-0 items-center justify-center rounded-full bg-neutral-grey-100 text-[9px] font-semibold text-text-secondary sm:size-7 sm:text-[10px]"
                               aria-hidden
                             >
                               {getInitials(e.name)}
                             </div>
                           )}
                           <span
-                            className="min-w-0 truncate text-[11px] font-medium text-brand-primary sm:text-xs"
+                            className="min-w-0 truncate text-[11px] font-normal text-text-primary sm:text-xs"
                             title={e.name}
                           >
                             {e.name}
@@ -108,7 +115,7 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
                         </div>
                       </td>
                       <td className="px-2 py-1.5 text-right align-middle sm:px-3 sm:py-2">
-                        <span className="text-[11px] font-semibold tabular-nums text-text-primary sm:text-xs">
+                        <span className="text-[11px] font-normal tabular-nums text-text-primary sm:text-xs">
                           {e.points}
                         </span>
                       </td>
@@ -119,6 +126,7 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
             </div>
             {data.totalPages > 1 ? (
               <TablePagination
+                variant="compact"
                 currentPage={data.page}
                 totalPages={data.totalPages}
                 totalItems={data.totalItems}

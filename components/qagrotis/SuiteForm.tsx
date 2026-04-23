@@ -782,7 +782,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full table-fixed text-sm">
+              <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
                 <colgroup>
                   <col className="w-10" />
                   <col className="w-24" />
@@ -817,7 +817,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                   {cenarios.map((c) => {
                     const isCenarioAtivo = isCenarioAtivoFn(c.id)
                     return (
-                    <tr key={c.id} className={`border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50${!isCenarioAtivo ? " opacity-60" : ""}`}>
+                    <tr key={c.id} className={`border-b border-border-default last:border-0 transition-colors${!isCenarioAtivo ? " opacity-60" : ""}`}>
                       <td className="px-4 py-3">
                         <Checkbox
                           checked={selectedCenarios.has(c.id)}
@@ -952,7 +952,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full table-fixed text-sm">
+              <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
                 <colgroup>
                   <col className="w-10" />
                   <col className="w-24" />
@@ -991,7 +991,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                     // Inativo no histórico se: removido da suíte OU inativo no banco
                     const hAtivo2 = existingIds.has(h.id) && isCenarioAtivoFn(h.id)
                     return (
-                    <tr key={`${h.id}-${h._originalIdx}`} className={`border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50${!hAtivo2 ? " opacity-60" : ""}`}>
+                    <tr key={`${h.id}-${h._originalIdx}`} className={`border-b border-border-default last:border-0 transition-colors${!hAtivo2 ? " opacity-60" : ""}`}>
                       <td className="px-4 py-3">
                         <Checkbox
                           checked={selectedHistorico.has(h._originalIdx)}

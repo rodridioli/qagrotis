@@ -123,7 +123,7 @@ export function AtualizacoesClient({ entries }: Props) {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-120 table-fixed text-sm">
+              <table className="qagrotis-table-row-hover w-full min-w-120 table-fixed text-sm">
                 <colgroup>
                   <col className="w-24" />
                   <col className="w-28" />

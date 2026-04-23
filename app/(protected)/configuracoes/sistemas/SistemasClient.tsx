@@ -291,7 +291,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-160 table-fixed text-sm">
+              <table className="qagrotis-table-row-hover w-full min-w-160 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />

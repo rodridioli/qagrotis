@@ -18,11 +18,13 @@ import {
   deleteEquipeChapter,
   getEquipeChapterAuthorRankingPage,
 } from "@/lib/actions/equipe-chapters"
-import type {
-  EquipeChapterAuthorOption,
-  EquipeChapterListRow,
-  EquipeChapterRankingPage,
+import {
+  EQUIPE_CHAPTERS_TABLE_PAGE_SIZE,
+  type EquipeChapterAuthorOption,
+  type EquipeChapterListRow,
+  type EquipeChapterRankingPage,
 } from "@/lib/equipe-chapters-shared"
+import { TablePagination } from "@/components/qagrotis/TablePagination"
 
 export interface EquipeChaptersSectionProps {
   isAdmin: boolean
@@ -43,6 +45,8 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
 
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [deleteRow, setDeleteRow] = React.useState<EquipeChapterListRow | null>(null)
+
+  const [chaptersPage, setChaptersPage] = React.useState(1)
 
   const loadRankingPage = React.useCallback(async (page: number) => {
     setRankingBusy(true)
@@ -117,6 +121,21 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
     )
   }, [rows, q])
 
+  const chaptersTotalPages = Math.max(1, Math.ceil(filtered.length / EQUIPE_CHAPTERS_TABLE_PAGE_SIZE))
+
+  React.useEffect(() => {
+    setChaptersPage(1)
+  }, [q])
+
+  React.useEffect(() => {
+    setChaptersPage((p) => Math.min(p, chaptersTotalPages))
+  }, [chaptersTotalPages])
+
+  const paginatedChapters = React.useMemo(() => {
+    const start = (chaptersPage - 1) * EQUIPE_CHAPTERS_TABLE_PAGE_SIZE
+    return filtered.slice(start, start + EQUIPE_CHAPTERS_TABLE_PAGE_SIZE)
+  }, [filtered, chaptersPage])
+
   function openCreate() {
     setScheduleMode("create")
     setEditInitial(null)
@@ -190,10 +209,21 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
         <div className="grid min-w-0 gap-4 xl:grid-cols-[1fr_minmax(16rem,22rem)] xl:items-start">
           <div className="min-w-0">
             <EquipeChaptersTable
-              rows={filtered}
+              rows={paginatedChapters}
               isAdmin={isAdmin}
               onEdit={openEdit}
               onRequestDelete={requestDelete}
+              footer={
+                filtered.length > EQUIPE_CHAPTERS_TABLE_PAGE_SIZE ? (
+                  <TablePagination
+                    currentPage={chaptersPage}
+                    totalPages={chaptersTotalPages}
+                    totalItems={filtered.length}
+                    itemsPerPage={EQUIPE_CHAPTERS_TABLE_PAGE_SIZE}
+                    onPageChange={setChaptersPage}
+                  />
+                ) : null
+              }
             />
           </div>
           <EquipeChapterRanking

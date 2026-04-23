@@ -1,6 +1,9 @@
 /** Tamanho da página do ranking na aba Chapters (equipe). */
 export const EQUIPE_CHAPTER_RANKING_PAGE_SIZE = 10
 
+/** Tamanho da página da tabela de chapters (lista na aba Chapters). */
+export const EQUIPE_CHAPTERS_TABLE_PAGE_SIZE = 20
+
 export interface EquipeChapterAuthorOption {
   id: string
   name: string

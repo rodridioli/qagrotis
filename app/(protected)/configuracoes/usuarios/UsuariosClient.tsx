@@ -361,7 +361,7 @@ export default function UsuariosClient({
         ) : (
           <>
             <div className="min-w-0 w-full overflow-x-auto sm:overflow-x-visible">
-              <table className="w-full min-w-0 table-fixed text-sm">
+              <table className="qagrotis-table-row-hover w-full min-w-0 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col style={{ width: "2.5rem" }} />}
                   <col style={{ width: "5.25rem" }} />

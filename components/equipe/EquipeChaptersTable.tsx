@@ -16,6 +16,8 @@ export interface EquipeChaptersTableProps {
   isAdmin: boolean
   onEdit: (row: EquipeChapterListRow) => void
   onRequestDelete: (row: EquipeChapterListRow) => void
+  /** Rodapé dentro do mesmo card (ex.: paginação). */
+  footer?: React.ReactNode
 }
 
 function isSafeExternalUrl(h: string | null | undefined): h is string {
@@ -47,7 +49,7 @@ function getInitials(name: string): string {
 /**
  * Tabela de chapters (padrão visual alinhado a EquipeHorariosTable).
  */
-export function EquipeChaptersTable({ rows, isAdmin, onEdit, onRequestDelete }: EquipeChaptersTableProps) {
+export function EquipeChaptersTable({ rows, isAdmin, onEdit, onRequestDelete, footer }: EquipeChaptersTableProps) {
   if (rows.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card">
@@ -57,8 +59,9 @@ export function EquipeChaptersTable({ rows, isAdmin, onEdit, onRequestDelete }: 
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
-      <table className="w-full min-w-[320px] text-sm">
+    <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
+      <div className="overflow-x-auto">
+      <table className="qagrotis-table-row-hover-muted w-full min-w-[320px] text-sm">
         <thead>
           <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
             <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Edição</th>
@@ -79,7 +82,7 @@ export function EquipeChaptersTable({ rows, isAdmin, onEdit, onRequestDelete }: 
             return (
               <tr
                 key={r.id}
-                className="border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/80 dark:hover:bg-neutral-grey-900/25"
+                className="border-b border-border-default last:border-b-0 transition-colors"
               >
                 <td className="whitespace-nowrap px-3 py-3 tabular-nums text-text-primary sm:px-4">{r.edicao}</td>
                 <td className="whitespace-nowrap px-3 py-3 tabular-nums text-text-primary sm:px-4">
@@ -171,6 +174,8 @@ export function EquipeChaptersTable({ rows, isAdmin, onEdit, onRequestDelete }: 
           })}
         </tbody>
       </table>
+      </div>
+      {footer}
     </div>
   )
 }

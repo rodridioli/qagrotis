@@ -404,7 +404,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-lg border border-border-default">
-                  <table className="w-full text-sm">
+                  <table className="qagrotis-table-row-hover w-full text-sm">
                     <thead>
                       <tr className="border-b border-border-default bg-neutral-grey-50">
                         <th className="w-10 px-4 py-3 text-left text-xs font-semibold text-text-secondary">#</th>
@@ -500,7 +500,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
       {/* ── Bloco 4: Dependências ── */}
       {depIds.length > 0 && <BlockCard title={`Dependências (${depIds.length})`}>
           <div className="min-w-0 overflow-x-auto rounded-lg border border-border-default">
-            <table className="w-full min-w-[48rem] table-fixed text-sm">
+            <table className="qagrotis-table-row-hover w-full min-w-[48rem] table-fixed text-sm">
               <colgroup>
                 <col className="w-24" />
                 <col />
@@ -523,7 +523,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                 {depsData.map((dep) => (
                   <tr
                     key={dep.id}
-                    className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                    className="border-b border-border-default last:border-0 transition-colors"
                   >
                     <td className="px-4 py-3 whitespace-nowrap">
                       <Link

@@ -793,7 +793,7 @@ export default function EditarCenarioClient({
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-sm">
+                  <table className="qagrotis-table-row-hover w-full border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-border-default">
                         <th className="w-8 py-2" />
@@ -897,7 +897,7 @@ export default function EditarCenarioClient({
               </div>
             ) : (
               <div className="min-w-0 overflow-x-auto">
-                <table className="w-full min-w-[44rem] table-fixed text-sm">
+                <table className="qagrotis-table-row-hover w-full min-w-[44rem] table-fixed text-sm">
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50">
                       <th className="w-24 px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
@@ -909,7 +909,7 @@ export default function EditarCenarioClient({
                   </thead>
                   <tbody>
                     {deps.map((d) => (
-                      <tr key={d.id} className="border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50">
+                      <tr key={d.id} className="border-b border-border-default last:border-0 transition-colors">
                         <td className="px-4 py-3">
                           <Link href={`/cenarios/${d.id}/editar`} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-primary hover:underline">{d.id}</Link>
                         </td>

@@ -280,7 +280,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-215 table-fixed text-sm">
+              <table className="qagrotis-table-row-hover w-full min-w-215 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />
@@ -332,7 +332,7 @@ export default function SuitesClient({ allModulos, suites }: Props) {
                   {pageItems.map((s) => (
                     <tr
                       key={s.id}
-                      className="group border-b border-border-default last:border-0 transition-colors hover:bg-neutral-grey-50"
+                      className="group border-b border-border-default last:border-0 transition-colors"
                     >
                       {showBulkActions && (
                         <td className="sticky left-0 z-10 bg-surface-card px-4 py-3 group-hover:bg-neutral-grey-50">

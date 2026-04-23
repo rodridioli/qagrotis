@@ -332,7 +332,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-100 table-fixed text-sm">
+              <table className="qagrotis-table-row-hover w-full min-w-100 table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col className="w-10" />}
                   <col className="w-20" />

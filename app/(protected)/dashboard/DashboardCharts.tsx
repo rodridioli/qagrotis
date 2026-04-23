@@ -282,7 +282,7 @@ export function DashboardCharts({
             <p className="py-4 text-center text-xs text-text-secondary">Nenhum cenário gerado no período.</p>
           ) : (
             <div className="mt-1 overflow-hidden">
-               <table className="w-full text-left">
+               <table className="qagrotis-table-row-hover-subtle w-full text-left">
                  <thead>
                    <tr className="border-b border-border-default/50 text-[10px] font-bold uppercase tracking-wider text-text-secondary/70">
                      <th className="pb-2 pr-2 font-bold">Pos</th>
@@ -297,7 +297,7 @@ export function DashboardCharts({
                      const posLabel = isTop1 ? "1°" : i === 1 ? "2°" : i === 2 ? "3°" : `${i + 1}°`
                      
                      return (
-                       <tr key={item.createdBy} className="group transition-colors hover:bg-neutral-grey-50/50">
+                       <tr key={item.createdBy} className="group transition-colors">
                          <td className="py-2.5 pr-2">
                            <span className={cn(
                              "inline-flex size-6 items-center justify-center rounded-md text-[10px] font-bold",
