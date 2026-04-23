@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { EquipeHorariosTable } from "@/components/equipe/EquipeHorariosTable"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import type { EquipeUsuarioCadastro } from "@/lib/actions/equipe"
 
 const mockRows: EquipeUsuarioCadastro[] = [
@@ -12,6 +13,8 @@ const mockRows: EquipeUsuarioCadastro[] = [
     dataNascimentoIso: "1992-03-10",
     horarioEntrada: "08:00",
     horarioSaida: "17:00",
+    formatoTrabalho: "Híbrido",
+    hybridNaoPresencialTooltip: "Não presencial: Seg., Qua., Sex..",
   },
   {
     userId: "U-02",
@@ -22,6 +25,8 @@ const mockRows: EquipeUsuarioCadastro[] = [
     dataNascimentoIso: null,
     horarioEntrada: "09:30",
     horarioSaida: "18:30",
+    formatoTrabalho: "Presencial",
+    hybridNaoPresencialTooltip: null,
   },
 ]
 
@@ -36,9 +41,17 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const ComDados: Story = {
-  args: { rows: mockRows },
+  render: () => (
+    <TooltipProvider>
+      <EquipeHorariosTable rows={mockRows} />
+    </TooltipProvider>
+  ),
 }
 
 export const Vazia: Story = {
-  args: { rows: [] },
+  render: () => (
+    <TooltipProvider>
+      <EquipeHorariosTable rows={[]} />
+    </TooltipProvider>
+  ),
 }

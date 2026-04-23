@@ -65,7 +65,7 @@ And    não é possível submeter o formulário novamente
 ```
 Given  estou em /configuracoes/usuarios/novo ou na edição de um usuário
 When   seleciono "Híbrido" no campo Formato
-Then   logo abaixo aparece o bloco "Dias presenciais (híbrido)" com checkboxes para cada dia da semana (mobile-first, área tocável adequada)
+Then   logo abaixo aparece o bloco "Dias fora do escritório (híbrido)" com checkboxes para cada dia da semana (mobile-first, área tocável adequada)
 And    cada checkbox tem rótulo acessível com o nome do dia
 ```
 
@@ -79,10 +79,10 @@ And    a seleção de dias em memória é limpa para não reenviar dados obsolet
 
 ### Cenário 9 — Persistência dos dias em modo Híbrido
 ```
-Given  seleciono Formato "Híbrido" e marco Segunda-feira e Quarta-feira
+Given  seleciono Formato "Híbrido" e marco Seg. e Qua. como dias fora do escritório
 When   salvo o cadastro
 Then   ao reabrir a edição do mesmo usuário o Formato continua "Híbrido"
-And    Segunda-feira e Quarta-feira permanecem marcadas
+And    Seg. e Qua. permanecem marcados (fora do escritório)
 ```
 
 ---
@@ -235,6 +235,18 @@ Given  estou no formulário de nova integração
 When   clico em "Salvar" e a requisição está em andamento
 Then   Provedor, Modelo e API Key ficam desabilitados
 And    o botão "Salvar" exibe "Salvando…"
+```
+
+---
+
+## Feature: Equipe / Horários
+
+### Cenário 1 — Coluna Formato e tooltip em Híbrido
+```
+Given  estou na aba Horários em /equipe
+When   visualizo a tabela de usuários com horário preenchido
+Then   existe a coluna "Formato" com Presencial, Híbrido ou Remoto conforme o cadastro
+And    se o formato for Híbrido, ao passar o ponteiro sobre o texto surge um tooltip listando os dias em que a pessoa não trabalha presencialmente
 ```
 
 ---

@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest"
 import {
+  complementDiasHibrido,
   diasTrabalhoHibridoForStorage,
+  labelsDiasHibrido,
   normalizeDiasTrabalhoHibrido,
   parseHorarioInput,
   sanitizeFormatoTrabalho,
@@ -35,6 +37,19 @@ describe("normalizeDiasTrabalhoHibrido", () => {
   })
   it("aceita não-array como vazio", () => {
     expect(normalizeDiasTrabalhoHibrido(null)).toEqual([])
+  })
+})
+
+describe("complementDiasHibrido", () => {
+  it("retorna dias não listados na ordem fixa", () => {
+    expect(complementDiasHibrido(["seg", "qua"])).toEqual(["ter", "qui", "sex", "sab", "dom"])
+    expect(complementDiasHibrido([])).toEqual(["seg", "ter", "qua", "qui", "sex", "sab", "dom"])
+  })
+})
+
+describe("labelsDiasHibrido", () => {
+  it("junta rótulos curtos", () => {
+    expect(labelsDiasHibrido(["seg", "dom"])).toBe("Seg., Dom.")
   })
 })
 

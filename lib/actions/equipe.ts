@@ -2,6 +2,11 @@
 
 import { prisma } from "@/lib/prisma"
 import {
+  labelsDiasHibrido,
+  normalizeDiasTrabalhoHibrido,
+  sanitizeFormatoTrabalho,
+} from "@/lib/usuario-trabalho"
+import {
   ensureUserDataNascimentoColumns,
   ensureUserHybridWorkDaysColumns,
   ensureUserWorkScheduleColumns,
@@ -277,6 +282,10 @@ export interface EquipeUsuarioCadastro {
   dataNascimentoIso: string | null
   horarioEntrada: string | null
   horarioSaida: string | null
+  /** Presencial, Híbrido ou Remoto (cadastro de usuários). */
+  formatoTrabalho: string
+  /** Texto para tooltip na coluna Formato quando Híbrido (dias não presenciais). */
+  hybridNaoPresencialTooltip: string | null
 }
 
 function toDateOnlyIso(d: Date | null | undefined): string | null {
@@ -311,6 +320,8 @@ export async function getEquipeListagemCadastro(): Promise<{
           dataNascimento: true,
           horarioEntrada: true,
           horarioSaida: true,
+          formatoTrabalho: true,
+          diasTrabalhoHibrido: true,
         },
       }),
       prisma.user.findMany({
@@ -321,7 +332,19 @@ export async function getEquipeListagemCadastro(): Promise<{
     const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
     const profileMap = new Map(profiles.map((p) => [p.userId, p]))
 
-    type Row = EquipeUsuarioCadastro & { active: boolean }
+    type Row = {
+      userId: string
+      name: string
+      email: string
+      classificacao: string | null
+      photoPath: string | null
+      dataNascimentoIso: string | null
+      horarioEntrada: string | null
+      horarioSaida: string | null
+      formatoTrabalho: string | null
+      diasTrabalhoHibrido: unknown
+      active: boolean
+    }
     const usersByEmail = new Map<string, Row>()
 
     const upsert = (base: {
@@ -333,6 +356,8 @@ export async function getEquipeListagemCadastro(): Promise<{
       dataNascimento?: Date | null
       horarioEntrada?: string | null
       horarioSaida?: string | null
+      formatoTrabalho?: string | null
+      diasTrabalhoHibrido?: unknown
       active: boolean
     }) => {
       const p = profileMap.get(base.id)
@@ -341,6 +366,8 @@ export async function getEquipeListagemCadastro(): Promise<{
       const dn = p?.dataNascimento ?? base.dataNascimento ?? null
       const he = p?.horarioEntrada ?? base.horarioEntrada ?? null
       const hs = p?.horarioSaida ?? base.horarioSaida ?? null
+      const fmt = p?.formatoTrabalho ?? base.formatoTrabalho ?? null
+      const diasH = p?.diasTrabalhoHibrido ?? base.diasTrabalhoHibrido
       usersByEmail.set(email.toLowerCase(), {
         userId: base.id,
         name: (p?.name ?? base.name).trim() || base.name,
@@ -350,6 +377,8 @@ export async function getEquipeListagemCadastro(): Promise<{
         dataNascimentoIso: toDateOnlyIso(dn),
         horarioEntrada: he?.trim() ? he.trim() : null,
         horarioSaida: hs?.trim() ? hs.trim() : null,
+        formatoTrabalho: fmt,
+        diasTrabalhoHibrido: diasH,
         active: base.active && !inactiveIds.has(base.id),
       })
     }
@@ -364,6 +393,8 @@ export async function getEquipeListagemCadastro(): Promise<{
         dataNascimento: u.dataNascimento,
         horarioEntrada: u.horarioEntrada,
         horarioSaida: u.horarioSaida,
+        formatoTrabalho: u.formatoTrabalho,
+        diasTrabalhoHibrido: u.diasTrabalhoHibrido,
         active: true,
       })
     }
@@ -379,6 +410,8 @@ export async function getEquipeListagemCadastro(): Promise<{
           dataNascimento: null,
           horarioEntrada: null,
           horarioSaida: null,
+          formatoTrabalho: null,
+          diasTrabalhoHibrido: undefined,
           active: true,
         })
       }
@@ -387,16 +420,28 @@ export async function getEquipeListagemCadastro(): Promise<{
     const all = [...usersByEmail.values()].filter((u) => u.active)
     const sortName = (a: Row, b: Row) => a.name.localeCompare(b.name, "pt-BR")
 
-    const strip = (r: Row): EquipeUsuarioCadastro => ({
-      userId: r.userId,
-      name: r.name,
-      email: r.email,
-      classificacao: r.classificacao,
-      photoPath: r.photoPath,
-      dataNascimentoIso: r.dataNascimentoIso,
-      horarioEntrada: r.horarioEntrada,
-      horarioSaida: r.horarioSaida,
-    })
+    const strip = (r: Row): EquipeUsuarioCadastro => {
+      const fmt = sanitizeFormatoTrabalho(r.formatoTrabalho) ?? "Presencial"
+      const diasNao = normalizeDiasTrabalhoHibrido(r.diasTrabalhoHibrido)
+      const hybridNaoPresencialTooltip =
+        fmt === "Híbrido"
+          ? diasNao.length > 0
+            ? `Não presencial: ${labelsDiasHibrido(diasNao)}.`
+            : "Nenhum dia fora do escritório cadastrado no perfil."
+          : null
+      return {
+        userId: r.userId,
+        name: r.name,
+        email: r.email,
+        classificacao: r.classificacao,
+        photoPath: r.photoPath,
+        dataNascimentoIso: r.dataNascimentoIso,
+        horarioEntrada: r.horarioEntrada,
+        horarioSaida: r.horarioSaida,
+        formatoTrabalho: fmt,
+        hybridNaoPresencialTooltip,
+      }
+    }
 
     const aniversariantes = all
       .filter((u) => u.dataNascimentoIso)

@@ -242,6 +242,30 @@ model InviteToken {
   used      Boolean  @default(false)
 }
 
+// ── Equipe / Chapters ────────────────────────────────────────────────────────
+
+model EquipeChapter {
+  id        String   @id @default(cuid())
+  tema      String
+  /** Calendário do chapter (meia-noite UTC do dia civil). */
+  data      DateTime
+  hyperlink String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authors   EquipeChapterAuthor[]
+
+  @@index([data])
+}
+
+model EquipeChapterAuthor {
+  chapterId String
+  userId    String
+  chapter   EquipeChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@id([chapterId, userId])
+  @@index([userId])
+}
+
 // Test environment credentials (URL, username, password) reusable across scenarios
 model Credencial {
   id          String    @id

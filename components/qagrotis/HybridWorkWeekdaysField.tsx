@@ -6,7 +6,7 @@ import { HIBRIDO_DIA_IDS, HIBRIDO_DIA_LABELS, type DiaSemanaHibridoId } from "@/
 import { cn } from "@/lib/utils"
 
 export interface HybridWorkWeekdaysFieldProps {
-  /** Ids selecionados (`seg`…`dom`). */
+  /** Ids selecionados: dias **fora** do escritório (`seg`…`dom`). */
   value: readonly string[]
   onChange: (next: DiaSemanaHibridoId[]) => void
   disabled?: boolean
@@ -16,7 +16,7 @@ export interface HybridWorkWeekdaysFieldProps {
 }
 
 /**
- * Dias da semana para modalidade Híbrido (presença no escritório).
+ * Dias da semana em que a pessoa **não** está presencial (fora do escritório) no modelo Híbrido.
  * Mobile-first: 2 colunas estreitas, 4 a partir de `sm`, 7 em `lg`.
  */
 export function HybridWorkWeekdaysField({
@@ -47,10 +47,10 @@ export function HybridWorkWeekdaysField({
       )}
     >
       <legend id={legendId} className="px-1 text-sm font-medium text-text-primary">
-        Dias presenciais (híbrido)
+        Dias fora do escritório (híbrido)
       </legend>
       <p id={hintId} className="mb-3 text-xs text-text-secondary">
-        Marque os dias em que a pessoa comparece presencialmente.
+        Marque os dias em que a pessoa trabalha em formato híbrido fora do escritório (não presencial).
       </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7" aria-describedby={hintId}>
         {HIBRIDO_DIA_IDS.map((id) => {

@@ -15,6 +15,7 @@ import {
 import { EquipePerformanceCard } from "@/components/equipe/EquipePerformanceCard"
 import { EquipeAniversarioCard } from "@/components/equipe/EquipeAniversarioCard"
 import { EquipeHorariosTable } from "@/components/equipe/EquipeHorariosTable"
+import { EquipeChaptersSection } from "@/components/equipe/EquipeChaptersSection"
 import {
   Select, SelectTrigger, SelectPopup, SelectItem,
 } from "@/components/ui/select"
@@ -29,6 +30,7 @@ import {
 interface Props {
   sistemas: string[]
   modulosPorSistema: Record<string, string[]>
+  isAdmin: boolean
 }
 
 type TabId =
@@ -203,7 +205,7 @@ function FilterModal({
 
 const DEFAULT_FILTERS = { sistema: "todos", modulo: "todos", periodo: "mes-atual" }
 
-export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
+export default function EquipeClient({ sistemas, modulosPorSistema, isAdmin }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("performance")
   const [filterOpen, setFilterOpen] = useState(false)
 
@@ -472,10 +474,9 @@ export default function EquipeClient({ sistemas, modulosPorSistema }: Props) {
         </div>
       )}
 
-      {(activeTab === "chapters" ||
-        activeTab === "ferias" ||
-        activeTab === "ausencias" ||
-        activeTab === "metas") && (
+      {activeTab === "chapters" && <EquipeChaptersSection isAdmin={isAdmin} />}
+
+      {(activeTab === "ferias" || activeTab === "ausencias" || activeTab === "metas") && (
         <div className="flex items-center justify-center py-16">
           <p className="text-sm text-text-secondary">Em desenvolvimento.</p>
         </div>

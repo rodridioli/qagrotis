@@ -11,7 +11,7 @@ const meta: Meta<typeof HybridWorkWeekdaysField> = {
     docs: {
       description: {
         component:
-          "Seleção de dias presenciais para modalidade de trabalho Híbrido (cadastro de usuário). Usa tokens do design system.",
+          "Seleção dos dias em que a pessoa não está presencial (fora do escritório) no modelo Híbrido — cadastro de usuário. Usa tokens do design system.",
       },
     },
   },

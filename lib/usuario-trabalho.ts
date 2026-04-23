@@ -7,13 +7,13 @@ export const HIBRIDO_DIA_IDS = ["seg", "ter", "qua", "qui", "sex", "sab", "dom"]
 export type DiaSemanaHibridoId = (typeof HIBRIDO_DIA_IDS)[number]
 
 export const HIBRIDO_DIA_LABELS: Record<DiaSemanaHibridoId, string> = {
-  seg: "Segunda-feira",
-  ter: "Terça-feira",
-  qua: "Quarta-feira",
-  qui: "Quinta-feira",
-  sex: "Sexta-feira",
-  sab: "Sábado",
-  dom: "Domingo",
+  seg: "Seg.",
+  ter: "Ter.",
+  qua: "Qua.",
+  qui: "Qui.",
+  sex: "Sex.",
+  sab: "Sáb.",
+  dom: "Dom.",
 }
 
 export function sanitizeFormatoTrabalho(value: string | null | undefined): string | null {
@@ -25,7 +25,22 @@ export function sanitizeFormatoTrabalho(value: string | null | undefined): strin
 const allowedDiaSet = new Set<string>(HIBRIDO_DIA_IDS)
 
 /**
- * Normaliza lista vinda da UI ou do banco: apenas ids conhecidos, sem duplicar, ordem fixa.
+ * Complemento na semana (dias não incluídos em `ids`), ordem seg→dom.
+ * Útil para derivar dias presenciais a partir dos dias não presenciais gravados.
+ */
+export function complementDiasHibrido(ids: readonly DiaSemanaHibridoId[]): DiaSemanaHibridoId[] {
+  const s = new Set(ids)
+  return HIBRIDO_DIA_IDS.filter((d) => !s.has(d))
+}
+
+/** Rótulos curtos para tooltip/lista (ex.: equipe). */
+export function labelsDiasHibrido(ids: readonly DiaSemanaHibridoId[]): string {
+  return ids.map((id) => HIBRIDO_DIA_LABELS[id]).join(", ")
+}
+
+/**
+ * `diasTrabalhoHibrido` no banco = dias em que a pessoa **não** trabalha presencialmente
+ * (fora do escritório no modelo híbrido). No formulário, os checkboxes marcam exatamente isso.
  */
 export function normalizeDiasTrabalhoHibrido(input: unknown): DiaSemanaHibridoId[] {
   if (!Array.isArray(input)) return []
@@ -39,6 +54,7 @@ export function normalizeDiasTrabalhoHibrido(input: unknown): DiaSemanaHibridoId
 
 /**
  * Valor para persistência: só grava quando formato é Híbrido; caso contrário limpa (`null`).
+ * Grava dias **fora** do escritório (não presenciais).
  */
 export function diasTrabalhoHibridoForStorage(
   formatoTrabalho: string | null | undefined,
