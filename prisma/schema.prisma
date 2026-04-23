@@ -207,6 +207,8 @@ model CreatedUser {
   horarioEntrada   String?
   horarioSaida     String?
   formatoTrabalho  String?
+  /** Dias presenciais no modo Híbrido: `["seg","ter",…]` */
+  diasTrabalhoHibrido Json?
   password         String    @default("")
   createdAt        DateTime  @default(now())
 }
@@ -223,6 +225,7 @@ model UserProfile {
   horarioEntrada  String?
   horarioSaida    String?
   formatoTrabalho String?
+  diasTrabalhoHibrido Json?
 }
 
 // Soft-delete registry for mock users (mock users cannot be deleted from constants)

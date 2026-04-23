@@ -1,6 +1,7 @@
 /**
  * Leituras de UserProfile / CreatedUser.
- * Chame `ensureUserDataNascimentoColumns` e `ensureUserWorkScheduleColumns` antes das queries
+ * Chame `ensureUserDataNascimentoColumns`, `ensureUserWorkScheduleColumns` e
+ * `ensureUserHybridWorkDaysColumns` antes das queries
  * se o deploy ainda não aplicou migrações (ADD COLUMN IF NOT EXISTS no ensure).
  */
 export const USER_PROFILE_READ_SELECT = {
@@ -14,6 +15,7 @@ export const USER_PROFILE_READ_SELECT = {
   horarioEntrada: true,
   horarioSaida: true,
   formatoTrabalho: true,
+  diasTrabalhoHibrido: true,
 } as const
 
 export const CREATED_USER_READ_SELECT = {
@@ -29,4 +31,5 @@ export const CREATED_USER_READ_SELECT = {
   horarioEntrada: true,
   horarioSaida: true,
   formatoTrabalho: true,
+  diasTrabalhoHibrido: true,
 } as const

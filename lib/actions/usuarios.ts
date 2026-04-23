@@ -10,8 +10,17 @@ import {
   CREATED_USER_READ_SELECT,
   USER_PROFILE_READ_SELECT,
 } from "@/lib/prisma-user-selects"
-import { ensureUserDataNascimentoColumns, ensureUserWorkScheduleColumns } from "@/lib/prisma-schema-ensure"
-import { parseHorarioInput, sanitizeFormatoTrabalho } from "@/lib/usuario-trabalho"
+import {
+  ensureUserDataNascimentoColumns,
+  ensureUserHybridWorkDaysColumns,
+  ensureUserWorkScheduleColumns,
+} from "@/lib/prisma-schema-ensure"
+import {
+  diasTrabalhoHibridoForStorage,
+  normalizeDiasTrabalhoHibrido,
+  parseHorarioInput,
+  sanitizeFormatoTrabalho,
+} from "@/lib/usuario-trabalho"
 
 export interface QaUserRecord {
   id: string
@@ -36,6 +45,8 @@ export interface QaUserProfile {
   horarioEntrada?: string | null
   horarioSaida?: string | null
   formatoTrabalho?: string | null
+  /** Dias presenciais no modo Híbrido (ids `seg`…`dom`); vazio fora do modo Híbrido. */
+  diasTrabalhoHibrido: string[]
 }
 
 // ── Validation schemas ──────────────────────────────────────────────────────
@@ -123,6 +134,7 @@ function validatePhotoPath(photoPath: string | null | undefined): string | null 
 export async function getQaUsers(): Promise<QaUserRecord[]> {
   await ensureUserDataNascimentoColumns()
   await ensureUserWorkScheduleColumns()
+  await ensureUserHybridWorkDaysColumns()
   const [inactiveRecords, profiles, createdUsers, oauthUsers] = await Promise.all([
     prisma.inactiveUser.findMany({ select: { userId: true } }),
     prisma.userProfile.findMany({ select: USER_PROFILE_READ_SELECT }),
@@ -216,6 +228,7 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
 
   await ensureUserDataNascimentoColumns()
   await ensureUserWorkScheduleColumns()
+  await ensureUserHybridWorkDaysColumns()
 
   const [savedProfile, createdUser, oauthUser] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId: id }, select: USER_PROFILE_READ_SELECT }),
@@ -236,6 +249,13 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
 
   const dn = savedProfile?.dataNascimento ?? createdUser?.dataNascimento ?? null
 
+  const formatoMerged =
+    savedProfile?.formatoTrabalho ?? createdUser?.formatoTrabalho ?? null
+  const formatoEff = sanitizeFormatoTrabalho(formatoMerged)
+  const diasRaw = savedProfile?.diasTrabalhoHibrido ?? createdUser?.diasTrabalhoHibrido
+  const diasTrabalhoHibrido =
+    formatoEff === "Híbrido" ? normalizeDiasTrabalhoHibrido(diasRaw) : []
+
   return {
     name:            savedProfile?.name ?? base.name,
     email:           savedProfile?.email ?? base.email,
@@ -245,7 +265,8 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
     dataNascimento:  dn ? toDateInputValue(dn) : null,
     horarioEntrada:  savedProfile?.horarioEntrada ?? createdUser?.horarioEntrada ?? null,
     horarioSaida:    savedProfile?.horarioSaida ?? createdUser?.horarioSaida ?? null,
-    formatoTrabalho: savedProfile?.formatoTrabalho ?? createdUser?.formatoTrabalho ?? null,
+    formatoTrabalho: formatoMerged,
+    diasTrabalhoHibrido,
   }
 }
 
@@ -330,6 +351,7 @@ export async function criarQaUser(data: {
   horarioEntrada?: string | null
   horarioSaida?: string | null
   formatoTrabalho?: string | null
+  diasTrabalhoHibrido?: string[]
   password: string
   photoPath?: string | null
 }): Promise<{ id?: string; error?: string; emailEnviado?: boolean }> {
@@ -362,6 +384,7 @@ export async function criarQaUser(data: {
   try {
     await ensureUserDataNascimentoColumns()
     await ensureUserWorkScheduleColumns()
+    await ensureUserHybridWorkDaysColumns()
 
     const [inactiveRecords, existingCreated] = await Promise.all([
       prisma.inactiveUser.findMany({ select: { userId: true } }),
@@ -388,6 +411,7 @@ export async function criarQaUser(data: {
     const horarioEntrada = parseHorarioInput(data.horarioEntrada ?? undefined)
     const horarioSaida = parseHorarioInput(data.horarioSaida ?? undefined)
     const formatoTrabalho = sanitizeFormatoTrabalho(data.formatoTrabalho ?? undefined)
+    const diasTrabalhoHibrido = diasTrabalhoHibridoForStorage(formatoTrabalho, data.diasTrabalhoHibrido)
 
     let createdId = ""
     if (existingCreated && inactiveIds.has(existingCreated.id)) {
@@ -405,6 +429,7 @@ export async function criarQaUser(data: {
             horarioEntrada,
             horarioSaida,
             formatoTrabalho,
+            diasTrabalhoHibrido,
           },
         }),
         prisma.inactiveUser.delete({ where: { userId: existingCreated.id } }),
@@ -427,6 +452,7 @@ export async function criarQaUser(data: {
           horarioEntrada,
           horarioSaida,
           formatoTrabalho,
+          diasTrabalhoHibrido,
         },
       })
       createdId = id
@@ -489,6 +515,8 @@ export async function atualizarQaUser(
     horarioEntrada?: string | null
     horarioSaida?: string | null
     formatoTrabalho?: string | null
+    /** Omitir = não alterar dias salvos. */
+    diasTrabalhoHibrido?: string[]
     photoPath?: string | null
     /** Nova senha local (CreatedUser). Omitir ou vazio = não alterar. */
     newPassword?: string | null
@@ -507,6 +535,7 @@ export async function atualizarQaUser(
   try {
     await ensureUserDataNascimentoColumns()
     await ensureUserWorkScheduleColumns()
+    await ensureUserHybridWorkDaysColumns()
 
     const isAdmin = await checkIsAdmin()
     const sessionEmail = session.user?.email?.toLowerCase() ?? ""
@@ -552,6 +581,18 @@ export async function atualizarQaUser(
     const formatoTrabalho =
       data.formatoTrabalho === undefined ? undefined : sanitizeFormatoTrabalho(data.formatoTrabalho)
 
+    const formatoParaDias =
+      formatoTrabalho !== undefined
+        ? formatoTrabalho
+        : sanitizeFormatoTrabalho(targetProfile.formatoTrabalho) ?? "Presencial"
+
+    let diasTrabalhoHibridoDb: string[] | null | undefined
+    if (data.diasTrabalhoHibrido !== undefined) {
+      diasTrabalhoHibridoDb = diasTrabalhoHibridoForStorage(formatoParaDias, data.diasTrabalhoHibrido)
+    } else if (formatoTrabalho !== undefined && formatoTrabalho !== "Híbrido") {
+      diasTrabalhoHibridoDb = null
+    }
+
     const newPw = data.newPassword?.trim()
     if (newPw) {
       if (newPw.length < 8) return { error: "A nova senha deve ter no mínimo 8 caracteres." }
@@ -568,6 +609,7 @@ export async function atualizarQaUser(
       horarioEntrada?: string | null
       horarioSaida?: string | null
       formatoTrabalho?: string | null
+      diasTrabalhoHibrido?: string[] | null
     } = {
       name:          parsed.name,
       email:         parsed.email,
@@ -579,6 +621,7 @@ export async function atualizarQaUser(
     if (horarioEntrada !== undefined) profileData.horarioEntrada = horarioEntrada
     if (horarioSaida !== undefined) profileData.horarioSaida = horarioSaida
     if (formatoTrabalho !== undefined) profileData.formatoTrabalho = formatoTrabalho
+    if (diasTrabalhoHibridoDb !== undefined) profileData.diasTrabalhoHibrido = diasTrabalhoHibridoDb
 
     await prisma.userProfile.upsert({
       where:  { userId: id },
@@ -593,6 +636,7 @@ export async function atualizarQaUser(
         horarioEntrada: horarioEntrada ?? null,
         horarioSaida: horarioSaida ?? null,
         formatoTrabalho: formatoTrabalho ?? null,
+        diasTrabalhoHibrido: diasTrabalhoHibridoDb !== undefined ? diasTrabalhoHibridoDb : null,
       },
       update: profileData,
     })
@@ -617,6 +661,7 @@ export async function atualizarQaUser(
           ...(horarioEntrada !== undefined ? { horarioEntrada } : {}),
           ...(horarioSaida !== undefined ? { horarioSaida } : {}),
           ...(formatoTrabalho !== undefined ? { formatoTrabalho } : {}),
+          ...(diasTrabalhoHibridoDb !== undefined ? { diasTrabalhoHibrido: diasTrabalhoHibridoDb } : {}),
           ...(safePhotoPath !== undefined ? { photoPath: safePhotoPath } : {}),
           ...(newPw ? { password: hashPassword(newPw) } : {}),
         },

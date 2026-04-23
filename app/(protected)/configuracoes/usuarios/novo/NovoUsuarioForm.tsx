@@ -17,7 +17,13 @@ import { PhotoUpload } from "@/components/qagrotis/PhotoUpload"
 import { criarQaUser, atualizarQaUser } from "@/lib/actions/usuarios"
 import { generateSecurePassword } from "@/lib/generate-secure-password"
 import { inputNativePickerRightClassName } from "@/lib/input-native-picker-classes"
-import { FORMATOS_TRABALHO, sanitizeFormatoTrabalho } from "@/lib/usuario-trabalho"
+import { HybridWorkWeekdaysField } from "@/components/qagrotis/HybridWorkWeekdaysField"
+import {
+  FORMATOS_TRABALHO,
+  normalizeDiasTrabalhoHibrido,
+  sanitizeFormatoTrabalho,
+  type DiaSemanaHibridoId,
+} from "@/lib/usuario-trabalho"
 import { toast } from "sonner"
 
 export default function NovoUsuarioForm() {
@@ -32,6 +38,7 @@ export default function NovoUsuarioForm() {
   const [horarioEntrada, setHorarioEntrada] = useState("")
   const [horarioSaida, setHorarioSaida] = useState("")
   const [formatoTrabalho, setFormatoTrabalho] = useState<string>("Presencial")
+  const [diasHibrido, setDiasHibrido] = useState<DiaSemanaHibridoId[]>([])
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
@@ -89,6 +96,7 @@ export default function NovoUsuarioForm() {
         horarioEntrada: horarioEntrada.trim() || null,
         horarioSaida: horarioSaida.trim() || null,
         formatoTrabalho: sanitizeFormatoTrabalho(formatoTrabalho) ?? "Presencial",
+        diasTrabalhoHibrido: normalizeDiasTrabalhoHibrido(diasHibrido),
         password,
       })
       if (result.error || !result.id) {
@@ -120,6 +128,7 @@ export default function NovoUsuarioForm() {
             horarioEntrada: horarioEntrada.trim() || null,
             horarioSaida: horarioSaida.trim() || null,
             formatoTrabalho: sanitizeFormatoTrabalho(formatoTrabalho) ?? "Presencial",
+            diasTrabalhoHibrido: normalizeDiasTrabalhoHibrido(diasHibrido),
             photoPath,
           })
         } else {
@@ -272,7 +281,11 @@ export default function NovoUsuarioForm() {
               </label>
               <Select
                 value={formatoTrabalho}
-                onValueChange={(v) => setFormatoTrabalho(v ?? "Presencial")}
+                onValueChange={(v) => {
+                  const next = v ?? "Presencial"
+                  setFormatoTrabalho(next)
+                  if (next !== "Híbrido") setDiasHibrido([])
+                }}
                 disabled={isPending}
               >
                 <SelectTrigger id="formatoTrabalho" className="w-full">
@@ -288,6 +301,16 @@ export default function NovoUsuarioForm() {
               </Select>
             </div>
           </div>
+
+          {formatoTrabalho === "Híbrido" ? (
+            <HybridWorkWeekdaysField
+              idPrefix="novo-usuario"
+              value={diasHibrido}
+              onChange={setDiasHibrido}
+              disabled={isPending}
+              className="mt-1"
+            />
+          ) : null}
 
           {/* ── Password section ── */}
           <div className="border-t border-border-default pt-4 space-y-4">

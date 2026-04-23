@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 const g = globalThis as unknown as {
   __qagrotisEnsuredDataNascimento?: boolean
   __qagrotisEnsuredWorkSchedule?: boolean
+  __qagrotisEnsuredHybridWeekdays?: boolean
 }
 
 /**
@@ -54,5 +55,23 @@ export async function ensureUserWorkScheduleColumns(): Promise<void> {
     g.__qagrotisEnsuredWorkSchedule = true
   } catch (e) {
     console.error("[prisma-schema-ensure] work schedule columns", e)
+  }
+}
+
+/**
+ * Garante `diasTrabalhoHibrido` (JSONB) em CreatedUser e UserProfile.
+ */
+export async function ensureUserHybridWorkDaysColumns(): Promise<void> {
+  if (g.__qagrotisEnsuredHybridWeekdays) return
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "CreatedUser" ADD COLUMN IF NOT EXISTS "diasTrabalhoHibrido" JSONB`,
+    )
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "diasTrabalhoHibrido" JSONB`,
+    )
+    g.__qagrotisEnsuredHybridWeekdays = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] hybrid weekdays columns", e)
   }
 }

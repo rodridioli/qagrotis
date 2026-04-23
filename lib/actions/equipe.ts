@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import {
   ensureUserDataNascimentoColumns,
+  ensureUserHybridWorkDaysColumns,
   ensureUserWorkScheduleColumns,
 } from "@/lib/prisma-schema-ensure"
 import { USER_PROFILE_READ_SELECT } from "@/lib/prisma-user-selects"
@@ -295,6 +296,7 @@ export async function getEquipeListagemCadastro(): Promise<{
   try {
     await ensureUserDataNascimentoColumns()
     await ensureUserWorkScheduleColumns()
+    await ensureUserHybridWorkDaysColumns()
 
     const [inactiveRecords, profiles, createdUsers, oauthUsers] = await Promise.all([
       prisma.inactiveUser.findMany({ select: { userId: true } }),

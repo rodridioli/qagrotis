@@ -13,9 +13,15 @@ import {
   SelectPopup,
   SelectItem,
 } from "@/components/ui/select"
+import { HybridWorkWeekdaysField } from "@/components/qagrotis/HybridWorkWeekdaysField"
 import { PhotoUpload } from "@/components/qagrotis/PhotoUpload"
 import { atualizarQaUser, type QaUserProfile } from "@/lib/actions/usuarios"
-import { FORMATOS_TRABALHO, sanitizeFormatoTrabalho } from "@/lib/usuario-trabalho"
+import {
+  FORMATOS_TRABALHO,
+  normalizeDiasTrabalhoHibrido,
+  sanitizeFormatoTrabalho,
+  type DiaSemanaHibridoId,
+} from "@/lib/usuario-trabalho"
 import { generateSecurePassword } from "@/lib/generate-secure-password"
 import { inputNativePickerRightClassName } from "@/lib/input-native-picker-classes"
 import { toast } from "sonner"
@@ -40,6 +46,10 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
   const [formatoTrabalho, setFormatoTrabalho] = useState<string>(
     () => sanitizeFormatoTrabalho(initialProfile.formatoTrabalho) ?? "Presencial",
   )
+  const [diasHibrido, setDiasHibrido] = useState<DiaSemanaHibridoId[]>(() => {
+    const f = sanitizeFormatoTrabalho(initialProfile.formatoTrabalho)
+    return f === "Híbrido" ? normalizeDiasTrabalhoHibrido(initialProfile.diasTrabalhoHibrido) : []
+  })
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(
     initialProfile.photoPath ?? null
@@ -119,6 +129,7 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
         horarioEntrada: horarioEntrada.trim() || null,
         horarioSaida: horarioSaida.trim() || null,
         formatoTrabalho: sanitizeFormatoTrabalho(formatoTrabalho) ?? "Presencial",
+        diasTrabalhoHibrido: normalizeDiasTrabalhoHibrido(diasHibrido),
         photoPath: resolvedPhotoPath,
         newPassword: password.trim() || undefined,
       })
@@ -292,7 +303,11 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
               </label>
               <Select
                 value={formatoTrabalho}
-                onValueChange={(v) => setFormatoTrabalho(v ?? "Presencial")}
+                onValueChange={(v) => {
+                  const next = v ?? "Presencial"
+                  setFormatoTrabalho(next)
+                  if (next !== "Híbrido") setDiasHibrido([])
+                }}
                 disabled={isPending}
               >
                 <SelectTrigger id="formatoTrabalho" className="w-full">
@@ -308,6 +323,16 @@ export default function EditarUsuarioClient({ id, initialProfile, isAdmin }: Pro
               </Select>
             </div>
           </div>
+
+          {formatoTrabalho === "Híbrido" ? (
+            <HybridWorkWeekdaysField
+              idPrefix={`editar-usuario-${id}`}
+              value={diasHibrido}
+              onChange={setDiasHibrido}
+              disabled={isPending}
+              className="mt-1"
+            />
+          ) : null}
 
           {/* ── Password section ── */}
           <div className="border-t border-border-default pt-4 space-y-4">

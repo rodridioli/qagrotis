@@ -61,6 +61,30 @@ And    o botão exibe "Salvando…"
 And    não é possível submeter o formulário novamente
 ```
 
+### Cenário 7 — Formato Híbrido exibe dias da semana
+```
+Given  estou em /configuracoes/usuarios/novo ou na edição de um usuário
+When   seleciono "Híbrido" no campo Formato
+Then   logo abaixo aparece o bloco "Dias presenciais (híbrido)" com checkboxes para cada dia da semana (mobile-first, área tocável adequada)
+And    cada checkbox tem rótulo acessível com o nome do dia
+```
+
+### Cenário 8 — Formato diferente de Híbrido oculta dias
+```
+Given  o bloco de dias híbridos está visível
+When   altero o Formato para "Presencial" ou "Remoto"
+Then   o bloco de dias deixa de ser exibido
+And    a seleção de dias em memória é limpa para não reenviar dados obsoletos
+```
+
+### Cenário 9 — Persistência dos dias em modo Híbrido
+```
+Given  seleciono Formato "Híbrido" e marco Segunda-feira e Quarta-feira
+When   salvo o cadastro
+Then   ao reabrir a edição do mesmo usuário o Formato continua "Híbrido"
+And    Segunda-feira e Quarta-feira permanecem marcadas
+```
+
 ---
 
 ## Feature: Configurações / Sistemas

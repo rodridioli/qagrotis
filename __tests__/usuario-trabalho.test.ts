@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest"
-import { parseHorarioInput, sanitizeFormatoTrabalho } from "@/lib/usuario-trabalho"
+import {
+  diasTrabalhoHibridoForStorage,
+  normalizeDiasTrabalhoHibrido,
+  parseHorarioInput,
+  sanitizeFormatoTrabalho,
+} from "@/lib/usuario-trabalho"
 
 describe("parseHorarioInput", () => {
   it("aceita HH:mm válido", () => {
@@ -21,5 +26,24 @@ describe("sanitizeFormatoTrabalho", () => {
   it("rejeita desconhecido ou vazio", () => {
     expect(sanitizeFormatoTrabalho("")).toBeNull()
     expect(sanitizeFormatoTrabalho("Home")).toBeNull()
+  })
+})
+
+describe("normalizeDiasTrabalhoHibrido", () => {
+  it("ordena e remove desconhecidos", () => {
+    expect(normalizeDiasTrabalhoHibrido(["qua", "seg", "seg", "foo"])).toEqual(["seg", "qua"])
+  })
+  it("aceita não-array como vazio", () => {
+    expect(normalizeDiasTrabalhoHibrido(null)).toEqual([])
+  })
+})
+
+describe("diasTrabalhoHibridoForStorage", () => {
+  it("só persiste em modo Híbrido", () => {
+    expect(diasTrabalhoHibridoForStorage("Presencial", ["seg"])).toBeNull()
+    expect(diasTrabalhoHibridoForStorage("Híbrido", ["seg", "dom"])).toEqual(["seg", "dom"])
+  })
+  it("lista vazia vira null", () => {
+    expect(diasTrabalhoHibridoForStorage("Híbrido", [])).toBeNull()
   })
 })
