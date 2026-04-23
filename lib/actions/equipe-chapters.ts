@@ -10,6 +10,7 @@ import {
   ymdFromDbDate,
 } from "@/lib/equipe-chapter-dates"
 import { getQaUsers } from "@/lib/actions/usuarios"
+import { ensureEquipeChapterTables } from "@/lib/prisma-schema-ensure"
 import { requireAdmin, requireSession } from "@/lib/session"
 
 /** Shape retornado por `findMany` com `authors` (evita implicit any sem client gerado). */
@@ -72,6 +73,15 @@ export interface EquipeChapterListRow {
   authorIds: string[]
 }
 
+function chapterPrismaUserMessage(e: unknown, fallback: string): string {
+  const code = typeof e === "object" && e !== null && "code" in e ? String((e as { code: string }).code) : ""
+  const msg = typeof e === "object" && e !== null && "message" in e ? String((e as { message: string }).message) : ""
+  if (code === "P2021" || /does not exist|não existe|relation.*not exist/i.test(msg)) {
+    return "Tabelas de chapters ainda não existem no banco. Recarregue a página; se persistir, rode as migrações Prisma no Neon."
+  }
+  return fallback
+}
+
 async function activeAuthorIdSet(): Promise<Set<string>> {
   const users = await getQaUsers()
   return new Set(users.filter((u) => u.active).map((u) => u.id))
@@ -99,39 +109,45 @@ export async function listEquipeChapterAuthorOptions(): Promise<EquipeChapterAut
 
 export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
   await requireSession()
+  await ensureEquipeChapterTables()
 
-  const chapters = (await prisma.equipeChapter.findMany({
-    include: { authors: true },
-    orderBy: [{ data: "asc" }, { createdAt: "asc" }],
-  })) as EquipeChapterWithAuthors[]
+  try {
+    const chapters = (await prisma.equipeChapter.findMany({
+      include: { authors: true },
+      orderBy: [{ data: "asc" }, { createdAt: "asc" }],
+    })) as EquipeChapterWithAuthors[]
 
-  const names = await nameByUserIdMap()
-  const editionById = new Map<string, number>()
-  chapters.forEach((c: EquipeChapterWithAuthors, i: number) => editionById.set(c.id, i + 1))
+    const names = await nameByUserIdMap()
+    const editionById = new Map<string, number>()
+    chapters.forEach((c: EquipeChapterWithAuthors, i: number) => editionById.set(c.id, i + 1))
 
-  const rowsDesc = [...chapters].sort((a: EquipeChapterWithAuthors, b: EquipeChapterWithAuthors) => {
-    const ta = a.data.getTime()
-    const tb = b.data.getTime()
-    if (tb !== ta) return tb - ta
-    return b.createdAt.getTime() - a.createdAt.getTime()
-  })
+    const rowsDesc = [...chapters].sort((a: EquipeChapterWithAuthors, b: EquipeChapterWithAuthors) => {
+      const ta = a.data.getTime()
+      const tb = b.data.getTime()
+      if (tb !== ta) return tb - ta
+      return b.createdAt.getTime() - a.createdAt.getTime()
+    })
 
-  return rowsDesc.map((c: EquipeChapterWithAuthors) => {
-    const authorIds = c.authors.map((a: EquipeChapterAuthorLink) => a.userId)
-    const autoresLabel = authorIds
-      .map((id: string) => names.get(id) ?? id)
-      .sort((a: string, b: string) => a.localeCompare(b, "pt-BR"))
-      .join(", ")
-    return {
-      id: c.id,
-      edicao: editionById.get(c.id) ?? 0,
-      dataYmd: ymdFromDbDate(c.data),
-      tema: c.tema,
-      autoresLabel,
-      hyperlink: c.hyperlink,
-      authorIds,
-    }
-  })
+    return rowsDesc.map((c: EquipeChapterWithAuthors) => {
+      const authorIds = c.authors.map((a: EquipeChapterAuthorLink) => a.userId)
+      const autoresLabel = authorIds
+        .map((id: string) => names.get(id) ?? id)
+        .sort((a: string, b: string) => a.localeCompare(b, "pt-BR"))
+        .join(", ")
+      return {
+        id: c.id,
+        edicao: editionById.get(c.id) ?? 0,
+        dataYmd: ymdFromDbDate(c.data),
+        tema: c.tema,
+        autoresLabel,
+        hyperlink: c.hyperlink,
+        authorIds,
+      }
+    })
+  } catch (e) {
+    console.error("[listEquipeChapters]", e)
+    return []
+  }
 }
 
 export async function createEquipeChapter(
@@ -144,6 +160,7 @@ export async function createEquipeChapter(
   }
 
   try {
+    await ensureEquipeChapterTables()
     const parsed = createSchema.safeParse(input)
     if (!parsed.success) {
       return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
@@ -185,7 +202,7 @@ export async function createEquipeChapter(
     return { id: created.id }
   } catch (e) {
     console.error("[createEquipeChapter]", e)
-    return { error: "Não foi possível salvar o chapter." }
+    return { error: chapterPrismaUserMessage(e, "Não foi possível salvar o chapter.") }
   }
 }
 
@@ -199,6 +216,7 @@ export async function updateEquipeChapter(
   }
 
   try {
+    await ensureEquipeChapterTables()
     const parsed = updateSchema.safeParse(input)
     if (!parsed.success) {
       return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
@@ -247,7 +265,7 @@ export async function updateEquipeChapter(
     return {}
   } catch (e) {
     console.error("[updateEquipeChapter]", e)
-    return { error: "Não foi possível atualizar o chapter." }
+    return { error: chapterPrismaUserMessage(e, "Não foi possível atualizar o chapter.") }
   }
 }
 
@@ -262,6 +280,7 @@ export async function deleteEquipeChapter(id: string): Promise<{ error?: string 
   if (!r.success) return { error: "ID inválido." }
 
   try {
+    await ensureEquipeChapterTables()
     await prisma.equipeChapter.delete({ where: { id } })
     try {
       revalidatePath("/equipe")
@@ -271,6 +290,6 @@ export async function deleteEquipeChapter(id: string): Promise<{ error?: string 
     return {}
   } catch (e) {
     console.error("[deleteEquipeChapter]", e)
-    return { error: "Não foi possível remover o chapter." }
+    return { error: chapterPrismaUserMessage(e, "Não foi possível remover o chapter.") }
   }
 }

@@ -1,11 +1,18 @@
 export const dynamic = "force-dynamic"
 
 import { getSistemasEModulos } from "@/lib/actions/equipe"
+import { ensureEquipeChapterTables } from "@/lib/prisma-schema-ensure"
 import { serializeRscProps } from "@/lib/rsc-serialize"
 import { checkIsAdmin } from "@/lib/session"
 import EquipeClient from "./EquipeClient"
 
 export default async function EquipePage() {
+  try {
+    await ensureEquipeChapterTables()
+  } catch {
+    /* DDL opcional; actions de chapters repetem a garantia */
+  }
+
   let sistemas: string[] = []
   let modulosPorSistema: Record<string, string[]> = {}
   try {

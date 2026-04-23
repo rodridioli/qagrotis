@@ -4,6 +4,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredDataNascimento?: boolean
   __qagrotisEnsuredWorkSchedule?: boolean
   __qagrotisEnsuredHybridWeekdays?: boolean
+  __qagrotisEnsuredEquipeChapters?: boolean
 }
 
 /**
@@ -73,5 +74,43 @@ export async function ensureUserHybridWorkDaysColumns(): Promise<void> {
     g.__qagrotisEnsuredHybridWeekdays = true
   } catch (e) {
     console.error("[prisma-schema-ensure] hybrid weekdays columns", e)
+  }
+}
+
+/**
+ * Garante tabelas de Chapters da Equipe (Neon/Vercel sem `migrate deploy` ou baseline P3005).
+ * DDL idempotente — espelha `prisma/migrations/20260424120000_equipe_chapters/migration.sql`.
+ */
+export async function ensureEquipeChapterTables(): Promise<void> {
+  if (g.__qagrotisEnsuredEquipeChapters) return
+  try {
+    await prisma.$executeRawUnsafe(`
+CREATE TABLE IF NOT EXISTS "EquipeChapter" (
+    "id" TEXT NOT NULL,
+    "tema" TEXT NOT NULL,
+    "data" TIMESTAMP(3) NOT NULL,
+    "hyperlink" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "EquipeChapter_pkey" PRIMARY KEY ("id")
+);
+`)
+    await prisma.$executeRawUnsafe(`
+CREATE TABLE IF NOT EXISTS "EquipeChapterAuthor" (
+    "chapterId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    CONSTRAINT "EquipeChapterAuthor_pkey" PRIMARY KEY ("chapterId","userId"),
+    CONSTRAINT "EquipeChapterAuthor_chapterId_fkey" FOREIGN KEY ("chapterId") REFERENCES "EquipeChapter" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+`)
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "EquipeChapter_data_idx" ON "EquipeChapter"("data")`,
+    )
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "EquipeChapterAuthor_userId_idx" ON "EquipeChapterAuthor"("userId")`,
+    )
+    g.__qagrotisEnsuredEquipeChapters = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] EquipeChapter tables", e)
   }
 }
