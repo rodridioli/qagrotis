@@ -1,3 +1,4 @@
+import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma"
 
 export type StoredJiraCredentials = {
@@ -6,17 +7,37 @@ export type StoredJiraCredentials = {
   apiToken: string
 }
 
+/** Cookies httpOnly antigos — usados como fallback se a migração ainda não rodou no Postgres. */
+export async function readLegacyJiraCookies(): Promise<StoredJiraCredentials | null> {
+  try {
+    const c = await cookies()
+    const jiraUrl = c.get("jira_url")?.value?.trim() ?? ""
+    const jiraEmail = c.get("jira_email")?.value?.trim() ?? ""
+    const apiToken = c.get("jira_token")?.value?.trim() ?? ""
+    if (!jiraUrl || !jiraEmail || !apiToken) return null
+    return { jiraUrl, jiraEmail, apiToken }
+  } catch {
+    return null
+  }
+}
+
 export async function getUserJiraCredentials(userId: string): Promise<StoredJiraCredentials | null> {
-  const row = await prisma.userJiraCredentials.findUnique({
-    where: { userId },
-    select: { jiraUrl: true, jiraEmail: true, apiToken: true },
-  })
-  if (!row) return null
-  return { jiraUrl: row.jiraUrl, jiraEmail: row.jiraEmail, apiToken: row.apiToken }
+  try {
+    const row = await prisma.userJiraCredentials.findUnique({
+      where: { userId },
+      select: { jiraUrl: true, jiraEmail: true, apiToken: true },
+    })
+    if (!row) return null
+    return { jiraUrl: row.jiraUrl, jiraEmail: row.jiraEmail, apiToken: row.apiToken }
+  } catch (e) {
+    console.error("[jira-credentials-db] getUserJiraCredentials:", e)
+    return null
+  }
 }
 
 /**
  * Salva URL/e-mail; token só é alterado quando `apiToken` vier não vazio.
+ * Falha se a tabela não existir — o caller pode fazer fallback para cookies.
  */
 export async function upsertUserJiraCredentials(
   userId: string,
@@ -46,18 +67,25 @@ export async function upsertUserJiraCredentials(
 }
 
 export async function deleteUserJiraCredentials(userId: string): Promise<void> {
-  await prisma.userJiraCredentials.deleteMany({ where: { userId } })
+  try {
+    await prisma.userJiraCredentials.deleteMany({ where: { userId } })
+  } catch (e) {
+    console.error("[jira-credentials-db] deleteUserJiraCredentials:", e)
+  }
 }
 
-/** Mescla corpo da requisição com credenciais persistidas (prioriza corpo quando completo). */
+/** Mescla corpo da requisição com BD e, se preciso, cookies legados. */
 export async function resolveJiraCredentialsForRequest(
   userId: string,
   partial: { jiraUrl?: string; email?: string; apiToken?: string },
 ): Promise<StoredJiraCredentials | null> {
-  const stored = await getUserJiraCredentials(userId)
-  const jiraUrl = partial.jiraUrl?.trim() || stored?.jiraUrl || ""
-  const jiraEmail = partial.email?.trim() || stored?.jiraEmail || ""
-  const apiToken = partial.apiToken?.trim() || stored?.apiToken || ""
+  const [stored, legacy] = await Promise.all([
+    getUserJiraCredentials(userId),
+    readLegacyJiraCookies(),
+  ])
+  const jiraUrl = partial.jiraUrl?.trim() || stored?.jiraUrl || legacy?.jiraUrl || ""
+  const jiraEmail = partial.email?.trim() || stored?.jiraEmail || legacy?.jiraEmail || ""
+  const apiToken = partial.apiToken?.trim() || stored?.apiToken || legacy?.apiToken || ""
   if (!jiraUrl || !jiraEmail || !apiToken) return null
   return { jiraUrl, jiraEmail, apiToken }
 }
