@@ -16,7 +16,8 @@ const meta: Meta<typeof UsuariosClient> = {
     nextjs: { appDirectory: true },
     docs: {
       description: {
-        component: "Tabela de usuários com busca, filtro, seleção em lote e inativação.",
+        component:
+          "Tabela de usuários com busca e filtros. Por padrão lista só cadastros ativos; use Filtros → «Exibir somente inativos» para ver inativados.",
       },
     },
   },
@@ -64,12 +65,17 @@ export const UltimoAdmin: Story = {
   },
 }
 
-export const ApenasInativos: Story = {
-  name: "Lista apenas com inativos",
+export const InativoOcultoAteFiltrar: Story = {
+  name: "Inativo (U-03) oculto até filtrar",
+  parameters: {
+    docs: {
+      description: {
+        story: "Na lista padrão aparecem só U-01 e U-02. Abra Filtros, marque «Exibir somente inativos» e aplique para ver U-03.",
+      },
+    },
+  },
   args: {
-    initialUsers: [
-      { id: "U-03", name: "Inativo", email: "inativo@empresa.com", type: "Padrão", active: false, photoPath: null, createdAt: Date.now() },
-    ],
+    initialUsers: base,
     currentUserId: "U-01",
     isAdmin: true,
   },
@@ -80,7 +86,7 @@ export const NomesLongos: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Valida sticky left (Código) e sticky right (ações) ao rolar horizontalmente. Hover nas células de nome e e-mail exibe o texto completo via tooltip nativo.",
+        story: "Em viewports estreitos pode haver rolagem horizontal; em telas maiores a tabela usa 100% da largura com truncate. Hover em nome e e-mail mostra o texto completo (title).",
       },
     },
   },

@@ -117,8 +117,8 @@ export default function UsuariosClient({
         u.name.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase())
       const matchTipo = !filters.tipo || u.type === filters.tipo
-      // Sem "somente inativos": lista todos (ativos + inativos). Com o filtro: só inativos.
-      const matchAtivo = filters.apenasInativos ? !u.active : true
+      // Padrão: só ativos. Com "Exibir somente inativos": apenas inativos.
+      const matchAtivo = filters.apenasInativos ? !u.active : u.active
       return matchSearch && matchTipo && matchAtivo
     })
     return [...result].sort((a, b) => {
@@ -360,16 +360,16 @@ export default function UsuariosClient({
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[76rem] table-fixed text-sm">
+            <div className="min-w-0 w-full overflow-x-auto sm:overflow-x-visible">
+              <table className="w-full min-w-0 table-fixed text-sm">
                 <colgroup>
-                  {showBulkActions && <col className="w-10" />}
-                  <col className="w-24 shrink-0" />
-                  <col className="w-48 shrink-0" />
-                  <col className="w-[14rem] shrink-0" />
-                  <col className="w-36 shrink-0" />
-                  <col className="min-w-[22rem] w-[28rem] sm:min-w-[26rem] sm:w-[32rem]" />
-                  <col className="w-16 shrink-0" />
+                  {showBulkActions && <col style={{ width: "2.5rem" }} />}
+                  <col style={{ width: "5.25rem" }} />
+                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "26%" }} />
+                  <col style={{ width: "7rem" }} />
+                  <col />
+                  <col style={{ width: "3.25rem" }} />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
