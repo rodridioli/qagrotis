@@ -39,13 +39,12 @@ import { criarSuite, atualizarSuite, removerHistoricoSuite, encerrarSuite, reabr
 import { toast } from "sonner"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 
-/** Markdown estável para Jira/ADF: campos multilinha em fence, sem listas aninhadas com ** */
+/** Markdown para Jira/ADF: rótulo em negrito; multilinha em parágrafo (sem fences — evita crases na descrição). */
 function jiraExportField(label: string, value: string | undefined | null): string {
   const v = (value && value.trim()) ? value.trim() : "—"
   if (v === "—") return `**${label}:** —`
   if (v.includes("\n")) {
-    const safe = v.replace(/```/g, "'''")
-    return `**${label}:**\n\n\`\`\`\n${safe}\n\`\`\``
+    return `**${label}:**\n\n${v}`
   }
   return `**${label}:** ${v}`
 }

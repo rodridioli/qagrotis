@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
   formatYmdInTz,
   isThursdayYmdBrazil,
+  isValidCalendarYmd,
   isValidNewChapterDate,
   isValidUpdatedChapterDate,
   listThursdayYmOptions,
@@ -29,6 +30,19 @@ describe("isThursdayYmdBrazil", () => {
   })
 })
 
+describe("isValidCalendarYmd", () => {
+  it("aceita qualquer dia civil válido", () => {
+    expect(isValidCalendarYmd("2024-01-03")).toBe(true)
+    expect(isValidCalendarYmd("2024-01-04")).toBe(true)
+    expect(isValidCalendarYmd("2024-06-15")).toBe(true)
+  })
+  it("rejeita dia inexistente ou formato inválido", () => {
+    expect(isValidCalendarYmd("2024-02-31")).toBe(false)
+    expect(isValidCalendarYmd("")).toBe(false)
+    expect(isValidCalendarYmd("24-01-01")).toBe(false)
+  })
+})
+
 describe("isValidNewChapterDate", () => {
   it("aceita quinta-feira retornada pela lista a partir da referência", () => {
     const ref = new Date("2024-01-04T15:00:00Z")
@@ -36,12 +50,16 @@ describe("isValidNewChapterDate", () => {
     expect(opts.length).toBeGreaterThan(0)
     expect(isValidNewChapterDate(opts[0]!, ref)).toBe(true)
   })
+  it("aceita data que não é quinta", () => {
+    expect(isValidNewChapterDate("2024-01-03")).toBe(true)
+  })
 })
 
 describe("isValidUpdatedChapterDate", () => {
-  it("permite manter data anterior", () => {
+  it("aceita manter ou alterar para qualquer data civil válida", () => {
     const ref = new Date("2026-04-24T12:00:00Z")
     expect(isValidUpdatedChapterDate("2024-01-04", "2024-01-04", ref)).toBe(true)
+    expect(isValidUpdatedChapterDate("2023-06-10", "2024-01-04", ref)).toBe(true)
   })
 })
 

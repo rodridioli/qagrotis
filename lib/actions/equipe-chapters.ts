@@ -137,7 +137,7 @@ export async function createEquipeChapter(
   const hyperlink = linkNorm.value
 
   if (!isValidNewChapterDate(dataYmd)) {
-    return { error: "A data deve ser uma quinta-feira a partir de hoje." }
+    return { error: "Data inválida." }
   }
 
   const data = parseYmdToDbDate(dataYmd)
@@ -195,7 +195,7 @@ export async function updateEquipeChapter(
 
   const prevYmd = ymdFromDbDate(existing.data)
   if (!isValidUpdatedChapterDate(dataYmd, prevYmd)) {
-    return { error: "A data deve ser quinta-feira; se alterar, não pode ser anterior a hoje." }
+    return { error: "Data inválida." }
   }
 
   const data = parseYmdToDbDate(dataYmd)

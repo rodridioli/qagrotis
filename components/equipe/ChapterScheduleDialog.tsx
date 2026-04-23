@@ -18,12 +18,7 @@ import {
   updateEquipeChapter,
   type EquipeChapterAuthorOption,
 } from "@/lib/actions/equipe-chapters"
-import {
-  isThursdayYmdBrazil,
-  isValidUpdatedChapterDate,
-  listThursdayYmOptions,
-  todayYmdBrazil,
-} from "@/lib/equipe-chapter-dates"
+import { isValidCalendarYmd, todayYmdBrazil } from "@/lib/equipe-chapter-dates"
 import { inputNativePickerRightClassName } from "@/lib/input-native-picker-classes"
 
 export type ChapterScheduleInitial = {
@@ -43,27 +38,11 @@ export interface ChapterScheduleDialogProps {
   onSuccess: () => void
 }
 
-const TOAST_NAO_QUINTA =
-  "Só é possível agendar em quintas-feiras (fuso São Paulo)."
-
-function validateDateForSubmit(
-  mode: "create" | "edit",
-  dataYmd: string,
-  initial: ChapterScheduleInitial | null,
-): string | null {
+function validateDateForSubmit(dataYmd: string): string | null {
   if (!dataYmd.trim()) return "Informe a data."
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataYmd.trim())) return "Data inválida."
   const ymd = dataYmd.trim()
-  if (!isThursdayYmdBrazil(ymd)) return TOAST_NAO_QUINTA
-  const today = todayYmdBrazil()
-  if (mode === "create" && ymd < today) {
-    return "Não é possível agendar em data retroativa."
-  }
-  if (mode === "edit" && initial) {
-    if (!isValidUpdatedChapterDate(ymd, initial.dataYmd)) {
-      return "A data deve ser quinta-feira; se alterar, não pode ser anterior a hoje."
-    }
-  }
+  if (!isValidCalendarYmd(ymd)) return "Data inválida."
   return null
 }
 
@@ -92,17 +71,12 @@ export function ChapterScheduleDialog({
       setTema("")
       setAuthorIds([])
       setHyperlink("")
-      const opts = listThursdayYmOptions(new Date(), { maxCount: 52 })
-      setDataYmd(opts[0] ?? "")
+      setDataYmd(todayYmdBrazil())
     }
   }, [open, mode, initial])
 
   function onDateInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const v = e.target.value
-    setDataYmd(v)
-    if (v.length === 10 && isThursdayYmdBrazil(v) === false) {
-      toast.error(TOAST_NAO_QUINTA)
-    }
+    setDataYmd(e.target.value)
   }
 
   function handleSubmit() {
@@ -115,7 +89,7 @@ export function ChapterScheduleDialog({
       return
     }
 
-    const dateErr = validateDateForSubmit(mode, dataYmd, initial)
+    const dateErr = validateDateForSubmit(dataYmd)
     if (dateErr) {
       toast.error(dateErr)
       return
@@ -195,7 +169,7 @@ export function ChapterScheduleDialog({
 
           <div className="space-y-1.5">
             <label htmlFor="chapter-data" className="text-sm font-medium text-text-primary">
-              Data (Qui.) <span className="text-destructive">*</span>
+              Data do Evento <span className="text-destructive">*</span>
             </label>
             <Input
               id="chapter-data"
@@ -206,7 +180,7 @@ export function ChapterScheduleDialog({
               className={inputNativePickerRightClassName()}
             />
             <p className="text-xs text-text-secondary">
-              Use o calendário ou digite a data. Só quintas-feiras são aceitas (fuso São Paulo).
+              Use o calendário ou digite a data (formato AAAA-MM-DD).
             </p>
           </div>
 

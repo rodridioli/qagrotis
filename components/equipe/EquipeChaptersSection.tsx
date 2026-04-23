@@ -41,13 +41,19 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
     setLoading(true)
     setError(null)
     try {
-      const [list, opts] = await Promise.all([listEquipeChapters(), listEquipeChapterAuthorOptions()])
+      const list = await listEquipeChapters()
       setRows(list)
-      setAuthorOptions(opts)
     } catch {
       setRows([])
-      setAuthorOptions([])
       setError("Não foi possível carregar os chapters. Tente novamente em instantes.")
+    }
+    try {
+      const opts = await listEquipeChapterAuthorOptions()
+      setAuthorOptions(Array.isArray(opts) ? opts : [])
+    } catch (e) {
+      console.error("[EquipeChaptersSection] listEquipeChapterAuthorOptions", e)
+      setAuthorOptions([])
+      toast.error("Não foi possível carregar a lista de autores. Atualize a página ou tente de novo.")
     } finally {
       setLoading(false)
     }
@@ -56,6 +62,26 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
   React.useEffect(() => {
     void refetch()
   }, [refetch])
+
+  /** Ao abrir o modal, busca de novo os usuários ativos (evita lista vazia por corrida com o 1º load). */
+  React.useEffect(() => {
+    if (!scheduleOpen) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const opts = await listEquipeChapterAuthorOptions()
+        if (!cancelled) setAuthorOptions(Array.isArray(opts) ? opts : [])
+      } catch (e) {
+        console.error("[EquipeChaptersSection] autores ao abrir modal", e)
+        if (!cancelled) {
+          toast.error("Não foi possível carregar os autores. Verifique se você está logado.")
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [scheduleOpen])
 
   const filtered = React.useMemo(() => {
     const t = q.trim().toLowerCase()
@@ -117,7 +143,12 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
             aria-label="Buscar chapters por tema ou autor"
           />
         </div>
-        <Button type="button" onClick={openCreate} className="w-full shrink-0 sm:w-auto">
+        <Button
+          type="button"
+          onClick={openCreate}
+          disabled={loading}
+          className="w-full shrink-0 sm:w-auto"
+        >
           <CalendarPlus className="size-4" />
           Agendar Chapter
         </Button>

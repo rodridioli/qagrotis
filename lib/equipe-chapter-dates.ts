@@ -43,21 +43,27 @@ export function todayYmdBrazil(now: Date = new Date()): string {
   return formatYmdInTz(now, CHAPTER_TZ)
 }
 
-/** Novo chapter: quinta e data civil ≥ hoje (SP). */
-export function isValidNewChapterDate(ymd: string, now: Date = new Date()): boolean {
-  if (!isThursdayYmdBrazil(ymd)) return false
-  return ymd >= todayYmdBrazil(now)
+/** `yyyy-mm-dd` que corresponde a um dia civil existente (round-trip com armazenamento UTC meia-noite). */
+export function isValidCalendarYmd(ymd: string): boolean {
+  const t = ymd.trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return false
+  const d = parseYmdToDbDate(t)
+  if (!d) return false
+  return ymdFromDbDate(d) === t
 }
 
-/** Edição: quinta; pode manter data anterior; se mudar, só avançar (≥ hoje). */
+/** Novo chapter: qualquer data civil válida. */
+export function isValidNewChapterDate(ymd: string, _now: Date = new Date()): boolean {
+  return isValidCalendarYmd(ymd)
+}
+
+/** Edição: qualquer data civil válida. */
 export function isValidUpdatedChapterDate(
   ymd: string,
-  previousYmd: string,
-  now: Date = new Date(),
+  _previousYmd: string,
+  _now: Date = new Date(),
 ): boolean {
-  if (!isThursdayYmdBrazil(ymd)) return false
-  if (ymd === previousYmd) return true
-  return ymd >= todayYmdBrazil(now)
+  return isValidCalendarYmd(ymd)
 }
 
 /**

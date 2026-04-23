@@ -10,10 +10,10 @@
 - Colunas: Edição (1 = data mais antiga), Data (ordem decrescente), Tema, Autor(es), link externo.
 - Busca única filtra por texto em Tema ou nomes de autores (sem outros filtros).
 - Botão "Agendar Chapter" exibe ícone à esquerda do rótulo (mesmo padrão visual dos botões primários com ícone nas demais telas).
-- Botão "Agendar Chapter" abre modal: Tema obrigatório (≤240), Autor(es) obrigatório (≥1, multi), Data obrigatória (somente quintas-feiras, ≥ hoje em America/Sao_Paulo).
+- Botão "Agendar Chapter" abre modal: Tema obrigatório (≤240), Autor(es) obrigatório (≥1, multi), Data do Evento obrigatória (`yyyy-mm-dd` civil válido).
 - Ícone de hyperlink: abre nova aba se URL válida; desabilitado se vazio ou inválido.
 - Administrador: menu "mais" com Editar e Remover; Remover sempre com modal de confirmação.
-- Editar: pode alterar Tema, Autores, Data (mesmas regras de quinta + não retroativa exceto manter a data já salva) e Hyperlink.
+- Editar: pode alterar Tema, Autores, Data do Evento (qualquer data civil válida) e Hyperlink.
 
 ## Cenário 1 — Listar chapters ordenados
 
@@ -36,11 +36,11 @@ When   digito "xyz"
 Then   nenhum resultado é exibido (ou mensagem de vazio)
 ```
 
-## Cenário 3 — Agendar com quinta válida
+## Cenário 3 — Agendar com data do evento válida
 
 ```
 Given  estou autenticado
-When   clico em Agendar Chapter e preencho tema, pelo menos um autor e uma quinta-feira futura (ou hoje se for quinta)
+When   clico em Agendar Chapter e preencho tema, pelo menos um autor e a data do evento (qualquer dia civil válido)
 And    salvo
 Then   o chapter aparece na tabela
 ```

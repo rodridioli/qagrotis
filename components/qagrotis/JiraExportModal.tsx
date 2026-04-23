@@ -32,8 +32,7 @@ function fieldMd(label: string, value: string | undefined | null): string {
   const v = (value && value.trim()) ? value.trim() : "—"
   if (v === "—") return `**${label}:** —`
   if (v.includes("\n")) {
-    const safe = v.replace(/```/g, "'''")
-    return `**${label}:**\n\n\`\`\`\n${safe}\n\`\`\``
+    return `**${label}:**\n\n${v}`
   }
   return `**${label}:** ${v}`
 }
