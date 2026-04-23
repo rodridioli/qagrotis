@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search } from "lucide-react"
+import { CalendarPlus, Search } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -118,6 +118,7 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
           />
         </div>
         <Button type="button" onClick={openCreate} className="w-full shrink-0 sm:w-auto">
+          <CalendarPlus className="size-4" />
           Agendar Chapter
         </Button>
       </div>

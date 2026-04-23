@@ -45,7 +45,7 @@ function jiraExportField(label: string, value: string | undefined | null): strin
   if (v === "—") return `**${label}:** —`
   if (v.includes("\n")) {
     const safe = v.replace(/```/g, "'''")
-    return `**${label}:**\n\n\`\`\`text\n${safe}\n\`\`\``
+    return `**${label}:**\n\n\`\`\`\n${safe}\n\`\`\``
   }
   return `**${label}:** ${v}`
 }

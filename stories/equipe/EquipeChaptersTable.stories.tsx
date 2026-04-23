@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
-import * as React from "react"
 import { EquipeChaptersTable } from "@/components/equipe/EquipeChaptersTable"
 import type { EquipeChapterListRow } from "@/lib/actions/equipe-chapters"
 

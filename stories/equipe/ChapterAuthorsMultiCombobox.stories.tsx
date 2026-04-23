@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import * as React from "react"
-import { ChapterAuthorsPicklist } from "@/components/equipe/ChapterAuthorsPicklist"
+import { ChapterAuthorsMultiCombobox } from "@/components/equipe/ChapterAuthorsMultiCombobox"
 import type { EquipeChapterAuthorOption } from "@/lib/actions/equipe-chapters"
 
 const options: EquipeChapterAuthorOption[] = [
@@ -10,26 +10,34 @@ const options: EquipeChapterAuthorOption[] = [
   { id: "u4", name: "Diego Souza" },
 ]
 
-const meta: Meta<typeof ChapterAuthorsPicklist> = {
-  title: "Equipe/ChapterAuthorsPicklist",
-  component: ChapterAuthorsPicklist,
+const meta: Meta<typeof ChapterAuthorsMultiCombobox> = {
+  title: "Equipe/ChapterAuthorsMultiCombobox",
+  component: ChapterAuthorsMultiCombobox,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component:
+          "Multi-select de autores com gatilho estilo select, busca e checkboxes nas opções (modal Chapter).",
+      },
+    },
+  },
 }
 
 export default meta
-type Story = StoryObj<typeof ChapterAuthorsPicklist>
+type Story = StoryObj<typeof ChapterAuthorsMultiCombobox>
 
 function Stateful() {
   const [value, setValue] = React.useState<string[]>(["u1"])
   return (
     <div className="max-w-md p-4">
-      <ChapterAuthorsPicklist
+      <ChapterAuthorsMultiCombobox
         idPrefix="story"
         options={options}
         value={value}
         onChange={setValue}
       />
-      <p className="mt-2 text-xs text-text-secondary">Selecionados: {value.join(", ") || "—"}</p>
+      <p className="mt-2 text-xs text-text-secondary">IDs: {value.join(", ") || "—"}</p>
     </div>
   )
 }

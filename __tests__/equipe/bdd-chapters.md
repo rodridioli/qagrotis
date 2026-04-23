@@ -9,6 +9,7 @@
 - Tabela no mesmo padrão visual da aba Horários (card, borda, scroll horizontal em mobile).
 - Colunas: Edição (1 = data mais antiga), Data (ordem decrescente), Tema, Autor(es), link externo.
 - Busca única filtra por texto em Tema ou nomes de autores (sem outros filtros).
+- Botão "Agendar Chapter" exibe ícone à esquerda do rótulo (mesmo padrão visual dos botões primários com ícone nas demais telas).
 - Botão "Agendar Chapter" abre modal: Tema obrigatório (≤240), Autor(es) obrigatório (≥1, multi), Data obrigatória (somente quintas-feiras, ≥ hoje em America/Sao_Paulo).
 - Ícone de hyperlink: abre nova aba se URL válida; desabilitado se vazio ou inválido.
 - Administrador: menu "mais" com Editar e Remover; Remover sempre com modal de confirmação.

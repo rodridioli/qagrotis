@@ -12,20 +12,19 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectPopup,
-  SelectItem,
-} from "@/components/ui/select"
-import { ChapterAuthorsPicklist } from "@/components/equipe/ChapterAuthorsPicklist"
+import { ChapterAuthorsMultiCombobox } from "@/components/equipe/ChapterAuthorsMultiCombobox"
 import {
   createEquipeChapter,
   updateEquipeChapter,
   type EquipeChapterAuthorOption,
 } from "@/lib/actions/equipe-chapters"
-import { formatChapterDateLabelPt, listThursdayYmOptions } from "@/lib/equipe-chapter-dates"
+import {
+  isThursdayYmdBrazil,
+  isValidUpdatedChapterDate,
+  listThursdayYmOptions,
+  todayYmdBrazil,
+} from "@/lib/equipe-chapter-dates"
+import { inputNativePickerRightClassName } from "@/lib/input-native-picker-classes"
 
 export type ChapterScheduleInitial = {
   id: string
@@ -44,6 +43,30 @@ export interface ChapterScheduleDialogProps {
   onSuccess: () => void
 }
 
+const TOAST_NAO_QUINTA =
+  "Só é possível agendar em quintas-feiras (fuso São Paulo)."
+
+function validateDateForSubmit(
+  mode: "create" | "edit",
+  dataYmd: string,
+  initial: ChapterScheduleInitial | null,
+): string | null {
+  if (!dataYmd.trim()) return "Informe a data."
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataYmd.trim())) return "Data inválida."
+  const ymd = dataYmd.trim()
+  if (!isThursdayYmdBrazil(ymd)) return TOAST_NAO_QUINTA
+  const today = todayYmdBrazil()
+  if (mode === "create" && ymd < today) {
+    return "Não é possível agendar em data retroativa."
+  }
+  if (mode === "edit" && initial) {
+    if (!isValidUpdatedChapterDate(ymd, initial.dataYmd)) {
+      return "A data deve ser quinta-feira; se alterar, não pode ser anterior a hoje."
+    }
+  }
+  return null
+}
+
 export function ChapterScheduleDialog({
   open,
   onOpenChange,
@@ -57,11 +80,6 @@ export function ChapterScheduleDialog({
   const [authorIds, setAuthorIds] = React.useState<string[]>([])
   const [dataYmd, setDataYmd] = React.useState("")
   const [hyperlink, setHyperlink] = React.useState("")
-
-  const dateOptions = React.useMemo(() => {
-    const inc = mode === "edit" && initial ? initial.dataYmd : null
-    return listThursdayYmOptions(new Date(), { maxCount: 52, includeYmd: inc })
-  }, [mode, initial?.dataYmd])
 
   React.useEffect(() => {
     if (!open) return
@@ -79,6 +97,14 @@ export function ChapterScheduleDialog({
     }
   }, [open, mode, initial])
 
+  function onDateInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = e.target.value
+    setDataYmd(v)
+    if (v.length === 10 && isThursdayYmdBrazil(v) === false) {
+      toast.error(TOAST_NAO_QUINTA)
+    }
+  }
+
   function handleSubmit() {
     if (!tema.trim()) {
       toast.error("O tema é obrigatório.")
@@ -88,16 +114,20 @@ export function ChapterScheduleDialog({
       toast.error("Selecione pelo menos um autor.")
       return
     }
-    if (!dataYmd) {
-      toast.error("Selecione a data (quinta-feira).")
+
+    const dateErr = validateDateForSubmit(mode, dataYmd, initial)
+    if (dateErr) {
+      toast.error(dateErr)
       return
     }
+
+    const ymd = dataYmd.trim()
 
     startTransition(async () => {
       if (mode === "create") {
         const res = await createEquipeChapter({
           tema: tema.trim(),
-          dataYmd,
+          dataYmd: ymd,
           authorIds,
           hyperlink: hyperlink.trim() || undefined,
         })
@@ -118,7 +148,7 @@ export function ChapterScheduleDialog({
       const res = await updateEquipeChapter({
         id: initial.id,
         tema: tema.trim(),
-        dataYmd,
+        dataYmd: ymd,
         authorIds,
         hyperlink: hyperlink.trim() || undefined,
       })
@@ -134,7 +164,7 @@ export function ChapterScheduleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent showCloseButton className="overflow-visible sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Agendar Chapter" : "Editar Chapter"}</DialogTitle>
         </DialogHeader>
@@ -155,7 +185,7 @@ export function ChapterScheduleDialog({
             <p className="text-xs text-text-secondary">{tema.length}/240</p>
           </div>
 
-          <ChapterAuthorsPicklist
+          <ChapterAuthorsMultiCombobox
             idPrefix="chapter-schedule"
             options={authorOptions}
             value={authorIds}
@@ -165,21 +195,19 @@ export function ChapterScheduleDialog({
 
           <div className="space-y-1.5">
             <label htmlFor="chapter-data" className="text-sm font-medium text-text-primary">
-              Data (quinta-feira) <span className="text-destructive">*</span>
+              Data (Qui.) <span className="text-destructive">*</span>
             </label>
-            <Select value={dataYmd} onValueChange={(v) => setDataYmd(v ?? "")} disabled={isPending}>
-              <SelectTrigger id="chapter-data" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectPopup>
-                {dateOptions.map((ymd) => (
-                  <SelectItem key={ymd} value={ymd}>
-                    {formatChapterDateLabelPt(ymd)}
-                  </SelectItem>
-                ))}
-              </SelectPopup>
-            </Select>
-            <p className="text-xs text-text-secondary">Somente quintas-feiras, a partir de hoje (fuso São Paulo).</p>
+            <Input
+              id="chapter-data"
+              type="date"
+              value={dataYmd}
+              onChange={onDateInputChange}
+              disabled={isPending}
+              className={inputNativePickerRightClassName()}
+            />
+            <p className="text-xs text-text-secondary">
+              Use o calendário ou digite a data. Só quintas-feiras são aceitas (fuso São Paulo).
+            </p>
           </div>
 
           <div className="space-y-1.5">
