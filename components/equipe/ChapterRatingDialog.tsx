@@ -251,12 +251,13 @@ export function ChapterRatingDialog({
                         <div className="mt-2 flex justify-end">
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                            className="inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                            aria-label="Editar a sua avaliação"
+                            title="Editar a sua avaliação"
                             disabled={isPreview}
                             onClick={openFormEdit}
                           >
-                            <Pencil className="size-3.5" />
-                            Editar avaliação
+                            <Pencil className="size-4" />
                           </button>
                         </div>
                       ) : null}
@@ -268,9 +269,11 @@ export function ChapterRatingDialog({
           </>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <p className="border-b border-border-default pb-3 text-sm font-medium text-text-primary">A sua avaliação</p>
+            <p className="border-b border-border-default pb-3 text-sm font-medium text-text-primary">
+              Dê uma nota de 0 a 5, onde 0 é péssimo e 5 é excelente.
+            </p>
 
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Número de estrelas de 0 a 5">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Nota de 0 a 5">
               {[0, 1, 2, 3, 4, 5].map((n) => (
                 <button
                   key={n}
@@ -314,7 +317,7 @@ export function ChapterRatingDialog({
                 Voltar
               </Button>
               <Button type="submit" disabled={saving || isPreview} title={isPreview ? "Pré-visualização sem servidor." : undefined}>
-                {saving ? "A guardar…" : myEntry ? "Salvar" : "Enviar"}
+                {saving ? "A guardar…" : "Avaliar"}
               </Button>
             </DialogFooter>
           </form>

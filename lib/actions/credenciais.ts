@@ -136,7 +136,7 @@ export async function encontrarOuCriarCredencialPorImportacao(data: {
   usuario: string
   senha: string
 }): Promise<CredencialRecord> {
-  await requireSession()
+  const session = await requireSession()
   const urlAmbiente = data.urlAmbiente.trim()
   const usuario = data.usuario.trim()
   const senha = data.senha
@@ -160,12 +160,16 @@ export async function encontrarOuCriarCredencialPorImportacao(data: {
     return toRecord(row)
   }
 
-  let host = urlAmbiente
-  try {
-    host = new URL(urlAmbiente.startsWith("http") ? urlAmbiente : `https://${urlAmbiente}`).host
-  } catch {
-    /* keep raw */
-  }
-  const nome = `Import · ${host}`.slice(0, 200)
+  const userLabel = (
+    session.user?.name?.trim() ||
+    session.user?.email?.trim() ||
+    "Utilizador"
+  ).replace(/\s+/g, " ")
+  const dateStr = new Date().toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })
+  const nome = `Credencial ${userLabel} ${dateStr}`.slice(0, 200)
   return criarCredencial({ nome, urlAmbiente, usuario, senha })
 }

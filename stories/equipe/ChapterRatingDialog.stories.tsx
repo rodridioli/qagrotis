@@ -22,7 +22,7 @@ const meta: Meta<typeof ChapterRatingDialog> = {
     docs: {
       description: {
         component:
-          "Modal de avaliações: vista inicial com distribuição, resumo e histórico; botão Avaliar abre o formulário. Uma avaliação por utilizador (edição via ícone no comentário). Com `previewEntries`, não há servidor e o envio fica desativado.",
+          "Modal de avaliações: vista inicial com tema, distribuição, resumo e histórico; botão Avaliar abre o formulário (nota 0–5 e botão Avaliar). Uma avaliação por utilizador (edição só com ícone de lápis). Com `previewEntries`, não há servidor e o envio fica desativado.",
       },
     },
   },
