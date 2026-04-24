@@ -139,8 +139,24 @@ export function SuiteForm({
   useEffect(() => {
     const m = selectedModule.trim()
     if (!m) return
-    setCenarios((prev) => prev.map((c) => (c.module === m ? c : { ...c, module: m })))
-    setHistorico((prev) => prev.map((h) => (h.module === m ? h : { ...h, module: m })))
+    setCenarios((prev) => {
+      let changed = false
+      const next = prev.map((c) => {
+        if (c.module === m) return c
+        changed = true
+        return { ...c, module: m }
+      })
+      return changed ? next : prev
+    })
+    setHistorico((prev) => {
+      let changed = false
+      const next = prev.map((h) => {
+        if (h.module === m) return h
+        changed = true
+        return { ...h, module: m }
+      })
+      return changed ? next : prev
+    })
   }, [selectedModule])
 
   const [tipo, setTipo] = useState(suite?.tipo || "")
@@ -210,7 +226,7 @@ export function SuiteForm({
       toast.error("Não foi possível verificar a integração Jira.")
       return
     }
-    setJiraLoading(true)
+    setJiraPending("fetch")
     setJiraExisting(null)
     try {
       const res = await fetch("/api/jira", {
@@ -234,12 +250,12 @@ export function SuiteForm({
     } catch {
       toast.error("Não foi possível conectar ao Jira.")
     } finally {
-      setJiraLoading(false)
+      setJiraPending((p) => (p === "fetch" ? null : p))
     }
   }
 
   async function sendToJira(issueKey: string, mode: "replace" | "append") {
-    setJiraLoading(true)
+    setJiraPending(mode)
     try {
       // Upload evidence files and replace filenames with inline image markdown
       let contentToSend = jiraContent
@@ -290,7 +306,7 @@ export function SuiteForm({
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao conectar com o Jira.")
     } finally {
-      setJiraLoading(false)
+      setJiraPending(null)
     }
   }
   const [removerHistoricoOpen, setRemoverHistoricoOpen] = useState(false)
@@ -298,7 +314,8 @@ export function SuiteForm({
   // ── Jira export modal ─────────────────────────────────────────────────────
   const [jiraModalOpen, setJiraModalOpen] = useState(false)
   const [jiraIssueInput, setJiraIssueInput] = useState("")  // URL completa ou chave
-  const [jiraLoading, setJiraLoading] = useState(false)
+  /** `fetch` = passo 1; `replace`/`append` = só o botão clicado no passo 2. */
+  const [jiraPending, setJiraPending] = useState<null | "fetch" | "replace" | "append">(null)
   const [jiraContent, setJiraContent] = useState("")
   const [jiraEvidences, setJiraEvidences] = useState<EvFile[]>([])
   const [jiraInputTouched, setJiraInputTouched] = useState(false)
@@ -621,6 +638,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
     })
     setSelectedAddIds(new Set())
     setAddCenarioOpen(false)
+    toast.success("Cenários adicionados. A suíte será guardada automaticamente.", { duration: 2500 })
   }
 
   // ── Auto-save when cenarios change (only for existing suites with ID) ────────
@@ -653,7 +671,6 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             execucoes: c.execucoes, erros: c.erros, deps: c.deps, tipo: c.tipo,
           })),
         })
-        toast.success("Suíte salva automaticamente.", { duration: 2000 })
       } catch {
         // Silent fail — user can still save manually
       }
@@ -1342,7 +1359,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                 value={jiraIssueInput}
                 onChange={(e) => setJiraIssueInput(e.target.value)}
                 onBlur={() => setJiraInputTouched(true)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !jiraLoading) handleJiraExport() }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !jiraPending) handleJiraExport() }}
                 autoFocus
               />
               {jiraInputTouched && !jiraIssueInput.trim() && (
@@ -1352,11 +1369,11 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
           </div>
           <DialogFooter showCloseButton={false}>
             <CancelActionButton onClick={() => { setJiraModalOpen(false); setJiraIssueInput("") }} />
-            <Button onClick={handleJiraExport} disabled={jiraLoading || !jiraIssueInput.trim()}>
-              {jiraLoading
+            <Button onClick={handleJiraExport} disabled={jiraPending !== null || !jiraIssueInput.trim()}>
+              {jiraPending === "fetch"
                 ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
                 : <ExternalLink className="size-4 shrink-0" aria-hidden />}
-              {jiraLoading ? "Verificando..." : "Exportar"}
+              {jiraPending === "fetch" ? "Verificando..." : "Exportar"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1381,25 +1398,25 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <CancelActionButton onClick={() => setJiraExisting(null)} disabled={jiraLoading} />
+            <CancelActionButton onClick={() => setJiraExisting(null)} disabled={jiraPending !== null} />
             <Button
               variant="outline"
               onClick={() => { void sendToJira(parseIssueKey(jiraIssueInput), "replace") }}
-              disabled={jiraLoading}
+              disabled={jiraPending !== null}
             >
-              {jiraLoading
+              {jiraPending === "replace"
                 ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
                 : <RefreshCw className="size-4 shrink-0" aria-hidden />}
-              {jiraLoading ? "Enviando..." : "Substituir"}
+              {jiraPending === "replace" ? "Enviando..." : "Substituir"}
             </Button>
             <Button
               onClick={() => { void sendToJira(parseIssueKey(jiraIssueInput), "append") }}
-              disabled={jiraLoading}
+              disabled={jiraPending !== null}
             >
-              {jiraLoading
+              {jiraPending === "append"
                 ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
                 : <ExternalLink className="size-4 shrink-0" aria-hidden />}
-              {jiraLoading ? "Enviando..." : "Acrescentar"}
+              {jiraPending === "append" ? "Enviando..." : "Acrescentar"}
             </Button>
           </DialogFooter>
         </DialogContent>

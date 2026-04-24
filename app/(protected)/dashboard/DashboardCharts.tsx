@@ -50,6 +50,8 @@ interface Props {
   onTestesFilterChange: (v: TestesFilter) => void
   testesModulo:      string
   onTestesModuloChange: (v: string) => void
+  /** Quantidade com resultado Pendente no mesmo período/módulo do gráfico de testes. */
+  testesPendenteCount: number
   errosData:         DataPoint[]
   errosFilter:       ChartFilter
   onErrosFilterChange: (v: ChartFilter) => void
@@ -255,7 +257,7 @@ export function DashboardCharts({
   moduloNames,
   rankingModuloNames,
   rankingData,   rankingFilter,  onRankingFilterChange,  rankingModulo,  onRankingModuloChange,
-  testesData,    testesFilter,   onTestesFilterChange,   testesModulo,   onTestesModuloChange,
+  testesData,    testesFilter,   onTestesFilterChange,   testesModulo,   onTestesModuloChange, testesPendenteCount,
   errosData,     errosFilter,    onErrosFilterChange,    errosModulo,    onErrosModuloChange,
   alertasData,   alertasFilter,  onAlertasFilterChange,  alertasModulo,  onAlertasModuloChange,
   sucessoData,   sucessoFilter,  onSucessoFilterChange,  sucessoModulo,  onSucessoModuloChange,
@@ -277,9 +279,14 @@ export function DashboardCharts({
         {/* Execuções por usuário (histórico de suítes) */}
         <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
           <div className="mb-4 flex flex-nowrap items-center gap-2">
-            <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
-              Testes executados
-            </h2>
+            <div className="min-w-0 flex flex-col gap-0.5">
+              <h2 className="truncate text-sm font-semibold text-text-primary">
+                Testes executados
+              </h2>
+              <p className="text-[10px] leading-snug text-text-secondary sm:text-[11px]">
+                Por utilizador: só Sucesso, Erro ou Alerta (igual à soma dos três blocos seguintes).
+              </p>
+            </div>
             <div className="flex-1" />
             <ModuloSelect modulos={rankingModulos} value={rankingModulo} onChange={onRankingModuloChange} />
             <FilterSelect<RankingFilter>
@@ -363,11 +370,20 @@ export function DashboardCharts({
 
         {/* Testes executados */}
         <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
-          <div className="mb-4 flex flex-nowrap items-center gap-2">
-            <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
-              Testes executados: <span className="text-brand-primary">{totalExecucoes.toLocaleString("pt-BR")}</span>
-            </h2>
-            <div className="flex-1" />
+          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:flex-nowrap sm:items-center sm:gap-2">
+            <div className="min-w-0 flex flex-col gap-0.5">
+              <h2 className="truncate text-sm font-semibold text-text-primary">
+                Testes executados: <span className="text-brand-primary">{totalExecucoes.toLocaleString("pt-BR")}</span>
+              </h2>
+              {testesPendenteCount > 0 && (
+                <p className="text-[10px] leading-snug text-text-secondary sm:text-[11px]">
+                  Inclui {testesPendenteCount.toLocaleString("pt-BR")}{" "}
+                  {testesPendenteCount === 1 ? "pendente" : "pendentes"} (não entra na soma Erro + Alerta + Sucesso).
+                </p>
+              )}
+            </div>
+            <div className="flex-1 hidden sm:block" />
+            <div className="flex flex-nowrap items-center gap-2 sm:ml-auto">
             <ModuloSelect modulos={moduloNames} value={testesModulo} onChange={onTestesModuloChange} />
             <FilterSelect<TestesFilter>
               options={TESTES_OPTS}
@@ -375,6 +391,7 @@ export function DashboardCharts({
               onChange={onTestesFilterChange}
               label="Filtro período testes"
             />
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={testesData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>

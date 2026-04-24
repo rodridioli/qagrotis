@@ -26,8 +26,9 @@ import {
   type EvFile,
   persistEvidenceFile,
   deleteEvidenceFile,
+  prepareEvidenceForSessionSnapshot,
 } from "@/lib/evidence-storage"
-import { evHistoricoStorageKey, evScenarioStorageKey } from "@/lib/evidence-session-keys"
+import { evHistoricoStorageKey, evScenarioStorageKey, trySetSessionStorageJson } from "@/lib/evidence-session-keys"
 
 export type { EvFile }
 
@@ -186,16 +187,58 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     } catch { /* ignore */ }
   }, [cenario.id, viewOnly])
 
-  // Persiste evidências na sessão sempre que mudam
+  // Persiste evidências na sessão (migra dataUrl grande → IDB para não estourar a quota)
   useEffect(() => {
     if (viewOnly) return
-    sessionStorage.setItem(evScenarioStorageKey(cenario.id, "manual"), JSON.stringify(manualEvs))
-  }, [cenario.id, manualEvs, viewOnly])
+    let cancel = false
+    void (async () => {
+      const safe = await prepareEvidenceForSessionSnapshot(manualEvs)
+      if (cancel) return
+      const equal =
+        safe.length === manualEvs.length &&
+        safe.every((s, i) => {
+          const o = manualEvs[i]
+          return s.name === o.name && s.type === o.type && s.idbKey === o.idbKey && s.dataUrl === o.dataUrl
+        })
+      if (!equal) {
+        setManualEvs(safe)
+        return
+      }
+      const ok = trySetSessionStorageJson(
+        evScenarioStorageKey(cenario.id, "manual"),
+        JSON.stringify(safe),
+        suite?.id ? { suiteIdForPrune: suite.id } : undefined,
+      )
+      if (!ok) toast.error("Armazenamento da sessão cheio. Exporte evidências ao Jira ou remova anexos antigos.")
+    })()
+    return () => { cancel = true }
+  }, [cenario.id, manualEvs, viewOnly, suite?.id])
 
   useEffect(() => {
     if (viewOnly) return
-    sessionStorage.setItem(evScenarioStorageKey(cenario.id, "auto"), JSON.stringify(autoEvs))
-  }, [cenario.id, autoEvs, viewOnly])
+    let cancel = false
+    void (async () => {
+      const safe = await prepareEvidenceForSessionSnapshot(autoEvs)
+      if (cancel) return
+      const equal =
+        safe.length === autoEvs.length &&
+        safe.every((s, i) => {
+          const o = autoEvs[i]
+          return s.name === o.name && s.type === o.type && s.idbKey === o.idbKey && s.dataUrl === o.dataUrl
+        })
+      if (!equal) {
+        setAutoEvs(safe)
+        return
+      }
+      const ok = trySetSessionStorageJson(
+        evScenarioStorageKey(cenario.id, "auto"),
+        JSON.stringify(safe),
+        suite?.id ? { suiteIdForPrune: suite.id } : undefined,
+      )
+      if (!ok) toast.error("Armazenamento da sessão cheio. Exporte evidências ao Jira ou remova anexos antigos.")
+    })()
+    return () => { cancel = true }
+  }, [cenario.id, autoEvs, viewOnly, suite?.id])
 
   async function handleManualFiles(e: React.ChangeEvent<HTMLInputElement>) {
     if (viewOnly) return
@@ -241,16 +284,19 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     e.target.value = ""
   }
 
-  function snapshotEvidenciasParaHistorico(timestamp: number) {
+  async function snapshotEvidenciasParaHistorico(timestamp: number) {
     if (!suite) return
-    sessionStorage.setItem(
-      evHistoricoStorageKey(suite.id, cenario.id, timestamp, "manual"),
-      JSON.stringify(manualEvs),
-    )
-    sessionStorage.setItem(
-      evHistoricoStorageKey(suite.id, cenario.id, timestamp, "auto"),
-      JSON.stringify(autoEvs),
-    )
+    const safeM = await prepareEvidenceForSessionSnapshot(manualEvs)
+    const safeA = await prepareEvidenceForSessionSnapshot(autoEvs)
+    const km = evHistoricoStorageKey(suite.id, cenario.id, timestamp, "manual")
+    const ka = evHistoricoStorageKey(suite.id, cenario.id, timestamp, "auto")
+    const okM = trySetSessionStorageJson(km, JSON.stringify(safeM), { suiteIdForPrune: suite.id })
+    const okA = trySetSessionStorageJson(ka, JSON.stringify(safeA), { suiteIdForPrune: suite.id })
+    if (!okM || !okA) {
+      toast.error(
+        "Não foi possível guardar todas as evidências na sessão (limite do navegador). Exporte ao Jira antes de registrar ou reduza anexos.",
+      )
+    }
     sessionStorage.removeItem(evScenarioStorageKey(cenario.id, "manual"))
     sessionStorage.removeItem(evScenarioStorageKey(cenario.id, "auto"))
     setManualEvs([])
@@ -262,7 +308,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     setIsRegistering(true)
     try {
       const { timestamp } = await registrarResultadoSuite(suite.id, cenario.id, resultado)
-      snapshotEvidenciasParaHistorico(timestamp)
+      await snapshotEvidenciasParaHistorico(timestamp)
       toast.success("Teste registrado com sucesso!")
       router.push(`/suites/${suite.id}?tab=cenarios`)
     } catch (e: unknown) {
@@ -282,7 +328,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     setIsRegistering(true)
     try {
       const { timestamp } = await registrarResultadoSuite(suite.id, cenario.id, "Alerta", { alertaObs: obs })
-      snapshotEvidenciasParaHistorico(timestamp)
+      await snapshotEvidenciasParaHistorico(timestamp)
       toast.success("Alerta registrado com sucesso!")
       setAlertModalOpen(false)
       setAlertaObs("")

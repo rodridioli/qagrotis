@@ -12,6 +12,8 @@ export type EvFile = {
 const DB_NAME = "qagrotis-evidence"
 const STORE = "files"
 const MAX_INLINE_BYTES = 3 * 1024 * 1024
+/** Base64 em `sessionStorage` enche a quota (~5 MB); acima disto migra-se para IDB. */
+const MAX_DATA_URL_CHARS_IN_SESSION = 48_000
 
 let dbPromise: Promise<IDBDatabase> | null = null
 
@@ -85,6 +87,40 @@ export async function evidenceFileToBlob(ev: Pick<EvFile, "dataUrl" | "idbKey">)
   }
   if (ev.dataUrl) return fetch(ev.dataUrl).then((r) => r.blob())
   throw new Error("Evidência inválida.")
+}
+
+/**
+ * Garante JSON pequeno para `sessionStorage`: mantém idbKey; dataUrl grande vira novo blob em IDB.
+ */
+export async function prepareEvidenceForSessionSnapshot(evs: EvFile[]): Promise<EvFile[]> {
+  const out: EvFile[] = []
+  for (const ev of evs) {
+    if (ev.idbKey) {
+      out.push({ name: ev.name, type: ev.type, idbKey: ev.idbKey })
+      continue
+    }
+    const du = ev.dataUrl
+    if (!du) {
+      out.push({ name: ev.name, type: ev.type })
+      continue
+    }
+    if (du.length <= MAX_DATA_URL_CHARS_IN_SESSION) {
+      out.push({ name: ev.name, type: ev.type, dataUrl: du })
+      continue
+    }
+    const blob = await fetch(du).then((r) => r.blob())
+    const id = crypto.randomUUID()
+    const db = await openDb()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite")
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error ?? new Error("Falha ao gravar evidência."))
+      tx.onabort = () => reject(tx.error ?? new Error("Gravação abortada."))
+      tx.objectStore(STORE).put(blob, id)
+    })
+    out.push({ name: ev.name, type: ev.type, idbKey: id })
+  }
+  return out
 }
 
 export async function deleteEvidenceFile(ev: Pick<EvFile, "idbKey">): Promise<void> {

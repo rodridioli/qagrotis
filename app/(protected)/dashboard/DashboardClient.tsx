@@ -18,6 +18,13 @@ export type ChartFilter   = "hoje" | "semana" | "mes-atual" | "mes-anterior" | "
 export interface DataPoint  { label: string; value: number }
 export interface RankingItem { createdBy: string; count: number }
 
+/** Chave sintética para execuções sem `executadoPor` / autor resolvível — alinha totais com os gráficos. */
+export const RANKING_SEM_ATRIBUICAO = "__sem_atribuicao__"
+
+function isHistoricoResultadoFinal(resultado: string): boolean {
+  return resultado === "Sucesso" || resultado === "Erro" || resultado === "Alerta"
+}
+
 interface UltimaAutomacao {
   id: string
   scenarioName: string
@@ -197,6 +204,9 @@ export function DashboardClient({
 
   function resolveUser(createdBy: string | undefined): { displayName: string; photoPath: string | null } {
     if (!createdBy) return { displayName: "Desconhecido", photoPath: null }
+    if (createdBy === RANKING_SEM_ATRIBUICAO) {
+      return { displayName: "Sem atribuição", photoPath: null }
+    }
     // Try exact match (email or name)
     const found = userMap.get(createdBy)
     if (found) return found
@@ -346,28 +356,33 @@ export function DashboardClient({
     }
 
     const countByUser = new Map<string, number>()
-    for (const suite of allSuites) {
+    // Mesmo conjunto de suítes que alimenta os gráficos (sistema + módulo ativo)
+    for (const suite of suitesFiltradas) {
       for (const h of suite.historico ?? []) {
         const ts = h.timestamp ?? 0
         if (!ts || ts < start || ts > end) continue
         if (rankingModulo && (h.module ?? "") !== rankingModulo) continue
+        if (!isHistoricoResultadoFinal(h.resultado)) continue
         const fromRunner = canonicalKeyForAttribution(h.executadoPor)
         const fromAuthor = canonicalKeyForAttribution(cenarioById.get(h.id)?.createdBy)
-        const key = fromRunner ?? fromAuthor
-        if (!key) continue
+        const key = fromRunner ?? fromAuthor ?? RANKING_SEM_ATRIBUICAO
         countByUser.set(key, (countByUser.get(key) ?? 0) + 1)
       }
     }
 
     const activeUsers = allUsers.filter((u) => u.active)
-    return activeUsers
-      .map((u) => {
-        const k = stableUserKey(u)
-        return { createdBy: k, count: countByUser.get(k) ?? 0 }
-      })
+    const rows = activeUsers.map((u) => {
+      const k = stableUserKey(u)
+      return { createdBy: k, count: countByUser.get(k) ?? 0 }
+    })
+    const orphan = countByUser.get(RANKING_SEM_ATRIBUICAO) ?? 0
+    if (orphan > 0) {
+      rows.push({ createdBy: RANKING_SEM_ATRIBUICAO, count: orphan })
+    }
+    return rows
       .sort((a, b) => b.count - a.count || a.createdBy.localeCompare(b.createdBy))
       .slice(0, 4)
-  }, [allSuites, allCenarios, rankingFilter, rankingModulo, allUsers])
+  }, [suitesFiltradas, allCenarios, rankingFilter, rankingModulo, allUsers])
 
   // ── Testes chart ───────────────────────────────────────────────────────────
   const testesData = useMemo((): DataPoint[] => {
@@ -379,6 +394,21 @@ export function DashboardClient({
       label: b.label,
       value: entries.filter(e => e.timestamp >= b.start && e.timestamp <= b.end).length,
     }))
+  }, [historicoEntries, testesFilter, testesModulo])
+
+  /** Execuções com resultado Pendente (entram no gráfico de volume, não na soma Erro+Alerta+Sucesso). */
+  const testesPendenteCount = useMemo(() => {
+    const buckets = makeBuckets(testesFilter)
+    const entries = testesModulo
+      ? historicoEntries.filter(e => e.module === testesModulo)
+      : historicoEntries
+    let n = 0
+    for (const b of buckets) {
+      n += entries.filter(
+        e => e.timestamp >= b.start && e.timestamp <= b.end && e.resultado === "Pendente",
+      ).length
+    }
+    return n
   }, [historicoEntries, testesFilter, testesModulo])
 
   // ── Erros chart ────────────────────────────────────────────────────────────
@@ -446,6 +476,7 @@ export function DashboardClient({
         onTestesFilterChange={setTestesFilter}
         testesModulo={testesModulo}
         onTestesModuloChange={setTestesModulo}
+        testesPendenteCount={testesPendenteCount}
         errosData={errosData}
         errosFilter={errosFilter}
         onErrosFilterChange={setErrosFilter}
