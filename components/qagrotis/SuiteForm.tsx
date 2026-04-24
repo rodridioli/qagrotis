@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink, Play, Power } from "lucide-react"
+import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink, Play, Power, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -31,12 +31,14 @@ import { SYSTEM_LIST } from "@/lib/qagrotis-constants"
 import { CenarioTipoBadge, ResultadoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
+import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import { criarSuite, atualizarSuite, removerHistoricoSuite, encerrarSuite, reabrirSuite, type SuiteRecord } from "@/lib/actions/suites"
 import { buildSuiteCenarioRefByIdMap, refLabelForSuiteCenario } from "@/lib/suite-cenario-ref"
+import { nomeParaTituloExportJira } from "@/lib/jira-export-nome-cenario"
 import { toast } from "sonner"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 
@@ -81,6 +83,7 @@ interface HistoricoItem {
   timestamp?: number
   resultado: "Sucesso" | "Erro" | "Pendente" | "Alerta"
   alertaObs?: string
+  executadoPor?: string
 }
 
 type SortedHistoricoItem = HistoricoItem & { _originalIdx: number }
@@ -142,9 +145,13 @@ export function SuiteForm({
     const details = selected.map((c) => {
       const ref = refLabelForSuiteCenario(cenarioRefById, c.id)
       const cenario = allCenarios.find((ac) => ac.id === c.id)
+      const titulo = nomeParaTituloExportJira({
+        nomeNaSuiteOuHistorico: c.name,
+        scenarioNameCadastro: cenario?.scenarioName,
+      })
       const sys = cenario?.system ?? suite?.sistema
       return [
-        `### ${ref} — ${c.name}`,
+        `### ${ref} — ${titulo}`,
         ``,
         jiraExportField("Código original", c.id),
         jiraExportField("Sistema", sys),
@@ -196,6 +203,10 @@ export function SuiteForm({
       const icon = resultIcon(h.resultado)
       const ref = refLabelForSuiteCenario(cenarioRefById, h.id)
       const cenario = allCenarios.find((c) => c.id === h.id)
+      const titulo = nomeParaTituloExportJira({
+        nomeNaSuiteOuHistorico: h.cenario,
+        scenarioNameCadastro: cenario?.scenarioName,
+      })
 
       const manualEvs: EvFile[] = (() => {
         try { return JSON.parse(sessionStorage.getItem(`qagrotis_ev_${h.id}_manual`) ?? "[]") } catch { return [] }
@@ -206,7 +217,7 @@ export function SuiteForm({
       allEvidences.push(...manualEvs, ...autoEvs)
 
       const lines = [
-        `### ${ref} — ${h.cenario}  ${icon} ${h.resultado}`,
+        `### ${ref} — ${titulo}  ${icon} ${h.resultado}`,
         ``,
         jiraExportField("Código original", h.id),
         jiraExportField("Sistema", cenario?.system ?? suite?.sistema),
@@ -240,7 +251,12 @@ export function SuiteForm({
     // ── Summary table ─────────────────────────────────────────────────────────
     const tableRows = selected.map((h) => {
       const ref = refLabelForSuiteCenario(cenarioRefById, h.id)
-      return `| ${ref} | ${h.id} | ${h.cenario} | ${h.module || "—"} | ${resultIcon(h.resultado)} ${h.resultado} | ${h.data}${h.hora ? ` ${h.hora}` : ""} |`
+      const cen = allCenarios.find((c) => c.id === h.id)
+      const titulo = nomeParaTituloExportJira({
+        nomeNaSuiteOuHistorico: h.cenario,
+        scenarioNameCadastro: cen?.scenarioName,
+      })
+      return `| ${ref} | ${h.id} | ${titulo} | ${h.module || "—"} | ${resultIcon(h.resultado)} ${h.resultado} | ${h.data}${h.hora ? ` ${h.hora}` : ""} |`
     }).join("\n")
 
     const sucessos = selected.filter((h) => h.resultado === "Sucesso").length
@@ -1164,8 +1180,11 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" type="button" onClick={() => setAddCenarioOpen(false)}>Cancelar</Button>
-            <Button type="button" onClick={addCenarios}>Adicionar</Button>
+            <CancelActionButton onClick={() => setAddCenarioOpen(false)} />
+            <Button type="button" onClick={addCenarios}>
+              <Plus className="size-4 shrink-0" />
+              Adicionar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1179,8 +1198,9 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             O cenário {removeId} será removido da suite. Caso necessário, você poderá adicioná-lo novamente posteriormente.
           </p>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setRemoveOpen(false)}>Cancelar</Button>
+            <CancelActionButton onClick={() => setRemoveOpen(false)} />
             <Button variant="destructive" onClick={confirmRemove}>
+              <Trash2 className="size-4 shrink-0" />
               Remover
             </Button>
           </DialogFooter>
@@ -1197,14 +1217,13 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             <strong>Editar Suíte</strong>.
           </p>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" autoFocus onClick={() => setEncerrarOpen(false)}>
-              Cancelar
-            </Button>
+            <CancelActionButton autoFocus onClick={() => setEncerrarOpen(false)} />
             <Button
               variant="destructive"
               onClick={handleConfirmarEncerrar}
               disabled={isEncerrandoOuReabrindo}
             >
+              <Power className="size-4 shrink-0" />
               {isEncerrandoOuReabrindo ? "Encerrando..." : "Encerrar"}
             </Button>
           </DialogFooter>
@@ -1249,10 +1268,9 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => { setJiraModalOpen(false); setJiraIssueInput("") }}>
-              Cancelar
-            </Button>
+            <CancelActionButton onClick={() => { setJiraModalOpen(false); setJiraIssueInput("") }} />
             <Button onClick={handleJiraExport} disabled={jiraLoading || !jiraIssueInput.trim()}>
+              <ExternalLink className="size-4 shrink-0" />
               {jiraLoading ? "Verificando..." : "Exportar"}
             </Button>
           </DialogFooter>
@@ -1278,20 +1296,20 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setJiraExisting(null)} disabled={jiraLoading}>
-              Cancelar
-            </Button>
+            <CancelActionButton onClick={() => setJiraExisting(null)} disabled={jiraLoading} />
             <Button
               variant="outline"
               onClick={() => { void sendToJira(parseIssueKey(jiraIssueInput), "replace") }}
               disabled={jiraLoading}
             >
+              <RefreshCw className="size-4 shrink-0" />
               {jiraLoading ? "Enviando..." : "Substituir"}
             </Button>
             <Button
               onClick={() => { void sendToJira(parseIssueKey(jiraIssueInput), "append") }}
               disabled={jiraLoading}
             >
+              <ExternalLink className="size-4 shrink-0" />
               {jiraLoading ? "Enviando..." : "Acrescentar"}
             </Button>
           </DialogFooter>

@@ -3,7 +3,9 @@
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { ExternalLink, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
 import { Input } from "@/components/ui/input"
 import {
   Dialog,
@@ -13,6 +15,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
+import { nomeParaTituloExportJira } from "@/lib/jira-export-nome-cenario"
 
 interface Props {
   open: boolean
@@ -39,9 +42,12 @@ function fieldMd(label: string, value: string | undefined | null): string {
 
 function buildContent(cenario: CenarioRecord, manualNames: string[], autoNames: string[]): string {
   const exportDate = new Date().toLocaleDateString("pt-BR")
+  const titulo = nomeParaTituloExportJira({
+    nomeNaSuiteOuHistorico: cenario.scenarioName ?? "",
+  })
 
   const lines: string[] = [
-    `## ${cenario.id} — ${cenario.scenarioName}`,
+    `## ${cenario.id} — ${titulo}`,
     `*Exportado em ${exportDate}*`,
     ``,
     fieldMd("Sistema", cenario.system),
@@ -226,8 +232,9 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
             )}
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={handleClose}>Cancelar</Button>
+            <CancelActionButton onClick={handleClose} />
             <Button onClick={handleCheckIssue} disabled={loading || !issueInput.trim()}>
+              <ExternalLink className="size-4 shrink-0" />
               {loading ? "Verificando..." : "Exportar"}
             </Button>
           </DialogFooter>
@@ -253,18 +260,20 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setExisting(null)} disabled={loading}>Cancelar</Button>
+            <CancelActionButton onClick={() => setExisting(null)} disabled={loading} />
             <Button
               variant="outline"
               onClick={() => { void doExport(issueKey, "replace") }}
               disabled={loading}
             >
+              <RefreshCw className="size-4 shrink-0" />
               {loading ? "Enviando..." : "Substituir"}
             </Button>
             <Button
               onClick={() => { void doExport(issueKey, "append") }}
               disabled={loading}
             >
+              <ExternalLink className="size-4 shrink-0" />
               {loading ? "Enviando..." : "Acrescentar"}
             </Button>
           </DialogFooter>

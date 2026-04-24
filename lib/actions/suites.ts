@@ -39,6 +39,8 @@ export interface SuiteRecord {
     resultado: "Sucesso" | "Erro" | "Pendente" | "Alerta"
     /** Texto da modal de alerta (só quando resultado === "Alerta"). */
     alertaObs?: string
+    /** Email (ou identificador) de quem registrou a execução — usado no ranking do dashboard. */
+    executadoPor?: string
   }[]
 }
 
@@ -193,7 +195,7 @@ export async function registrarResultadoSuite(
   resultado: "Sucesso" | "Erro" | "Alerta",
   options?: { alertaObs?: string },
 ): Promise<void> {
-  await requireSession()
+  const session = await requireSession()
 
   const alertaObs = (options?.alertaObs ?? "").trim()
   if (resultado === "Alerta" && !alertaObs) {
@@ -208,6 +210,8 @@ export async function registrarResultadoSuite(
   if (!cenarioRef) throw new Error("Cenário não pertence à suíte")
 
   const now = new Date()
+  const executadoPor =
+    (session.user?.email ?? session.user?.name ?? "").trim() || undefined
   type HistItem = NonNullable<SuiteRecord["historico"]>[number]
   const historicoItem: HistItem = {
     id:       cenarioId,
@@ -220,6 +224,7 @@ export async function registrarResultadoSuite(
     timestamp: now.getTime(),
     resultado,
     ...(resultado === "Alerta" ? { alertaObs } : {}),
+    ...(executadoPor ? { executadoPor } : {}),
   }
 
   const historico = (suite.historico as unknown as NonNullable<SuiteRecord["historico"]>) ?? []
@@ -228,6 +233,7 @@ export async function registrarResultadoSuite(
   await prisma.suite.update({ where: { id: suiteId }, data: { historico } })
   revalidatePath("/suites")
   revalidatePath(`/suites/${suiteId}`)
+  revalidatePath("/dashboard")
 }
 
 // ── Dashboard-specific: minimal record with full historico ──────────────────
@@ -241,6 +247,7 @@ export interface SuiteDashboardRecord {
 
 export async function getSuitesParaDashboard(): Promise<SuiteDashboardRecord[]> {
   const rows = await prisma.suite.findMany({
+    where: { active: true },
     select: { id: true, sistema: true, modulo: true, historico: true },
   })
   return rows.map((row) => ({

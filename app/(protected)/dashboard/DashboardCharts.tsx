@@ -38,6 +38,8 @@ interface UltimaAutomacao {
 interface Props {
   automationData:    AutomationDataPoint[]
   moduloNames:       string[]
+  /** Opções do filtro “Módulo” no ranking de execuções (todos os sistemas). */
+  rankingModuloNames?: string[]
   rankingData:       RankingItem[]
   rankingFilter:     RankingFilter
   onRankingFilterChange: (v: RankingFilter) => void
@@ -246,6 +248,7 @@ function ModuloSelect({
 export function DashboardCharts({
   automationData,
   moduloNames,
+  rankingModuloNames,
   rankingData,   rankingFilter,  onRankingFilterChange,  rankingModulo,  onRankingModuloChange,
   testesData,    testesFilter,   onTestesFilterChange,   testesModulo,   onTestesModuloChange,
   errosData,     errosFilter,    onErrosFilterChange,    errosModulo,    onErrosModuloChange,
@@ -253,6 +256,7 @@ export function DashboardCharts({
   ultimasAutomacoes, resolveUser,
   cenariosPorModulo,
 }: Props) {
+  const rankingModulos = rankingModuloNames ?? moduloNames
   const totalExecucoes = testesData.reduce((acc, d) => acc + d.value, 0)
   const totalErros = errosData.reduce((acc, d) => acc + d.value, 0)
   const totalSucesso = sucessoData.reduce((acc, d) => acc + d.value, 0)
@@ -263,14 +267,14 @@ export function DashboardCharts({
       {/* Row 1 — Ranking + Cobertura de automação */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 
-        {/* Cenários gerados */}
+        {/* Execuções por usuário (histórico de suítes) */}
         <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
           <div className="mb-4 flex flex-nowrap items-center gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
-              Cenários gerados
+              Testes executados
             </h2>
             <div className="flex-1" />
-            <ModuloSelect modulos={moduloNames} value={rankingModulo} onChange={onRankingModuloChange} />
+            <ModuloSelect modulos={rankingModulos} value={rankingModulo} onChange={onRankingModuloChange} />
             <FilterSelect<RankingFilter>
               options={RANKING_OPTS}
               value={rankingFilter}
@@ -280,7 +284,7 @@ export function DashboardCharts({
           </div>
 
           {rankingData.length === 0 ? (
-            <p className="py-4 text-center text-xs text-text-secondary">Nenhum cenário gerado no período.</p>
+            <p className="py-4 text-center text-xs text-text-secondary">Nenhuma execução registada no período.</p>
           ) : (
             <div className="mt-1 overflow-hidden">
                <table className="qagrotis-table-row-hover-subtle w-full text-left">
@@ -302,7 +306,7 @@ export function DashboardCharts({
                      const { displayName, photoPath } = resolveUser(item.createdBy)
                      const position = i + 1
                      return (
-                       <tr key={item.createdBy} className="transition-colors">
+                       <tr key={`${item.createdBy}-${position}`} className="transition-colors">
                          <td className="py-2.5 pr-2 align-middle">
                            <RankingPositionBadge position={position} />
                          </td>

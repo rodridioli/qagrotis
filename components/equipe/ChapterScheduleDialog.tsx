@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog"
+import { Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ChapterAuthorsMultiCombobox } from "@/components/equipe/ChapterAuthorsMultiCombobox"
@@ -226,9 +227,11 @@ export function ChapterScheduleDialog({
 
         <DialogFooter showCloseButton={false} className="gap-2 sm:justify-end">
           <DialogClose render={<Button type="button" variant="outline" disabled={isPending} />}>
+            <X className="size-4 shrink-0" />
             Cancelar
           </DialogClose>
           <Button type="button" onClick={handleSubmit} disabled={isPending}>
+            <Check className="size-4 shrink-0" />
             {isPending ? "Salvando…" : "Salvar"}
           </Button>
         </DialogFooter>

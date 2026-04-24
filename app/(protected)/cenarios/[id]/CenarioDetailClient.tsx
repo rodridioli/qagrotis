@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { ArrowLeft, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, ExternalLink, Check, X, Paperclip, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
 import {
   Dialog,
   DialogContent,
@@ -284,20 +285,16 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
             disabled={isRegistering}
           />
           <DialogFooter showCloseButton={false}>
-            <Button
-              type="button"
-              variant="outline"
+            <CancelActionButton
               onClick={() => { setAlertModalOpen(false); setAlertaObs("") }}
               disabled={isRegistering}
-            >
-              Cancelar
-            </Button>
+            />
             <Button
               type="button"
               disabled={isRegistering}
               onClick={() => { void handleRegistrarAlerta() }}
-              className="bg-yellow-500 text-yellow-950 hover:bg-yellow-400 border-yellow-600/30"
             >
+              <Check className="size-4 shrink-0" />
               Confirmar alerta
             </Button>
           </DialogFooter>
@@ -350,9 +347,9 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                 variant="outline"
                 disabled={isRegistering}
                 onClick={() => setAlertModalOpen(true)}
-                className="border-yellow-500/60 bg-yellow-50 text-yellow-950 hover:bg-yellow-100 dark:border-yellow-500/45 dark:bg-yellow-950/50 dark:text-yellow-100 dark:hover:bg-yellow-900/40"
+                className="border-alert/85 bg-alert text-alert-foreground hover:brightness-[0.96] active:brightness-90 dark:border-alert/90"
               >
-                <TriangleAlert className="size-4" />
+                <TriangleAlert className="size-4 shrink-0" />
                 Alerta
               </Button>
               <Button

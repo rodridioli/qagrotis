@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react"
 import {
   BarChart3, Users, Clock, Calendar,
-  SlidersHorizontal,
+  SlidersHorizontal, X, Check,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -190,8 +190,12 @@ function FilterModal({
             Limpar filtros
           </DialogClose>
           <div className="flex gap-2">
-            <DialogClose render={<Button variant="outline" />}>Cancelar</DialogClose>
+            <DialogClose render={<Button variant="outline" />}>
+              <X className="size-4 shrink-0" />
+              Cancelar
+            </DialogClose>
             <Button onClick={() => { onApply(); onOpenChange(false) }} disabled={pending}>
+              <Check className="size-4 shrink-0" />
               {pending ? "Aplicando…" : "Aplicar"}
             </Button>
           </div>

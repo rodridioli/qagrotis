@@ -89,7 +89,7 @@ function ResultadoBadge({ resultado }: { resultado: ResultadoTipo | string }) {
     Sucesso:  "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400",
     Erro:     "border-red-500/30 bg-red-500/10 text-red-600 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-400",
     Pendente: "border-orange-500/35 bg-orange-500/10 text-orange-800 dark:border-orange-400/35 dark:bg-orange-400/10 dark:text-orange-300",
-    Alerta:   "border-yellow-500/50 bg-yellow-400/15 text-yellow-950 dark:border-yellow-400/45 dark:bg-yellow-400/12 dark:text-yellow-200",
+    Alerta:   "border-alert/55 bg-alert/20 text-alert-foreground dark:border-alert/60 dark:bg-alert/25",
   }
   const s = styles[resultado] ?? "border-border-default bg-neutral-grey-100 text-text-secondary"
   return badge(s, resultado)

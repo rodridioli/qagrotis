@@ -292,6 +292,12 @@ export function DashboardClient({
     return mods.map(m => m.name)
   }, [allModulos, sistemaSelecionado])
 
+  /** Módulos de todos os sistemas — filtro do ranking de execuções (histórico de suítes). */
+  const rankingModuloNames = useMemo(() => {
+    const names = new Set(allModulos.filter((m) => m.active).map((m) => m.name))
+    return [...names].sort((a, b) => a.localeCompare(b, "pt-BR"))
+  }, [allModulos])
+
   // ── Historico entries (flat) ───────────────────────────────────────────────
   const historicoEntries = useMemo(() => {
     const entries: { timestamp: number; resultado: string; module: string }[] = []
@@ -303,10 +309,9 @@ export function DashboardClient({
     return entries
   }, [suitesFiltradas])
 
-  // ── Ranking ────────────────────────────────────────────────────────────────
+  // ── Ranking: execuções no histórico das suítes (todos os sistemas / módulos) ─
   const rankingData = useMemo((): RankingItem[] => {
     const { start, end } = getDateRange(rankingFilter)
-    // Normalize: map any createdBy value to a canonical key (prefer email)
     const normalizeKey = (cb: string | undefined): string => {
       if (!cb) return "Desconhecido"
       if (userMap.has(cb)) return cb
@@ -316,23 +321,21 @@ export function DashboardClient({
       return cb
     }
     const countByUser = new Map<string, number>()
-    // Use ALL cenarios (active) — not filtered by system/module to show all users
-    const source = allCenarios.filter(c => c.active)
-    for (const c of source) {
-      if (rankingModulo && c.module !== rankingModulo) continue
-      if (sistemaSelecionado && c.system !== sistemaSelecionado) continue
-      // If createdAt is missing (imported cenarios), treat as stable “now” so they count in range
-      const ts = c.createdAt ?? missingCreatedAtFallback
-      if (ts >= start && ts <= end) {
-        const key = normalizeKey(c.createdBy)
+    for (const suite of allSuites) {
+      for (const h of suite.historico ?? []) {
+        const ts = h.timestamp ?? 0
+        if (!ts || ts < start || ts > end) continue
+        if (rankingModulo && (h.module ?? "") !== rankingModulo) continue
+        const raw = h.executadoPor?.trim()
+        const key = normalizeKey(raw || undefined)
         countByUser.set(key, (countByUser.get(key) ?? 0) + 1)
       }
     }
     return [...countByUser.entries()]
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
+      .slice(0, 4)
       .map(([createdBy, count]) => ({ createdBy, count }))
-  }, [allCenarios, rankingFilter, rankingModulo, sistemaSelecionado, userMap, allUsers, missingCreatedAtFallback])
+  }, [allSuites, rankingFilter, rankingModulo, userMap, allUsers])
 
   // ── Testes chart ───────────────────────────────────────────────────────────
   const testesData = useMemo((): DataPoint[] => {
@@ -386,6 +389,7 @@ export function DashboardClient({
       <DashboardCharts
         automationData={automationData}
         moduloNames={moduloNames}
+        rankingModuloNames={rankingModuloNames}
         rankingData={rankingData}
         rankingFilter={rankingFilter}
         onRankingFilterChange={setRankingFilter}
