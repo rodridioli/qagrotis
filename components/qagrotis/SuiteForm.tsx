@@ -36,6 +36,7 @@ import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import { criarSuite, atualizarSuite, removerHistoricoSuite, encerrarSuite, reabrirSuite, type SuiteRecord } from "@/lib/actions/suites"
+import { buildSuiteCenarioRefByIdMap, refLabelForSuiteCenario } from "@/lib/suite-cenario-ref"
 import { toast } from "sonner"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 
@@ -78,7 +79,8 @@ interface HistoricoItem {
   data: string
   hora?: string
   timestamp?: number
-  resultado: "Sucesso" | "Erro" | "Pendente"
+  resultado: "Sucesso" | "Erro" | "Pendente" | "Alerta"
+  alertaObs?: string
 }
 
 type SortedHistoricoItem = HistoricoItem & { _originalIdx: number }
@@ -112,6 +114,8 @@ export function SuiteForm({
     return [...raw].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
   })
 
+  const cenarioRefById = useMemo(() => buildSuiteCenarioRefByIdMap(cenarios), [cenarios])
+
   useEffect(() => {
     if (systemList.length === 0)
       toast.warning("É preciso cadastrar um sistema antes de criar suítes.")
@@ -136,11 +140,13 @@ export function SuiteForm({
     const selected = cenarios.filter(c => ids.has(c.id))
     if (selected.length === 0) return ""
     const details = selected.map((c) => {
+      const ref = refLabelForSuiteCenario(cenarioRefById, c.id)
       const cenario = allCenarios.find((ac) => ac.id === c.id)
       const sys = cenario?.system ?? suite?.sistema
       return [
-        `### ${c.id} — ${c.name}`,
+        `### ${ref} — ${c.name}`,
         ``,
+        jiraExportField("Código original", c.id),
         jiraExportField("Sistema", sys),
         jiraExportField("Módulo", c.module),
         jiraExportField("Tipo", c.tipo),
@@ -181,12 +187,14 @@ export function SuiteForm({
     }
     // Build content and open modal
 
-    const resultIcon = (r: string) => r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : "⏳"
+    const resultIcon = (r: string) =>
+      r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : r === "Alerta" ? "⚠️" : "⏳"
 
     // ── Detailed blocks ───────────────────────────────────────────────────────
     const allEvidences: EvFile[] = []
     const details = selected.map((h) => {
       const icon = resultIcon(h.resultado)
+      const ref = refLabelForSuiteCenario(cenarioRefById, h.id)
       const cenario = allCenarios.find((c) => c.id === h.id)
 
       const manualEvs: EvFile[] = (() => {
@@ -198,8 +206,9 @@ export function SuiteForm({
       allEvidences.push(...manualEvs, ...autoEvs)
 
       const lines = [
-        `### ${h.id} — ${h.cenario}  ${icon} ${h.resultado}`,
+        `### ${ref} — ${h.cenario}  ${icon} ${h.resultado}`,
         ``,
+        jiraExportField("Código original", h.id),
         jiraExportField("Sistema", cenario?.system ?? suite?.sistema),
         jiraExportField("Módulo", h.module),
         jiraExportField("Tipo", h.tipo),
@@ -211,6 +220,10 @@ export function SuiteForm({
         `**Execução:** ${h.data}${h.hora ? ` às ${h.hora}` : ""}`,
         `**Resultado:** ${icon} ${h.resultado}`,
       ]
+
+      if (h.resultado === "Alerta" && h.alertaObs?.trim()) {
+        lines.push("", jiraExportField("Observações de alerta", h.alertaObs))
+      }
 
       if (manualEvs.length > 0) {
         lines.push(``, `**Evidências — Teste Manual:**`)
@@ -225,21 +238,23 @@ export function SuiteForm({
     }).join("\n---\n\n")
 
     // ── Summary table ─────────────────────────────────────────────────────────
-    const tableRows = selected.map((h) =>
-      `| ${h.id} | ${h.cenario} | ${h.module || "—"} | ${resultIcon(h.resultado)} ${h.resultado} | ${h.data}${h.hora ? ` ${h.hora}` : ""} |`
-    ).join("\n")
+    const tableRows = selected.map((h) => {
+      const ref = refLabelForSuiteCenario(cenarioRefById, h.id)
+      return `| ${ref} | ${h.id} | ${h.cenario} | ${h.module || "—"} | ${resultIcon(h.resultado)} ${h.resultado} | ${h.data}${h.hora ? ` ${h.hora}` : ""} |`
+    }).join("\n")
 
     const sucessos = selected.filter((h) => h.resultado === "Sucesso").length
     const erros    = selected.filter((h) => h.resultado === "Erro").length
+    const alertas  = selected.filter((h) => h.resultado === "Alerta").length
 
     const summary = [
       `## Resumo da Execução`,
       ``,
-      `| Código | Cenário | Módulo | Resultado | Data/Hora |`,
-      `|--------|---------|--------|-----------|-----------|`,
+      `| Ref. | Código | Cenário | Módulo | Resultado | Data/Hora |`,
+      `|------|--------|---------|--------|-----------|-----------|`,
       tableRows,
       ``,
-      `**Total:** ${selected.length} | ✅ Sucesso: ${sucessos} | ❌ Erro: ${erros}`,
+      `**Total:** ${selected.length} | ✅ Sucesso: ${sucessos} | ❌ Erro: ${erros} | ⚠️ Alerta: ${alertas}`,
     ].join("\n")
 
     const exportSuiteName = suite?.suiteName ?? "Suíte"
@@ -790,6 +805,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
               <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
                 <colgroup>
                   <col className="w-10" />
+                  <col className="w-28" />
                   <col className="w-24" />
                   <col />
                   <col className="w-32" />
@@ -810,6 +826,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                       />
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Ref.</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Testes</th>
@@ -821,6 +838,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                 <tbody>
                   {cenarios.map((c) => {
                     const isCenarioAtivo = isCenarioAtivoFn(c.id)
+                    const refLabel = refLabelForSuiteCenario(cenarioRefById, c.id)
                     return (
                     <tr key={c.id} className={`border-b border-border-default last:border-0 transition-colors${!isCenarioAtivo ? " opacity-60" : ""}`}>
                       <td className="px-4 py-3">
@@ -848,6 +866,11 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                             className="font-medium text-text-secondary hover:underline"
                           >{c.id}</Link>
                         )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="inline-flex items-center rounded-full border border-border-default bg-neutral-grey-100 px-2.5 py-0.5 text-xs font-medium text-text-secondary tabular-nums">
+                          {refLabel}
+                        </span>
                       </td>
                       <td className="px-4 py-3 truncate text-text-primary">
                         <span className="flex items-center gap-2">
@@ -960,6 +983,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
               <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
                 <colgroup>
                   <col className="w-10" />
+                  <col className="w-28" />
                   <col className="w-24" />
                   <col />
                   <col className="w-28" />
@@ -983,6 +1007,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                       />
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Ref.</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
@@ -995,6 +1020,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                   {sortedHistorico.map((h) => {
                     // Inativo no histórico se: removido da suíte OU inativo no banco
                     const hAtivo2 = existingIds.has(h.id) && isCenarioAtivoFn(h.id)
+                    const refLabel = refLabelForSuiteCenario(cenarioRefById, h.id)
                     return (
                     <tr key={`${h.id}-${h._originalIdx}`} className={`border-b border-border-default last:border-0 transition-colors${!hAtivo2 ? " opacity-60" : ""}`}>
                       <td className="px-4 py-3">
@@ -1028,6 +1054,11 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                           // Cenário removido da suíte: exibe ID sem link mas como texto
                           <span className="font-medium text-text-secondary">{h.id}</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="inline-flex items-center rounded-full border border-border-default bg-neutral-grey-100 px-2.5 py-0.5 text-xs font-medium text-text-secondary tabular-nums">
+                          {refLabel}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-text-primary">
                         <span className="flex items-center gap-2">

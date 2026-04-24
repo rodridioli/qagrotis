@@ -205,7 +205,7 @@ export async function getPerformanceData(filters: {
         timestamp?: number
         data?: string
         hora?: string
-        resultado: "Sucesso" | "Erro" | "Pendente"
+        resultado: "Sucesso" | "Erro" | "Pendente" | "Alerta"
       }>) ?? []
       for (const h of historico) {
         if (filters.modulo && normalize(h.module) !== normalize(filters.modulo)) continue

@@ -4,8 +4,16 @@ import React, { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { ArrowLeft, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, ExternalLink, Check, X, Paperclip } from "lucide-react"
+import { ArrowLeft, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, ExternalLink, Check, X, Paperclip, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { SuiteRecord } from "@/lib/actions/suites"
 import { registrarResultadoSuite } from "@/lib/actions/suites"
@@ -155,6 +163,8 @@ function BlockCard({
 export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }: Props) {
   const router = useRouter()
   const [isRegistering, setIsRegistering] = useState(false)
+  const [alertModalOpen, setAlertModalOpen] = useState(false)
+  const [alertaObs, setAlertaObs] = useState("")
   const [manualEvs, setManualEvs] = useState<EvFile[]>([])
   const [autoEvs, setAutoEvs] = useState<EvFile[]>([])
   const manualInputRef = useRef<HTMLInputElement>(null)
@@ -221,6 +231,27 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     }
   }
 
+  async function handleRegistrarAlerta() {
+    if (!suite) return
+    const obs = alertaObs.trim()
+    if (!obs) {
+      toast.error("Descreva os pontos de atenção.")
+      return
+    }
+    setIsRegistering(true)
+    try {
+      await registrarResultadoSuite(suite.id, cenario.id, "Alerta", { alertaObs: obs })
+      toast.success("Alerta registrado com sucesso!")
+      setAlertModalOpen(false)
+      setAlertaObs("")
+      router.push(`/suites/${suite.id}?tab=historico`)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erro ao registrar o alerta")
+    } finally {
+      setIsRegistering(false)
+    }
+  }
+
   // Enriquece as dependências com dados completos
   const depsData = depIds.map((depId) => {
     const found = allCenarios.find((c) => c.id === depId)
@@ -230,6 +261,48 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
   return (
     <div className="space-y-4">
       <LoadingOverlay visible={isRegistering} label="Registrando resultado..." />
+
+      <Dialog
+        open={alertModalOpen}
+        onOpenChange={(open) => {
+          setAlertModalOpen(open)
+          if (!open) setAlertaObs("")
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Registrar alerta</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-text-secondary">
+            Descreva os pontos de atenção desta execução. A informação fica guardada no histórico da suíte e pode ser enviada ao Jira nas exportações.
+          </p>
+          <Textarea
+            value={alertaObs}
+            onChange={(e) => setAlertaObs(e.target.value)}
+            placeholder="Pontos de atenção…"
+            className="min-h-28"
+            disabled={isRegistering}
+          />
+          <DialogFooter showCloseButton={false}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setAlertModalOpen(false); setAlertaObs("") }}
+              disabled={isRegistering}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={isRegistering}
+              onClick={() => { void handleRegistrarAlerta() }}
+              className="bg-yellow-500 text-yellow-950 hover:bg-yellow-400 border-yellow-600/30"
+            >
+              Confirmar alerta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Header / Breadcrumb ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -271,6 +344,16 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
               >
                 <Check className="size-4" />
                 Sucesso
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isRegistering}
+                onClick={() => setAlertModalOpen(true)}
+                className="border-yellow-500/60 bg-yellow-50 text-yellow-950 hover:bg-yellow-100 dark:border-yellow-500/45 dark:bg-yellow-950/50 dark:text-yellow-100 dark:hover:bg-yellow-900/40"
+              >
+                <TriangleAlert className="size-4" />
+                Alerta
               </Button>
               <Button
                 variant="destructive"

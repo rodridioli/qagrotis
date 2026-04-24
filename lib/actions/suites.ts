@@ -36,7 +36,9 @@ export interface SuiteRecord {
     data: string
     hora?: string
     timestamp?: number
-    resultado: "Sucesso" | "Erro" | "Pendente"
+    resultado: "Sucesso" | "Erro" | "Pendente" | "Alerta"
+    /** Texto da modal de alerta (só quando resultado === "Alerta"). */
+    alertaObs?: string
   }[]
 }
 
@@ -185,8 +187,18 @@ export async function atualizarSuite(id: string, data: unknown): Promise<SuiteRe
   return toRecord(row)
 }
 
-export async function registrarResultadoSuite(suiteId: string, cenarioId: string, resultado: "Sucesso" | "Erro"): Promise<void> {
+export async function registrarResultadoSuite(
+  suiteId: string,
+  cenarioId: string,
+  resultado: "Sucesso" | "Erro" | "Alerta",
+  options?: { alertaObs?: string },
+): Promise<void> {
   await requireSession()
+
+  const alertaObs = (options?.alertaObs ?? "").trim()
+  if (resultado === "Alerta" && !alertaObs) {
+    throw new Error("Descreva os pontos de atenção para registrar um alerta.")
+  }
 
   const suite = await prisma.suite.findUnique({ where: { id: suiteId } })
   if (!suite) throw new Error("Suíte não encontrada")
@@ -196,7 +208,8 @@ export async function registrarResultadoSuite(suiteId: string, cenarioId: string
   if (!cenarioRef) throw new Error("Cenário não pertence à suíte")
 
   const now = new Date()
-  const historicoItem = {
+  type HistItem = NonNullable<SuiteRecord["historico"]>[number]
+  const historicoItem: HistItem = {
     id:       cenarioId,
     cenario:  cenarioRef.name,
     module:   cenarioRef.module,
@@ -206,6 +219,7 @@ export async function registrarResultadoSuite(suiteId: string, cenarioId: string
     hora:     now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
     timestamp: now.getTime(),
     resultado,
+    ...(resultado === "Alerta" ? { alertaObs } : {}),
   }
 
   const historico = (suite.historico as unknown as NonNullable<SuiteRecord["historico"]>) ?? []

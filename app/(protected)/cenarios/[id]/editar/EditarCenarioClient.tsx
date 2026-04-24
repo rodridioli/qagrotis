@@ -414,12 +414,13 @@ export default function EditarCenarioClient({
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = "prompt.md"
+    const safeName = `${id}-prompt.md`
+    a.download = safeName
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    toast.success("Arquivo prompt.md gerado com sucesso.")
+    toast.success(`Arquivo ${safeName} gerado com sucesso.`)
   }
 
   const showPromptBtn =
