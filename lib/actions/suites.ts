@@ -167,6 +167,9 @@ export async function atualizarSuite(id: string, data: unknown): Promise<SuiteRe
     prisma.modulo.findFirst({ where: { name: parsed.modulo, sistemaName: parsed.sistema, active: true }, select: { id: true } })
   ])
 
+  const historicoPrev = (existing.historico as unknown as NonNullable<SuiteRecord["historico"]>) ?? []
+  const historicoSynced = historicoPrev.map((h) => ({ ...h, module: parsed.modulo }))
+
   const row = await prisma.suite.update({
     where: { id },
     data: {
@@ -180,7 +183,7 @@ export async function atualizarSuite(id: string, data: unknown): Promise<SuiteRe
       cliente:   parsed.cliente,
       objetivo:  parsed.objetivo,
       cenarios:  parsed.cenarios,
-      // Preserve historico — do not overwrite
+      historico: historicoSynced,
     },
   })
 

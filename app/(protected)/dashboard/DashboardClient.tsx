@@ -8,6 +8,7 @@ import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { QaUserRecord } from "@/lib/actions/usuarios"
 import type { SuiteDashboardRecord } from "@/lib/actions/suites"
+import { getLocalCalendarDayStartEndMs } from "@/lib/local-calendar-range"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,8 +33,8 @@ function getDateRange(period: string): { start: number; end: number } {
   const now = new Date()
   switch (period) {
     case "hoje": {
-      const s = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      return { start: s.getTime(), end: s.getTime() + 86400000 - 1 }
+      const { startMs, endMs } = getLocalCalendarDayStartEndMs(now)
+      return { start: startMs, end: endMs }
     }
     case "semana": {
       const s = new Date(now)
@@ -63,7 +64,7 @@ function getDateRange(period: string): { start: number; end: number } {
 function makeBuckets(period: string): { label: string; start: number; end: number }[] {
   const now = new Date()
   if (period === "hoje") {
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const today = new Date(getLocalCalendarDayStartEndMs(now).startMs)
     return Array.from({ length: 24 }, (_, i) => {
       const s = new Date(today); s.setHours(i, 0, 0, 0)
       const e = new Date(today); e.setHours(i, 59, 59, 999)

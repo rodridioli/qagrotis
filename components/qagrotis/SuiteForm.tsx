@@ -40,6 +40,7 @@ import { criarSuite, atualizarSuite, removerHistoricoSuite, encerrarSuite, reabr
 import { buildSuiteCenarioRefByIdMap, refLabelForSuiteCenario } from "@/lib/suite-cenario-ref"
 import { nomeParaTituloExportJira } from "@/lib/jira-export-nome-cenario"
 import { downloadMarkdownFile, suiteMarkdownDownloadFilename } from "@/lib/suite-markdown-export"
+import { type EvFile, evidenceFileToBlob } from "@/lib/evidence-storage"
 import { toast } from "sonner"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 
@@ -89,7 +90,6 @@ interface HistoricoItem {
 
 type SortedHistoricoItem = HistoricoItem & { _originalIdx: number }
 
-type EvFile = { name: string; type: string; dataUrl: string }
 
 export function SuiteForm({
   mode,
@@ -132,6 +132,14 @@ export function SuiteForm({
   const [suiteName, setSuiteName] = useState(suite?.suiteName || "")
   const [versao, setVersao] = useState(suite?.versao || "")
   const [selectedModule, setSelectedModule] = useState(suite?.modulo || "")
+
+  /** Módulo da suíte (Cadastro) deve refletir nas tabelas Cenários e Histórico. */
+  useEffect(() => {
+    const m = selectedModule.trim()
+    if (!m) return
+    setCenarios((prev) => prev.map((c) => (c.module === m ? c : { ...c, module: m })))
+    setHistorico((prev) => prev.map((h) => (h.module === m ? h : { ...h, module: m })))
+  }, [selectedModule])
 
   const [tipo, setTipo] = useState(suite?.tipo || "")
   const [removeOpen, setRemoveOpen] = useState(false)
@@ -237,7 +245,7 @@ export function SuiteForm({
         const fd = new FormData()
         fd.append("issueKey", issueKey)
         for (const ev of jiraEvidences) {
-          const blob = await fetch(ev.dataUrl).then((r) => r.blob())
+          const blob = await evidenceFileToBlob(ev)
           fd.append("files", new File([blob], ev.name, { type: ev.type }), ev.name)
         }
         const uploadRes = await fetch("/api/jira/attachments", { method: "POST", body: fd })
@@ -579,10 +587,11 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
   }
 
   function addCenarios() {
+    const mod = selectedModule.trim()
     const toAdd = allCenarios.filter((c) => selectedAddIds.has(c.id)).map((c) => ({
       id: c.id,
       name: c.scenarioName,
-      module: c.module,
+      module: mod || c.module,
       execucoes: c.execucoes,
       erros: c.erros,
       deps: c.suites,

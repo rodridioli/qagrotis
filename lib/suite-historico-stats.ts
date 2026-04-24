@@ -1,7 +1,7 @@
 /**
  * Agrega execuções e erros por ID de cenário a partir do JSON `historico` das suítes.
  * Cada entrada no histórico conta como uma execução; `resultado === "Erro"` incrementa erros.
- * (Mesma regra que `SuiteForm` / `getPerformanceData`.)
+ * Contagem por **cenário** (id da linha do histórico). Por utilizador, ver `getPerformanceData` + `executadoPor`.
  */
 export function aggregateHistoricoExecucoesErrosByCenarioId(
   suites: { historico: unknown }[],

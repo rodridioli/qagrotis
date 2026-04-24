@@ -22,19 +22,16 @@ import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { EVIDENCE_FILE_ACCEPT, filterAllowedEvidenceFiles } from "@/lib/evidence-file-types"
+import {
+  type EvFile,
+  persistEvidenceFile,
+  deleteEvidenceFile,
+} from "@/lib/evidence-storage"
 
-export type EvFile = { name: string; type: string; dataUrl: string }
+export type { EvFile }
 
 export function evStorageKey(cenarioId: string, tipo: "manual" | "auto") {
   return `qagrotis_ev_${cenarioId}_${tipo}`
-}
-
-async function fileToEvFile(file: File): Promise<EvFile> {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve({ name: file.name, type: file.type, dataUrl: reader.result as string })
-    reader.readAsDataURL(file)
-  })
 }
 
 interface Props {
@@ -216,8 +213,12 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
       e.target.value = ""
       return
     }
-    const evFiles = await Promise.all(allowed.map(fileToEvFile))
-    setManualEvs((prev) => [...prev, ...evFiles])
+    try {
+      const evFiles = await Promise.all(allowed.map((f) => persistEvidenceFile(f)))
+      setManualEvs((prev) => [...prev, ...evFiles])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível anexar o ficheiro.")
+    }
     e.target.value = ""
   }
 
@@ -234,8 +235,12 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
       e.target.value = ""
       return
     }
-    const evFiles = await Promise.all(allowed.map(fileToEvFile))
-    setAutoEvs((prev) => [...prev, ...evFiles])
+    try {
+      const evFiles = await Promise.all(allowed.map((f) => persistEvidenceFile(f)))
+      setAutoEvs((prev) => [...prev, ...evFiles])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível anexar o ficheiro.")
+    }
     e.target.value = ""
   }
 
@@ -478,7 +483,13 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                   {allowEvidencias && (
                     <button
                       type="button"
-                      onClick={() => setManualEvs((prev) => prev.filter((_, idx) => idx !== i))}
+                      onClick={() => {
+                        setManualEvs((prev) => {
+                          const ev = prev[i]
+                          void deleteEvidenceFile(ev)
+                          return prev.filter((_, idx) => idx !== i)
+                        })
+                      }}
                       className="text-text-secondary hover:text-destructive transition-colors"
                     >
                       <X className="size-3" />
@@ -607,7 +618,13 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                       {allowEvidencias && (
                         <button
                           type="button"
-                          onClick={() => setAutoEvs((prev) => prev.filter((_, idx) => idx !== i))}
+                          onClick={() => {
+                            setAutoEvs((prev) => {
+                              const ev = prev[i]
+                              void deleteEvidenceFile(ev)
+                              return prev.filter((_, idx) => idx !== i)
+                            })
+                          }}
                           className="text-text-secondary hover:text-destructive transition-colors"
                         >
                           <X className="size-3" />

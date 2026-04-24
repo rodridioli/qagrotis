@@ -12,6 +12,7 @@ import {
   ensureUserWorkScheduleColumns,
 } from "@/lib/prisma-schema-ensure"
 import { USER_PROFILE_READ_SELECT } from "@/lib/prisma-user-selects"
+import { resolveHistoricoRunnerEmailKey } from "@/lib/historico-runner-attribution"
 export interface UserPerformanceData {
   userId: string
   name: string
@@ -41,9 +42,8 @@ export async function getPerformanceData(filters: {
     const dateFilter: { gte?: Date; lte?: Date } = {}
     if (filters.dataInicio) dateFilter.gte = new Date(filters.dataInicio)
     if (filters.dataFim) {
-      const end = new Date(filters.dataFim)
-      end.setHours(23, 59, 59, 999)
-      dateFilter.lte = end
+      // Espera ISO (instantes no tempo) vindo do cliente — alinha com filtros do dashboard no fuso local.
+      dateFilter.lte = new Date(filters.dataFim)
     }
     const hasDateFilter = !!dateFilter.gte || !!dateFilter.lte
 
@@ -53,7 +53,8 @@ export async function getPerformanceData(filters: {
       if (dateFilter.lte) cenarioCreatedAtWhere.lte = dateFilter.lte
     }
 
-    const [inactiveRecords, profiles, createdUsers, oauthUsers, cenarios, activeSuites] = await Promise.all([
+    const [inactiveRecords, profiles, createdUsers, oauthUsers, cenarios, cenariosAuthorLookup, activeSuites] =
+      await Promise.all([
       prisma.inactiveUser.findMany({ select: { userId: true } }),
       prisma.userProfile.findMany({ select: USER_PROFILE_READ_SELECT }),
       prisma.createdUser.findMany({
@@ -79,6 +80,14 @@ export async function getPerformanceData(filters: {
           tipo: true,
           createdAt: true,
         },
+      }),
+      // Autor por cenário para fallback do histórico (sem filtro módulo/data — evita perder atribuição vs. dashboard).
+      prisma.cenario.findMany({
+        where: {
+          createdBy: { not: null },
+          ...(filters.sistema ? { system: filters.sistema } : {}),
+        },
+        select: { id: true, createdBy: true },
       }),
       prisma.suite.findMany({
         where: {
@@ -141,10 +150,18 @@ export async function getPerformanceData(filters: {
     }
 
     const activeUsers = [...usersByEmail.values()].filter((u) => u.active)
-    const ownerByScenarioId = new Map<string, string>()
-    for (const c of cenarios) {
-      if (!c.createdBy) continue
-      ownerByScenarioId.set(c.id, c.createdBy.toLowerCase())
+    const scenarioAuthorEmailByScenarioId = new Map<string, string>()
+    for (const c of cenariosAuthorLookup) {
+      const author = normalize(c.createdBy)
+      if (!author) continue
+      scenarioAuthorEmailByScenarioId.set(c.id, author)
+    }
+
+    const knownEmailKeys = new Set<string>(usersByEmail.keys())
+    const nameExactToEmailKey = new Map<string, string>()
+    for (const u of usersByEmail.values()) {
+      const nm = (u.name ?? "").trim()
+      if (nm) nameExactToEmailKey.set(nm, u.email.toLowerCase())
     }
 
     const counters = new Map<string, {
@@ -197,7 +214,7 @@ export async function getPerformanceData(filters: {
       return Number.isNaN(d.getTime()) ? 0 : d.getTime()
     }
 
-    // Testes/sucessos/erros devem vir do histórico de todas as suítes ativas.
+    // Testes/sucessos/erros: histórico de suítes ativas — atribuição ao executor (`executadoPor`), como no dashboard.
     for (const suite of activeSuites) {
       const historico = (suite.historico as unknown as Array<{
         id: string
@@ -206,6 +223,7 @@ export async function getPerformanceData(filters: {
         data?: string
         hora?: string
         resultado: "Sucesso" | "Erro" | "Pendente" | "Alerta"
+        executadoPor?: string
       }>) ?? []
       for (const h of historico) {
         if (filters.modulo && normalize(h.module) !== normalize(filters.modulo)) continue
@@ -214,9 +232,12 @@ export async function getPerformanceData(filters: {
           if (dateFilter.gte && ts < dateFilter.gte.getTime()) continue
           if (dateFilter.lte && ts > dateFilter.lte.getTime()) continue
         }
-        const owner = ownerByScenarioId.get(h.id)
-        if (!owner) continue
-        const bucket = ensureCounter(owner)
+        const runnerKey = resolveHistoricoRunnerEmailKey(h, scenarioAuthorEmailByScenarioId, {
+          knownEmailKeys,
+          nameExactToEmailKey,
+        })
+        if (!runnerKey) continue
+        const bucket = ensureCounter(runnerKey)
         bucket.testesExecutados += 1
         if (h.resultado === "Erro") bucket.errosEncontrados += 1
         if (h.resultado === "Sucesso") bucket.sucessos += 1
