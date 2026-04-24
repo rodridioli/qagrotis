@@ -115,3 +115,57 @@ export async function inativarCredencial(id: string): Promise<void> {
   await prisma.credencial.update({ where: { id }, data: { active: false } })
   revalidatePath("/configuracoes/credenciais")
 }
+
+function normalizeUrlAmbienteParaMatch(url: string): string {
+  const t = url.trim().replace(/\/+$/, "")
+  try {
+    const u = new URL(t.startsWith("http://") || t.startsWith("https://") ? t : `https://${t}`)
+    const path = u.pathname.replace(/\/+$/, "") || ""
+    return `${u.protocol}//${u.host}${path}`.toLowerCase()
+  } catch {
+    return t.toLowerCase()
+  }
+}
+
+/**
+ * Usado na importação de cenários: localiza credencial ativa pela URL + usuário + senha
+ * ou cria um registro compatível com o cadastro manual.
+ */
+export async function encontrarOuCriarCredencialPorImportacao(data: {
+  urlAmbiente: string
+  usuario: string
+  senha: string
+}): Promise<CredencialRecord> {
+  await requireSession()
+  const urlAmbiente = data.urlAmbiente.trim()
+  const usuario = data.usuario.trim()
+  const senha = data.senha
+  if (!urlAmbiente || !usuario || !senha) {
+    throw new Error("URL do ambiente, usuário e senha são obrigatórios para a credencial.")
+  }
+
+  const normTarget = normalizeUrlAmbienteParaMatch(urlAmbiente)
+  const rows = await prisma.credencial.findMany({
+    where: { active: true },
+    select: { id: true, nome: true, urlAmbiente: true, usuario: true, senha: true, active: true, createdAt: true },
+    take: 500,
+  })
+
+  for (const row of rows) {
+    const ru = (row.urlAmbiente ?? "").trim()
+    if (!ru) continue
+    if (normalizeUrlAmbienteParaMatch(ru) !== normTarget) continue
+    if (row.usuario.trim() !== usuario) continue
+    if (row.senha !== senha) continue
+    return toRecord(row)
+  }
+
+  let host = urlAmbiente
+  try {
+    host = new URL(urlAmbiente.startsWith("http") ? urlAmbiente : `https://${urlAmbiente}`).host
+  } catch {
+    /* keep raw */
+  }
+  const nome = `Import · ${host}`.slice(0, 200)
+  return criarCredencial({ nome, urlAmbiente, usuario, senha })
+}

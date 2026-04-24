@@ -117,10 +117,17 @@ CREATE TABLE IF NOT EXISTS "EquipeChapterRating" (
     "stars" INTEGER NOT NULL,
     "comment" TEXT NOT NULL DEFAULT '',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "EquipeChapterRating_pkey" PRIMARY KEY ("id"),
     CONSTRAINT "EquipeChapterRating_chapterId_fkey" FOREIGN KEY ("chapterId") REFERENCES "EquipeChapter" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 `)
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "EquipeChapterRating" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+    )
+    await prisma.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "EquipeChapterRating_chapterId_userId_key" ON "EquipeChapterRating"("chapterId", "userId")`,
+    )
     await prisma.$executeRawUnsafe(
       `CREATE INDEX IF NOT EXISTS "EquipeChapterRating_chapterId_idx" ON "EquipeChapterRating"("chapterId")`,
     )

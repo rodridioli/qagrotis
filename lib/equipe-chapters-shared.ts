@@ -37,6 +37,8 @@ export interface EquipeChapterRatingEntry {
   stars: number
   comment: string
   createdAt: string
+  /** Só no utilizador autenticado: indica a própria linha para edição na UI. */
+  isMine?: boolean
 }
 
 /** Uma linha do ranking (posição global no pódio geral). */

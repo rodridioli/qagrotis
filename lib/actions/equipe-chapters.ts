@@ -386,21 +386,24 @@ const ratingCreateSchema = z.object({
 })
 
 export async function listChapterRatings(chapterId: string): Promise<EquipeChapterRatingEntry[]> {
-  await requireSession()
+  const session = await requireSession()
+  const myId = session.user?.id ?? ""
   await ensureEquipeChapterTables()
   const r = idSchema.safeParse(chapterId)
   if (!r.success) return []
   try {
+
     const rows = await prisma.equipeChapterRating.findMany({
       where: { chapterId },
       orderBy: { createdAt: "desc" },
-      select: { id: true, stars: true, comment: true, createdAt: true },
+      select: { id: true, stars: true, comment: true, createdAt: true, userId: true },
     })
     return rows.map((row) => ({
       id: row.id,
       stars: row.stars,
       comment: row.comment,
       createdAt: row.createdAt.toISOString(),
+      isMine: Boolean(myId && row.userId === myId),
     }))
   } catch (e) {
     console.error("[listChapterRatings]", e)
@@ -427,12 +430,20 @@ export async function createChapterRating(
     })
     if (!exists) return { error: "Chapter não encontrado." }
 
-    await prisma.equipeChapterRating.create({
-      data: {
+    const trimmedComment = (comment ?? "").trim()
+    await prisma.equipeChapterRating.upsert({
+      where: {
+        chapterId_userId: { chapterId, userId: uid },
+      },
+      create: {
         chapterId,
         userId: uid,
         stars,
-        comment: (comment ?? "").trim(),
+        comment: trimmedComment,
+      },
+      update: {
+        stars,
+        comment: trimmedComment,
       },
     })
     try {

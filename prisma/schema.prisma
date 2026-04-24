@@ -276,9 +276,11 @@ model EquipeChapterRating {
   stars     Int
   comment   String   @default("")
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   chapter EquipeChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
+  @@unique([chapterId, userId])
   @@index([chapterId])
   @@index([chapterId, createdAt])
 }
