@@ -690,6 +690,8 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             <FileUploadButton
               files={anexoPreviews}
               onChangeFiles={setAnexoPreviews}
+              accept="image/*,application/pdf"
+              imageAndPdfOnly
             />
           </div>
         </div>

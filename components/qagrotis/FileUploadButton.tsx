@@ -5,11 +5,19 @@ import { Paperclip, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { EVIDENCE_FILE_ACCEPT, isAllowedEvidenceFile } from "@/lib/evidence-file-types"
 
 export interface UploadFile {
   name: string
   type: string
   dataUrl: string
+}
+
+function isImageOrPdfFile(f: Pick<File, "name" | "type">): boolean {
+  const t = (f.type || "").toLowerCase()
+  if (t.startsWith("image/")) return true
+  if (t === "application/pdf") return true
+  return f.name.toLowerCase().endsWith(".pdf")
 }
 
 interface FileUploadButtonProps {
@@ -18,24 +26,31 @@ interface FileUploadButtonProps {
   accept?: string
   label?: string
   className?: string
+  /** Quando true (ex.: Gerador), aceita só imagem e PDF — não vídeo. */
+  imageAndPdfOnly?: boolean
 }
 
 export function FileUploadButton({
   files,
   onChangeFiles,
-  accept = "image/*,application/pdf",
+  accept = EVIDENCE_FILE_ACCEPT,
   label = "Anexar arquivo",
   className,
+  imageAndPdfOnly = false,
 }: FileUploadButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   async function handleFiles(fileList: FileList | null) {
     if (!fileList) return
-    const allowed = Array.from(fileList).filter(
-      (f) => f.type.startsWith("image/") || f.type === "application/pdf"
+    const allowed = Array.from(fileList).filter((f) =>
+      imageAndPdfOnly ? isImageOrPdfFile(f) : isAllowedEvidenceFile(f),
     )
     if (allowed.length === 0) {
-      toast.error("Selecione arquivos de imagem (PNG, JPG, etc.) ou PDF.")
+      toast.error(
+        imageAndPdfOnly
+          ? "Selecione arquivos de imagem (PNG, JPG, etc.) ou PDF."
+          : "Selecione imagens, PDF ou vídeos (MP4, WebM, MOV, etc.).",
+      )
       return
     }
     const results = await Promise.all(

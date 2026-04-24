@@ -20,9 +20,9 @@ const buttonVariants = cva(
           "hover:bg-muted/80 hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:
           "bg-destructive text-white hover:bg-destructive/88 active:bg-destructive/95 focus-visible:border-destructive/70 focus-visible:ring-destructive/30",
-        /** Registro de alerta em execução de teste — fundo claro, borda âmbar; hover só intensifica o tom de alerta (sem salto para `muted`). */
+        /** Registro de alerta — botão amarelo (token `--alert`); hover suave via brilho, sem mudar para cinza. */
         alertOutline:
-          "border-alert/75 bg-surface-card text-text-primary shadow-none hover:bg-alert/12 hover:border-alert hover:text-text-primary active:bg-alert/18 dark:border-alert/80 dark:bg-card dark:text-text-primary dark:hover:bg-alert/14 dark:hover:border-alert disabled:bg-neutral-grey-100 disabled:text-neutral-grey-400 disabled:border-neutral-grey-300 disabled:opacity-100",
+          "border-alert/70 bg-alert text-alert-foreground shadow-none hover:brightness-[0.96] active:brightness-[0.91] dark:border-alert/80 dark:bg-alert dark:text-alert-foreground dark:hover:brightness-[0.96] disabled:bg-neutral-grey-100 disabled:text-neutral-grey-400 disabled:border-neutral-grey-300 disabled:opacity-100 disabled:brightness-100",
         link: "min-h-0 !p-0 text-primary underline-offset-4 hover:underline",
       },
       size: {

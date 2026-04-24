@@ -244,12 +244,12 @@ export function SuiteForm({
         if (uploadRes.ok) {
           const { uploaded } = await uploadRes.json() as { uploaded: { name: string; contentUrl: string }[] }
           for (const att of uploaded) {
+            const escaped = att.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+            const linePattern = new RegExp(`^- ${escaped}$`, "m")
             if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(att.name)) {
-              const escaped = att.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-              contentToSend = contentToSend.replace(
-                new RegExp(`^- ${escaped}$`, "m"),
-                `![${att.name}](${att.contentUrl})`,
-              )
+              contentToSend = contentToSend.replace(linePattern, `![${att.name}](${att.contentUrl})`)
+            } else if (/\.(pdf|mp4|m4v|webm|mov|mkv|avi|mpeg|mpg|ogv)$/i.test(att.name)) {
+              contentToSend = contentToSend.replace(linePattern, `[${att.name}](${att.contentUrl})`)
             }
           }
         }

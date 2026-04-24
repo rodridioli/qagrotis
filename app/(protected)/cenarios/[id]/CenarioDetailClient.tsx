@@ -21,6 +21,7 @@ import { registrarResultadoSuite } from "@/lib/actions/suites"
 import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
+import { EVIDENCE_FILE_ACCEPT, filterAllowedEvidenceFiles } from "@/lib/evidence-file-types"
 
 export type EvFile = { name: string; type: string; dataUrl: string }
 
@@ -205,7 +206,17 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
   async function handleManualFiles(e: React.ChangeEvent<HTMLInputElement>) {
     if (viewOnly) return
     const files = Array.from(e.target.files ?? [])
-    const evFiles = await Promise.all(files.map(fileToEvFile))
+    const { allowed, rejectedNames } = filterAllowedEvidenceFiles(files)
+    if (rejectedNames.length > 0) {
+      toast.error(
+        `Formato não suportado: ${rejectedNames.slice(0, 3).join(", ")}${rejectedNames.length > 3 ? "…" : ""}. Use imagem, PDF ou vídeo.`,
+      )
+    }
+    if (allowed.length === 0) {
+      e.target.value = ""
+      return
+    }
+    const evFiles = await Promise.all(allowed.map(fileToEvFile))
     setManualEvs((prev) => [...prev, ...evFiles])
     e.target.value = ""
   }
@@ -213,7 +224,17 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
   async function handleAutoFiles(e: React.ChangeEvent<HTMLInputElement>) {
     if (viewOnly) return
     const files = Array.from(e.target.files ?? [])
-    const evFiles = await Promise.all(files.map(fileToEvFile))
+    const { allowed, rejectedNames } = filterAllowedEvidenceFiles(files)
+    if (rejectedNames.length > 0) {
+      toast.error(
+        `Formato não suportado: ${rejectedNames.slice(0, 3).join(", ")}${rejectedNames.length > 3 ? "…" : ""}. Use imagem, PDF ou vídeo.`,
+      )
+    }
+    if (allowed.length === 0) {
+      e.target.value = ""
+      return
+    }
+    const evFiles = await Promise.all(allowed.map(fileToEvFile))
     setAutoEvs((prev) => [...prev, ...evFiles])
     e.target.value = ""
   }
@@ -424,7 +445,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
               Evidências{manualEvs.length > 0 ? ` (${manualEvs.length})` : ""}
             </span>
             {allowEvidencias ? (
-              <>
+              <div className="flex flex-col items-end gap-1">
                 <Button variant="outline" onClick={() => manualInputRef.current?.click()}>
                   <Paperclip className="size-4" />
                   Anexar Evidências
@@ -433,11 +454,14 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                   ref={manualInputRef}
                   type="file"
                   multiple
-                  accept="image/*,application/pdf"
+                  accept={EVIDENCE_FILE_ACCEPT}
                   className="hidden"
                   onChange={handleManualFiles}
                 />
-              </>
+                <p className="max-w-[220px] text-right text-[10px] leading-snug text-text-secondary">
+                  Imagens, PDF ou vídeo. Permanecem neste browser até exportar ao Jira.
+                </p>
+              </div>
             ) : (
               <span className="text-xs text-text-secondary">Somente visualização</span>
             )}
@@ -550,7 +574,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                   Evidências{autoEvs.length > 0 ? ` (${autoEvs.length})` : ""}
                 </span>
                 {allowEvidencias ? (
-                  <>
+                  <div className="flex flex-col items-end gap-1">
                     <Button variant="outline" onClick={() => autoInputRef.current?.click()}>
                       <Paperclip className="size-4" />
                       Anexar Evidências
@@ -559,11 +583,14 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                       ref={autoInputRef}
                       type="file"
                       multiple
-                      accept="image/*,application/pdf"
+                      accept={EVIDENCE_FILE_ACCEPT}
                       className="hidden"
                       onChange={handleAutoFiles}
                     />
-                  </>
+                    <p className="max-w-[220px] text-right text-[10px] leading-snug text-text-secondary">
+                      Imagens, PDF ou vídeo. Permanecem neste browser até exportar ao Jira.
+                    </p>
+                  </div>
                 ) : (
                   <span className="text-xs text-text-secondary">Somente visualização</span>
                 )}

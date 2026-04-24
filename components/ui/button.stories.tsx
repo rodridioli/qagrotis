@@ -10,7 +10,7 @@ const meta: Meta<typeof Button> = {
     docs: {
       description: {
         component:
-          "Primary action element. Border radius: `rounded-custom` (`--radius-control`, 0.5em). Horizontal padding end: `pr-[var(--padding-button-inline-end)]` (`--padding-button-inline-end`, 1em ≈ 16px em raiz 16px). Default height: 40px (`h-10`). Variants: `default` (brand-primary), `secondary`, `outline`, `ghost`, `destructive`, `alertOutline` (alerta em execução de teste), `link`. Hovers usam `duration-200 ease-out`. Supports Lucide icons and loading state.",
+          "Primary action element. Border radius: `rounded-custom` (`--radius-control`, 0.5em). Horizontal padding end: `pr-[var(--padding-button-inline-end)]` (`--padding-button-inline-end`, 1em ≈ 16px em raiz 16px). Default height: 40px (`h-10`). Variants: `default` (brand-primary), `secondary`, `outline`, `ghost`, `destructive`, `alertOutline` (alerta — fundo amarelo `--alert`, hover suave), `link`. Hovers usam `duration-200 ease-out`. Supports Lucide icons and loading state.",
       },
     },
   },
@@ -55,7 +55,7 @@ export const Outline: Story = {
 }
 
 export const AlertOutline: Story = {
-  name: "Alert outline (execução de teste)",
+  name: "Alerta (amarelo / execução de teste)",
   render: (args) => (
     <Button {...args}>
       <TriangleAlert className="size-4 shrink-0" />
