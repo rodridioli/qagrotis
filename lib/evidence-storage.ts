@@ -12,6 +12,8 @@ export type EvFile = {
 const DB_NAME = "qagrotis-evidence"
 const STORE = "files"
 const MAX_INLINE_BYTES = 3 * 1024 * 1024
+/** Extensões de vídeo: alguns browsers deixam `file.type` vazio para .mp4 — ainda assim deve ir para IDB. */
+const VIDEO_NAME_EXT = /\.(mp4|m4v|webm|mov|mkv|ogv|avi|mpeg|mpg|3gp)$/i
 /** Base64 em `sessionStorage` enche a quota (~5 MB); acima disto migra-se para IDB. */
 const MAX_DATA_URL_CHARS_IN_SESSION = 48_000
 
@@ -24,7 +26,7 @@ function openDb(): Promise<IDBDatabase> {
   if (!dbPromise) {
     dbPromise = new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, 1)
-      req.onerror = () => reject(req.error ?? new Error("Falha ao abrir IndexedDB."))
+      req.onerror = () => reject(new Error(formatEvidenceError(req.error)))
       req.onupgradeneeded = () => {
         const db = req.result
         if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE)
@@ -35,9 +37,50 @@ function openDb(): Promise<IDBDatabase> {
   return dbPromise
 }
 
+/** Mensagem legível para toasts: `DOMException` do IndexedDB costuma ter `message` vazio. */
+export function formatEvidenceError(err: unknown): string {
+  if (typeof err === "string" && err.trim()) return err.trim()
+  if (err instanceof Error) {
+    const m = err.message?.trim()
+    if (m) return m
+  }
+  const e = err as { message?: string; name?: string } | null
+  if (e && typeof e === "object") {
+    const name = typeof e.name === "string" ? e.name : ""
+    if (name === "QuotaExceededError") {
+      return "Armazenamento local cheio. Liberte espaço, reduza o tamanho do vídeo ou remova anexos antigos."
+    }
+    const m = typeof e.message === "string" ? e.message.trim() : ""
+    if (m) return m
+    if (name) return `Erro do navegador (${name}). Tente anexar de novo ou noutro browser.`
+  }
+  return "Não foi possível gravar a evidência. Tente novamente ou confirme espaço em disco."
+}
+
+function effectiveEvidenceMime(file: File): string {
+  const t = (file.type || "").trim()
+  if (t) return t
+  const n = file.name.toLowerCase()
+  if (n.endsWith(".mp4") || n.endsWith(".m4v")) return "video/mp4"
+  if (n.endsWith(".webm")) return "video/webm"
+  if (n.endsWith(".mov")) return "video/quicktime"
+  if (n.endsWith(".mkv")) return "video/x-matroska"
+  if (n.endsWith(".ogv") || n.endsWith(".ogg")) return "video/ogg"
+  if (n.endsWith(".avi")) return "video/x-msvideo"
+  if (n.endsWith(".mpeg") || n.endsWith(".mpg")) return "video/mpeg"
+  if (n.endsWith(".3gp")) return "video/3gpp"
+  if (n.endsWith(".pdf")) return "application/pdf"
+  if (n.endsWith(".png")) return "image/png"
+  if (n.endsWith(".jpg") || n.endsWith(".jpeg")) return "image/jpeg"
+  if (n.endsWith(".gif")) return "image/gif"
+  if (n.endsWith(".webp")) return "image/webp"
+  return "application/octet-stream"
+}
+
 export function shouldEvidenceUseIndexedDB(file: File): boolean {
   const t = (file.type || "").toLowerCase()
   if (t.startsWith("video/")) return true
+  if (VIDEO_NAME_EXT.test(file.name)) return true
   return file.size >= MAX_INLINE_BYTES
 }
 
@@ -45,22 +88,23 @@ function readFileAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(reader.error ?? new Error("Leitura do ficheiro falhou."))
+    reader.onerror = () => reject(new Error(formatEvidenceError(reader.error)))
     reader.readAsDataURL(file)
   })
 }
 
 export async function persistEvidenceFile(file: File): Promise<EvFile> {
-  const type = file.type || "application/octet-stream"
+  const type = effectiveEvidenceMime(file)
   if (shouldEvidenceUseIndexedDB(file)) {
     const id = crypto.randomUUID()
     const db = await openDb()
+    const blob = new Blob([file], { type })
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE, "readwrite")
       tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error ?? new Error("Falha ao gravar evidência."))
-      tx.onabort = () => reject(tx.error ?? new Error("Gravação abortada."))
-      tx.objectStore(STORE).put(file, id)
+      tx.onerror = () => reject(new Error(formatEvidenceError(tx.error)))
+      tx.onabort = () => reject(new Error(formatEvidenceError(tx.error)))
+      tx.objectStore(STORE).put(blob, id)
     })
     return { name: file.name, type, idbKey: id }
   }
@@ -82,7 +126,7 @@ export async function evidenceFileToBlob(ev: Pick<EvFile, "dataUrl" | "idbKey">)
         }
         resolve(v)
       }
-      req.onerror = () => reject(req.error ?? new Error("Leitura IndexedDB falhou."))
+      req.onerror = () => reject(new Error(formatEvidenceError(req.error)))
     })
   }
   if (ev.dataUrl) return fetch(ev.dataUrl).then((r) => r.blob())
@@ -114,8 +158,8 @@ export async function prepareEvidenceForSessionSnapshot(evs: EvFile[]): Promise<
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE, "readwrite")
       tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error ?? new Error("Falha ao gravar evidência."))
-      tx.onabort = () => reject(tx.error ?? new Error("Gravação abortada."))
+      tx.onerror = () => reject(new Error(formatEvidenceError(tx.error)))
+      tx.onabort = () => reject(new Error(formatEvidenceError(tx.error)))
       tx.objectStore(STORE).put(blob, id)
     })
     out.push({ name: ev.name, type: ev.type, idbKey: id })

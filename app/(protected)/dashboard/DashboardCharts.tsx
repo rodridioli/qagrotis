@@ -50,8 +50,6 @@ interface Props {
   onTestesFilterChange: (v: TestesFilter) => void
   testesModulo:      string
   onTestesModuloChange: (v: string) => void
-  /** Quantidade com resultado Pendente no mesmo período/módulo do gráfico de testes. */
-  testesPendenteCount: number
   errosData:         DataPoint[]
   errosFilter:       ChartFilter
   onErrosFilterChange: (v: ChartFilter) => void
@@ -257,7 +255,7 @@ export function DashboardCharts({
   moduloNames,
   rankingModuloNames,
   rankingData,   rankingFilter,  onRankingFilterChange,  rankingModulo,  onRankingModuloChange,
-  testesData,    testesFilter,   onTestesFilterChange,   testesModulo,   onTestesModuloChange, testesPendenteCount,
+  testesData,    testesFilter,   onTestesFilterChange,   testesModulo,   onTestesModuloChange,
   errosData,     errosFilter,    onErrosFilterChange,    errosModulo,    onErrosModuloChange,
   alertasData,   alertasFilter,  onAlertasFilterChange,  alertasModulo,  onAlertasModuloChange,
   sucessoData,   sucessoFilter,  onSucessoFilterChange,  sucessoModulo,  onSucessoModuloChange,
@@ -279,14 +277,9 @@ export function DashboardCharts({
         {/* Execuções por usuário (histórico de suítes) */}
         <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
           <div className="mb-4 flex flex-nowrap items-center gap-2">
-            <div className="min-w-0 flex flex-col gap-0.5">
-              <h2 className="truncate text-sm font-semibold text-text-primary">
-                Testes executados
-              </h2>
-              <p className="text-[10px] leading-snug text-text-secondary sm:text-[11px]">
-                Por utilizador: só Sucesso, Erro ou Alerta (igual à soma dos três blocos seguintes).
-              </p>
-            </div>
+            <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
+              Testes executados
+            </h2>
             <div className="flex-1" />
             <ModuloSelect modulos={rankingModulos} value={rankingModulo} onChange={onRankingModuloChange} />
             <FilterSelect<RankingFilter>
@@ -366,31 +359,22 @@ export function DashboardCharts({
       </div>
 
       {/* Row 2 — Testes executados + Cenários por Módulo */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-5">
 
         {/* Testes executados */}
-        <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
-          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:flex-nowrap sm:items-center sm:gap-2">
-            <div className="min-w-0 flex flex-col gap-0.5">
-              <h2 className="truncate text-sm font-semibold text-text-primary">
-                Testes executados: <span className="text-brand-primary">{totalExecucoes.toLocaleString("pt-BR")}</span>
-              </h2>
-              {testesPendenteCount > 0 && (
-                <p className="text-[10px] leading-snug text-text-secondary sm:text-[11px]">
-                  Inclui {testesPendenteCount.toLocaleString("pt-BR")}{" "}
-                  {testesPendenteCount === 1 ? "pendente" : "pendentes"} (não entra na soma Erro + Alerta + Sucesso).
-                </p>
-              )}
-            </div>
-            <div className="flex-1 hidden sm:block" />
-            <div className="flex flex-nowrap items-center gap-2 sm:ml-auto">
-            <ModuloSelect modulos={moduloNames} value={testesModulo} onChange={onTestesModuloChange} />
-            <FilterSelect<TestesFilter>
-              options={TESTES_OPTS}
-              value={testesFilter}
-              onChange={onTestesFilterChange}
-              label="Filtro período testes"
-            />
+        <div className="col-span-1 min-w-0 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
+          <div className="mb-4 flex min-w-0 items-center gap-2">
+            <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-text-primary">
+              Testes executados: <span className="text-brand-primary">{totalExecucoes.toLocaleString("pt-BR")}</span>
+            </h2>
+            <div className="flex shrink-0 items-center gap-2">
+              <ModuloSelect modulos={moduloNames} value={testesModulo} onChange={onTestesModuloChange} />
+              <FilterSelect<TestesFilter>
+                options={TESTES_OPTS}
+                value={testesFilter}
+                onChange={onTestesFilterChange}
+                label="Filtro período testes"
+              />
             </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -411,7 +395,7 @@ export function DashboardCharts({
         </div>
 
         {/* Cenários por Módulo — pie chart */}
-        <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-2">
+        <div className="col-span-1 min-w-0 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-2">
           <h2 className="mb-4 text-sm font-semibold text-text-primary">Cenários por Módulo</h2>
           {cenariosPorModulo.length === 0 ? (
             <p className="text-xs text-text-secondary">Nenhum cenário cadastrado para o sistema selecionado.</p>
@@ -456,20 +440,21 @@ export function DashboardCharts({
       {/* Row 3 — Erros + Alertas + Sucesso */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
-        {/* Erros encontrados */}
-        <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <div className="mb-4 flex flex-nowrap items-center gap-2">
-            <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
-              Erros encontrados: <span className="text-destructive">{totalErros.toLocaleString("pt-BR")}</span>
+        {/* Erros */}
+        <div className="min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
+          <div className="mb-4 flex min-w-0 items-center gap-2">
+            <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-text-primary">
+              Erros: <span className="text-destructive">{totalErros.toLocaleString("pt-BR")}</span>
             </h2>
-            <div className="flex-1" />
-            <ModuloSelect modulos={moduloNames} value={errosModulo} onChange={onErrosModuloChange} />
-            <FilterSelect<ChartFilter>
-              options={CHART_OPTS}
-              value={errosFilter}
-              onChange={onErrosFilterChange}
-              label="Filtro período erros"
-            />
+            <div className="flex shrink-0 items-center gap-2">
+              <ModuloSelect modulos={moduloNames} value={errosModulo} onChange={onErrosModuloChange} />
+              <FilterSelect<ChartFilter>
+                options={CHART_OPTS}
+                value={errosFilter}
+                onChange={onErrosFilterChange}
+                label="Filtro período erros"
+              />
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={errosData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -489,20 +474,21 @@ export function DashboardCharts({
         </div>
 
         {/* Alertas */}
-        <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <div className="mb-4 flex flex-nowrap items-center gap-2">
-            <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
+        <div className="min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
+          <div className="mb-4 flex min-w-0 items-center gap-2">
+            <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-text-primary">
               Alertas:{" "}
               <span className="text-[color:var(--alert)]">{totalAlertas.toLocaleString("pt-BR")}</span>
             </h2>
-            <div className="flex-1" />
-            <ModuloSelect modulos={moduloNames} value={alertasModulo} onChange={onAlertasModuloChange} />
-            <FilterSelect<ChartFilter>
-              options={CHART_OPTS}
-              value={alertasFilter}
-              onChange={onAlertasFilterChange}
-              label="Filtro período alertas"
-            />
+            <div className="flex shrink-0 items-center gap-2">
+              <ModuloSelect modulos={moduloNames} value={alertasModulo} onChange={onAlertasModuloChange} />
+              <FilterSelect<ChartFilter>
+                options={CHART_OPTS}
+                value={alertasFilter}
+                onChange={onAlertasFilterChange}
+                label="Filtro período alertas"
+              />
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={alertasData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -521,20 +507,21 @@ export function DashboardCharts({
           </ResponsiveContainer>
         </div>
 
-        {/* Testes de sucesso */}
-        <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <div className="mb-4 flex flex-nowrap items-center gap-2">
-            <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
-              Testes de sucesso: <span className="text-qagrotis-primary-500">{totalSucesso.toLocaleString("pt-BR")}</span>
+        {/* Sucesso */}
+        <div className="min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
+          <div className="mb-4 flex min-w-0 items-center gap-2">
+            <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-text-primary">
+              Sucesso: <span className="text-qagrotis-primary-500">{totalSucesso.toLocaleString("pt-BR")}</span>
             </h2>
-            <div className="flex-1" />
-            <ModuloSelect modulos={moduloNames} value={sucessoModulo} onChange={onSucessoModuloChange} />
-            <FilterSelect<ChartFilter>
-              options={CHART_OPTS}
-              value={sucessoFilter}
-              onChange={onSucessoFilterChange}
-              label="Filtro período sucesso"
-            />
+            <div className="flex shrink-0 items-center gap-2">
+              <ModuloSelect modulos={moduloNames} value={sucessoModulo} onChange={onSucessoModuloChange} />
+              <FilterSelect<ChartFilter>
+                options={CHART_OPTS}
+                value={sucessoFilter}
+                onChange={onSucessoFilterChange}
+                label="Filtro período sucesso"
+              />
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={sucessoData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>

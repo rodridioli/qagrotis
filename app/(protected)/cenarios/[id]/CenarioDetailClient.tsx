@@ -27,6 +27,7 @@ import {
   persistEvidenceFile,
   deleteEvidenceFile,
   prepareEvidenceForSessionSnapshot,
+  formatEvidenceError,
 } from "@/lib/evidence-storage"
 import { evHistoricoStorageKey, evScenarioStorageKey, trySetSessionStorageJson } from "@/lib/evidence-session-keys"
 
@@ -257,7 +258,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
       const evFiles = await Promise.all(allowed.map((f) => persistEvidenceFile(f)))
       setManualEvs((prev) => [...prev, ...evFiles])
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível anexar o ficheiro.")
+      toast.error(formatEvidenceError(err))
     }
     e.target.value = ""
   }
@@ -279,7 +280,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
       const evFiles = await Promise.all(allowed.map((f) => persistEvidenceFile(f)))
       setAutoEvs((prev) => [...prev, ...evFiles])
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível anexar o ficheiro.")
+      toast.error(formatEvidenceError(err))
     }
     e.target.value = ""
   }

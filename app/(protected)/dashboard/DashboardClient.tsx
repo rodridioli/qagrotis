@@ -384,31 +384,17 @@ export function DashboardClient({
       .slice(0, 4)
   }, [suitesFiltradas, allCenarios, rankingFilter, rankingModulo, allUsers])
 
-  // ── Testes chart ───────────────────────────────────────────────────────────
+  // ── Testes chart (só Sucesso/Erro/Alerta — alinha total ao ranking e à soma dos três gráficos) ──
   const testesData = useMemo((): DataPoint[] => {
     const buckets = makeBuckets(testesFilter)
-    const entries = testesModulo
+    const base = testesModulo
       ? historicoEntries.filter(e => e.module === testesModulo)
       : historicoEntries
+    const entries = base.filter((e) => isHistoricoResultadoFinal(e.resultado))
     return buckets.map(b => ({
       label: b.label,
       value: entries.filter(e => e.timestamp >= b.start && e.timestamp <= b.end).length,
     }))
-  }, [historicoEntries, testesFilter, testesModulo])
-
-  /** Execuções com resultado Pendente (entram no gráfico de volume, não na soma Erro+Alerta+Sucesso). */
-  const testesPendenteCount = useMemo(() => {
-    const buckets = makeBuckets(testesFilter)
-    const entries = testesModulo
-      ? historicoEntries.filter(e => e.module === testesModulo)
-      : historicoEntries
-    let n = 0
-    for (const b of buckets) {
-      n += entries.filter(
-        e => e.timestamp >= b.start && e.timestamp <= b.end && e.resultado === "Pendente",
-      ).length
-    }
-    return n
   }, [historicoEntries, testesFilter, testesModulo])
 
   // ── Erros chart ────────────────────────────────────────────────────────────
@@ -476,7 +462,6 @@ export function DashboardClient({
         onTestesFilterChange={setTestesFilter}
         testesModulo={testesModulo}
         onTestesModuloChange={setTestesModulo}
-        testesPendenteCount={testesPendenteCount}
         errosData={errosData}
         errosFilter={errosFilter}
         onErrosFilterChange={setErrosFilter}
