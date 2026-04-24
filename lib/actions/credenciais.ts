@@ -128,8 +128,9 @@ function normalizeUrlAmbienteParaMatch(url: string): string {
 }
 
 /**
- * Usado na importação de cenários: localiza credencial ativa pela URL + usuário + senha
- * ou cria um registro compatível com o cadastro manual.
+ * Importação de cenários automatizados: procura credencial ativa com os mesmos dados que em
+ * `/configuracoes/credenciais` (URL do ambiente, utilizador, senha, equivalentes a Ambiente de QA / Login / Senha no .md).
+ * Se não existir, cria uma nova com nome `Credencial [utilizador da sessão] + [data atual]`.
  */
 export async function encontrarOuCriarCredencialPorImportacao(data: {
   urlAmbiente: string
@@ -170,6 +171,6 @@ export async function encontrarOuCriarCredencialPorImportacao(data: {
     month: "2-digit",
     year: "numeric",
   })
-  const nome = `Credencial ${userLabel} ${dateStr}`.slice(0, 200)
+  const nome = `Credencial [${userLabel}] + ${dateStr}`.slice(0, 200)
   return criarCredencial({ nome, urlAmbiente, usuario, senha })
 }
