@@ -170,6 +170,8 @@ export function DashboardClient({
   const [testesModulo,        setTestesModulo]        = useState("")
   const [errosFilter,         setErrosFilter]         = useState<ChartFilter>("hoje")
   const [errosModulo,         setErrosModulo]         = useState("")
+  const [alertasFilter,       setAlertasFilter]       = useState<ChartFilter>("hoje")
+  const [alertasModulo,       setAlertasModulo]       = useState("")
   const [sucessoFilter,       setSucessoFilter]       = useState<ChartFilter>("hoje")
   const [sucessoModulo,       setSucessoModulo]       = useState("")
   /** Stable fallback when `createdAt` is missing (avoids Date.now() during render). */
@@ -393,6 +395,20 @@ export function DashboardClient({
     }))
   }, [historicoEntries, errosFilter, errosModulo])
 
+  // ── Alertas chart ───────────────────────────────────────────────────────────
+  const alertasData = useMemo((): DataPoint[] => {
+    const buckets = makeBuckets(alertasFilter)
+    const entries = alertasModulo
+      ? historicoEntries.filter(e => e.module === alertasModulo)
+      : historicoEntries
+    return buckets.map(b => ({
+      label: b.label,
+      value: entries.filter(
+        e => e.timestamp >= b.start && e.timestamp <= b.end && e.resultado === "Alerta",
+      ).length,
+    }))
+  }, [historicoEntries, alertasFilter, alertasModulo])
+
   // ── Sucesso chart ──────────────────────────────────────────────────────────
   const sucessoData = useMemo((): DataPoint[] => {
     const buckets = makeBuckets(sucessoFilter)
@@ -435,6 +451,11 @@ export function DashboardClient({
         onErrosFilterChange={setErrosFilter}
         errosModulo={errosModulo}
         onErrosModuloChange={setErrosModulo}
+        alertasData={alertasData}
+        alertasFilter={alertasFilter}
+        onAlertasFilterChange={setAlertasFilter}
+        alertasModulo={alertasModulo}
+        onAlertasModuloChange={setAlertasModulo}
         sucessoData={sucessoData}
         sucessoFilter={sucessoFilter}
         onSucessoFilterChange={setSucessoFilter}

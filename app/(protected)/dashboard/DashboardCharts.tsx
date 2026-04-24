@@ -55,6 +55,11 @@ interface Props {
   onErrosFilterChange: (v: ChartFilter) => void
   errosModulo:       string
   onErrosModuloChange: (v: string) => void
+  alertasData:       DataPoint[]
+  alertasFilter:     ChartFilter
+  onAlertasFilterChange: (v: ChartFilter) => void
+  alertasModulo:     string
+  onAlertasModuloChange: (v: string) => void
   sucessoData:       DataPoint[]
   sucessoFilter:     ChartFilter
   onSucessoFilterChange: (v: ChartFilter) => void
@@ -252,6 +257,7 @@ export function DashboardCharts({
   rankingData,   rankingFilter,  onRankingFilterChange,  rankingModulo,  onRankingModuloChange,
   testesData,    testesFilter,   onTestesFilterChange,   testesModulo,   onTestesModuloChange,
   errosData,     errosFilter,    onErrosFilterChange,    errosModulo,    onErrosModuloChange,
+  alertasData,   alertasFilter,  onAlertasFilterChange,  alertasModulo,  onAlertasModuloChange,
   sucessoData,   sucessoFilter,  onSucessoFilterChange,  sucessoModulo,  onSucessoModuloChange,
   ultimasAutomacoes, resolveUser,
   cenariosPorModulo,
@@ -259,6 +265,7 @@ export function DashboardCharts({
   const rankingModulos = rankingModuloNames ?? moduloNames
   const totalExecucoes = testesData.reduce((acc, d) => acc + d.value, 0)
   const totalErros = errosData.reduce((acc, d) => acc + d.value, 0)
+  const totalAlertas = alertasData.reduce((acc, d) => acc + d.value, 0)
   const totalSucesso = sucessoData.reduce((acc, d) => acc + d.value, 0)
 
   return (
@@ -429,8 +436,8 @@ export function DashboardCharts({
         </div>
       </div>
 
-      {/* Row 3 — Erros + Sucesso */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {/* Row 3 — Erros + Alertas + Sucesso */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
         {/* Erros encontrados */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
@@ -460,6 +467,39 @@ export function DashboardCharts({
               <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v, "Erros"]} />
               <Area type="monotone" dataKey="value" stroke="var(--color-red-500)" strokeWidth={2} fill="url(#errorsGradient)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Alertas */}
+        <div className="rounded-xl bg-surface-card p-5 shadow-card">
+          <div className="mb-4 flex flex-nowrap items-center gap-2">
+            <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
+              Alertas:{" "}
+              <span className="text-[color:var(--alert)]">{totalAlertas.toLocaleString("pt-BR")}</span>
+            </h2>
+            <div className="flex-1" />
+            <ModuloSelect modulos={moduloNames} value={alertasModulo} onChange={onAlertasModuloChange} />
+            <FilterSelect<ChartFilter>
+              options={CHART_OPTS}
+              value={alertasFilter}
+              onChange={onAlertasFilterChange}
+              label="Filtro período alertas"
+            />
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={alertasData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="alertasGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="var(--alert)" stopOpacity={0.28} />
+                  <stop offset="95%" stopColor="var(--alert)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
+              <XAxis dataKey="label" tick={TICK_X_AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v, "Alertas"]} />
+              <Area type="monotone" dataKey="value" stroke="var(--alert)" strokeWidth={2} fill="url(#alertasGradient)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
