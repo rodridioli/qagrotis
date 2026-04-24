@@ -93,6 +93,9 @@ export function extractCredentialTripletFromDoc(doc: string): {
   const norm = doc.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
   const pickUrl = (): string => {
     const patterns: RegExp[] = [
+      // Colon dentro do negrito: **Ambiente de QA:** `https://...`
+      /\*\*Ambiente de QA:\*\*\s*`(https?:\/\/[^`\s]+)`/i,
+      /^-\s*\*\*Ambiente de QA:\*\*\s*`(https?:\/\/[^`\s]+)`/im,
       /\*\*Ambiente de QA\*\*\s*:?\s*`(https?:\/\/[^`\s]+)`/i,
       /^-\s*\*\*Ambiente de QA\*\*\s*:?\s*`(https?:\/\/[^`\s]+)`/im,
       /\*\*Ambiente de QA\*\*\s*:?\s*\n?\s*(https?:\/\/[^\s<>"']+)/i,

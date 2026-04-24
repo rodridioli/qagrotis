@@ -162,7 +162,10 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
 
   const steps = cenario.steps ?? []
   const depIds = cenario.deps ?? []
-  const isAutomatizado = cenario.tipo === "Automatizado" || cenario.tipo === "Man./Auto."
+  const showTesteManual =
+    cenario.tipo === "Manual" || cenario.tipo === "Man./Auto."
+  const showAutomacao =
+    cenario.tipo === "Automatizado" || cenario.tipo === "Man./Auto."
   const viewOnly = cenario.active === false
   const allowEvidencias = !viewOnly
 
@@ -318,8 +321,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
         </div>
       </BlockCard>
 
-      {/* ── Bloco 2: Teste Manual ── */}
-      <BlockCard title="Teste Manual">
+      {/* ── Bloco 2: Teste Manual (só Manual ou Man./Auto.) ── */}
+      {showTesteManual && <BlockCard title="Teste Manual">
         <Field label="Descrição">
           <DisabledTextarea value={cenario.descricao} />
         </Field>
@@ -388,10 +391,10 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
             <p className="text-xs text-text-secondary italic">Nenhuma evidência anexada.</p>
           )}
         </div>
-      </BlockCard>
+      </BlockCard>}
 
-      {/* ── Bloco 3: Automação ── */}
-      {isAutomatizado && <BlockCard title="Automação">
+      {/* ── Bloco 3: Automação (só Automatizado ou Man./Auto.) ── */}
+      {showAutomacao && <BlockCard title="Automação">
           <div className="space-y-5">
 
             {/* Credenciais — mesma linha */}
