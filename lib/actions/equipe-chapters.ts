@@ -81,13 +81,15 @@ async function activeAuthorIdSet(): Promise<Set<string>> {
   return new Set(users.filter((u) => u.active).map((u) => u.id))
 }
 
-/** Nome e foto para UI de chapters — inclui inativos (histórico). */
-async function userDisplayMetaById(): Promise<Map<string, { name: string; photoPath: string | null }>> {
+/** Nome, foto e flag ativo para UI de chapters — inclui inativos (histórico). */
+async function userDisplayMetaById(): Promise<
+  Map<string, { name: string; photoPath: string | null; active: boolean }>
+> {
   const users = await getQaUsers()
-  const m = new Map<string, { name: string; photoPath: string | null }>()
+  const m = new Map<string, { name: string; photoPath: string | null; active: boolean }>()
   for (const u of users) {
     const name = (u.name || u.email || u.id).trim() || u.id
-    m.set(u.id, { name, photoPath: u.photoPath ?? null })
+    m.set(u.id, { name, photoPath: u.photoPath ?? null, active: u.active })
   }
   return m
 }
@@ -207,6 +209,7 @@ export async function getEquipeChapterAuthorRankingPage(
         points,
         name: meta.get(userId)?.name ?? userId,
         photoPath: meta.get(userId)?.photoPath ?? null,
+        active: meta.get(userId)?.active ?? true,
       }))
       .sort((a, b) => {
         if (b.points !== a.points) return b.points - a.points
@@ -226,6 +229,7 @@ export async function getEquipeChapterAuthorRankingPage(
       userId: row.userId,
       name: row.name,
       photoPath: row.photoPath,
+      active: row.active,
       points: row.points,
     }))
 

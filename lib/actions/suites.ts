@@ -210,8 +210,10 @@ export async function registrarResultadoSuite(
   if (!cenarioRef) throw new Error("Cenário não pertence à suíte")
 
   const now = new Date()
+  const emailRaw = session.user?.email?.trim()
+  const nameRaw = session.user?.name?.trim()
   const executadoPor =
-    (session.user?.email ?? session.user?.name ?? "").trim() || undefined
+    (emailRaw ? emailRaw.toLowerCase() : nameRaw) || undefined
   type HistItem = NonNullable<SuiteRecord["historico"]>[number]
   const historicoItem: HistItem = {
     id:       cenarioId,

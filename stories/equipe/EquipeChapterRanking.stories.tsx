@@ -7,12 +7,19 @@ import {
   type EquipeChapterRankingRow,
 } from "@/lib/equipe-chapters-shared"
 
+const demoPhoto =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect fill="#64748b" width="64" height="64"/><circle fill="#cbd5e1" cx="32" cy="24" r="10"/><path fill="#cbd5e1" d="M14 56c4-14 36-14 40 0"/></svg>',
+  )
+
 function makeRows(startPos: number, count: number, pointsBase: number): EquipeChapterRankingRow[] {
   return Array.from({ length: count }, (_, i) => ({
     position: startPos + i,
     userId: `U-${String(startPos + i).padStart(2, "0")}`,
     name: `Usuário ${startPos + i}`,
     photoPath: null,
+    active: true,
     points: Math.max(1, pointsBase - i),
   }))
 }
@@ -63,7 +70,9 @@ export const PrimeiraPaginaComPaginacao: Story = {
 export const SoPrimeiroLugar: Story = {
   args: {
     data: {
-      rows: [{ position: 1, userId: "U-01", name: "Cibele Esmaniotto", photoPath: null, points: 7 }],
+      rows: [
+        { position: 1, userId: "U-01", name: "Cibele Esmaniotto", photoPath: null, active: true, points: 7 },
+      ],
       page: 1,
       pageSize: EQUIPE_CHAPTER_RANKING_PAGE_SIZE,
       totalItems: 1,
@@ -80,6 +89,37 @@ export const SemDados: Story = {
       page: 1,
       pageSize: EQUIPE_CHAPTER_RANKING_PAGE_SIZE,
       totalItems: 0,
+      totalPages: 1,
+    },
+    onPageChange: () => {},
+  },
+}
+
+/** Inativo com foto: avatar em escala de cinza (mesmo critério da aba Chapters em produção). */
+export const InativoComFotoEmCinza: Story = {
+  args: {
+    data: {
+      rows: [
+        {
+          position: 1,
+          userId: "U-01",
+          name: "Autor ativo",
+          photoPath: demoPhoto,
+          active: true,
+          points: 5,
+        },
+        {
+          position: 2,
+          userId: "U-02",
+          name: "Autor inativo",
+          photoPath: demoPhoto,
+          active: false,
+          points: 3,
+        },
+      ],
+      page: 1,
+      pageSize: EQUIPE_CHAPTER_RANKING_PAGE_SIZE,
+      totalItems: 2,
       totalPages: 1,
     },
     onPageChange: () => {},

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
-import { PlusIcon, ArrowRightIcon, Loader2Icon } from "lucide-react"
+import { PlusIcon, ArrowRightIcon, Loader2Icon, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const meta: Meta<typeof Button> = {
@@ -10,14 +10,14 @@ const meta: Meta<typeof Button> = {
     docs: {
       description: {
         component:
-          "Primary action element. Border radius: `rounded-custom` (`--radius-control`, 0.5em). Horizontal padding end: `pr-[var(--padding-button-inline-end)]` (`--padding-button-inline-end`, 1em ≈ 16px em raiz 16px). Default height: 40px (`h-10`). Variants: `default` (brand-primary), `secondary`, `outline`, `ghost`, `destructive`, `link`. Supports Lucide icons and loading state.",
+          "Primary action element. Border radius: `rounded-custom` (`--radius-control`, 0.5em). Horizontal padding end: `pr-[var(--padding-button-inline-end)]` (`--padding-button-inline-end`, 1em ≈ 16px em raiz 16px). Default height: 40px (`h-10`). Variants: `default` (brand-primary), `secondary`, `outline`, `ghost`, `destructive`, `alertOutline` (alerta em execução de teste), `link`. Hovers usam `duration-200 ease-out`. Supports Lucide icons and loading state.",
       },
     },
   },
   argTypes: {
     variant: {
       control: "select",
-      options: ["default", "secondary", "outline", "ghost", "destructive", "link"],
+      options: ["default", "secondary", "outline", "ghost", "destructive", "alertOutline", "link"],
     },
     size: {
       control: "select",
@@ -51,6 +51,19 @@ export const Outline: Story = {
   args: {
     children: "Ver detalhes",
     variant: "outline",
+  },
+}
+
+export const AlertOutline: Story = {
+  name: "Alert outline (execução de teste)",
+  render: (args) => (
+    <Button {...args}>
+      <TriangleAlert className="size-4 shrink-0" />
+      Alerta
+    </Button>
+  ),
+  args: {
+    variant: "alertOutline",
   },
 }
 
@@ -112,6 +125,10 @@ export const AllVariants: Story = {
       <Button variant="outline">Outline</Button>
       <Button variant="ghost">Ghost</Button>
       <Button variant="destructive">Destructive</Button>
+      <Button variant="alertOutline">
+        <TriangleAlert className="size-4 shrink-0" />
+        Alerta
+      </Button>
       <Button variant="link">Link</Button>
       <Button variant="default" disabled>Disabled</Button>
     </div>

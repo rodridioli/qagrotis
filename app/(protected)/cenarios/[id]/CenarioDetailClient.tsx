@@ -335,19 +335,15 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
           )}
           {suite && !viewOnly && (
             <>
-              <Button
-                onClick={() => handleResult("Sucesso")}
-                disabled={isRegistering}
-              >
+              <Button onClick={() => handleResult("Sucesso")} disabled={isRegistering}>
                 <Check className="size-4" />
                 Sucesso
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant="alertOutline"
                 disabled={isRegistering}
                 onClick={() => setAlertModalOpen(true)}
-                className="border-alert/85 bg-alert text-alert-foreground hover:brightness-[0.96] active:brightness-90 dark:border-alert/90"
               >
                 <TriangleAlert className="size-4 shrink-0" />
                 Alerta

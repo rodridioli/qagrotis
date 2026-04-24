@@ -179,9 +179,15 @@ export function DashboardClient({
     const map = new Map<string, { displayName: string; photoPath: string | null }>()
     for (const u of allUsers) {
       const display = u.name || (u.email ? u.email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase()) : "Usuário")
-      // Key by email (primary, unique) AND name for backward compat
-      if (u.email) map.set(u.email, { displayName: display, photoPath: u.photoPath ?? null })
-      if (u.name && u.name !== u.email) map.set(u.name, { displayName: display, photoPath: u.photoPath ?? null })
+      const photoPath = u.photoPath ?? null
+      // Key by email (exact + lowercase), and name for backward compat / session fallbacks
+      if (u.email) {
+        const em = u.email.trim()
+        const entry = { displayName: display, photoPath }
+        map.set(em, entry)
+        map.set(em.toLowerCase(), entry)
+      }
+      if (u.name && u.name !== u.email) map.set(u.name, { displayName: display, photoPath })
     }
     return map
   }, [allUsers])
@@ -206,8 +212,9 @@ export function DashboardClient({
     // Fallback: format email as name
     if (createdBy.includes("@")) {
       const name = createdBy.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase())
-      // Try to find user by email to get photo
-      const byEmail = allUsers.find(u => u.email === createdBy)
+      const byEmail = allUsers.find(
+        (u) => (u.email ?? "").toLowerCase() === createdBy.toLowerCase(),
+      )
       return { displayName: byEmail?.name || name, photoPath: byEmail?.photoPath ?? null }
     }
     return { displayName: createdBy, photoPath: null }
@@ -312,30 +319,52 @@ export function DashboardClient({
   // ── Ranking: execuções no histórico das suítes (todos os sistemas / módulos) ─
   const rankingData = useMemo((): RankingItem[] => {
     const { start, end } = getDateRange(rankingFilter)
-    const normalizeKey = (cb: string | undefined): string => {
-      if (!cb) return "Desconhecido"
-      if (userMap.has(cb)) return cb
-      for (const u of allUsers) {
-        if (u.name && u.name === cb && u.email) return u.email
-      }
-      return cb
+    const cenarioById = new Map(allCenarios.map((c) => [c.id, c]))
+
+    const stableUserKey = (u: QaUserRecord): string => {
+      const e = u.email?.trim()
+      if (e) return e.toLowerCase()
+      return u.name?.trim() || u.id
     }
+
+    /** Resolve a session/email/name string to the same key used for active users (lowercase email preferred). */
+    const canonicalKeyForAttribution = (raw: string | undefined): string | null => {
+      const t = raw?.trim()
+      if (!t) return null
+      const lower = t.toLowerCase()
+      for (const u of allUsers) {
+        if (u.email && u.email.toLowerCase() === lower) return stableUserKey(u)
+      }
+      for (const u of allUsers) {
+        if (u.name && u.name.trim() === t) return stableUserKey(u)
+      }
+      if (t.includes("@")) return lower
+      return null
+    }
+
     const countByUser = new Map<string, number>()
     for (const suite of allSuites) {
       for (const h of suite.historico ?? []) {
         const ts = h.timestamp ?? 0
         if (!ts || ts < start || ts > end) continue
         if (rankingModulo && (h.module ?? "") !== rankingModulo) continue
-        const raw = h.executadoPor?.trim()
-        const key = normalizeKey(raw || undefined)
+        const fromRunner = canonicalKeyForAttribution(h.executadoPor)
+        const fromAuthor = canonicalKeyForAttribution(cenarioById.get(h.id)?.createdBy)
+        const key = fromRunner ?? fromAuthor
+        if (!key) continue
         countByUser.set(key, (countByUser.get(key) ?? 0) + 1)
       }
     }
-    return [...countByUser.entries()]
-      .sort((a, b) => b[1] - a[1])
+
+    const activeUsers = allUsers.filter((u) => u.active)
+    return activeUsers
+      .map((u) => {
+        const k = stableUserKey(u)
+        return { createdBy: k, count: countByUser.get(k) ?? 0 }
+      })
+      .sort((a, b) => b.count - a.count || a.createdBy.localeCompare(b.createdBy))
       .slice(0, 4)
-      .map(([createdBy, count]) => ({ createdBy, count }))
-  }, [allSuites, rankingFilter, rankingModulo, userMap, allUsers])
+  }, [allSuites, allCenarios, rankingFilter, rankingModulo, allUsers])
 
   // ── Testes chart ───────────────────────────────────────────────────────────
   const testesData = useMemo((): DataPoint[] => {
