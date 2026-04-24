@@ -30,3 +30,11 @@ export const UmaNota: Story = {
     count: 1,
   },
 }
+
+export const SóEstrelas: Story = {
+  args: {
+    avg: 4.3,
+    count: 12,
+    starsOnly: true,
+  },
+}

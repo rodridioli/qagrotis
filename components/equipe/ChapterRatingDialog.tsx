@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Pencil, Star } from "lucide-react"
+import { ChevronRight, Pencil, Star } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -138,14 +138,17 @@ export function ChapterRatingDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-left leading-snug">Avaliações — {tema}</DialogTitle>
+          <DialogTitle className="text-left leading-snug">Avaliações</DialogTitle>
         </DialogHeader>
 
         {view === "overview" ? (
           <>
+            <p className="text-sm text-text-primary">
+              <span className="font-medium text-text-secondary">Tema:</span> {tema}
+            </p>
             <div className="grid gap-4 border-b border-border-default pb-4 md:grid-cols-2">
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                <p className="text-xs font-semibold tracking-wide text-text-secondary">
                   Distribuição
                 </p>
                 <div className="space-y-1.5">
@@ -163,7 +166,7 @@ export function ChapterRatingDialog({
                 </div>
               </div>
               <div className="flex flex-col justify-center gap-2 rounded-lg border border-border-default bg-neutral-grey-50 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                <p className="text-xs font-semibold tracking-wide text-text-secondary">
                   Resumo
                 </p>
                 {loading && entries.length === 0 ? (
@@ -186,19 +189,20 @@ export function ChapterRatingDialog({
                 </p>
                 <Button
                   type="button"
-                  className="shrink-0"
+                  className="shrink-0 gap-2 pr-3"
                   disabled={isPreview}
                   title={isPreview ? "Pré-visualização sem servidor." : undefined}
                   onClick={openFormNew}
                 >
                   Avaliar
+                  <ChevronRight className="size-4 shrink-0" aria-hidden />
                 </Button>
               </div>
             ) : null}
 
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                Histórico (autores anónimos)
+              <p className="text-xs font-semibold tracking-wide text-text-secondary">
+                Histórico
               </p>
               {entries.length === 0 ? (
                 <p className="text-sm text-text-secondary">Ainda não há avaliações.</p>
@@ -210,7 +214,7 @@ export function ChapterRatingDialog({
                       className="rounded-lg border border-border-default bg-surface-card px-3 py-2 text-sm"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium text-text-primary">Anónimo</span>
+                        <span className="font-medium text-text-primary">Anônimo</span>
                         <time className="text-xs text-text-secondary tabular-nums" dateTime={e.createdAt}>
                           {formatPt(e.createdAt)}
                         </time>
@@ -310,7 +314,7 @@ export function ChapterRatingDialog({
                 Voltar
               </Button>
               <Button type="submit" disabled={saving || isPreview} title={isPreview ? "Pré-visualização sem servidor." : undefined}>
-                {saving ? "A guardar…" : myEntry ? "Guardar alterações" : "Enviar avaliação"}
+                {saving ? "A guardar…" : myEntry ? "Salvar" : "Enviar"}
               </Button>
             </DialogFooter>
           </form>
