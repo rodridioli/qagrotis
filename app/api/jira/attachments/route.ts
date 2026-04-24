@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
 
   const files = formData.getAll("files") as File[]
   const uploaded: { name: string; contentUrl: string }[] = []
+  const errors: string[] = []
 
   for (const file of files) {
     try {
@@ -41,17 +42,23 @@ export async function POST(req: NextRequest) {
         headers: {
           "Authorization": `Basic ${credentials}`,
           "X-Atlassian-Token": "no-check",
+          Accept: "application/json",
         },
         body: fd,
       })
 
-      if (res.ok) {
-        const data = await res.json() as Array<{ id: number; content: string }>
-        const contentUrl = data[0]?.content ?? `${base}/rest/api/3/attachment/content/${data[0]?.id}`
-        uploaded.push({ name: file.name, contentUrl })
+      if (!res.ok) {
+        const errText = await res.text().catch(() => res.statusText)
+        errors.push(`${file.name}: ${errText.slice(0, 200)}`)
+        continue
       }
-    } catch { /* skip individual file failures */ }
+      const data = await res.json() as Array<{ id: number; content: string }>
+      const contentUrl = data[0]?.content ?? `${base}/rest/api/3/attachment/content/${data[0]?.id}`
+      uploaded.push({ name: file.name, contentUrl })
+    } catch (e) {
+      errors.push(`${file.name}: ${e instanceof Error ? e.message : "falha no upload"}`)
+    }
   }
 
-  return Response.json({ uploaded })
+  return Response.json({ uploaded, errors })
 }

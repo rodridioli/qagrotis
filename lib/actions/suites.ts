@@ -197,7 +197,7 @@ export async function registrarResultadoSuite(
   cenarioId: string,
   resultado: "Sucesso" | "Erro" | "Alerta",
   options?: { alertaObs?: string },
-): Promise<void> {
+): Promise<{ timestamp: number }> {
   const session = await requireSession()
 
   const alertaObs = (options?.alertaObs ?? "").trim()
@@ -239,6 +239,7 @@ export async function registrarResultadoSuite(
   revalidatePath("/suites")
   revalidatePath(`/suites/${suiteId}`)
   revalidatePath("/dashboard")
+  return { timestamp: historicoItem.timestamp }
 }
 
 // ── Dashboard-specific: minimal record with full historico ──────────────────

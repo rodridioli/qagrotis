@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink, FileDown, Play, Power, RefreshCw } from "lucide-react"
+import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink, FileDown, Loader2, Play, Power, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -40,7 +40,9 @@ import { criarSuite, atualizarSuite, removerHistoricoSuite, encerrarSuite, reabr
 import { buildSuiteCenarioRefByIdMap, refLabelForSuiteCenario } from "@/lib/suite-cenario-ref"
 import { nomeParaTituloExportJira } from "@/lib/jira-export-nome-cenario"
 import { downloadMarkdownFile, suiteMarkdownDownloadFilename } from "@/lib/suite-markdown-export"
-import { type EvFile, evidenceFileToBlob } from "@/lib/evidence-storage"
+import { type EvFile, deleteEvidenceFile, evidenceFileToBlob } from "@/lib/evidence-storage"
+import { evHistoricoStorageKey, evScenarioStorageKey } from "@/lib/evidence-session-keys"
+import { applyJiraAttachmentUrlsToMarkdown } from "@/lib/jira-evidence-markdown"
 import { toast } from "sonner"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 
@@ -249,18 +251,20 @@ export function SuiteForm({
           fd.append("files", new File([blob], ev.name, { type: ev.type }), ev.name)
         }
         const uploadRes = await fetch("/api/jira/attachments", { method: "POST", body: fd })
-        if (uploadRes.ok) {
-          const { uploaded } = await uploadRes.json() as { uploaded: { name: string; contentUrl: string }[] }
-          for (const att of uploaded) {
-            const escaped = att.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-            const linePattern = new RegExp(`^- ${escaped}$`, "m")
-            if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(att.name)) {
-              contentToSend = contentToSend.replace(linePattern, `![${att.name}](${att.contentUrl})`)
-            } else if (/\.(pdf|mp4|m4v|webm|mov|mkv|avi|mpeg|mpg|ogv)$/i.test(att.name)) {
-              contentToSend = contentToSend.replace(linePattern, `[${att.name}](${att.contentUrl})`)
-            }
-          }
+        const uploadBody = (await uploadRes.json().catch(() => ({
+          uploaded: [] as { name: string; contentUrl: string }[],
+          errors: [] as string[],
+        }))) as { uploaded: { name: string; contentUrl: string }[]; errors?: string[] }
+        if (!uploadRes.ok) {
+          throw new Error(uploadBody.errors?.join("; ") || `Upload de anexos falhou (${uploadRes.status}).`)
         }
+        if (uploadBody.uploaded.length === 0) {
+          throw new Error(uploadBody.errors?.join("; ") || "O Jira não aceitou os anexos.")
+        }
+        if (uploadBody.errors?.length) {
+          toast.warning(`Parte dos anexos falhou: ${uploadBody.errors.slice(0, 2).join("; ")}`)
+        }
+        contentToSend = applyJiraAttachmentUrlsToMarkdown(contentToSend, uploadBody.uploaded)
       }
 
       const deleteAttachmentIds = mode === "replace" ? (jiraExisting?.attachmentIds ?? []) : []
@@ -376,14 +380,28 @@ export function SuiteForm({
       })
       const manualEvs: EvFile[] = (() => {
         try {
-          return JSON.parse(sessionStorage.getItem(`qagrotis_ev_${h.id}_manual`) ?? "[]") as EvFile[]
+          if (suite?.id && h.timestamp !== undefined) {
+            const k = evHistoricoStorageKey(suite.id, h.id, h.timestamp, "manual")
+            const raw = sessionStorage.getItem(k)
+            if (raw !== null) return JSON.parse(raw) as EvFile[]
+          }
+          return JSON.parse(
+            sessionStorage.getItem(evScenarioStorageKey(h.id, "manual")) ?? "[]",
+          ) as EvFile[]
         } catch {
           return []
         }
       })()
       const autoEvs: EvFile[] = (() => {
         try {
-          return JSON.parse(sessionStorage.getItem(`qagrotis_ev_${h.id}_auto`) ?? "[]") as EvFile[]
+          if (suite?.id && h.timestamp !== undefined) {
+            const k = evHistoricoStorageKey(suite.id, h.id, h.timestamp, "auto")
+            const raw = sessionStorage.getItem(k)
+            if (raw !== null) return JSON.parse(raw) as EvFile[]
+          }
+          return JSON.parse(
+            sessionStorage.getItem(evScenarioStorageKey(h.id, "auto")) ?? "[]",
+          ) as EvFile[]
         } catch {
           return []
         }
@@ -651,6 +669,20 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
     if (!suite?.id) return
     const indicesToRemove = [...selectedHistorico]
     const previousHistorico = historico
+
+    for (const idx of indicesToRemove) {
+      const h = previousHistorico[idx]
+      if (h.timestamp === undefined) continue
+      for (const tipo of ["manual", "auto"] as const) {
+        const key = evHistoricoStorageKey(suite.id, h.id, h.timestamp, tipo)
+        const raw = sessionStorage.getItem(key)
+        try {
+          const list = (raw ? JSON.parse(raw) : []) as EvFile[]
+          for (const ev of list) void deleteEvidenceFile(ev)
+        } catch { /* ignore */ }
+        sessionStorage.removeItem(key)
+      }
+    }
 
     // Optimistic update
     const indexSet = new Set(indicesToRemove)
@@ -1321,7 +1353,9 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
           <DialogFooter showCloseButton={false}>
             <CancelActionButton onClick={() => { setJiraModalOpen(false); setJiraIssueInput("") }} />
             <Button onClick={handleJiraExport} disabled={jiraLoading || !jiraIssueInput.trim()}>
-              <ExternalLink className="size-4 shrink-0" />
+              {jiraLoading
+                ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                : <ExternalLink className="size-4 shrink-0" aria-hidden />}
               {jiraLoading ? "Verificando..." : "Exportar"}
             </Button>
           </DialogFooter>
@@ -1353,14 +1387,18 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
               onClick={() => { void sendToJira(parseIssueKey(jiraIssueInput), "replace") }}
               disabled={jiraLoading}
             >
-              <RefreshCw className="size-4 shrink-0" />
+              {jiraLoading
+                ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                : <RefreshCw className="size-4 shrink-0" aria-hidden />}
               {jiraLoading ? "Enviando..." : "Substituir"}
             </Button>
             <Button
               onClick={() => { void sendToJira(parseIssueKey(jiraIssueInput), "append") }}
               disabled={jiraLoading}
             >
-              <ExternalLink className="size-4 shrink-0" />
+              {jiraLoading
+                ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                : <ExternalLink className="size-4 shrink-0" aria-hidden />}
               {jiraLoading ? "Enviando..." : "Acrescentar"}
             </Button>
           </DialogFooter>

@@ -27,12 +27,9 @@ import {
   persistEvidenceFile,
   deleteEvidenceFile,
 } from "@/lib/evidence-storage"
+import { evHistoricoStorageKey, evScenarioStorageKey } from "@/lib/evidence-session-keys"
 
 export type { EvFile }
-
-export function evStorageKey(cenarioId: string, tipo: "manual" | "auto") {
-  return `qagrotis_ev_${cenarioId}_${tipo}`
-}
 
 interface Props {
   cenario: CenarioRecord
@@ -182,8 +179,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
   useEffect(() => {
     if (viewOnly) return
     try {
-      const m = sessionStorage.getItem(evStorageKey(cenario.id, "manual"))
-      const a = sessionStorage.getItem(evStorageKey(cenario.id, "auto"))
+      const m = sessionStorage.getItem(evScenarioStorageKey(cenario.id, "manual"))
+      const a = sessionStorage.getItem(evScenarioStorageKey(cenario.id, "auto"))
       if (m) setManualEvs(JSON.parse(m))
       if (a) setAutoEvs(JSON.parse(a))
     } catch { /* ignore */ }
@@ -192,12 +189,12 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
   // Persiste evidências na sessão sempre que mudam
   useEffect(() => {
     if (viewOnly) return
-    sessionStorage.setItem(evStorageKey(cenario.id, "manual"), JSON.stringify(manualEvs))
+    sessionStorage.setItem(evScenarioStorageKey(cenario.id, "manual"), JSON.stringify(manualEvs))
   }, [cenario.id, manualEvs, viewOnly])
 
   useEffect(() => {
     if (viewOnly) return
-    sessionStorage.setItem(evStorageKey(cenario.id, "auto"), JSON.stringify(autoEvs))
+    sessionStorage.setItem(evScenarioStorageKey(cenario.id, "auto"), JSON.stringify(autoEvs))
   }, [cenario.id, autoEvs, viewOnly])
 
   async function handleManualFiles(e: React.ChangeEvent<HTMLInputElement>) {
@@ -244,11 +241,28 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     e.target.value = ""
   }
 
+  function snapshotEvidenciasParaHistorico(timestamp: number) {
+    if (!suite) return
+    sessionStorage.setItem(
+      evHistoricoStorageKey(suite.id, cenario.id, timestamp, "manual"),
+      JSON.stringify(manualEvs),
+    )
+    sessionStorage.setItem(
+      evHistoricoStorageKey(suite.id, cenario.id, timestamp, "auto"),
+      JSON.stringify(autoEvs),
+    )
+    sessionStorage.removeItem(evScenarioStorageKey(cenario.id, "manual"))
+    sessionStorage.removeItem(evScenarioStorageKey(cenario.id, "auto"))
+    setManualEvs([])
+    setAutoEvs([])
+  }
+
   async function handleResult(resultado: "Sucesso" | "Erro") {
     if (!suite) return
     setIsRegistering(true)
     try {
-      await registrarResultadoSuite(suite.id, cenario.id, resultado)
+      const { timestamp } = await registrarResultadoSuite(suite.id, cenario.id, resultado)
+      snapshotEvidenciasParaHistorico(timestamp)
       toast.success("Teste registrado com sucesso!")
       router.push(`/suites/${suite.id}?tab=cenarios`)
     } catch (e: unknown) {
@@ -267,7 +281,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     }
     setIsRegistering(true)
     try {
-      await registrarResultadoSuite(suite.id, cenario.id, "Alerta", { alertaObs: obs })
+      const { timestamp } = await registrarResultadoSuite(suite.id, cenario.id, "Alerta", { alertaObs: obs })
+      snapshotEvidenciasParaHistorico(timestamp)
       toast.success("Alerta registrado com sucesso!")
       setAlertModalOpen(false)
       setAlertaObs("")
@@ -464,7 +479,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                   onChange={handleManualFiles}
                 />
                 <p className="max-w-[220px] text-right text-[10px] leading-snug text-text-secondary">
-                  Imagens, PDF ou vídeo. Permanecem neste browser até exportar ao Jira.
+                  Imagens, PDF ou vídeo. Ao registrar o teste, os anexos saem daqui e ficam ligados à linha do histórico para exportar ao Jira.
                 </p>
               </div>
             ) : (
@@ -599,7 +614,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                       onChange={handleAutoFiles}
                     />
                     <p className="max-w-[220px] text-right text-[10px] leading-snug text-text-secondary">
-                      Imagens, PDF ou vídeo. Permanecem neste browser até exportar ao Jira.
+                      Imagens, PDF ou vídeo. Ao registrar o teste, os anexos saem daqui e ficam ligados à linha do histórico para exportar ao Jira.
                     </p>
                   </div>
                 ) : (
