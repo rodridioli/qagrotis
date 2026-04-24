@@ -72,11 +72,13 @@ function makeBuckets(period: string): { label: string; start: number; end: numbe
   const now = new Date()
   if (period === "hoje") {
     const today = new Date(getLocalCalendarDayStartEndMs(now).startMs)
+    // Sempre 24 faixas do dia civil — antes cortávamos horas > agora e execuções nessas horas
+    // não entravam em nenhum bucket (total do gráfico ≠ soma real no dia).
     return Array.from({ length: 24 }, (_, i) => {
       const s = new Date(today); s.setHours(i, 0, 0, 0)
       const e = new Date(today); e.setHours(i, 59, 59, 999)
       return { label: `${i}h`, start: s.getTime(), end: e.getTime() }
-    }).filter(b => b.start <= now.getTime())
+    })
   }
   if (period === "semana") {
     return Array.from({ length: 7 }, (_, i) => {
@@ -330,7 +332,7 @@ export function DashboardClient({
   }, [suitesFiltradas])
 
   // ── Ranking: execuções no histórico das suítes (todos os sistemas / módulos) ─
-  const rankingData = useMemo((): RankingItem[] => {
+  const { rankingData, rankingTotalTestes } = useMemo(() => {
     const { start, end } = getDateRange(rankingFilter)
     const cenarioById = new Map(allCenarios.map((c) => [c.id, c]))
 
@@ -370,6 +372,9 @@ export function DashboardClient({
       }
     }
 
+    let rankingTotalTestes = 0
+    for (const c of countByUser.values()) rankingTotalTestes += c
+
     const activeUsers = allUsers.filter((u) => u.active)
     const rows = activeUsers.map((u) => {
       const k = stableUserKey(u)
@@ -379,17 +384,20 @@ export function DashboardClient({
     if (orphan > 0) {
       rows.push({ createdBy: RANKING_SEM_ATRIBUICAO, count: orphan })
     }
-    return rows
+    const rankingData = rows
       .sort((a, b) => b.count - a.count || a.createdBy.localeCompare(b.createdBy))
       .slice(0, 4)
+    return { rankingData, rankingTotalTestes }
   }, [suitesFiltradas, allCenarios, rankingFilter, rankingModulo, allUsers])
 
   // ── Testes chart (só Sucesso/Erro/Alerta — alinha total ao ranking e à soma dos três gráficos) ──
   const testesData = useMemo((): DataPoint[] => {
     const buckets = makeBuckets(testesFilter)
-    const base = testesModulo
+    const { start: rangeStart, end: rangeEnd } = getDateRange(testesFilter)
+    const base = (testesModulo
       ? historicoEntries.filter(e => e.module === testesModulo)
       : historicoEntries
+    ).filter((e) => e.timestamp >= rangeStart && e.timestamp <= rangeEnd)
     const entries = base.filter((e) => isHistoricoResultadoFinal(e.resultado))
     return buckets.map(b => ({
       label: b.label,
@@ -400,47 +408,62 @@ export function DashboardClient({
   // ── Erros chart ────────────────────────────────────────────────────────────
   const errosData = useMemo((): DataPoint[] => {
     const buckets = makeBuckets(errosFilter)
-    const entries = errosModulo
+    const { start: rangeStart, end: rangeEnd } = getDateRange(errosFilter)
+    const entries = (errosModulo
       ? historicoEntries.filter(e => e.module === errosModulo)
       : historicoEntries
+    ).filter(
+      (e) =>
+        e.timestamp >= rangeStart &&
+        e.timestamp <= rangeEnd &&
+        e.resultado === "Erro",
+    )
     return buckets.map(b => ({
       label: b.label,
-      value: entries.filter(
-        e => e.timestamp >= b.start && e.timestamp <= b.end && e.resultado === "Erro"
-      ).length,
+      value: entries.filter(e => e.timestamp >= b.start && e.timestamp <= b.end).length,
     }))
   }, [historicoEntries, errosFilter, errosModulo])
 
   // ── Alertas chart ───────────────────────────────────────────────────────────
   const alertasData = useMemo((): DataPoint[] => {
     const buckets = makeBuckets(alertasFilter)
-    const entries = alertasModulo
+    const { start: rangeStart, end: rangeEnd } = getDateRange(alertasFilter)
+    const entries = (alertasModulo
       ? historicoEntries.filter(e => e.module === alertasModulo)
       : historicoEntries
+    ).filter(
+      (e) =>
+        e.timestamp >= rangeStart &&
+        e.timestamp <= rangeEnd &&
+        e.resultado === "Alerta",
+    )
     return buckets.map(b => ({
       label: b.label,
-      value: entries.filter(
-        e => e.timestamp >= b.start && e.timestamp <= b.end && e.resultado === "Alerta",
-      ).length,
+      value: entries.filter(e => e.timestamp >= b.start && e.timestamp <= b.end).length,
     }))
   }, [historicoEntries, alertasFilter, alertasModulo])
 
   // ── Sucesso chart ──────────────────────────────────────────────────────────
   const sucessoData = useMemo((): DataPoint[] => {
     const buckets = makeBuckets(sucessoFilter)
-    const entries = sucessoModulo
+    const { start: rangeStart, end: rangeEnd } = getDateRange(sucessoFilter)
+    const entries = (sucessoModulo
       ? historicoEntries.filter(e => e.module === sucessoModulo)
       : historicoEntries
+    ).filter(
+      (e) =>
+        e.timestamp >= rangeStart &&
+        e.timestamp <= rangeEnd &&
+        e.resultado === "Sucesso",
+    )
     return buckets.map(b => ({
       label: b.label,
-      value: entries.filter(
-        e => e.timestamp >= b.start && e.timestamp <= b.end && e.resultado === "Sucesso"
-      ).length,
+      value: entries.filter(e => e.timestamp >= b.start && e.timestamp <= b.end).length,
     }))
   }, [historicoEntries, sucessoFilter, sucessoModulo])
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard label="Módulos"           value={String(totalModulos)}                        icon={Layers}        iconColor="#00735D" />
         <MetricCard label="Total de cenários" value={totalCenarios.toLocaleString("pt-BR")}      icon={FileText}      iconColor="#6366f1" />
@@ -453,6 +476,7 @@ export function DashboardClient({
         moduloNames={moduloNames}
         rankingModuloNames={rankingModuloNames}
         rankingData={rankingData}
+        rankingTotalTestes={rankingTotalTestes}
         rankingFilter={rankingFilter}
         onRankingFilterChange={setRankingFilter}
         rankingModulo={rankingModulo}
