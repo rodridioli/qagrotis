@@ -19,9 +19,9 @@ const SUGGESTIONS: Record<string, Suggestion[]> = {
     { icon: EyeOff, label: "Ver cenários inativos", command: "liste cenários inativos" },
   ],
   "/suites": [
-    { icon: PlusCircle, label: "Criar nova suite", command: "crie uma nova suite" },
-    { icon: Rocket, label: "Ver histórico de execuções", command: "liste o histórico de execuções das suites" },
+    { icon: PlusCircle, label: "Criar nova suite", command: "crie uma nova suite de regressão" },
     { icon: AlertCircle, label: "Ver suites encerradas", command: "liste suites encerradas" },
+    { icon: FileText, label: "Ir para cenários", command: "ir para cenários" },
   ],
   "/gerador": [
     { icon: FileText, label: "Gerar cenário via Jira", command: "gere um cenário a partir de um issue do Jira" },
