@@ -11,6 +11,7 @@ import { CommandBarSuggestions } from "./CommandBarSuggestions"
 import { CommandBarResult } from "./CommandBarResult"
 import { CommandBarConfirm } from "./CommandBarConfirm"
 import { useCommandBarContext } from "@/contexts/CommandBarContext"
+import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { CommandBarItem } from "./CommandBarResult"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -123,6 +124,7 @@ function getPlaceholder(pathname: string): string {
 
 export function CommandBar() {
   const { isOpen, close, toggle } = useCommandBarContext()
+  const { sistemaSelecionado } = useSistemaSelecionado()
   const pathname = usePathname()
   const router = useRouter()
 
@@ -191,7 +193,7 @@ export function CommandBar() {
       const res = await fetch("/api/command-bar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ command: trimmed, context: { pathname } }),
+        body: JSON.stringify({ command: trimmed, context: { pathname, sistema: sistemaSelecionado } }),
         signal: abortRef.current.signal,
       })
 
@@ -222,6 +224,12 @@ export function CommandBar() {
         return
       }
 
+      if (data.type === "error") {
+        setStatus("error")
+        setResponse(data)
+        return
+      }
+
       setStatus("result")
       setResponse(data)
     } catch (err) {
@@ -234,7 +242,7 @@ export function CommandBar() {
         })
       }
     }
-  }, [pathname, close, router])
+  }, [pathname, sistemaSelecionado, close, router])
 
   const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
   const [integration, modulosRaw, clientesRaw] = await Promise.all([
     getActiveIntegration(),
     prisma.modulo.findMany({
-      where: context.sistema ? { sistemaName: context.sistema, active: true } : { active: true },
+      where: cleanSistema ? { sistemaName: cleanSistema, active: true } : { active: true },
       select: { name: true },
       take: 50,
       orderBy: { name: "asc" },
