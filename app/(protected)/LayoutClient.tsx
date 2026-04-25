@@ -368,7 +368,7 @@ const Topbar = React.memo(function Topbar({
           type="button"
           onClick={openCommandBar}
           aria-label="Abrir barra de comandos (Ctrl+K)"
-          className="hidden items-center gap-1.5 rounded-md border border-border-default bg-surface-input px-2.5 py-1 text-[11px] text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary sm:flex"
+          className="hidden items-center gap-1.5 rounded-md border border-border-default bg-surface-input px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary sm:flex sm:text-sm"
         >
           <Sparkles className="size-3 text-brand-primary" aria-hidden="true" />
           <span>Ctrl+K</span>

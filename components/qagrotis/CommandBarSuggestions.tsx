@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, PlusCircle, Sparkles, Search, CheckCircle2, RotateCcw, LayoutDashboard, Users, Settings, FileText, ClipboardCheck } from "lucide-react"
+import { ArrowRight, Sparkles, Search, LayoutDashboard, Users, Settings, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
 
@@ -21,14 +21,14 @@ const SUGGESTIONS: Record<string, SuggestionGroup[]> = {
       title: "Buscar",
       items: [
         { icon: Search, label: "Cenários com erro", command: "buscar cenários com erro" },
-        { icon: Search, label: "Cenários do módulo atual", command: "buscar cenários do módulo" },
+        { icon: Search, label: "Cenários do módulo atual", command: "buscar cenários" },
       ],
     },
     {
-      title: "Ações",
+      title: "Navegar",
       items: [
-        { icon: PlusCircle, label: "Criar nova suite", command: "crie uma nova suite de regressão" },
-        { icon: Sparkles, label: "Ir para o Gerador", command: "ir para o gerador" },
+        { icon: Sparkles, label: "Gerador de cenários", command: "ir para o gerador" },
+        { icon: ArrowRight, label: "Suites", command: "ir para suites" },
       ],
     },
   ],
@@ -41,11 +41,10 @@ const SUGGESTIONS: Record<string, SuggestionGroup[]> = {
       ],
     },
     {
-      title: "Ações",
+      title: "Navegar",
       items: [
-        { icon: PlusCircle, label: "Criar nova suite", command: "crie uma nova suite de regressão" },
-        { icon: CheckCircle2, label: "Encerrar uma suite", command: "encerrar suite" },
-        { icon: RotateCcw, label: "Reabrir uma suite", command: "reabrir suite" },
+        { icon: FileText, label: "Cenários", command: "ir para cenários" },
+        { icon: Sparkles, label: "Gerador de cenários", command: "ir para o gerador" },
       ],
     },
   ],
@@ -53,8 +52,9 @@ const SUGGESTIONS: Record<string, SuggestionGroup[]> = {
     {
       title: "Navegar",
       items: [
-        { icon: FileText, label: "Ir para cenários", command: "ir para cenários" },
-        { icon: ArrowRight, label: "Ir para suites", command: "ir para suites" },
+        { icon: FileText, label: "Cenários", command: "ir para cenários" },
+        { icon: ArrowRight, label: "Suites", command: "ir para suites" },
+        { icon: LayoutDashboard, label: "Painel", command: "ir para o painel" },
       ],
     },
   ],
@@ -67,10 +67,10 @@ const SUGGESTIONS: Record<string, SuggestionGroup[]> = {
       ],
     },
     {
-      title: "Ações",
+      title: "Navegar",
       items: [
-        { icon: PlusCircle, label: "Criar nova suite", command: "crie uma nova suite de regressão" },
-        { icon: FileText, label: "Ir para cenários", command: "ir para cenários" },
+        { icon: FileText, label: "Cenários", command: "ir para cenários" },
+        { icon: ArrowRight, label: "Suites", command: "ir para suites" },
       ],
     },
   ],
@@ -78,8 +78,9 @@ const SUGGESTIONS: Record<string, SuggestionGroup[]> = {
     {
       title: "Navegar",
       items: [
-        { icon: LayoutDashboard, label: "Ir para o painel", command: "ir para o painel" },
-        { icon: FileText, label: "Ir para cenários", command: "ir para cenários" },
+        { icon: LayoutDashboard, label: "Painel", command: "ir para o painel" },
+        { icon: FileText, label: "Cenários", command: "ir para cenários" },
+        { icon: ArrowRight, label: "Suites", command: "ir para suites" },
       ],
     },
   ],
