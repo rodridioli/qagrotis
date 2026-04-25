@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Bot, Send, RotateCcw, Loader2, AlertCircle, X } from "lucide-react"
+import { LifeBuoy, Send, RotateCcw, Loader2, AlertCircle, X } from "lucide-react"
 import {
   Sheet,
   SheetContent,
@@ -166,11 +166,11 @@ export function AssistenteDrawer({ open, onOpenChange }: AssistenteDrawerProps) 
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-default px-4 py-3">
             <div className="flex items-center gap-2.5">
               <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-primary">
-                <Bot className="size-4 text-white" />
+                <LifeBuoy className="size-4 text-white" />
               </div>
               <div>
                 <SheetTitle className="text-sm font-semibold leading-none text-text-primary">
-                  Assistente de IA
+                  Central de Ajuda
                 </SheetTitle>
                 <p className="mt-0.5 text-xs text-text-secondary">Base de Conhecimento</p>
               </div>
@@ -191,7 +191,7 @@ export function AssistenteDrawer({ open, onOpenChange }: AssistenteDrawerProps) 
                 variant="ghost"
                 size="icon-sm"
                 onClick={() => onOpenChange(false)}
-                aria-label="Fechar assistente"
+                aria-label="Fechar central de ajuda"
               >
                 <X className="size-4" />
               </Button>
@@ -255,7 +255,7 @@ function EmptyState() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 py-8 text-center">
       <div className="flex size-14 items-center justify-center rounded-full bg-brand-primary/10">
-        <Bot className="size-7 text-brand-primary" />
+        <LifeBuoy className="size-7 text-brand-primary" />
       </div>
       <p className="text-sm font-medium text-text-primary">Como posso ajudar?</p>
     </div>
@@ -323,7 +323,7 @@ function MessageBubble({ msg }: { msg: Message }) {
     <div className={cn("flex gap-2", isUser ? "justify-end" : "justify-start")}>
       {!isUser && (
         <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-primary">
-          <Bot className="size-3.5 text-white" />
+          <LifeBuoy className="size-3.5 text-white" />
         </div>
       )}
       <div

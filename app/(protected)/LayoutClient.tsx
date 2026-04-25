@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, FileText, Rocket, BookOpen,
-  Settings, Bot, LogOut, ChevronLeft,
+  Settings, LifeBuoy, LogOut, ChevronLeft,
   ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
 } from "lucide-react"
 import { PageAssistantProvider } from "@/contexts/PageAssistantContext"
@@ -40,7 +40,7 @@ const NAV_ITEMS = [
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false },
   { href: "/documentos",    icon: BookOpen,        label: "Documentos",       alwaysEnabled: false },
-  { href: "/assistente",    icon: Bot,             label: "Central de Ajuda", alwaysEnabled: false },
+  { href: "/assistente",    icon: LifeBuoy,        label: "Central de Ajuda", alwaysEnabled: false },
   { href: "/equipe",        icon: Users,           label: "Equipe",           alwaysEnabled: false },
   { href: "/configuracoes", icon: Settings,        label: "Configurações",    alwaysEnabled: true  },
   { href: "/atualizacoes",  icon: History,         label: "Atualizações",     alwaysEnabled: false },
