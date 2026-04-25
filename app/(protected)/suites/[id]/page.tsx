@@ -1,6 +1,17 @@
 export const dynamic = "force-dynamic"
 
 import { Suspense } from "react"
+
+function SuitePageSkeleton() {
+  return (
+    <div className="space-y-4 p-1">
+      <div className="h-8 w-48 animate-pulse rounded-lg bg-surface-card" />
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="h-14 w-full animate-pulse rounded-xl bg-surface-card" style={{ animationDelay: `${i * 60}ms` }} />
+      ))}
+    </div>
+  )
+}
 import { notFound } from "next/navigation"
 import { getSuiteById } from "@/lib/actions/suites"
 import { getActiveSistemaNames } from "@/lib/actions/sistemas"
@@ -39,7 +50,7 @@ export default async function SuiteDetailPage({
 }) {
   const { id } = await params
   return (
-    <Suspense>
+    <Suspense fallback={<SuitePageSkeleton />}>
       <SuiteDetailContent id={id} />
     </Suspense>
   )

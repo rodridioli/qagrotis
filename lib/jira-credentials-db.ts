@@ -1,5 +1,6 @@
 import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma"
+import { encryptField, decryptField } from "@/lib/db-utils"
 
 export type StoredJiraCredentials = {
   jiraUrl: string
@@ -28,9 +29,13 @@ export async function getUserJiraCredentials(userId: string): Promise<StoredJira
       select: { jiraUrl: true, jiraEmail: true, apiToken: true },
     })
     if (!row) return null
-    return { jiraUrl: row.jiraUrl, jiraEmail: row.jiraEmail, apiToken: row.apiToken }
+    return {
+      jiraUrl:   row.jiraUrl,
+      jiraEmail: row.jiraEmail,
+      apiToken:  decryptField(row.apiToken),
+    }
   } catch (e) {
-    console.error("[jira-credentials-db] getUserJiraCredentials:", e)
+    if (process.env.NODE_ENV !== "production") console.error("[jira-credentials-db] getUserJiraCredentials:", e)
     return null
   }
 }
@@ -57,11 +62,11 @@ export async function upsertUserJiraCredentials(
 
   await prisma.userJiraCredentials.upsert({
     where: { userId },
-    create: { userId, jiraUrl, jiraEmail, apiToken },
+    create: { userId, jiraUrl, jiraEmail, apiToken: encryptField(apiToken) },
     update: {
       jiraUrl,
       jiraEmail,
-      ...(incomingToken ? { apiToken: incomingToken } : {}),
+      ...(incomingToken ? { apiToken: encryptField(incomingToken) } : {}),
     },
   })
 }
@@ -70,7 +75,7 @@ export async function deleteUserJiraCredentials(userId: string): Promise<void> {
   try {
     await prisma.userJiraCredentials.deleteMany({ where: { userId } })
   } catch (e) {
-    console.error("[jira-credentials-db] deleteUserJiraCredentials:", e)
+    if (process.env.NODE_ENV !== "production") console.error("[jira-credentials-db] deleteUserJiraCredentials:", e)
   }
 }
 

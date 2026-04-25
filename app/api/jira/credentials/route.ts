@@ -52,7 +52,7 @@ export async function GET() {
       configured: !!(jiraUrl && jiraEmail && hasToken),
     })
   } catch (e) {
-    console.error("[jira/credentials] GET:", e)
+    if (process.env.NODE_ENV !== "production") console.error("[jira/credentials] GET:", e)
     return Response.json(
       { jiraUrl: "", jiraEmail: "", hasToken: false, configured: false },
       { status: 200 },
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     if (e instanceof Error && e.message === "MISSING_TOKEN") {
       return new Response("Informe o API Token na primeira configuração ou ao trocar o token.", { status: 400 })
     }
-    console.error("[jira/credentials] POST: falha na BD — usando cookies (rode prisma migrate deploy).", e)
+    if (process.env.NODE_ENV !== "production") console.error("[jira/credentials] POST: falha na BD — usando cookies (rode prisma migrate deploy).", e)
     const token =
       jiraToken?.trim() ||
       (await getUserJiraCredentials(session.user.id))?.apiToken ||

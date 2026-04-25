@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { nextId } from "@/lib/db-utils"
-import { requireSession } from "@/lib/session"
+import { nextId, encryptField } from "@/lib/db-utils"
+import { requireAdmin, requireSession } from "@/lib/session"
 import { prisma } from "@/lib/prisma"
 
 export interface CredencialRecord {
@@ -52,7 +52,7 @@ export async function criarCredencial(data: {
   usuario: string
   senha: string
 }): Promise<CredencialRecord> {
-  await requireSession()
+  await requireAdmin()
   const parsed = credencialInputSchema.parse({
     nome:        data.nome.trim(),
     urlAmbiente: data.urlAmbiente?.trim() || null,
@@ -64,7 +64,7 @@ export async function criarCredencial(data: {
   const id = nextId(existing.map((c) => c.id), "CRD")
 
   const row = await prisma.credencial.create({
-    data: { id, nome: parsed.nome, urlAmbiente: parsed.urlAmbiente ?? null, usuario: parsed.usuario, senha: parsed.senha, active: true },
+    data: { id, nome: parsed.nome, urlAmbiente: parsed.urlAmbiente ?? null, usuario: parsed.usuario, senha: encryptField(parsed.senha), active: true },
     select: { id: true, nome: true, urlAmbiente: true, usuario: true, active: true, createdAt: true },
   })
 
@@ -77,7 +77,7 @@ export async function atualizarCredencial(
   id: string,
   data: { nome: string; urlAmbiente?: string | null; usuario: string; senha?: string }
 ): Promise<CredencialRecord> {
-  await requireSession()
+  await requireAdmin()
   idSchema.parse(id)
   const parsed = z.object({
     nome:        z.string().min(1).max(200),
@@ -96,7 +96,7 @@ export async function atualizarCredencial(
     urlAmbiente: parsed.urlAmbiente ?? null,
     usuario: parsed.usuario,
   }
-  if (parsed.senha) updateData.senha = parsed.senha
+  if (parsed.senha) updateData.senha = encryptField(parsed.senha)
 
   const row = await prisma.credencial.update({
     where: { id },
@@ -110,7 +110,7 @@ export async function atualizarCredencial(
 }
 
 export async function inativarCredencial(id: string): Promise<void> {
-  await requireSession()
+  await requireAdmin()
   idSchema.parse(id)
   await prisma.credencial.update({ where: { id }, data: { active: false } })
   revalidatePath("/configuracoes/credenciais")

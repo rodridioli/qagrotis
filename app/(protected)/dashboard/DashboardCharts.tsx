@@ -92,14 +92,14 @@ const CHART_OPTS: { value: ChartFilter; label: string }[] = [
 // ── Pie chart colors ──────────────────────────────────────────────────────────
 
 const PIE_COLORS = [
-  "var(--brand-primary)",
-  "#6366f1",
-  "#f59e0b",
-  "#0ea5e9",
-  "#10b981",
-  "#f43f5e",
-  "#8b5cf6",
-  "#14b8a6",
+  "var(--palette-chart-1)",
+  "var(--palette-chart-2)",
+  "var(--palette-chart-3)",
+  "var(--palette-chart-4)",
+  "var(--palette-chart-5)",
+  "var(--palette-chart-6)",
+  "var(--palette-chart-7)",
+  "var(--palette-chart-8)",
 ]
 
 // ── FilterSelect ───────────────────────────────────────────────────────────────
@@ -265,18 +265,19 @@ export function DashboardCharts({
 
         {/* Cenários gerados */}
         <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
-          <div className="mb-4 flex flex-nowrap items-center gap-2">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Cenários gerados
             </h2>
-            <div className="flex-1" />
-            <ModuloSelect modulos={moduloNames} value={rankingModulo} onChange={onRankingModuloChange} />
-            <FilterSelect<RankingFilter>
-              options={RANKING_OPTS}
-              value={rankingFilter}
-              onChange={onRankingFilterChange}
-              label="Filtro período ranking"
-            />
+            <div className="flex shrink-0 items-center gap-2">
+              <ModuloSelect modulos={moduloNames} value={rankingModulo} onChange={onRankingModuloChange} />
+              <FilterSelect<RankingFilter>
+                options={RANKING_OPTS}
+                value={rankingFilter}
+                onChange={onRankingFilterChange}
+                label="Filtro período ranking"
+              />
+            </div>
           </div>
 
           {rankingData.length === 0 ? (
@@ -352,18 +353,19 @@ export function DashboardCharts({
 
         {/* Testes executados */}
         <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
-          <div className="mb-4 flex flex-nowrap items-center gap-2">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Testes executados: <span className="text-brand-primary">{totalExecucoes.toLocaleString("pt-BR")}</span>
             </h2>
-            <div className="flex-1" />
-            <ModuloSelect modulos={moduloNames} value={testesModulo} onChange={onTestesModuloChange} />
-            <FilterSelect<TestesFilter>
-              options={TESTES_OPTS}
-              value={testesFilter}
-              onChange={onTestesFilterChange}
-              label="Filtro período testes"
-            />
+            <div className="flex shrink-0 items-center gap-2">
+              <ModuloSelect modulos={moduloNames} value={testesModulo} onChange={onTestesModuloChange} />
+              <FilterSelect<TestesFilter>
+                options={TESTES_OPTS}
+                value={testesFilter}
+                onChange={onTestesFilterChange}
+                label="Filtro período testes"
+              />
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={testesData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -430,18 +432,19 @@ export function DashboardCharts({
 
         {/* Erros encontrados */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <div className="mb-4 flex flex-nowrap items-center gap-2">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Erros encontrados: <span className="text-destructive">{totalErros.toLocaleString("pt-BR")}</span>
             </h2>
-            <div className="flex-1" />
-            <ModuloSelect modulos={moduloNames} value={errosModulo} onChange={onErrosModuloChange} />
-            <FilterSelect<ChartFilter>
-              options={CHART_OPTS}
-              value={errosFilter}
-              onChange={onErrosFilterChange}
-              label="Filtro período erros"
-            />
+            <div className="flex shrink-0 items-center gap-2">
+              <ModuloSelect modulos={moduloNames} value={errosModulo} onChange={onErrosModuloChange} />
+              <FilterSelect<ChartFilter>
+                options={CHART_OPTS}
+                value={errosFilter}
+                onChange={onErrosFilterChange}
+                label="Filtro período erros"
+              />
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={errosData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -462,18 +465,19 @@ export function DashboardCharts({
 
         {/* Testes de sucesso */}
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <div className="mb-4 flex flex-nowrap items-center gap-2">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Testes de sucesso: <span className="text-qagrotis-primary-500">{totalSucesso.toLocaleString("pt-BR")}</span>
             </h2>
-            <div className="flex-1" />
-            <ModuloSelect modulos={moduloNames} value={sucessoModulo} onChange={onSucessoModuloChange} />
-            <FilterSelect<ChartFilter>
-              options={CHART_OPTS}
-              value={sucessoFilter}
-              onChange={onSucessoFilterChange}
-              label="Filtro período sucesso"
-            />
+            <div className="flex shrink-0 items-center gap-2">
+              <ModuloSelect modulos={moduloNames} value={sucessoModulo} onChange={onSucessoModuloChange} />
+              <FilterSelect<ChartFilter>
+                options={CHART_OPTS}
+                value={sucessoFilter}
+                onChange={onSucessoFilterChange}
+                label="Filtro período sucesso"
+              />
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={sucessoData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>

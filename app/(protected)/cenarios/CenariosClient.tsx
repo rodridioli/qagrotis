@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useTransition, useRef } from "react"
+import { useState, useEffect, useMemo, useDeferredValue, useTransition, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AlertCircle, ArrowRightLeft, ChevronDown, ChevronUp, FileText, Filter, MoreVertical, Plus, Power, RotateCcw, Upload, X } from "lucide-react"
@@ -65,14 +65,13 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isImporting, setIsImporting] = useState(false)
-  const [initialCenarios, setInitialCenarios] = useState(initialCenariosParam)
-  useEffect(() => { setInitialCenarios(initialCenariosParam) }, [initialCenariosParam])
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
   const { sistemaSelecionado } = useSistemaSelecionado()
   const setupFileInputRef = useRef<HTMLInputElement>(null)
 
   const [search, setSearch] = useState("")
+  const deferredSearch = useDeferredValue(search)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -112,11 +111,11 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
   const clienteNames = initialClientes.map((c) => c.nomeFantasia)
 
   const filtered = useMemo(() => {
-    const result = initialCenarios.filter((c) => {
+    const result = initialCenariosParam.filter((c) => {
       const matchSearch =
-        !search ||
-        c.id.toLowerCase().includes(search.toLowerCase()) ||
-        c.scenarioName.toLowerCase().includes(search.toLowerCase())
+        !deferredSearch ||
+        c.id.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+        c.scenarioName.toLowerCase().includes(deferredSearch.toLowerCase())
       const matchSistema = !sistemaSelecionado || c.system === sistemaSelecionado
       const matchModulo = !filters.modulo || c.module === filters.modulo
       const matchCliente = !filters.cliente || c.client === filters.cliente
@@ -128,7 +127,7 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
       const diff = numericId(a.id) - numericId(b.id)
       return sortOrder === "desc" ? -diff : diff
     })
-  }, [search, filters, sistemaSelecionado, initialCenarios, sortOrder])
+  }, [deferredSearch, filters, sistemaSelecionado, initialCenariosParam, sortOrder])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -143,7 +142,7 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
     filters.apenasInativos ? "1" : "",
   ].filter(Boolean).length
 
-  const hasActiveCenarios = initialCenarios.some((c) => c.active)
+  const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
   const showBulkActions = !filters.apenasInativos && hasActiveCenarios
   const selectableIds = pageItems.map((c) => c.id)
 
@@ -248,7 +247,7 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
       const parsed = parseMarkdownCenarios(text)
       if (parsed.length === 0) { toast.error("Nenhum cenário encontrado no arquivo."); return }
 
-      const items = buildImportItems(parsed, importSetupModule, initialCenarios)
+      const items = buildImportItems(parsed, importSetupModule, initialCenariosParam)
       setImportItems(items)
       setImportSetupOpen(false)
       setImportModalOpen(true)
@@ -365,7 +364,7 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
           onFilterOpen={() => { setPendingFilters(filters); setFilterOpen(true) }}
           totalLabel="Total de cenários"
           totalCount={filtered.length}
-          baseCount={sistemaSelecionado ? initialCenarios.filter((c) => c.system === sistemaSelecionado).length : initialCenarios.length}
+          baseCount={sistemaSelecionado ? initialCenariosParam.filter((c) => c.system === sistemaSelecionado).length : initialCenariosParam.length}
         />
 
         {pageItems.length === 0 ? (

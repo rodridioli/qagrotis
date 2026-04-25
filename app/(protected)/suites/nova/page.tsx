@@ -1,6 +1,17 @@
 export const dynamic = "force-dynamic"
 
 import { Suspense } from "react"
+
+function SuitePageSkeleton() {
+  return (
+    <div className="space-y-4 p-1">
+      <div className="h-8 w-48 animate-pulse rounded-lg bg-surface-card" />
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="h-14 w-full animate-pulse rounded-xl bg-surface-card" style={{ animationDelay: `${i * 60}ms` }} />
+      ))}
+    </div>
+  )
+}
 import { getActiveSistemaNames } from "@/lib/actions/sistemas"
 import { getModulos } from "@/lib/actions/modulos"
 import { getCenarios } from "@/lib/actions/cenarios"
@@ -52,7 +63,7 @@ export default async function NovaSuitePage({
   const cenarioIds = params.cenarios ? params.cenarios.split(",").filter(Boolean) : []
 
   return (
-    <Suspense>
+    <Suspense fallback={<SuitePageSkeleton />}>
       <NovaSuiteContent cenarioIds={cenarioIds} />
     </Suspense>
   )

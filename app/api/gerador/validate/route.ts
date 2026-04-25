@@ -22,7 +22,9 @@ export async function POST(req: NextRequest) {
   if (!session?.user) {
     return new Response("Unauthorized", { status: 401 })
   }
-  if (!checkValidateRateLimit(session.user.id!)) {
+  const userId = session.user.id ?? session.user.email ?? ""
+  if (!userId) return new Response("Unauthorized", { status: 401 })
+  if (!checkValidateRateLimit(userId)) {
     return new Response("Muitas tentativas. Aguarde um momento.", { status: 429 })
   }
 

@@ -198,27 +198,22 @@ async function resolveEmailForQaUserId(id: string): Promise<string | null> {
 
 /** Outro cadastro (CreatedUser ou OAuth) com o mesmo e-mail já ativo — reativação geraria duplicidade. */
 async function hasActiveOtherWithSameEmail(excludeUserId: string, emailNorm: string): Promise<boolean> {
-  const inactiveRows = await prisma.inactiveUser.findMany({ select: { userId: true } })
+  // Run all three queries in parallel to avoid sequential round-trips
+  const [inactiveRows, otherCreated, otherAuth] = await Promise.all([
+    prisma.inactiveUser.findMany({ select: { userId: true } }),
+    prisma.createdUser.findFirst({
+      where: { email: { equals: emailNorm, mode: "insensitive" }, NOT: { id: excludeUserId } },
+      select: { id: true },
+    }),
+    prisma.user.findFirst({
+      where: { email: { equals: emailNorm, mode: "insensitive" }, NOT: { id: excludeUserId } },
+      select: { id: true },
+    }),
+  ])
+
   const inactiveSet = new Set(inactiveRows.map((r) => r.userId))
-
-  const otherCreated = await prisma.createdUser.findFirst({
-    where: {
-      email: { equals: emailNorm, mode: "insensitive" },
-      NOT: { id: excludeUserId },
-    },
-    select: { id: true },
-  })
   if (otherCreated && !inactiveSet.has(otherCreated.id)) return true
-
-  const otherAuth = await prisma.user.findFirst({
-    where: {
-      email: { equals: emailNorm, mode: "insensitive" },
-      NOT: { id: excludeUserId },
-    },
-    select: { id: true },
-  })
-  if (otherAuth && !inactiveSet.has(otherAuth.id)) return true
-
+  if (otherAuth    && !inactiveSet.has(otherAuth.id))    return true
   return false
 }
 
@@ -367,6 +362,15 @@ export async function criarQaUser(data: {
   }
   if (data.password.length > 100) {
     return { error: "Senha muito longa." }
+  }
+  if (!/[A-Z]/.test(data.password)) {
+    return { error: "A senha deve conter ao menos uma letra maiúscula." }
+  }
+  if (!/[0-9]/.test(data.password)) {
+    return { error: "A senha deve conter ao menos um número." }
+  }
+  if (!/[^A-Za-z0-9]/.test(data.password)) {
+    return { error: "A senha deve conter ao menos um caractere especial (ex: @, #, !)." }
   }
 
   let parsed: { name: string; email: string; type: "Padrão" | "Administrador" }

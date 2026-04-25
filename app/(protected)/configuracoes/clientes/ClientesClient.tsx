@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import React, { useEffect, useState, useMemo, useTransition } from "react"
+import React, { useState, useMemo, useDeferredValue, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, RotateCcw, X, Filter, Power, Check } from "lucide-react"
@@ -47,12 +47,11 @@ interface Props {
 export default function ClientesClient({ initialClientes: initialClientesParam, initialCenarios, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [localClientes, setLocalClientes] = useState(initialClientesParam)
-  useEffect(() => { setLocalClientes(initialClientesParam) }, [initialClientesParam])
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
 
   const [search, setSearch] = useState("")
+  const deferredSearch = useDeferredValue(search)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -145,13 +144,13 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
   }
 
   const filtered = useMemo(() => {
-    const result = localClientes.filter((c) => {
+    const result = initialClientesParam.filter((c) => {
       const matchSearch =
-        !search ||
-        c.id.toLowerCase().includes(search.toLowerCase()) ||
-        c.nomeFantasia.toLowerCase().includes(search.toLowerCase()) ||
-        (c.razaoSocial ?? "").toLowerCase().includes(search.toLowerCase()) ||
-        (c.cpfCnpj ?? "").toLowerCase().includes(search.toLowerCase())
+        !deferredSearch ||
+        c.id.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+        c.nomeFantasia.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+        (c.razaoSocial ?? "").toLowerCase().includes(deferredSearch.toLowerCase()) ||
+        (c.cpfCnpj ?? "").toLowerCase().includes(deferredSearch.toLowerCase())
       const matchAtivo = apenasInativos ? !c.active : c.active
       return matchSearch && matchAtivo
     })
@@ -159,7 +158,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
       const diff = numericId(a.id) - numericId(b.id)
       return sortOrder === "desc" ? -diff : diff
     })
-  }, [search, apenasInativos, localClientes, sortOrder])
+  }, [deferredSearch, apenasInativos, initialClientesParam, sortOrder])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -178,7 +177,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
   }, [initialCenarios])
 
   const activeFilterCount = apenasInativos ? 1 : 0
-  const hasActiveClientes = localClientes.some((c) => c.active)
+  const hasActiveClientes = initialClientesParam.some((c) => c.active)
   const showBulkActions = isAdmin && !apenasInativos && hasActiveClientes
   const selectableIds = pageItems.map((c) => c.id)
 
@@ -320,7 +319,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
           onFilterOpen={() => { setPendingInativos(apenasInativos); setFilterOpen(true) }}
           totalLabel="Total de clientes"
           totalCount={filtered.length}
-          baseCount={localClientes.length}
+          baseCount={initialClientesParam.length}
         />
 
         {pageItems.length === 0 ? (

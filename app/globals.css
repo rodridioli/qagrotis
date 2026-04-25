@@ -437,6 +437,16 @@
   --radius-lg: var(--radius-control);
   --radius-xl: var(--radius-control);
   --radius-full: 9999px;
+
+  /* ── Chart palette (tokens para gráficos de pizza/barra) ── */
+  --palette-chart-1: var(--brand-primary);
+  --palette-chart-2: #6366f1;
+  --palette-chart-3: #f59e0b;
+  --palette-chart-4: #0ea5e9;
+  --palette-chart-5: #10b981;
+  --palette-chart-6: #f43f5e;
+  --palette-chart-7: #8b5cf6;
+  --palette-chart-8: #14b8a6;
 }
 /* [design-system:end] */
 
