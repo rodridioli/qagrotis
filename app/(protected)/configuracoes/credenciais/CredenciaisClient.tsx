@@ -187,13 +187,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
         {filtered.length === 0 ? (
           <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
             {items.length === 0 ? (
-              <div className="space-y-3">
-                <p>Nenhuma credencial cadastrada.</p>
-                <Button variant="outline" onClick={() => setAddOpen(true)} className="gap-2">
-                  <Plus className="size-4" />
-                  Adicionar Credencial
-                </Button>
-              </div>
+              "Nenhum registro encontrado."
             ) : (
               "Nenhum resultado para a busca."
             )}

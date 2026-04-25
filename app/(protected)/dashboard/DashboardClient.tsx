@@ -1,8 +1,9 @@
 "use client"
 
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { Layers, FileText, ClipboardList, Cpu } from "lucide-react"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
+import { usePageAssistantData } from "@/contexts/PageAssistantContext"
 import { DashboardCharts } from "./DashboardCharts"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { ModuloRecord } from "@/lib/actions/modulos"
@@ -301,12 +302,33 @@ export function DashboardClient({
 
   // ── Suites filtradas ───────────────────────────────────────────────────────
   const suitesFiltradas = useMemo(() =>
-    allSuites.filter(s => 
+    allSuites.filter(s =>
       (!sistemaSelecionado || s.sistema === sistemaSelecionado) &&
       activeModuleNames.has(s.modulo)
     ),
     [allSuites, sistemaSelecionado, activeModuleNames]
   )
+
+  // ── Expose contextual data to PageAssistant ─────────────────────────────────
+  const setPageData = usePageAssistantData()
+  useEffect(() => {
+    setPageData({
+      page: "dashboard",
+      data: {
+        totalModulos,
+        totalCenarios,
+        totalManuais,
+        totalAutomatizados,
+        pctManuais,
+        pctAuto,
+        totalSuites: suitesFiltradas.length,
+        suitesComExecucao: suitesFiltradas.filter((s) => (s.historico ?? []).length > 0).length,
+        cenariosPorModulo: cenariosPorModulo.slice(0, 15),
+        cobertura: automationData.slice(0, 15),
+      },
+    })
+    return () => setPageData(null)
+  }, [setPageData, totalModulos, totalCenarios, totalManuais, totalAutomatizados, pctManuais, pctAuto, suitesFiltradas, cenariosPorModulo, automationData])
 
   // ── Lista de módulos do sistema selecionado (para filtros) ─────────────────
   const moduloNames = useMemo(() => {

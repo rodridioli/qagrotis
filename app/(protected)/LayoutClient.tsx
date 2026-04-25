@@ -8,8 +8,8 @@ import {
   Settings, Bot, LogOut, ChevronLeft,
   ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
 } from "lucide-react"
-import { CommandBarProvider, useCommandBarContext } from "@/contexts/CommandBarContext"
-import { CommandBar } from "@/components/qagrotis/CommandBar"
+import { PageAssistantProvider } from "@/contexts/PageAssistantContext"
+import { PageAssistant } from "@/components/qagrotis/PageAssistant"
 import {
   Select,
   SelectTrigger,
@@ -40,7 +40,7 @@ const NAV_ITEMS = [
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false },
   { href: "/documentos",    icon: BookOpen,        label: "Documentos",       alwaysEnabled: false },
-  { href: "/assistente",    icon: Bot,             label: "Assistente de IA", alwaysEnabled: false },
+  { href: "/assistente",    icon: Bot,             label: "Central de Ajuda", alwaysEnabled: false },
   { href: "/equipe",        icon: Users,           label: "Equipe",           alwaysEnabled: false },
   { href: "/configuracoes", icon: Settings,        label: "Configurações",    alwaysEnabled: true  },
   { href: "/atualizacoes",  icon: History,         label: "Atualizações",     alwaysEnabled: false },
@@ -53,7 +53,7 @@ const TITLE_MAP: Record<string, string> = {
   "/suites":        "Suítes",
   "/documentos":    "Documentos",
   "/configuracoes": "Configurações",
-  "/assistente":    "Assistente de IA",
+  "/assistente":    "Central de Ajuda",
   "/atualizacoes":  "Atualizações",
   "/equipe":        "Equipe",
 }
@@ -316,7 +316,6 @@ const Topbar = React.memo(function Topbar({
   const pathname = usePathname()
   const title = getTitle(pathname)
   const { data: session } = useSession()
-  const { open: openCommandBar } = useCommandBarContext()
   /** Evita mismatch de hidratação: no SSR o cliente ainda não aplicou a sessão do browser. */
   const [sessionUiReady, setSessionUiReady] = useState(false)
   useEffect(() => {
@@ -364,15 +363,6 @@ const Topbar = React.memo(function Topbar({
       </div>
 
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={openCommandBar}
-          aria-label="Abrir barra de comandos (Ctrl+K)"
-          className="hidden items-center gap-1.5 rounded-md border border-border-default bg-surface-input px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary sm:flex sm:text-sm"
-        >
-          <Sparkles className="size-3 text-brand-primary" aria-hidden="true" />
-          <span>Ctrl+K</span>
-        </button>
         <button
           type="button"
           onClick={onToggleTheme}
@@ -537,9 +527,9 @@ export default function LayoutClient({
   }
 
   return (
-    <CommandBarProvider>
+    <PageAssistantProvider>
     <SistemaContext.Provider value={{ sistemaSelecionado, setSistemaSelecionado: handleSistemaChange }}>
-      <CommandBar />
+      <PageAssistant />
       <div className="flex h-screen overflow-hidden">
         <Sidebar
           collapsed={collapsed}
@@ -578,6 +568,6 @@ export default function LayoutClient({
         </div>
       </div>
     </SistemaContext.Provider>
-    </CommandBarProvider>
+    </PageAssistantProvider>
   )
 }

@@ -41,6 +41,7 @@ import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { ClienteRecord } from "@/lib/actions/clientes"
 import { toast } from "sonner"
+import { usePageAssistantData } from "@/contexts/PageAssistantContext"
 
 const ITEMS_PER_PAGE = 20
 
@@ -144,6 +145,36 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
     filters.tipo,
     filters.apenasInativos ? "1" : "",
   ].filter(Boolean).length
+
+  // ── Expose contextual data to PageAssistant ─────────────────────────────────
+  const setPageData = usePageAssistantData()
+  useEffect(() => {
+    setPageData({
+      page: "cenarios",
+      data: {
+        totalVisible: filtered.length,
+        filtros: {
+          modulo: filters.modulo || null,
+          cliente: filters.cliente || null,
+          tipo: filters.tipo || null,
+          apenasInativos: filters.apenasInativos,
+          busca: deferredSearch || null,
+        },
+        amostra: filtered.slice(0, 30).map((c) => ({
+          id: c.id,
+          nome: c.scenarioName,
+          modulo: c.module,
+          cliente: c.client,
+          tipo: c.tipo,
+          ativo: c.active,
+          execucoes: c.execucoes,
+          erros: c.erros,
+          suites: c.suites,
+        })),
+      },
+    })
+    return () => setPageData(null)
+  }, [setPageData, filtered, filters, deferredSearch])
 
   const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
   const showBulkActions = !filters.apenasInativos && hasActiveCenarios

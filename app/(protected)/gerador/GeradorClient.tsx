@@ -42,8 +42,8 @@ import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 import { FileUploadButton, type UploadFile } from "@/components/qagrotis/FileUploadButton"
-import { VoiceButton } from "@/components/qagrotis/VoiceButton"
-import { useSpeechRecognition } from "@/hooks/useSpeechRecognition"
+import { GeradorSuggestions } from "@/components/qagrotis/GeradorSuggestions"
+import { usePageAssistantData } from "@/contexts/PageAssistantContext"
 
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -65,14 +65,6 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const [contexto, setContexto] = useState("")
   const [jiraInput, setJiraInput] = useState("")
 
-  const { isListening: voiceListening, isSupported: voiceSupported, start: startVoice, stop: stopVoice } = useSpeechRecognition({
-    onTranscript: (text, isFinal) => {
-      if (isFinal) {
-        setContexto((prev) => prev ? `${prev}\n${text}` : text)
-      }
-    },
-    onError: (msg) => toast.error(msg),
-  })
   const [jiraConfigured, setJiraConfigured] = useState(false)
 
   function refreshJiraConfigured() {
@@ -121,6 +113,25 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const abortRef = useRef<AbortController | null>(null)
   const generateInFlight = useRef(false)
   const [anexoPreviews, setAnexoPreviews] = useState<UploadFile[]>([])
+
+  // ── Expose contextual data to PageAssistant ─────────────────────────────────
+  const setPageData = usePageAssistantData()
+  useEffect(() => {
+    setPageData({
+      page: "gerador",
+      data: {
+        contextoChars: contexto.length,
+        contextoPreview: contexto.slice(0, 400),
+        temJira: jiraInput.trim().length > 0,
+        jiraConfigured,
+        anexos: anexoPreviews.length,
+        temOutput: output.length > 0,
+        outputChars: output.length,
+        abaAtiva: activeTab,
+      },
+    })
+    return () => setPageData(null)
+  }, [setPageData, contexto, jiraInput, jiraConfigured, anexoPreviews, output, activeTab])
 
   // Import state
   const [importSetupOpen, setImportSetupOpen] = useState(false)
@@ -679,26 +690,19 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
           {/* Contexto */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-text-primary">Contexto</label>
-              <div className="flex items-center gap-1.5">
-                {voiceListening && (
-                  <span className="text-[11px] text-destructive animate-pulse">Ouvindo...</span>
-                )}
-                <VoiceButton
-                  isListening={voiceListening}
-                  isSupported={voiceSupported}
-                  onStart={startVoice}
-                  onStop={stopVoice}
-                  size="sm"
-                />
-              </div>
-            </div>
+            <label className="text-sm font-medium text-text-primary">Contexto</label>
             <AutoResizeTextarea
               value={contexto}
               onChange={(e) => setContexto(e.target.value)}
               placeholder="Cole aqui requisitos, regras de negócio ou descrição da funcionalidade. Ou use o microfone para ditar."
               className="min-h-[200px]"
+            />
+            <GeradorSuggestions
+              contexto={contexto}
+              sistema={sistemaSelecionado}
+              onAppendEdgeCase={(text) =>
+                setContexto((prev) => (prev.trim() ? `${prev}\n- ${text}` : `- ${text}`))
+              }
             />
           </div>
 

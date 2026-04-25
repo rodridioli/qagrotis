@@ -38,6 +38,7 @@ import type { ModuloRecord } from "@/lib/actions/modulos"
 import { inativarSuites, ativarSuite, type SuiteListRecord } from "@/lib/actions/suites"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { usePageAssistantData } from "@/contexts/PageAssistantContext"
 
 const ITEMS_PER_PAGE = 20
 
@@ -149,6 +150,35 @@ export default function SuitesClient({ allModulos, suites }: Props) {
     filters.situacao,
     filters.apenasInativos ? "1" : "",
   ].filter(Boolean).length
+
+  // ── Expose contextual data to PageAssistant ─────────────────────────────────
+  const setPageData = usePageAssistantData()
+  useEffect(() => {
+    setPageData({
+      page: "suites",
+      data: {
+        totalVisible: filtered.length,
+        filtros: {
+          modulo: filters.modulo || null,
+          situacao: filters.situacao || null,
+          apenasInativos: filters.apenasInativos,
+          busca: search || null,
+        },
+        amostra: filtered.slice(0, 30).map((s) => ({
+          id: s.id,
+          nome: s.suiteName,
+          modulo: s.modulo,
+          versao: s.versao,
+          situacao: derivarSituacao(s),
+          execucoes: s.historicoCount,
+          erros: s.historicoErros,
+          totalCenarios: s.cenarios.length,
+          ativa: s.active,
+        })),
+      },
+    })
+    return () => setPageData(null)
+  }, [setPageData, filtered, filters, search])
 
   const showBulkActions = !filters.apenasInativos
   const selectableIds = pageItems.map((s) => s.id)
