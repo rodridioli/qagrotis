@@ -8,7 +8,7 @@ import {
   Settings, Bot, LogOut, ChevronLeft,
   ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
 } from "lucide-react"
-import { CommandBarProvider } from "@/contexts/CommandBarContext"
+import { CommandBarProvider, useCommandBarContext } from "@/contexts/CommandBarContext"
 import { CommandBar } from "@/components/qagrotis/CommandBar"
 import {
   Select,
