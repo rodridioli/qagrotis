@@ -8,6 +8,8 @@ import {
   Settings, Bot, LogOut, ChevronLeft,
   ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
 } from "lucide-react"
+import { CommandBarProvider } from "@/contexts/CommandBarContext"
+import { CommandBar } from "@/components/qagrotis/CommandBar"
 import {
   Select,
   SelectTrigger,
@@ -527,7 +529,9 @@ export default function LayoutClient({
   }
 
   return (
+    <CommandBarProvider>
     <SistemaContext.Provider value={{ sistemaSelecionado, setSistemaSelecionado: handleSistemaChange }}>
+      <CommandBar />
       <div className="flex h-screen overflow-hidden">
         <Sidebar
           collapsed={collapsed}
@@ -566,5 +570,6 @@ export default function LayoutClient({
         </div>
       </div>
     </SistemaContext.Provider>
+    </CommandBarProvider>
   )
 }
