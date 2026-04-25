@@ -140,7 +140,18 @@ async function callProvider(system: string, user: string, provider: string, mode
 
 // ── System prompt builder ─────────────────────────────────────────────────────
 
-function buildSystemPrompt(pathname: string, sistema: string, userName: string, modulos: string[], clientes: string[]): string {
+function buildSystemPrompt(
+  pathname: string,
+  sistema: string,
+  userName: string,
+  modulos: string[],
+  clientes: string[],
+  suites: { id: string; suiteName: string; modulo: string }[],
+): string {
+  const suitesStr = suites.length > 0
+    ? suites.map((s) => `${s.id} "${s.suiteName}" (${s.modulo})`).join(", ")
+    : "nenhuma ativa"
+
   return `Você é o assistente de comandos do QAgrotis, plataforma de gestão de QA para sistemas agrícolas (ERP Agroforte).
 
 Interprete o comando do usuário QA e responda APENAS com um JSON válido — sem markdown, sem texto explicativo.
@@ -151,34 +162,53 @@ CONTEXTO ATUAL:
 - Usuário: ${userName}
 - Módulos disponíveis: ${modulos.length > 0 ? modulos.join(", ") : "nenhum cadastrado"}
 - Clientes disponíveis: ${clientes.length > 0 ? clientes.join(", ") : "nenhum cadastrado"}
+- Suites ativas: ${suitesStr}
 
-FORMATOS DE RESPOSTA:
+FORMATOS DE RESPOSTA DISPONÍVEIS:
 
-Navegação (usuário quer ir para uma tela):
-{"type":"navigate","path":"/rota","label":"Nome"}
+1. Navegação (ir para uma tela):
+{"type":"navigate","path":"/rota","label":"Nome da tela"}
 
-Consulta (usuário quer ver/listar dados):
-{"type":"query","title":"Resumo do resultado","items":[{"id":"1","name":"Nome do item","module":"Módulo","meta":"info extra"}],"viewAllPath":"/rota?filtro=valor"}
+2. Buscar cenários (retorna dados reais do banco):
+{"type":"action","actionType":"create","label":"Buscando cenários","details":["Módulo: Financeiro","Com erros"],"payload":{"actionName":"buscar_cenarios","modulo":"Financeiro","comErro":true,"sistema":"${sistema}","cliente":""}}
 
-Ação de criação:
-{"type":"action","actionType":"create","label":"Descrição curta","details":["detalhe 1","detalhe 2"],"payload":{"actionName":"criar_suite","suiteName":"Nome","modulo":"Módulo","sistema":"${sistema}"}}
+3. Buscar suites (retorna dados reais do banco):
+{"type":"action","actionType":"create","label":"Buscando suites","details":["Apenas ativas"],"payload":{"actionName":"buscar_suites","ativas":true,"modulo":""}}
 
-Ação destrutiva (desativar/excluir):
-{"type":"action","actionType":"delete","label":"Descrição curta","details":["detalhe 1","detalhe 2"],"payload":{"actionName":"desativar_cenarios","cliente":"Nome do cliente"}}
+4. Criar suite (exige confirmação):
+{"type":"action","actionType":"create","label":"Criar suite \"Nome\"","details":["Nome: Nome da Suite","Módulo: Financeiro","Sistema: ${sistema || "Sistema"}"],"payload":{"actionName":"criar_suite","suiteName":"Nome da Suite","modulo":"Financeiro","sistema":"${sistema}"}}
 
-Erro ou comando não reconhecido:
-{"type":"error","message":"Mensagem curta","suggestion":"Exemplo de como reformular"}
+5. Registrar resultado de teste (exige confirmação):
+{"type":"action","actionType":"update","label":"Registrar Erro no CT-001","details":["Cenário: CT-001","Resultado: Erro"],"payload":{"actionName":"registrar_resultado","cenarioId":"CT-001","resultado":"Erro"}}
 
-Esclarecimento (comando ambíguo):
+6. Encerrar suite (exige confirmação — use o ID da lista de suites ativas):
+{"type":"action","actionType":"delete","label":"Encerrar suite \"Nome\"","details":["Suite: Nome da Suite"],"payload":{"actionName":"encerrar_suite","suiteId":"S-0001"}}
+
+7. Reabrir suite (exige confirmação):
+{"type":"action","actionType":"create","label":"Reabrir suite \"Nome\"","details":["Suite: Nome da Suite"],"payload":{"actionName":"reabrir_suite","suiteId":"S-0001"}}
+
+8. Desativar cenários de um cliente (exige confirmação):
+{"type":"action","actionType":"delete","label":"Desativar cenários do cliente X","details":["Cliente: X","Todos os cenários ativos serão desativados"],"payload":{"actionName":"desativar_cenarios","cliente":"Nome do cliente"}}
+
+9. Ir para o Gerador de cenários:
+{"type":"action","actionType":"create","label":"Ir para o Gerador","details":["Redirecionar para /gerador"],"payload":{"actionName":"criar_cenario"}}
+
+10. Esclarecimento (comando ambíguo):
 {"type":"clarify","question":"Qual módulo você deseja?","options":["Módulo A","Módulo B"]}
 
-ROTAS VÁLIDAS: /dashboard, /cenarios, /suites, /gerador, /equipe, /configuracoes, /atualizacoes
-AÇÕES VÁLIDAS: criar_suite, criar_cenario, desativar_cenarios
+11. Erro (comando não reconhecido ou fora do escopo):
+{"type":"error","message":"Mensagem curta","suggestion":"Exemplo de reformulação"}
 
-REGRAS:
-- Consultas e navegações executam sem confirmação — boa UX
-- Ações destrutivas e criações sempre retornam "action" (exigem confirmação do usuário)
-- Se o módulo mencionado não estiver na lista, use "clarify" com as opções disponíveis
+ROTAS VÁLIDAS: /dashboard, /cenarios, /suites, /gerador, /equipe, /configuracoes, /atualizacoes
+
+REGRAS CRÍTICAS:
+- buscar_cenarios e buscar_suites executam automaticamente sem confirmação do usuário — use-os para qualquer consulta de dados
+- Criações, atualizações e exclusões sempre retornam "action" com confirmação obrigatória
+- Se o módulo não estiver na lista de módulos disponíveis, use "clarify" com as opções da lista
+- Para encerrar/reabrir suite, use SEMPRE o ID real da lista de suites ativas acima
+- Para registrar resultado, informe o cenarioId exato mencionado pelo usuário (ex: CT-042)
+- Se o resultado não for Sucesso, Erro ou Alerta, peça clarificação
+- Nunca invente IDs, nomes de módulos ou clientes que não estejam nas listas acima
 - Responda SOMENTE com o JSON, sem mais nada`
 }
 
@@ -248,7 +278,7 @@ export async function POST(req: NextRequest) {
   const cleanSistema = sanitize(context.sistema)
 
   // Fetch integration + context data in parallel
-  const [integration, modulosRaw, clientesRaw] = await Promise.all([
+  const [integration, modulosRaw, clientesRaw, suitesRaw] = await Promise.all([
     getActiveIntegration(),
     prisma.modulo.findMany({
       where: cleanSistema ? { sistemaName: cleanSistema, active: true } : { active: true },
@@ -262,6 +292,16 @@ export async function POST(req: NextRequest) {
       take: 50,
       orderBy: { nomeFantasia: "asc" },
     }),
+    prisma.suite.findMany({
+      where: {
+        active: true,
+        encerrada: false,
+        ...(cleanSistema ? { sistema: cleanSistema } : {}),
+      },
+      select: { id: true, suiteName: true, modulo: true },
+      take: 20,
+      orderBy: { suiteName: "asc" },
+    }),
   ])
 
   if (!integration) {
@@ -274,9 +314,10 @@ export async function POST(req: NextRequest) {
 
   const modulos = modulosRaw.map((m) => m.name)
   const clientes = clientesRaw.map((c) => c.nomeFantasia)
+  const suites = suitesRaw.map((s) => ({ id: s.id, suiteName: s.suiteName, modulo: s.modulo }))
   const userName = session.user.name ?? session.user.email ?? "Usuário"
 
-  const systemPrompt = buildSystemPrompt(cleanPathname, cleanSistema, userName, modulos, clientes)
+  const systemPrompt = buildSystemPrompt(cleanPathname, cleanSistema, userName, modulos, clientes, suites)
 
   const abort = new AbortController()
   const timeout = setTimeout(() => abort.abort(), 25_000)

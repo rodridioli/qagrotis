@@ -219,6 +219,35 @@ export function CommandBar() {
       }
 
       if (data.type === "action") {
+        const actionName = typeof data.payload.actionName === "string" ? data.payload.actionName : ""
+
+        // Search actions auto-execute — no confirmation needed, returns real DB data
+        if (actionName === "buscar_cenarios" || actionName === "buscar_suites") {
+          const execRes = await fetch("/api/command-bar/execute", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ actionName, payload: data.payload }),
+            signal: abortRef.current?.signal,
+          })
+          const execData = await execRes.json() as {
+            success: boolean
+            results?: { title: string; items: CommandBarItem[]; viewAllPath: string }
+            error?: string
+          }
+          if (!execData.success || !execData.results) {
+            setStatus("error")
+            setResponse({
+              type: "error",
+              message: execData.error ?? "Erro ao buscar dados.",
+              suggestion: "Tente reformular o comando.",
+            })
+            return
+          }
+          setStatus("result")
+          setResponse({ type: "query", ...execData.results })
+          return
+        }
+
         setStatus("confirm")
         setResponse(data)
         return

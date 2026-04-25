@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, AlertCircle, PlusCircle, SlidersHorizontal, FileText, EyeOff, Rocket, Sparkles, Image, LayoutDashboard, Users, BookOpen, Settings } from "lucide-react"
+import { ArrowRight, PlusCircle, Sparkles, Search, CheckCircle2, RotateCcw, LayoutDashboard, Users, Settings, FileText, ClipboardCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
 
@@ -10,46 +10,103 @@ interface Suggestion {
   command: string
 }
 
-const SUGGESTIONS: Record<string, Suggestion[]> = {
+interface SuggestionGroup {
+  title: string
+  items: Suggestion[]
+}
+
+const SUGGESTIONS: Record<string, SuggestionGroup[]> = {
   "/cenarios": [
-    { icon: AlertCircle, label: "Ver cenários com erro", command: "liste cenários com mais de 3 erros" },
-    { icon: PlusCircle, label: "Criar nova suite", command: "crie uma nova suite de regressão" },
-    { icon: SlidersHorizontal, label: "Filtrar por módulo", command: "filtre cenários por módulo" },
-    { icon: FileText, label: "Exportar para Jira", command: "exporte os cenários para o Jira" },
-    { icon: EyeOff, label: "Ver cenários inativos", command: "liste cenários inativos" },
+    {
+      title: "Buscar",
+      items: [
+        { icon: Search, label: "Cenários com erro", command: "buscar cenários com erro" },
+        { icon: Search, label: "Cenários do módulo atual", command: "buscar cenários do módulo" },
+      ],
+    },
+    {
+      title: "Ações",
+      items: [
+        { icon: PlusCircle, label: "Criar nova suite", command: "crie uma nova suite de regressão" },
+        { icon: Sparkles, label: "Ir para o Gerador", command: "ir para o gerador" },
+      ],
+    },
   ],
   "/suites": [
-    { icon: PlusCircle, label: "Criar nova suite", command: "crie uma nova suite de regressão" },
-    { icon: AlertCircle, label: "Ver suites encerradas", command: "liste suites encerradas" },
-    { icon: FileText, label: "Ir para cenários", command: "ir para cenários" },
+    {
+      title: "Buscar",
+      items: [
+        { icon: Search, label: "Suites ativas", command: "buscar suites ativas" },
+        { icon: Search, label: "Suites encerradas", command: "buscar suites encerradas" },
+      ],
+    },
+    {
+      title: "Ações",
+      items: [
+        { icon: PlusCircle, label: "Criar nova suite", command: "crie uma nova suite de regressão" },
+        { icon: CheckCircle2, label: "Encerrar uma suite", command: "encerrar suite" },
+        { icon: RotateCcw, label: "Reabrir uma suite", command: "reabrir suite" },
+      ],
+    },
   ],
   "/gerador": [
-    { icon: FileText, label: "Gerar cenário via Jira", command: "gere um cenário a partir de um issue do Jira" },
-    { icon: Sparkles, label: "Gerar a partir de texto", command: "gere um cenário de teste para" },
-    { icon: Image, label: "Gerar com imagem", command: "gere um cenário a partir de uma imagem de tela" },
+    {
+      title: "Navegar",
+      items: [
+        { icon: FileText, label: "Ir para cenários", command: "ir para cenários" },
+        { icon: ArrowRight, label: "Ir para suites", command: "ir para suites" },
+      ],
+    },
   ],
   "/dashboard": [
-    { icon: LayoutDashboard, label: "Ver meu ranking", command: "mostre meu ranking atual" },
-    { icon: AlertCircle, label: "Ver atividade recente", command: "mostre minha atividade recente" },
-    { icon: FileText, label: "Ir para cenários", command: "ir para cenários" },
+    {
+      title: "Buscar",
+      items: [
+        { icon: Search, label: "Suites ativas", command: "buscar suites ativas" },
+        { icon: Search, label: "Cenários com erro", command: "buscar cenários com erro" },
+      ],
+    },
+    {
+      title: "Ações",
+      items: [
+        { icon: PlusCircle, label: "Criar nova suite", command: "crie uma nova suite de regressão" },
+        { icon: FileText, label: "Ir para cenários", command: "ir para cenários" },
+      ],
+    },
   ],
   "/equipe": [
-    { icon: PlusCircle, label: "Criar novo chapter", command: "crie um novo chapter de automação" },
-    { icon: BookOpen, label: "Ver chapters recentes", command: "liste os chapters mais recentes" },
-    { icon: Users, label: "Ver avaliações", command: "liste as avaliações dos chapters" },
+    {
+      title: "Navegar",
+      items: [
+        { icon: LayoutDashboard, label: "Ir para o painel", command: "ir para o painel" },
+        { icon: FileText, label: "Ir para cenários", command: "ir para cenários" },
+      ],
+    },
   ],
 }
 
-const DEFAULT_SUGGESTIONS: Suggestion[] = [
-  { icon: FileText, label: "Ir para Cenários", command: "ir para cenários" },
-  { icon: Sparkles, label: "Ir para o Gerador", command: "ir para o gerador" },
-  { icon: Settings, label: "Ir para Configurações", command: "ir para configurações" },
-  { icon: Users, label: "Ir para Equipe", command: "ir para equipe" },
+const DEFAULT_SUGGESTIONS: SuggestionGroup[] = [
+  {
+    title: "Buscar",
+    items: [
+      { icon: Search, label: "Cenários com erro", command: "buscar cenários com erro" },
+      { icon: Search, label: "Suites ativas", command: "buscar suites ativas" },
+    ],
+  },
+  {
+    title: "Navegar",
+    items: [
+      { icon: FileText, label: "Cenários", command: "ir para cenários" },
+      { icon: Sparkles, label: "Gerador de cenários", command: "ir para o gerador" },
+      { icon: Settings, label: "Configurações", command: "ir para configurações" },
+      { icon: Users, label: "Equipe", command: "ir para equipe" },
+    ],
+  },
 ]
 
-function getSuggestions(pathname: string): Suggestion[] {
-  for (const [key, suggestions] of Object.entries(SUGGESTIONS)) {
-    if (pathname.startsWith(key)) return suggestions
+function getSuggestionGroups(pathname: string): SuggestionGroup[] {
+  for (const [key, groups] of Object.entries(SUGGESTIONS)) {
+    if (pathname.startsWith(key)) return groups
   }
   return DEFAULT_SUGGESTIONS
 }
@@ -60,18 +117,23 @@ interface CommandBarSuggestionsProps {
 }
 
 export function CommandBarSuggestions({ pathname, onSelect }: CommandBarSuggestionsProps) {
-  const suggestions = getSuggestions(pathname)
+  const groups = getSuggestionGroups(pathname)
 
   return (
     <div data-testid="command-bar-suggestions">
-      <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-text-secondary">
-        Ações rápidas
-      </p>
-      <ul role="list" aria-label="Sugestões de comandos">
-        {suggestions.map((s) => (
-          <SuggestionItem key={s.command} suggestion={s} onSelect={onSelect} />
-        ))}
-      </ul>
+      {groups.map((group) => (
+        <div key={group.title}>
+          <p className="px-3 pb-0.5 pt-2.5 text-[10px] font-semibold uppercase tracking-widest text-text-secondary">
+            {group.title}
+          </p>
+          <ul role="list" aria-label={group.title}>
+            {group.items.map((s) => (
+              <SuggestionItem key={s.command} suggestion={s} onSelect={onSelect} />
+            ))}
+          </ul>
+        </div>
+      ))}
+      <div className="pb-1" />
     </div>
   )
 }
@@ -85,7 +147,7 @@ function SuggestionItem({ suggestion, onSelect }: { suggestion: Suggestion; onSe
         type="button"
         onClick={() => onSelect(suggestion.command)}
         className={cn(
-          "group flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors",
+          "group flex w-full items-center gap-3 px-3 py-2 text-left transition-colors",
           "hover:bg-surface-default focus-visible:bg-surface-default focus-visible:outline-none"
         )}
         data-testid="command-bar-suggestion-item"
