@@ -448,7 +448,11 @@ export function CommandBar() {
             <ClarifyState
               question={response.question}
               options={response.options}
-              onSelect={(opt) => { setInput(opt); executeCommand(opt) }}
+              onSelect={(opt) => {
+                const cmd = input.trim() ? `${input.trim()} no módulo ${opt}` : opt
+                setInput(cmd)
+                executeCommand(cmd)
+              }}
             />
           )}
 

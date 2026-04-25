@@ -41,7 +41,7 @@ const NAV_ITEMS = [
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false },
   { href: "/documentos",    icon: BookOpen,        label: "Documentos",       alwaysEnabled: false },
   { href: "/assistente",    icon: Bot,             label: "Assistente de IA", alwaysEnabled: false },
-  { href: "/equipe",        icon: Users,           label: "Equipe",           alwaysEnabled: true  },
+  { href: "/equipe",        icon: Users,           label: "Equipe",           alwaysEnabled: false },
   { href: "/configuracoes", icon: Settings,        label: "Configurações",    alwaysEnabled: true  },
   { href: "/atualizacoes",  icon: History,         label: "Atualizações",     alwaysEnabled: false },
 ]
@@ -136,8 +136,8 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                 } else if (href === "/gerador" || href === "/assistente") {
                   // Gerador + Assistente: require sistema+módulo AND modelo de IA
                   disabled = !hasSistemaModulo || !hasIntegracoes
-                } else if (href === "/dashboard" || href === "/suites" || href === "/cenarios") {
-                  // Painel, Suítes, Cenários: require sistema with módulo linked
+                } else if (href === "/dashboard" || href === "/suites" || href === "/cenarios" || href === "/equipe") {
+                  // Painel, Suítes, Cenários, Equipe: require sistema with módulo linked
                   disabled = !hasSistemaModulo
                 }
               }
@@ -316,6 +316,7 @@ const Topbar = React.memo(function Topbar({
   const pathname = usePathname()
   const title = getTitle(pathname)
   const { data: session } = useSession()
+  const { open: openCommandBar } = useCommandBarContext()
   /** Evita mismatch de hidratação: no SSR o cliente ainda não aplicou a sessão do browser. */
   const [sessionUiReady, setSessionUiReady] = useState(false)
   useEffect(() => {
@@ -363,6 +364,15 @@ const Topbar = React.memo(function Topbar({
       </div>
 
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={openCommandBar}
+          aria-label="Abrir barra de comandos (Ctrl+K)"
+          className="hidden items-center gap-1.5 rounded-md border border-border-default bg-surface-input px-2.5 py-1 text-[11px] text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary sm:flex"
+        >
+          <Sparkles className="size-3 text-brand-primary" aria-hidden="true" />
+          <span>Ctrl+K</span>
+        </button>
         <button
           type="button"
           onClick={onToggleTheme}
@@ -483,18 +493,16 @@ export default function LayoutClient({
 
   // ── Redirect if no systems ────────────────────────────────────────────────────
   useEffect(() => {
-    if (!hasActiveSistema && !pathname.startsWith("/configuracoes/sistemas") && !pathname.startsWith("/equipe")) {
+    if (!hasActiveSistema && !pathname.startsWith("/configuracoes/sistemas")) {
       router.push("/configuracoes/sistemas")
     }
   }, [hasActiveSistema, pathname, router])
 
   // Show loading screen only during the brief hydration gap where props arrived
   // but sistemaSelecionado hasn't been initialized yet.
-  // /equipe não depende do sistema do topo — evita spinner eterno se o estado atrasar após hidratação.
   const isReady =
     !hasActiveSistema ||
-    sistemaSelecionado !== "" ||
-    pathname.startsWith("/equipe")
+    sistemaSelecionado !== ""
 
   function handleSistemaChange(value: string) {
     setSistemaSelecionado(value)
@@ -565,7 +573,7 @@ export default function LayoutClient({
                 </div>
               </div>
             )}
-            {(hasActiveSistema || pathname.startsWith("/configuracoes/sistemas") || pathname.startsWith("/equipe")) ? children : null}
+            {(hasActiveSistema || pathname.startsWith("/configuracoes/sistemas")) ? children : null}
           </main>
         </div>
       </div>
