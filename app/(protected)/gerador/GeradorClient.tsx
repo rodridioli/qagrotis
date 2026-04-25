@@ -42,6 +42,8 @@ import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 import { FileUploadButton, type UploadFile } from "@/components/qagrotis/FileUploadButton"
+import { VoiceButton } from "@/components/qagrotis/VoiceButton"
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition"
 
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -62,6 +64,15 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
   const [contexto, setContexto] = useState("")
   const [jiraInput, setJiraInput] = useState("")
+
+  const { isListening: voiceListening, isSupported: voiceSupported, start: startVoice, stop: stopVoice } = useSpeechRecognition({
+    onTranscript: (text, isFinal) => {
+      if (isFinal) {
+        setContexto((prev) => prev ? `${prev}\n${text}` : text)
+      }
+    },
+    onError: (msg) => toast.error(msg),
+  })
   const [jiraConfigured, setJiraConfigured] = useState(false)
 
   function refreshJiraConfigured() {
@@ -668,11 +679,25 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
           {/* Contexto */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">Contexto</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-text-primary">Contexto</label>
+              <div className="flex items-center gap-1.5">
+                {voiceListening && (
+                  <span className="text-[11px] text-destructive animate-pulse">Ouvindo...</span>
+                )}
+                <VoiceButton
+                  isListening={voiceListening}
+                  isSupported={voiceSupported}
+                  onStart={startVoice}
+                  onStop={stopVoice}
+                  size="sm"
+                />
+              </div>
+            </div>
             <AutoResizeTextarea
               value={contexto}
               onChange={(e) => setContexto(e.target.value)}
-              placeholder="Cole aqui requisitos, regras de negócio ou descrição da funcionalidade."
+              placeholder="Cole aqui requisitos, regras de negócio ou descrição da funcionalidade. Ou use o microfone para ditar."
               className="min-h-[200px]"
             />
           </div>

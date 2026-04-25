@@ -12,6 +12,8 @@ import { CommandBarResult } from "./CommandBarResult"
 import { CommandBarConfirm } from "./CommandBarConfirm"
 import { useCommandBarContext } from "@/contexts/CommandBarContext"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition"
+import { VoiceButton } from "./VoiceButton"
 import type { CommandBarItem } from "./CommandBarResult"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -142,6 +144,16 @@ export function CommandBar() {
   const prevFocusRef = useRef<HTMLElement | null>(null)
 
   useFocusTrap(panelRef, isOpen)
+
+  const { isListening, isSupported: voiceSupported, start: startVoice, stop: stopVoice } = useSpeechRecognition({
+    onTranscript: (text, isFinal) => {
+      setInput(text)
+      if (isFinal) {
+        setTimeout(() => executeCommand(text), 100)
+      }
+    },
+    onError: (msg) => toast.error(msg),
+  })
 
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => { setHistory(loadHistory()) }, [])
@@ -436,6 +448,13 @@ export function CommandBar() {
             >
               {contextLabel}
             </span>
+            <VoiceButton
+              isListening={isListening}
+              isSupported={voiceSupported}
+              onStart={startVoice}
+              onStop={stopVoice}
+              size="sm"
+            />
             <button
               type="button"
               onClick={handleClose}
