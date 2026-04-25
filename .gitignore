@@ -48,3 +48,7 @@ next-env.d.ts
 storybook-static
 
 .vercel
+
+# Claude Code local config
+.claude/settings.local.json
+.claude/launch.json
