@@ -9,6 +9,11 @@ const previewEntries: EquipeChapterRatingEntry[] = [
   { id: "r3", stars: 0, comment: "Sem comentário.", createdAt: "2026-04-20T18:15:00.000Z" },
 ]
 
+const previewComMinhaAvaliacao: EquipeChapterRatingEntry[] = [
+  { id: "r1", stars: 5, comment: "Parabéns pelo trabalho!", createdAt: "2026-04-23T16:31:00.000Z", isMine: true },
+  { id: "r2", stars: 4, comment: "Outra opinião.", createdAt: "2026-04-21T09:00:00.000Z" },
+]
+
 const meta: Meta<typeof ChapterRatingDialog> = {
   title: "Equipe/ChapterRatingDialog",
   component: ChapterRatingDialog,
@@ -17,7 +22,7 @@ const meta: Meta<typeof ChapterRatingDialog> = {
     docs: {
       description: {
         component:
-          "Modal de avaliações: distribuição, resumo, formulário 0–5 estrelas + comentário e histórico anónimo. Com `previewEntries`, não há chamadas ao servidor e o envio fica desativado.",
+          "Modal de avaliações: vista inicial com tema, distribuição, resumo e histórico; botão Avaliar abre o formulário (nota 0–5 e botão Avaliar). Uma avaliação por utilizador (edição só com ícone de lápis). Com `previewEntries`, não há servidor e o envio fica desativado.",
       },
     },
   },
@@ -44,6 +49,30 @@ export const ComHistoricoPreview: Story = {
           chapterId="story-chapter"
           tema="Qualidade contínua e métricas de equipe"
           previewEntries={previewEntries}
+        />
+      </div>
+    )
+  },
+}
+
+export const ComAvaliacaoMinhaPreview: Story = {
+  render: () => {
+    const [open, setOpen] = React.useState(true)
+    return (
+      <div className="p-4">
+        <button
+          type="button"
+          className="rounded-md border border-border-default bg-surface-card px-3 py-2 text-sm text-text-primary"
+          onClick={() => setOpen(true)}
+        >
+          Abrir modal (já avaliei)
+        </button>
+        <ChapterRatingDialog
+          open={open}
+          onOpenChange={setOpen}
+          chapterId="story-chapter-2"
+          tema="IA & Automação no SAP Business One"
+          previewEntries={previewComMinhaAvaliacao}
         />
       </div>
     )

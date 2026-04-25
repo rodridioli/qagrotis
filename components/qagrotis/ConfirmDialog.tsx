@@ -7,6 +7,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
 
 interface ConfirmDialogProps {
   open: boolean
@@ -33,9 +34,7 @@ export function ConfirmDialog({
         </DialogHeader>
         <p className="text-sm text-text-secondary">{description}</p>
         <DialogFooter showCloseButton={false}>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
+          <CancelActionButton onClick={() => onOpenChange(false)} />
           <Button
             variant="destructive"
             onClick={onConfirm}

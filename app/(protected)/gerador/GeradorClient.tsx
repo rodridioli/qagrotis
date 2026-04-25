@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { criarCenario, atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
+import { encontrarOuCriarCredencialPorImportacao } from "@/lib/actions/credenciais"
 import { parseMarkdownCenarios, buildImportItems, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
 import { criarIntegracao, type IntegracaoRecord } from "@/lib/actions/integracoes"
 import { useSession } from "next-auth/react"
@@ -424,16 +425,46 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
     let success = 0
     const createdIds: string[] = []
+    const credencialCache = new Map<string, string>()
     try {
       for (let i = 0; i < toImport.length; i++) {
         const item = toImport[i]
+        const tipo = item.parsed.tipo ?? "Manual"
+        const incluiAuto = tipo === "Automatizado" || tipo === "Man./Auto."
+        const triple =
+          Boolean(
+            item.parsed.credencialUrl?.trim() &&
+              item.parsed.credencialUsuario?.trim() &&
+              item.parsed.credencialSenha,
+          )
+
+        let credencialId: string | null = null
+        if (incluiAuto && triple) {
+          const ck = `${item.parsed.credencialUrl.trim()}\t${item.parsed.credencialUsuario.trim()}\t${item.parsed.credencialSenha}`
+          if (!credencialCache.has(ck)) {
+            try {
+              const cred = await encontrarOuCriarCredencialPorImportacao({
+                urlAmbiente: item.parsed.credencialUrl.trim(),
+                usuario: item.parsed.credencialUsuario.trim(),
+                senha: item.parsed.credencialSenha,
+              })
+              credencialCache.set(ck, cred.id)
+            } catch (e) {
+              toast.error(
+                `Credencial (${item.parsed.scenarioName}): ${e instanceof Error ? e.message : "Erro"}`,
+              )
+            }
+          }
+          credencialId = credencialCache.get(ck) ?? null
+        }
+
         const payload = {
           scenarioName:      item.parsed.scenarioName ?? "",
           system:            sistemaSelecionado || "",
           module:            item.parsed.module ?? "",
           client:            item.parsed.client ?? "",
           risco:             item.parsed.risco ?? "",
-          tipo:              item.parsed.tipo ?? "Manual",
+          tipo,
           descricao:         item.parsed.descricao || item.parsed.bdd || "-",
           caminhoTela:       item.parsed.caminhoTela ?? "",
           regraDeNegocio:    item.parsed.regraDeNegocio || "Não informado.",
@@ -441,13 +472,16 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
           bdd:               item.parsed.bdd ?? "",
           resultadoEsperado: item.parsed.resultadoEsperado || "-",
           urlAmbiente: "",
-          objetivo: "",
+          objetivo:          incluiAuto
+            ? (item.parsed.descricao || item.parsed.scenarioName || "").trim()
+            : "",
           urlScript: "",
           usuarioTeste: "",
           senhaTeste: "",
           senhaFalsa: "",
-          steps: [],
+          steps:             incluiAuto ? item.parsed.importSteps : [],
           deps: [],
+          credencialId,
         }
         try {
           if (item.replace && item.existing) {
@@ -656,6 +690,8 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             <FileUploadButton
               files={anexoPreviews}
               onChangeFiles={setAnexoPreviews}
+              accept="image/*,application/pdf"
+              imageAndPdfOnly
             />
           </div>
         </div>

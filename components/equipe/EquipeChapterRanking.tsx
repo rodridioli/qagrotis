@@ -81,7 +81,10 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
                               width={28}
                               height={28}
                               unoptimized
-                              className="size-6 shrink-0 rounded-full object-cover sm:size-7"
+                              className={cn(
+                                "size-6 shrink-0 rounded-full object-cover sm:size-7",
+                                !e.active && "grayscale",
+                              )}
                             />
                           ) : (
                             <div

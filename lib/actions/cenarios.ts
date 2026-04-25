@@ -324,6 +324,21 @@ export async function atualizarCenario(id: string, data: {
   const existing = await prisma.cenario.findUnique({ where: { id }, select: { createdBy: true } })
   if (!existing) throw new Error("Cenário não encontrado")
 
+  let urlAmbienteU = parsed.urlAmbiente
+  let usuarioTesteU = parsed.usuarioTeste
+  let senhaTesteU = parsed.senhaTeste
+  const credencialIdU = parsed.credencialId ?? null
+  if (credencialIdU) {
+    const cred = await prisma.credencial.findFirst({
+      where: { id: credencialIdU, active: true },
+      select: { urlAmbiente: true, usuario: true, senha: true },
+    })
+    if (!cred) throw new Error("Credencial não encontrada ou inativa.")
+    urlAmbienteU = (cred.urlAmbiente ?? "").trim()
+    usuarioTesteU = cred.usuario.trim()
+    senhaTesteU = cred.senha
+  }
+
   // Lookup IDs by name for data integrity update
   const [sysRow, modRow] = await Promise.all([
     prisma.sistema.findFirst({ where: { name: parsed.system, active: true }, select: { id: true } }),
@@ -347,15 +362,15 @@ export async function atualizarCenario(id: string, data: {
       preCondicoes:      parsed.preCondicoes,
       bdd:               parsed.bdd,
       resultadoEsperado: parsed.resultadoEsperado,
-      urlAmbiente:       parsed.urlAmbiente,
+      urlAmbiente:       urlAmbienteU,
       objetivo:          parsed.objetivo,
       urlScript:         parsed.urlScript,
-      usuarioTeste:      parsed.usuarioTeste,
-      senhaTeste:        parsed.senhaTeste,
+      usuarioTeste:      usuarioTesteU,
+      senhaTeste:        senhaTesteU,
       senhaFalsa:        parsed.senhaFalsa,
       steps:             parsed.steps,
       deps:              parsed.deps,
-      credencialId:      parsed.credencialId ?? null,
+      credencialId:      credencialIdU,
       createdBy:         existing.createdBy ?? updatedBy,
     },
   })

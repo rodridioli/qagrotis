@@ -34,6 +34,7 @@ import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { criarCenario, atualizarCenario, inativarCenarios, ativarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
+import { encontrarOuCriarCredencialPorImportacao } from "@/lib/actions/credenciais"
 import { parseMarkdownCenarios, buildImportItems, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
 import { cn } from "@/lib/utils"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
@@ -90,6 +91,8 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
   // Progress
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
   const [importProgressOpen, setImportProgressOpen] = useState(false)
+  const [importedIds, setImportedIds] = useState<string[]>([])
+  const [suitePromptOpen, setSuitePromptOpen] = useState(false)
   const [filters, setFilters] = useState<FilterState>({
     modulo: "",
     cliente: "",
@@ -265,9 +268,40 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
     setIsImporting(true)
 
     let success = 0
+    const importedIdList: string[] = []
+    const credencialCache = new Map<string, string>()
     try {
       for (let i = 0; i < toImport.length; i++) {
         const item = toImport[i]
+        const incluiAuto =
+          item.parsed.tipo === "Automatizado" || item.parsed.tipo === "Man./Auto."
+        const triple =
+          Boolean(
+            item.parsed.credencialUrl?.trim() &&
+              item.parsed.credencialUsuario?.trim() &&
+              item.parsed.credencialSenha,
+          )
+
+        let credencialId: string | null = null
+        if (incluiAuto && triple) {
+          const ck = `${item.parsed.credencialUrl.trim()}\t${item.parsed.credencialUsuario.trim()}\t${item.parsed.credencialSenha}`
+          if (!credencialCache.has(ck)) {
+            try {
+              const cred = await encontrarOuCriarCredencialPorImportacao({
+                urlAmbiente: item.parsed.credencialUrl.trim(),
+                usuario: item.parsed.credencialUsuario.trim(),
+                senha: item.parsed.credencialSenha,
+              })
+              credencialCache.set(ck, cred.id)
+            } catch (e) {
+              toast.error(
+                `Credencial (${item.parsed.scenarioName}): ${e instanceof Error ? e.message : "Erro"}`,
+              )
+            }
+          }
+          credencialId = credencialCache.get(ck) ?? null
+        }
+
         const payload = {
             scenarioName:      item.parsed.scenarioName,
             system:            sistemaSelecionado,
@@ -282,19 +316,24 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
             bdd:               item.parsed.bdd,
             resultadoEsperado: item.parsed.resultadoEsperado || "-",
             urlAmbiente: "",
-            objetivo: "",
+            objetivo:          incluiAuto
+              ? (item.parsed.descricao || item.parsed.scenarioName).trim()
+              : "",
             urlScript: "",
             usuarioTeste: "",
             senhaTeste: "",
             senhaFalsa: "",
-            steps: [],
+            steps:             incluiAuto ? item.parsed.importSteps : [],
             deps: [],
+            credencialId,
           }
         try {
           if (item.replace && item.existing) {
             await atualizarCenario(item.existing.id, payload)
+            importedIdList.push(item.existing.id)
           } else {
-            await criarCenario(payload)
+            const created = await criarCenario(payload)
+            importedIdList.push(created.id)
           }
           success++
         } catch (err) {
@@ -310,6 +349,8 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
     if (success > 0) {
       router.refresh()
       toast.success(success === 1 ? "1 cenário importado com sucesso." : `${success} cenários importados com sucesso.`)
+      setImportedIds(importedIdList)
+      setSuitePromptOpen(true)
     }
   }
 
@@ -936,6 +977,31 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={suitePromptOpen} onOpenChange={setSuitePromptOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Criar Suíte de Testes?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-text-secondary">
+            {importedIds.length} cenário{importedIds.length !== 1 ? "s" : ""} importado{importedIds.length !== 1 ? "s" : ""} com sucesso.
+            Deseja criar uma nova Suíte de Testes com esses cenários?
+          </p>
+          <DialogFooter showCloseButton={false}>
+            <Button variant="outline" onClick={() => setSuitePromptOpen(false)}>
+              Agora não
+            </Button>
+            <Button
+              onClick={() => {
+                setSuitePromptOpen(false)
+                router.push(`/suites/nova?cenarios=${importedIds.join(",")}`)
+              }}
+            >
+              Criar Suíte
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

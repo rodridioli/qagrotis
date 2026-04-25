@@ -4,6 +4,7 @@ import { useState } from "react"
 import { PanelsTopLeft } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
 import { Input } from "@/components/ui/input"
 import {
   Dialog,
@@ -154,7 +155,7 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Cancelar</Button>
+            <CancelActionButton onClick={() => setOpen(false)} disabled={saving} />
             <Button
               onClick={handleSave}
               disabled={saving || !jiraUrl.trim() || !email.trim() || (!token.trim() && !hasStoredToken)}

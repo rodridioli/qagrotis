@@ -8,6 +8,7 @@ import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { QaUserRecord } from "@/lib/actions/usuarios"
 import type { SuiteDashboardRecord } from "@/lib/actions/suites"
+import { getLocalCalendarDayStartEndMs } from "@/lib/local-calendar-range"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,13 @@ export type TestesFilter  = "hoje" | "semana" | "mes-atual" | "mes-anterior" | "
 export type ChartFilter   = "hoje" | "semana" | "mes-atual" | "mes-anterior" | "ano-atual"
 export interface DataPoint  { label: string; value: number }
 export interface RankingItem { createdBy: string; count: number }
+
+/** Chave sintética para execuções sem `executadoPor` / autor resolvível — alinha totais com os gráficos. */
+export const RANKING_SEM_ATRIBUICAO = "__sem_atribuicao__"
+
+function isHistoricoResultadoFinal(resultado: string): boolean {
+  return resultado === "Sucesso" || resultado === "Erro" || resultado === "Alerta"
+}
 
 interface UltimaAutomacao {
   id: string
@@ -32,8 +40,8 @@ function getDateRange(period: string): { start: number; end: number } {
   const now = new Date()
   switch (period) {
     case "hoje": {
-      const s = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      return { start: s.getTime(), end: s.getTime() + 86400000 - 1 }
+      const { startMs, endMs } = getLocalCalendarDayStartEndMs(now)
+      return { start: startMs, end: endMs }
     }
     case "semana": {
       const s = new Date(now)
@@ -63,12 +71,14 @@ function getDateRange(period: string): { start: number; end: number } {
 function makeBuckets(period: string): { label: string; start: number; end: number }[] {
   const now = new Date()
   if (period === "hoje") {
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const today = new Date(getLocalCalendarDayStartEndMs(now).startMs)
+    // Sempre 24 faixas do dia civil — antes cortávamos horas > agora e execuções nessas horas
+    // não entravam em nenhum bucket (total do gráfico ≠ soma real no dia).
     return Array.from({ length: 24 }, (_, i) => {
       const s = new Date(today); s.setHours(i, 0, 0, 0)
       const e = new Date(today); e.setHours(i, 59, 59, 999)
       return { label: `${i}h`, start: s.getTime(), end: e.getTime() }
-    }).filter(b => b.start <= now.getTime())
+    })
   }
   if (period === "semana") {
     return Array.from({ length: 7 }, (_, i) => {
@@ -169,6 +179,8 @@ export function DashboardClient({
   const [testesModulo,        setTestesModulo]        = useState("")
   const [errosFilter,         setErrosFilter]         = useState<ChartFilter>("hoje")
   const [errosModulo,         setErrosModulo]         = useState("")
+  const [alertasFilter,       setAlertasFilter]       = useState<ChartFilter>("hoje")
+  const [alertasModulo,       setAlertasModulo]       = useState("")
   const [sucessoFilter,       setSucessoFilter]       = useState<ChartFilter>("hoje")
   const [sucessoModulo,       setSucessoModulo]       = useState("")
   /** Stable fallback when `createdAt` is missing (avoids Date.now() during render). */
@@ -179,15 +191,24 @@ export function DashboardClient({
     const map = new Map<string, { displayName: string; photoPath: string | null }>()
     for (const u of allUsers) {
       const display = u.name || (u.email ? u.email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase()) : "Usuário")
-      // Key by email (primary, unique) AND name for backward compat
-      if (u.email) map.set(u.email, { displayName: display, photoPath: u.photoPath ?? null })
-      if (u.name && u.name !== u.email) map.set(u.name, { displayName: display, photoPath: u.photoPath ?? null })
+      const photoPath = u.photoPath ?? null
+      // Key by email (exact + lowercase), and name for backward compat / session fallbacks
+      if (u.email) {
+        const em = u.email.trim()
+        const entry = { displayName: display, photoPath }
+        map.set(em, entry)
+        map.set(em.toLowerCase(), entry)
+      }
+      if (u.name && u.name !== u.email) map.set(u.name, { displayName: display, photoPath })
     }
     return map
   }, [allUsers])
 
   function resolveUser(createdBy: string | undefined): { displayName: string; photoPath: string | null } {
     if (!createdBy) return { displayName: "Desconhecido", photoPath: null }
+    if (createdBy === RANKING_SEM_ATRIBUICAO) {
+      return { displayName: "Sem atribuição", photoPath: null }
+    }
     // Try exact match (email or name)
     const found = userMap.get(createdBy)
     if (found) return found
@@ -206,8 +227,9 @@ export function DashboardClient({
     // Fallback: format email as name
     if (createdBy.includes("@")) {
       const name = createdBy.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase())
-      // Try to find user by email to get photo
-      const byEmail = allUsers.find(u => u.email === createdBy)
+      const byEmail = allUsers.find(
+        (u) => (u.email ?? "").toLowerCase() === createdBy.toLowerCase(),
+      )
       return { displayName: byEmail?.name || name, photoPath: byEmail?.photoPath ?? null }
     }
     return { displayName: createdBy, photoPath: null }
@@ -292,6 +314,12 @@ export function DashboardClient({
     return mods.map(m => m.name)
   }, [allModulos, sistemaSelecionado])
 
+  /** Módulos de todos os sistemas — filtro do ranking de execuções (histórico de suítes). */
+  const rankingModuloNames = useMemo(() => {
+    const names = new Set(allModulos.filter((m) => m.active).map((m) => m.name))
+    return [...names].sort((a, b) => a.localeCompare(b, "pt-BR"))
+  }, [allModulos])
+
   // ── Historico entries (flat) ───────────────────────────────────────────────
   const historicoEntries = useMemo(() => {
     const entries: { timestamp: number; resultado: string; module: string }[] = []
@@ -303,43 +331,74 @@ export function DashboardClient({
     return entries
   }, [suitesFiltradas])
 
-  // ── Ranking ────────────────────────────────────────────────────────────────
-  const rankingData = useMemo((): RankingItem[] => {
+  // ── Ranking: execuções no histórico das suítes (todos os sistemas / módulos) ─
+  const { rankingData, rankingTotalTestes } = useMemo(() => {
     const { start, end } = getDateRange(rankingFilter)
-    // Normalize: map any createdBy value to a canonical key (prefer email)
-    const normalizeKey = (cb: string | undefined): string => {
-      if (!cb) return "Desconhecido"
-      if (userMap.has(cb)) return cb
-      for (const u of allUsers) {
-        if (u.name && u.name === cb && u.email) return u.email
-      }
-      return cb
+    const cenarioById = new Map(allCenarios.map((c) => [c.id, c]))
+
+    const stableUserKey = (u: QaUserRecord): string => {
+      const e = u.email?.trim()
+      if (e) return e.toLowerCase()
+      return u.name?.trim() || u.id
     }
+
+    /** Resolve a session/email/name string to the same key used for active users (lowercase email preferred). */
+    const canonicalKeyForAttribution = (raw: string | undefined): string | null => {
+      const t = raw?.trim()
+      if (!t) return null
+      const lower = t.toLowerCase()
+      for (const u of allUsers) {
+        if (u.email && u.email.toLowerCase() === lower) return stableUserKey(u)
+      }
+      for (const u of allUsers) {
+        if (u.name && u.name.trim() === t) return stableUserKey(u)
+      }
+      if (t.includes("@")) return lower
+      return null
+    }
+
     const countByUser = new Map<string, number>()
-    // Use ALL cenarios (active) — not filtered by system/module to show all users
-    const source = allCenarios.filter(c => c.active)
-    for (const c of source) {
-      if (rankingModulo && c.module !== rankingModulo) continue
-      if (sistemaSelecionado && c.system !== sistemaSelecionado) continue
-      // If createdAt is missing (imported cenarios), treat as stable “now” so they count in range
-      const ts = c.createdAt ?? missingCreatedAtFallback
-      if (ts >= start && ts <= end) {
-        const key = normalizeKey(c.createdBy)
+    // Mesmo conjunto de suítes que alimenta os gráficos (sistema + módulo ativo)
+    for (const suite of suitesFiltradas) {
+      for (const h of suite.historico ?? []) {
+        const ts = h.timestamp ?? 0
+        if (!ts || ts < start || ts > end) continue
+        if (rankingModulo && (h.module ?? "") !== rankingModulo) continue
+        if (!isHistoricoResultadoFinal(h.resultado)) continue
+        const fromRunner = canonicalKeyForAttribution(h.executadoPor)
+        const fromAuthor = canonicalKeyForAttribution(cenarioById.get(h.id)?.createdBy)
+        const key = fromRunner ?? fromAuthor ?? RANKING_SEM_ATRIBUICAO
         countByUser.set(key, (countByUser.get(key) ?? 0) + 1)
       }
     }
-    return [...countByUser.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([createdBy, count]) => ({ createdBy, count }))
-  }, [allCenarios, rankingFilter, rankingModulo, sistemaSelecionado, userMap, allUsers, missingCreatedAtFallback])
 
-  // ── Testes chart ───────────────────────────────────────────────────────────
+    let rankingTotalTestes = 0
+    for (const c of countByUser.values()) rankingTotalTestes += c
+
+    const activeUsers = allUsers.filter((u) => u.active)
+    const rows = activeUsers.map((u) => {
+      const k = stableUserKey(u)
+      return { createdBy: k, count: countByUser.get(k) ?? 0 }
+    })
+    const orphan = countByUser.get(RANKING_SEM_ATRIBUICAO) ?? 0
+    if (orphan > 0) {
+      rows.push({ createdBy: RANKING_SEM_ATRIBUICAO, count: orphan })
+    }
+    const rankingData = rows
+      .sort((a, b) => b.count - a.count || a.createdBy.localeCompare(b.createdBy))
+      .slice(0, 4)
+    return { rankingData, rankingTotalTestes }
+  }, [suitesFiltradas, allCenarios, rankingFilter, rankingModulo, allUsers])
+
+  // ── Testes chart (só Sucesso/Erro/Alerta — alinha total ao ranking e à soma dos três gráficos) ──
   const testesData = useMemo((): DataPoint[] => {
     const buckets = makeBuckets(testesFilter)
-    const entries = testesModulo
+    const { start: rangeStart, end: rangeEnd } = getDateRange(testesFilter)
+    const base = (testesModulo
       ? historicoEntries.filter(e => e.module === testesModulo)
       : historicoEntries
+    ).filter((e) => e.timestamp >= rangeStart && e.timestamp <= rangeEnd)
+    const entries = base.filter((e) => isHistoricoResultadoFinal(e.resultado))
     return buckets.map(b => ({
       label: b.label,
       value: entries.filter(e => e.timestamp >= b.start && e.timestamp <= b.end).length,
@@ -349,33 +408,62 @@ export function DashboardClient({
   // ── Erros chart ────────────────────────────────────────────────────────────
   const errosData = useMemo((): DataPoint[] => {
     const buckets = makeBuckets(errosFilter)
-    const entries = errosModulo
+    const { start: rangeStart, end: rangeEnd } = getDateRange(errosFilter)
+    const entries = (errosModulo
       ? historicoEntries.filter(e => e.module === errosModulo)
       : historicoEntries
+    ).filter(
+      (e) =>
+        e.timestamp >= rangeStart &&
+        e.timestamp <= rangeEnd &&
+        e.resultado === "Erro",
+    )
     return buckets.map(b => ({
       label: b.label,
-      value: entries.filter(
-        e => e.timestamp >= b.start && e.timestamp <= b.end && e.resultado === "Erro"
-      ).length,
+      value: entries.filter(e => e.timestamp >= b.start && e.timestamp <= b.end).length,
     }))
   }, [historicoEntries, errosFilter, errosModulo])
+
+  // ── Alertas chart ───────────────────────────────────────────────────────────
+  const alertasData = useMemo((): DataPoint[] => {
+    const buckets = makeBuckets(alertasFilter)
+    const { start: rangeStart, end: rangeEnd } = getDateRange(alertasFilter)
+    const entries = (alertasModulo
+      ? historicoEntries.filter(e => e.module === alertasModulo)
+      : historicoEntries
+    ).filter(
+      (e) =>
+        e.timestamp >= rangeStart &&
+        e.timestamp <= rangeEnd &&
+        e.resultado === "Alerta",
+    )
+    return buckets.map(b => ({
+      label: b.label,
+      value: entries.filter(e => e.timestamp >= b.start && e.timestamp <= b.end).length,
+    }))
+  }, [historicoEntries, alertasFilter, alertasModulo])
 
   // ── Sucesso chart ──────────────────────────────────────────────────────────
   const sucessoData = useMemo((): DataPoint[] => {
     const buckets = makeBuckets(sucessoFilter)
-    const entries = sucessoModulo
+    const { start: rangeStart, end: rangeEnd } = getDateRange(sucessoFilter)
+    const entries = (sucessoModulo
       ? historicoEntries.filter(e => e.module === sucessoModulo)
       : historicoEntries
+    ).filter(
+      (e) =>
+        e.timestamp >= rangeStart &&
+        e.timestamp <= rangeEnd &&
+        e.resultado === "Sucesso",
+    )
     return buckets.map(b => ({
       label: b.label,
-      value: entries.filter(
-        e => e.timestamp >= b.start && e.timestamp <= b.end && e.resultado === "Sucesso"
-      ).length,
+      value: entries.filter(e => e.timestamp >= b.start && e.timestamp <= b.end).length,
     }))
   }, [historicoEntries, sucessoFilter, sucessoModulo])
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard label="Módulos"           value={String(totalModulos)}                        icon={Layers}        iconColor="#00735D" />
         <MetricCard label="Total de cenários" value={totalCenarios.toLocaleString("pt-BR")}      icon={FileText}      iconColor="#6366f1" />
@@ -386,7 +474,9 @@ export function DashboardClient({
       <DashboardCharts
         automationData={automationData}
         moduloNames={moduloNames}
+        rankingModuloNames={rankingModuloNames}
         rankingData={rankingData}
+        rankingTotalTestes={rankingTotalTestes}
         rankingFilter={rankingFilter}
         onRankingFilterChange={setRankingFilter}
         rankingModulo={rankingModulo}
@@ -401,6 +491,11 @@ export function DashboardClient({
         onErrosFilterChange={setErrosFilter}
         errosModulo={errosModulo}
         onErrosModuloChange={setErrosModulo}
+        alertasData={alertasData}
+        alertasFilter={alertasFilter}
+        onAlertasFilterChange={setAlertasFilter}
+        alertasModulo={alertasModulo}
+        onAlertasModuloChange={setAlertasModulo}
         sucessoData={sucessoData}
         sucessoFilter={sucessoFilter}
         onSucessoFilterChange={setSucessoFilter}

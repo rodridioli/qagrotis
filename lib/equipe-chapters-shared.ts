@@ -37,6 +37,8 @@ export interface EquipeChapterRatingEntry {
   stars: number
   comment: string
   createdAt: string
+  /** Só no utilizador autenticado: indica a própria linha para edição na UI. */
+  isMine?: boolean
 }
 
 /** Uma linha do ranking (posição global no pódio geral). */
@@ -45,6 +47,8 @@ export interface EquipeChapterRankingRow {
   userId: string
   name: string
   photoPath: string | null
+  /** `false` para inativos no cadastro — UI pode diferenciar (ex.: foto em cinza). */
+  active: boolean
   points: number
 }
 

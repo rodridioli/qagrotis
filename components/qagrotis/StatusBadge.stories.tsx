@@ -138,7 +138,8 @@ export const ResultadoTipos: Story = {
 |-------|-----|--------|
 | Sucesso | Verde | \`border-green-600/30 bg-green-600/10 text-green-700\` |
 | Erro | Vermelho | \`border-red-500/30 bg-red-500/10 text-red-600\` |
-| Pendente | Âmbar | \`border-amber-500/30 bg-amber-500/10 text-amber-600\` |
+| Pendente | Laranja | \`border-orange-500/35 bg-orange-500/10 text-orange-800\` |
+| Alerta | Amarelo | \`border-yellow-500/50 bg-yellow-400/15 text-yellow-950\` |
 
 > Todos os badges usam o padrão de opacidade \`/30\` na borda e \`/10\` no fundo para consistência com o Design System.
         `,
@@ -150,6 +151,7 @@ export const ResultadoTipos: Story = {
       <ResultadoBadge resultado="Sucesso" />
       <ResultadoBadge resultado="Erro" />
       <ResultadoBadge resultado="Pendente" />
+      <ResultadoBadge resultado="Alerta" />
     </div>
   ),
 }

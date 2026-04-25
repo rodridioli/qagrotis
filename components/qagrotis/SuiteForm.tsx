@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink, Play, Power } from "lucide-react"
+import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink, FileDown, Loader2, Play, Power, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -31,11 +31,18 @@ import { SYSTEM_LIST } from "@/lib/qagrotis-constants"
 import { CenarioTipoBadge, ResultadoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
+import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import type { ModuloRecord } from "@/lib/actions/modulos"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import { criarSuite, atualizarSuite, removerHistoricoSuite, encerrarSuite, reabrirSuite, type SuiteRecord } from "@/lib/actions/suites"
+import { buildSuiteCenarioRefByIdMap, refLabelForSuiteCenario } from "@/lib/suite-cenario-ref"
+import { nomeParaTituloExportJira } from "@/lib/jira-export-nome-cenario"
+import { downloadMarkdownFile, suiteMarkdownDownloadFilename } from "@/lib/suite-markdown-export"
+import { type EvFile, deleteEvidenceFile, evidenceFileToBlob } from "@/lib/evidence-storage"
+import { evHistoricoStorageKey, evScenarioStorageKey } from "@/lib/evidence-session-keys"
+import { applyJiraAttachmentUrlsToMarkdown } from "@/lib/jira-evidence-markdown"
 import { toast } from "sonner"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 
@@ -78,10 +85,13 @@ interface HistoricoItem {
   data: string
   hora?: string
   timestamp?: number
-  resultado: "Sucesso" | "Erro" | "Pendente"
+  resultado: "Sucesso" | "Erro" | "Pendente" | "Alerta"
+  alertaObs?: string
+  executadoPor?: string
 }
 
 type SortedHistoricoItem = HistoricoItem & { _originalIdx: number }
+
 
 export function SuiteForm({
   mode,
@@ -112,6 +122,8 @@ export function SuiteForm({
     return [...raw].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
   })
 
+  const cenarioRefById = useMemo(() => buildSuiteCenarioRefByIdMap(cenarios), [cenarios])
+
   useEffect(() => {
     if (systemList.length === 0)
       toast.warning("É preciso cadastrar um sistema antes de criar suítes.")
@@ -122,6 +134,30 @@ export function SuiteForm({
   const [suiteName, setSuiteName] = useState(suite?.suiteName || "")
   const [versao, setVersao] = useState(suite?.versao || "")
   const [selectedModule, setSelectedModule] = useState(suite?.modulo || "")
+
+  /** Módulo da suíte (Cadastro) deve refletir nas tabelas Cenários e Histórico. */
+  useEffect(() => {
+    const m = selectedModule.trim()
+    if (!m) return
+    setCenarios((prev) => {
+      let changed = false
+      const next = prev.map((c) => {
+        if (c.module === m) return c
+        changed = true
+        return { ...c, module: m }
+      })
+      return changed ? next : prev
+    })
+    setHistorico((prev) => {
+      let changed = false
+      const next = prev.map((h) => {
+        if (h.module === m) return h
+        changed = true
+        return { ...h, module: m }
+      })
+      return changed ? next : prev
+    })
+  }, [selectedModule])
 
   const [tipo, setTipo] = useState(suite?.tipo || "")
   const [removeOpen, setRemoveOpen] = useState(false)
@@ -136,11 +172,17 @@ export function SuiteForm({
     const selected = cenarios.filter(c => ids.has(c.id))
     if (selected.length === 0) return ""
     const details = selected.map((c) => {
+      const ref = refLabelForSuiteCenario(cenarioRefById, c.id)
       const cenario = allCenarios.find((ac) => ac.id === c.id)
+      const titulo = nomeParaTituloExportJira({
+        nomeNaSuiteOuHistorico: c.name,
+        scenarioNameCadastro: cenario?.scenarioName,
+      })
       const sys = cenario?.system ?? suite?.sistema
       return [
-        `### ${c.id} — ${c.name}`,
+        `### ${ref} — ${titulo}`,
         ``,
+        jiraExportField("Código original", c.id),
         jiraExportField("Sistema", sys),
         jiraExportField("Módulo", c.module),
         jiraExportField("Tipo", c.tipo),
@@ -161,105 +203,6 @@ export function SuiteForm({
       ``,
       details,
     ].join("\n")
-  }
-
-  async function handleExportarJira() {
-    const selected = sortedHistorico.filter((h) => selectedHistorico.has(h._originalIdx))
-    if (selected.length === 0) return
-    try {
-      const r = await fetch("/api/jira/credentials", { credentials: "same-origin" })
-      const d = r.ok ? ((await r.json()) as { configured?: boolean }) : null
-      if (!d?.configured) {
-        toast.error("Configure a Integração Jira em Configurações antes de exportar.", {
-          action: { label: "Configurar", onClick: () => router.push("/configuracoes") },
-        })
-        return
-      }
-    } catch {
-      toast.error("Não foi possível verificar a integração Jira.")
-      return
-    }
-    // Build content and open modal
-
-    const resultIcon = (r: string) => r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : "⏳"
-
-    // ── Detailed blocks ───────────────────────────────────────────────────────
-    const allEvidences: EvFile[] = []
-    const details = selected.map((h) => {
-      const icon = resultIcon(h.resultado)
-      const cenario = allCenarios.find((c) => c.id === h.id)
-
-      const manualEvs: EvFile[] = (() => {
-        try { return JSON.parse(sessionStorage.getItem(`qagrotis_ev_${h.id}_manual`) ?? "[]") } catch { return [] }
-      })()
-      const autoEvs: EvFile[] = (() => {
-        try { return JSON.parse(sessionStorage.getItem(`qagrotis_ev_${h.id}_auto`) ?? "[]") } catch { return [] }
-      })()
-      allEvidences.push(...manualEvs, ...autoEvs)
-
-      const lines = [
-        `### ${h.id} — ${h.cenario}  ${icon} ${h.resultado}`,
-        ``,
-        jiraExportField("Sistema", cenario?.system ?? suite?.sistema),
-        jiraExportField("Módulo", h.module),
-        jiraExportField("Tipo", h.tipo),
-        jiraExportField("Descrição", cenario?.descricao),
-        jiraExportField("Regra de Negócio", cenario?.regraDeNegocio),
-        jiraExportField("Pré-condições", cenario?.preCondicoes),
-        jiraExportField("BDD (Gherkin)", cenario?.bdd),
-        jiraExportField("Resultado esperado", cenario?.resultadoEsperado),
-        `**Execução:** ${h.data}${h.hora ? ` às ${h.hora}` : ""}`,
-        `**Resultado:** ${icon} ${h.resultado}`,
-      ]
-
-      if (manualEvs.length > 0) {
-        lines.push(``, `**Evidências — Teste Manual:**`)
-        manualEvs.forEach((ev) => lines.push(`- ${ev.name}`))
-      }
-      if (autoEvs.length > 0) {
-        lines.push(``, `**Evidências — Automação:**`)
-        autoEvs.forEach((ev) => lines.push(`- ${ev.name}`))
-      }
-
-      return lines.join("\n")
-    }).join("\n---\n\n")
-
-    // ── Summary table ─────────────────────────────────────────────────────────
-    const tableRows = selected.map((h) =>
-      `| ${h.id} | ${h.cenario} | ${h.module || "—"} | ${resultIcon(h.resultado)} ${h.resultado} | ${h.data}${h.hora ? ` ${h.hora}` : ""} |`
-    ).join("\n")
-
-    const sucessos = selected.filter((h) => h.resultado === "Sucesso").length
-    const erros    = selected.filter((h) => h.resultado === "Erro").length
-
-    const summary = [
-      `## Resumo da Execução`,
-      ``,
-      `| Código | Cenário | Módulo | Resultado | Data/Hora |`,
-      `|--------|---------|--------|-----------|-----------|`,
-      tableRows,
-      ``,
-      `**Total:** ${selected.length} | ✅ Sucesso: ${sucessos} | ❌ Erro: ${erros}`,
-    ].join("\n")
-
-    const exportSuiteName = suite?.suiteName ?? "Suíte"
-    const exportDate = new Date().toLocaleDateString("pt-BR")
-    const content = [
-      `## Histórico de Execução — ${exportSuiteName}`,
-      `*Exportado em ${exportDate}*`,
-      ``,
-      `---`,
-      ``,
-      details,
-      ``,
-      `---`,
-      ``,
-      summary,
-    ].join("\n")
-
-    setJiraContent(content)
-    setJiraEvidences(allEvidences)
-    setJiraModalOpen(true)
   }
 
   function parseIssueKey(input: string): string {
@@ -283,7 +226,7 @@ export function SuiteForm({
       toast.error("Não foi possível verificar a integração Jira.")
       return
     }
-    setJiraLoading(true)
+    setJiraPending("fetch")
     setJiraExisting(null)
     try {
       const res = await fetch("/api/jira", {
@@ -307,12 +250,12 @@ export function SuiteForm({
     } catch {
       toast.error("Não foi possível conectar ao Jira.")
     } finally {
-      setJiraLoading(false)
+      setJiraPending((p) => (p === "fetch" ? null : p))
     }
   }
 
   async function sendToJira(issueKey: string, mode: "replace" | "append") {
-    setJiraLoading(true)
+    setJiraPending(mode)
     try {
       // Upload evidence files and replace filenames with inline image markdown
       let contentToSend = jiraContent
@@ -320,22 +263,24 @@ export function SuiteForm({
         const fd = new FormData()
         fd.append("issueKey", issueKey)
         for (const ev of jiraEvidences) {
-          const blob = await fetch(ev.dataUrl).then((r) => r.blob())
+          const blob = await evidenceFileToBlob(ev)
           fd.append("files", new File([blob], ev.name, { type: ev.type }), ev.name)
         }
         const uploadRes = await fetch("/api/jira/attachments", { method: "POST", body: fd })
-        if (uploadRes.ok) {
-          const { uploaded } = await uploadRes.json() as { uploaded: { name: string; contentUrl: string }[] }
-          for (const att of uploaded) {
-            if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(att.name)) {
-              const escaped = att.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-              contentToSend = contentToSend.replace(
-                new RegExp(`^- ${escaped}$`, "m"),
-                `![${att.name}](${att.contentUrl})`,
-              )
-            }
-          }
+        const uploadBody = (await uploadRes.json().catch(() => ({
+          uploaded: [] as { name: string; contentUrl: string }[],
+          errors: [] as string[],
+        }))) as { uploaded: { name: string; contentUrl: string }[]; errors?: string[] }
+        if (!uploadRes.ok) {
+          throw new Error(uploadBody.errors?.join("; ") || `Upload de anexos falhou (${uploadRes.status}).`)
         }
+        if (uploadBody.uploaded.length === 0) {
+          throw new Error(uploadBody.errors?.join("; ") || "O Jira não aceitou os anexos.")
+        }
+        if (uploadBody.errors?.length) {
+          toast.warning(`Parte dos anexos falhou: ${uploadBody.errors.slice(0, 2).join("; ")}`)
+        }
+        contentToSend = applyJiraAttachmentUrlsToMarkdown(contentToSend, uploadBody.uploaded)
       }
 
       const deleteAttachmentIds = mode === "replace" ? (jiraExisting?.attachmentIds ?? []) : []
@@ -361,7 +306,7 @@ export function SuiteForm({
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao conectar com o Jira.")
     } finally {
-      setJiraLoading(false)
+      setJiraPending(null)
     }
   }
   const [removerHistoricoOpen, setRemoverHistoricoOpen] = useState(false)
@@ -369,9 +314,9 @@ export function SuiteForm({
   // ── Jira export modal ─────────────────────────────────────────────────────
   const [jiraModalOpen, setJiraModalOpen] = useState(false)
   const [jiraIssueInput, setJiraIssueInput] = useState("")  // URL completa ou chave
-  const [jiraLoading, setJiraLoading] = useState(false)
+  /** `fetch` = passo 1; `replace`/`append` = só o botão clicado no passo 2. */
+  const [jiraPending, setJiraPending] = useState<null | "fetch" | "replace" | "append">(null)
   const [jiraContent, setJiraContent] = useState("")
-  type EvFile = { name: string; type: string; dataUrl: string }
   const [jiraEvidences, setJiraEvidences] = useState<EvFile[]>([])
   const [jiraInputTouched, setJiraInputTouched] = useState(false)
   const [jiraExisting, setJiraExisting] = useState<{ summary: string; descText: string; hasContent: boolean; attachmentIds?: number[] } | null>(null)
@@ -437,6 +382,158 @@ export function SuiteForm({
         return parseDate(b.data) - parseDate(a.data)
       })
   }, [historico])
+
+  function buildHistoricoExportBundle(selected: SortedHistoricoItem[]): { content: string; evidences: EvFile[] } {
+    const resultIcon = (r: string) =>
+      r === "Sucesso" ? "✅" : r === "Erro" ? "❌" : r === "Alerta" ? "⚠️" : "⏳"
+    const allEvidences: EvFile[] = []
+    const details = selected.map((h) => {
+      const icon = resultIcon(h.resultado)
+      const ref = refLabelForSuiteCenario(cenarioRefById, h.id)
+      const cenario = allCenarios.find((c) => c.id === h.id)
+      const titulo = nomeParaTituloExportJira({
+        nomeNaSuiteOuHistorico: h.cenario,
+        scenarioNameCadastro: cenario?.scenarioName,
+      })
+      const manualEvs: EvFile[] = (() => {
+        try {
+          if (suite?.id && h.timestamp !== undefined) {
+            const k = evHistoricoStorageKey(suite.id, h.id, h.timestamp, "manual")
+            const raw = sessionStorage.getItem(k)
+            if (raw !== null) return JSON.parse(raw) as EvFile[]
+          }
+          return JSON.parse(
+            sessionStorage.getItem(evScenarioStorageKey(h.id, "manual")) ?? "[]",
+          ) as EvFile[]
+        } catch {
+          return []
+        }
+      })()
+      const autoEvs: EvFile[] = (() => {
+        try {
+          if (suite?.id && h.timestamp !== undefined) {
+            const k = evHistoricoStorageKey(suite.id, h.id, h.timestamp, "auto")
+            const raw = sessionStorage.getItem(k)
+            if (raw !== null) return JSON.parse(raw) as EvFile[]
+          }
+          return JSON.parse(
+            sessionStorage.getItem(evScenarioStorageKey(h.id, "auto")) ?? "[]",
+          ) as EvFile[]
+        } catch {
+          return []
+        }
+      })()
+      allEvidences.push(...manualEvs, ...autoEvs)
+      const lines = [
+        `### ${ref} — ${titulo}  ${icon} ${h.resultado}`,
+        ``,
+        jiraExportField("Código original", h.id),
+        jiraExportField("Sistema", cenario?.system ?? suite?.sistema),
+        jiraExportField("Módulo", h.module),
+        jiraExportField("Tipo", h.tipo),
+        jiraExportField("Descrição", cenario?.descricao),
+        jiraExportField("Regra de Negócio", cenario?.regraDeNegocio),
+        jiraExportField("Pré-condições", cenario?.preCondicoes),
+        jiraExportField("BDD (Gherkin)", cenario?.bdd),
+        jiraExportField("Resultado esperado", cenario?.resultadoEsperado),
+        `**Execução:** ${h.data}${h.hora ? ` às ${h.hora}` : ""}`,
+        `**Resultado:** ${icon} ${h.resultado}`,
+      ]
+      if (h.resultado === "Alerta" && h.alertaObs?.trim()) {
+        lines.push("", jiraExportField("Observações de alerta", h.alertaObs))
+      }
+      if (manualEvs.length > 0) {
+        lines.push(``, `**Evidências — Teste Manual:**`)
+        manualEvs.forEach((ev) => lines.push(`- ${ev.name}`))
+      }
+      if (autoEvs.length > 0) {
+        lines.push(``, `**Evidências — Automação:**`)
+        autoEvs.forEach((ev) => lines.push(`- ${ev.name}`))
+      }
+      return lines.join("\n")
+    }).join("\n---\n\n")
+
+    const tableRows = selected
+      .map((h) => {
+        const ref = refLabelForSuiteCenario(cenarioRefById, h.id)
+        const cen = allCenarios.find((c) => c.id === h.id)
+        const titulo = nomeParaTituloExportJira({
+          nomeNaSuiteOuHistorico: h.cenario,
+          scenarioNameCadastro: cen?.scenarioName,
+        })
+        return `| ${ref} | ${h.id} | ${titulo} | ${h.module || "—"} | ${resultIcon(h.resultado)} ${h.resultado} | ${h.data}${h.hora ? ` ${h.hora}` : ""} |`
+      })
+      .join("\n")
+
+    const sucessos = selected.filter((h) => h.resultado === "Sucesso").length
+    const erros = selected.filter((h) => h.resultado === "Erro").length
+    const alertas = selected.filter((h) => h.resultado === "Alerta").length
+    const summary = [
+      `## Resumo da Execução`,
+      ``,
+      `| Ref. | Código | Cenário | Módulo | Resultado | Data/Hora |`,
+      `|------|--------|---------|--------|-----------|-----------|`,
+      tableRows,
+      ``,
+      `**Total:** ${selected.length} | ✅ Sucesso: ${sucessos} | ❌ Erro: ${erros} | ⚠️ Alerta: ${alertas}`,
+    ].join("\n")
+
+    const exportSuiteName = suite?.suiteName ?? "Suíte"
+    const exportDate = new Date().toLocaleDateString("pt-BR")
+    const content = [
+      `## Histórico de Execução — ${exportSuiteName}`,
+      `*Exportado em ${exportDate}*`,
+      ``,
+      `---`,
+      ``,
+      details,
+      ``,
+      `---`,
+      ``,
+      summary,
+    ].join("\n")
+    return { content, evidences: allEvidences }
+  }
+
+  async function handleExportarJira() {
+    const selected = sortedHistorico.filter((h) => selectedHistorico.has(h._originalIdx))
+    if (selected.length === 0) return
+    try {
+      const r = await fetch("/api/jira/credentials", { credentials: "same-origin" })
+      const d = r.ok ? ((await r.json()) as { configured?: boolean }) : null
+      if (!d?.configured) {
+        toast.error("Configure a Integração Jira em Configurações antes de exportar.", {
+          action: { label: "Configurar", onClick: () => router.push("/configuracoes") },
+        })
+        return
+      }
+    } catch {
+      toast.error("Não foi possível verificar a integração Jira.")
+      return
+    }
+    const { content, evidences } = buildHistoricoExportBundle(selected)
+    setJiraContent(content)
+    setJiraEvidences(evidences)
+    setJiraModalOpen(true)
+  }
+
+  function handleExportarMdCenarios() {
+    if (selectedCenarios.size === 0) return
+    const md = buildCenariosJiraContent(selectedCenarios)
+    if (!md.trim()) return
+    const name = suiteMarkdownDownloadFilename(suiteName, suite?.id ?? "")
+    downloadMarkdownFile(name, md)
+    toast.success("Arquivo Markdown transferido.")
+  }
+
+  function handleExportarMdHistorico() {
+    const selected = sortedHistorico.filter((h) => selectedHistorico.has(h._originalIdx))
+    if (selected.length === 0) return
+    const { content } = buildHistoricoExportBundle(selected)
+    const name = suiteMarkdownDownloadFilename(suiteName, suite?.id ?? "")
+    downloadMarkdownFile(name, content)
+    toast.success("Arquivo Markdown transferido.")
+  }
 
   function handleRemove(id: string) {
     setRemoveId(id)
@@ -525,10 +622,11 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
   }
 
   function addCenarios() {
+    const mod = selectedModule.trim()
     const toAdd = allCenarios.filter((c) => selectedAddIds.has(c.id)).map((c) => ({
       id: c.id,
       name: c.scenarioName,
-      module: c.module,
+      module: mod || c.module,
       execucoes: c.execucoes,
       erros: c.erros,
       deps: c.suites,
@@ -540,6 +638,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
     })
     setSelectedAddIds(new Set())
     setAddCenarioOpen(false)
+    toast.success("Cenários adicionados. A suíte será guardada automaticamente.", { duration: 2500 })
   }
 
   // ── Auto-save when cenarios change (only for existing suites with ID) ────────
@@ -572,7 +671,6 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             execucoes: c.execucoes, erros: c.erros, deps: c.deps, tipo: c.tipo,
           })),
         })
-        toast.success("Suíte salva automaticamente.", { duration: 2000 })
       } catch {
         // Silent fail — user can still save manually
       }
@@ -588,6 +686,20 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
     if (!suite?.id) return
     const indicesToRemove = [...selectedHistorico]
     const previousHistorico = historico
+
+    for (const idx of indicesToRemove) {
+      const h = previousHistorico[idx]
+      if (h.timestamp === undefined) continue
+      for (const tipo of ["manual", "auto"] as const) {
+        const key = evHistoricoStorageKey(suite.id, h.id, h.timestamp, tipo)
+        const raw = sessionStorage.getItem(key)
+        try {
+          const list = (raw ? JSON.parse(raw) : []) as EvFile[]
+          for (const ev of list) void deleteEvidenceFile(ev)
+        } catch { /* ignore */ }
+        sessionStorage.removeItem(key)
+      }
+    }
 
     // Optimistic update
     const indexSet = new Set(indicesToRemove)
@@ -765,8 +877,18 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
               variant="outline"
               size="sm"
               disabled={selectedCenarios.size === 0}
+              onClick={handleExportarMdCenarios}
+            >
+              <FileDown className="size-4" />
+              Exportar.md
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={selectedCenarios.size === 0}
               onClick={() => {
                 setJiraContent(buildCenariosJiraContent(selectedCenarios))
+                setJiraEvidences([])
                 setJiraModalOpen(true)
               }}
             >
@@ -790,6 +912,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
               <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
                 <colgroup>
                   <col className="w-10" />
+                  <col className="w-28" />
                   <col className="w-24" />
                   <col />
                   <col className="w-32" />
@@ -810,6 +933,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                       />
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Ref.</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Testes</th>
@@ -821,6 +945,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                 <tbody>
                   {cenarios.map((c) => {
                     const isCenarioAtivo = isCenarioAtivoFn(c.id)
+                    const refLabel = refLabelForSuiteCenario(cenarioRefById, c.id)
                     return (
                     <tr key={c.id} className={`border-b border-border-default last:border-0 transition-colors${!isCenarioAtivo ? " opacity-60" : ""}`}>
                       <td className="px-4 py-3">
@@ -848,6 +973,11 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                             className="font-medium text-text-secondary hover:underline"
                           >{c.id}</Link>
                         )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="inline-flex items-center rounded-full border border-border-default bg-neutral-grey-100 px-2.5 py-0.5 text-xs font-medium text-text-secondary tabular-nums">
+                          {refLabel}
+                        </span>
                       </td>
                       <td className="px-4 py-3 truncate text-text-primary">
                         <span className="flex items-center gap-2">
@@ -944,6 +1074,15 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
               variant="outline"
               size="sm"
               disabled={selectedHistorico.size === 0}
+              onClick={handleExportarMdHistorico}
+            >
+              <FileDown className="size-4" />
+              Exportar.md
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={selectedHistorico.size === 0}
               onClick={handleExportarJira}
             >
               <ExternalLink className="size-4" />
@@ -960,6 +1099,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
               <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
                 <colgroup>
                   <col className="w-10" />
+                  <col className="w-28" />
                   <col className="w-24" />
                   <col />
                   <col className="w-28" />
@@ -983,6 +1123,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                       />
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Ref.</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
@@ -995,6 +1136,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                   {sortedHistorico.map((h) => {
                     // Inativo no histórico se: removido da suíte OU inativo no banco
                     const hAtivo2 = existingIds.has(h.id) && isCenarioAtivoFn(h.id)
+                    const refLabel = refLabelForSuiteCenario(cenarioRefById, h.id)
                     return (
                     <tr key={`${h.id}-${h._originalIdx}`} className={`border-b border-border-default last:border-0 transition-colors${!hAtivo2 ? " opacity-60" : ""}`}>
                       <td className="px-4 py-3">
@@ -1028,6 +1170,11 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                           // Cenário removido da suíte: exibe ID sem link mas como texto
                           <span className="font-medium text-text-secondary">{h.id}</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="inline-flex items-center rounded-full border border-border-default bg-neutral-grey-100 px-2.5 py-0.5 text-xs font-medium text-text-secondary tabular-nums">
+                          {refLabel}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-text-primary">
                         <span className="flex items-center gap-2">
@@ -1133,8 +1280,11 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" type="button" onClick={() => setAddCenarioOpen(false)}>Cancelar</Button>
-            <Button type="button" onClick={addCenarios}>Adicionar</Button>
+            <CancelActionButton onClick={() => setAddCenarioOpen(false)} />
+            <Button type="button" onClick={addCenarios}>
+              <Plus className="size-4 shrink-0" />
+              Adicionar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1148,8 +1298,9 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             O cenário {removeId} será removido da suite. Caso necessário, você poderá adicioná-lo novamente posteriormente.
           </p>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setRemoveOpen(false)}>Cancelar</Button>
+            <CancelActionButton onClick={() => setRemoveOpen(false)} />
             <Button variant="destructive" onClick={confirmRemove}>
+              <Trash2 className="size-4 shrink-0" />
               Remover
             </Button>
           </DialogFooter>
@@ -1166,14 +1317,13 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             <strong>Editar Suíte</strong>.
           </p>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" autoFocus onClick={() => setEncerrarOpen(false)}>
-              Cancelar
-            </Button>
+            <CancelActionButton autoFocus onClick={() => setEncerrarOpen(false)} />
             <Button
               variant="destructive"
               onClick={handleConfirmarEncerrar}
               disabled={isEncerrandoOuReabrindo}
             >
+              <Power className="size-4 shrink-0" />
               {isEncerrandoOuReabrindo ? "Encerrando..." : "Encerrar"}
             </Button>
           </DialogFooter>
@@ -1209,7 +1359,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                 value={jiraIssueInput}
                 onChange={(e) => setJiraIssueInput(e.target.value)}
                 onBlur={() => setJiraInputTouched(true)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !jiraLoading) handleJiraExport() }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !jiraPending) handleJiraExport() }}
                 autoFocus
               />
               {jiraInputTouched && !jiraIssueInput.trim() && (
@@ -1218,11 +1368,12 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => { setJiraModalOpen(false); setJiraIssueInput("") }}>
-              Cancelar
-            </Button>
-            <Button onClick={handleJiraExport} disabled={jiraLoading || !jiraIssueInput.trim()}>
-              {jiraLoading ? "Verificando..." : "Exportar"}
+            <CancelActionButton onClick={() => { setJiraModalOpen(false); setJiraIssueInput("") }} />
+            <Button onClick={handleJiraExport} disabled={jiraPending !== null || !jiraIssueInput.trim()}>
+              {jiraPending === "fetch"
+                ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                : <ExternalLink className="size-4 shrink-0" aria-hidden />}
+              {jiraPending === "fetch" ? "Verificando..." : "Exportar"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1247,21 +1398,25 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setJiraExisting(null)} disabled={jiraLoading}>
-              Cancelar
-            </Button>
+            <CancelActionButton onClick={() => setJiraExisting(null)} disabled={jiraPending !== null} />
             <Button
               variant="outline"
               onClick={() => { void sendToJira(parseIssueKey(jiraIssueInput), "replace") }}
-              disabled={jiraLoading}
+              disabled={jiraPending !== null}
             >
-              {jiraLoading ? "Enviando..." : "Substituir"}
+              {jiraPending === "replace"
+                ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                : <RefreshCw className="size-4 shrink-0" aria-hidden />}
+              {jiraPending === "replace" ? "Enviando..." : "Substituir"}
             </Button>
             <Button
               onClick={() => { void sendToJira(parseIssueKey(jiraIssueInput), "append") }}
-              disabled={jiraLoading}
+              disabled={jiraPending !== null}
             >
-              {jiraLoading ? "Enviando..." : "Acrescentar"}
+              {jiraPending === "append"
+                ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                : <ExternalLink className="size-4 shrink-0" aria-hidden />}
+              {jiraPending === "append" ? "Enviando..." : "Acrescentar"}
             </Button>
           </DialogFooter>
         </DialogContent>

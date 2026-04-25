@@ -139,9 +139,13 @@ export function EquipeChaptersTable({
                     className="w-full max-w-[11rem] rounded-lg border border-transparent px-1 py-1 text-left transition-colors hover:border-border-default hover:bg-neutral-grey-50"
                     onClick={() => onOpenRating?.(r)}
                     disabled={!onOpenRating}
-                    aria-label={`Avaliações do chapter: média ${r.ratingAvg ?? "sem notas"}`}
+                    aria-label={
+                      r.ratingAvg != null
+                        ? `Avaliações: média ${r.ratingAvg.toFixed(1).replace(".", ",")} de 5 estrelas`
+                        : "Avaliações: sem notas"
+                    }
                   >
-                    <ChapterStarsSummary avg={r.ratingAvg} count={r.ratingCount} />
+                    <ChapterStarsSummary avg={r.ratingAvg} count={r.ratingCount} starsOnly />
                   </button>
                 </td>
                 <td className="px-2 py-3 text-center sm:px-3">

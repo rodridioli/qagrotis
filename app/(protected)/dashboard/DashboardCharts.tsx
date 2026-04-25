@@ -8,7 +8,6 @@ import {
   PieChart, Pie, Cell, Legend,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
-import { cn } from "@/lib/utils"
 import { RankingPositionBadge } from "@/components/qagrotis/RankingPositionBadge"
 import {
   Select,
@@ -38,7 +37,11 @@ interface UltimaAutomacao {
 interface Props {
   automationData:    AutomationDataPoint[]
   moduloNames:       string[]
+  /** Opções do filtro “Módulo” no ranking de execuções (todos os sistemas). */
+  rankingModuloNames?: string[]
   rankingData:       RankingItem[]
+  /** Total de execuções (Sucesso/Erro/Alerta) no período e módulo do ranking — não só o top 4. */
+  rankingTotalTestes: number
   rankingFilter:     RankingFilter
   onRankingFilterChange: (v: RankingFilter) => void
   rankingModulo:     string
@@ -53,6 +56,11 @@ interface Props {
   onErrosFilterChange: (v: ChartFilter) => void
   errosModulo:       string
   onErrosModuloChange: (v: string) => void
+  alertasData:       DataPoint[]
+  alertasFilter:     ChartFilter
+  onAlertasFilterChange: (v: ChartFilter) => void
+  alertasModulo:     string
+  onAlertasModuloChange: (v: string) => void
   sucessoData:       DataPoint[]
   sucessoFilter:     ChartFilter
   onSucessoFilterChange: (v: ChartFilter) => void
@@ -117,7 +125,10 @@ function FilterSelect<T extends string>({
 }) {
   return (
     <Select value={value} onValueChange={(v) => { if (v) onChange(v as T) }}>
-      <SelectTrigger className="h-8 max-w-[110px] shrink-0 text-xs" aria-label={label ?? "Filtrar por período"}>
+      <SelectTrigger
+        className="h-8 w-auto max-w-[110px] shrink-0 text-xs"
+        aria-label={label ?? "Filtrar por período"}
+      >
         <SelectValue>{options.find(o => o.value === value)?.label ?? "Hoje"}</SelectValue>
       </SelectTrigger>
       <SelectPopup>
@@ -228,7 +239,7 @@ function ModuloSelect({
   if (modulos.length === 0) return null
   return (
     <Select value={value || "__todos__"} onValueChange={(v) => { if (v) onChange(v === "__todos__" ? "" : v) }}>
-      <SelectTrigger className="h-8 max-w-[130px] shrink-0 text-xs" aria-label="Filtrar por módulo">
+      <SelectTrigger className="h-8 w-auto max-w-[130px] shrink-0 text-xs" aria-label="Filtrar por módulo">
         <SelectValue>{value ? value : "Todos"}</SelectValue>
       </SelectTrigger>
       <SelectPopup>
@@ -246,31 +257,36 @@ function ModuloSelect({
 export function DashboardCharts({
   automationData,
   moduloNames,
-  rankingData,   rankingFilter,  onRankingFilterChange,  rankingModulo,  onRankingModuloChange,
+  rankingModuloNames,
+  rankingData,   rankingTotalTestes, rankingFilter,  onRankingFilterChange,  rankingModulo,  onRankingModuloChange,
   testesData,    testesFilter,   onTestesFilterChange,   testesModulo,   onTestesModuloChange,
   errosData,     errosFilter,    onErrosFilterChange,    errosModulo,    onErrosModuloChange,
+  alertasData,   alertasFilter,  onAlertasFilterChange,  alertasModulo,  onAlertasModuloChange,
   sucessoData,   sucessoFilter,  onSucessoFilterChange,  sucessoModulo,  onSucessoModuloChange,
   ultimasAutomacoes, resolveUser,
   cenariosPorModulo,
 }: Props) {
+  const rankingModulos = rankingModuloNames ?? moduloNames
   const totalExecucoes = testesData.reduce((acc, d) => acc + d.value, 0)
   const totalErros = errosData.reduce((acc, d) => acc + d.value, 0)
+  const totalAlertas = alertasData.reduce((acc, d) => acc + d.value, 0)
   const totalSucesso = sucessoData.reduce((acc, d) => acc + d.value, 0)
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
 
       {/* Row 1 — Ranking + Cobertura de automação */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
 
-        {/* Cenários gerados */}
-        <div className="flex flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
+        {/* Execuções por usuário (histórico de suítes) */}
+        <div className="flex min-w-0 flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
-              Cenários gerados
+              Testes:{" "}
+              <span className="text-brand-primary">{rankingTotalTestes.toLocaleString("pt-BR")}</span>
             </h2>
             <div className="flex shrink-0 items-center gap-2">
-              <ModuloSelect modulos={moduloNames} value={rankingModulo} onChange={onRankingModuloChange} />
+              <ModuloSelect modulos={rankingModulos} value={rankingModulo} onChange={onRankingModuloChange} />
               <FilterSelect<RankingFilter>
                 options={RANKING_OPTS}
                 value={rankingFilter}
@@ -281,7 +297,7 @@ export function DashboardCharts({
           </div>
 
           {rankingData.length === 0 ? (
-            <p className="py-4 text-center text-xs text-text-secondary">Nenhum cenário gerado no período.</p>
+            <p className="py-4 text-center text-xs text-text-secondary">Nenhuma execução registada no período.</p>
           ) : (
             <div className="mt-1 overflow-hidden">
                <table className="qagrotis-table-row-hover-subtle w-full text-left">
@@ -303,7 +319,7 @@ export function DashboardCharts({
                      const { displayName, photoPath } = resolveUser(item.createdBy)
                      const position = i + 1
                      return (
-                       <tr key={item.createdBy} className="transition-colors">
+                       <tr key={`${item.createdBy}-${position}`} className="transition-colors">
                          <td className="py-2.5 pr-2 align-middle">
                            <RankingPositionBadge position={position} />
                          </td>
@@ -330,7 +346,7 @@ export function DashboardCharts({
         </div>
 
         {/* Cobertura de automação */}
-        <div className="col-span-1 flex flex-col rounded-xl bg-surface-card p-5 shadow-card md:col-span-2 min-h-75">
+        <div className="col-span-1 flex min-w-0 flex-col rounded-xl bg-surface-card p-5 shadow-card md:col-span-2 min-h-75">
           <h2 className="mb-4 shrink-0 text-sm font-semibold text-text-primary">
             Cobertura de automação por módulo
           </h2>
@@ -349,10 +365,10 @@ export function DashboardCharts({
       </div>
 
       {/* Row 2 — Testes executados + Cenários por Módulo */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-5">
 
         {/* Testes executados */}
-        <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
+        <div className="col-span-1 min-w-0 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Testes executados: <span className="text-brand-primary">{totalExecucoes.toLocaleString("pt-BR")}</span>
@@ -385,7 +401,7 @@ export function DashboardCharts({
         </div>
 
         {/* Cenários por Módulo — pie chart */}
-        <div className="col-span-1 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-2">
+        <div className="col-span-1 min-w-0 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-2">
           <h2 className="mb-4 text-sm font-semibold text-text-primary">Cenários por Módulo</h2>
           {cenariosPorModulo.length === 0 ? (
             <p className="text-xs text-text-secondary">Nenhum cenário cadastrado para o sistema selecionado.</p>
@@ -427,14 +443,14 @@ export function DashboardCharts({
         </div>
       </div>
 
-      {/* Row 3 — Erros + Sucesso */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {/* Row 3 — Erros + Alertas + Sucesso */}
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
 
-        {/* Erros encontrados */}
-        <div className="rounded-xl bg-surface-card p-5 shadow-card">
+        {/* Erros */}
+        <div className="min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
-              Erros encontrados: <span className="text-destructive">{totalErros.toLocaleString("pt-BR")}</span>
+              Erros: <span className="text-destructive">{totalErros.toLocaleString("pt-BR")}</span>
             </h2>
             <div className="flex shrink-0 items-center gap-2">
               <ModuloSelect modulos={moduloNames} value={errosModulo} onChange={onErrosModuloChange} />
@@ -463,11 +479,45 @@ export function DashboardCharts({
           </ResponsiveContainer>
         </div>
 
-        {/* Testes de sucesso */}
-        <div className="rounded-xl bg-surface-card p-5 shadow-card">
+        {/* Alertas */}
+        <div className="min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
-              Testes de sucesso: <span className="text-qagrotis-primary-500">{totalSucesso.toLocaleString("pt-BR")}</span>
+              Alertas:{" "}
+              <span className="text-[color:var(--alert)]">{totalAlertas.toLocaleString("pt-BR")}</span>
+            </h2>
+            <div className="flex shrink-0 items-center gap-2">
+              <ModuloSelect modulos={moduloNames} value={alertasModulo} onChange={onAlertasModuloChange} />
+              <FilterSelect<ChartFilter>
+                options={CHART_OPTS}
+                value={alertasFilter}
+                onChange={onAlertasFilterChange}
+                label="Filtro período alertas"
+              />
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={alertasData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="alertasGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="var(--alert)" stopOpacity={0.28} />
+                  <stop offset="95%" stopColor="var(--alert)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
+              <XAxis dataKey="label" tick={TICK_X_AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 11, fill: "var(--text-secondary)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v, "Alertas"]} />
+              <Area type="monotone" dataKey="value" stroke="var(--alert)" strokeWidth={2} fill="url(#alertasGradient)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Sucesso */}
+        <div className="min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
+              Sucesso: <span className="text-qagrotis-primary-500">{totalSucesso.toLocaleString("pt-BR")}</span>
             </h2>
             <div className="flex shrink-0 items-center gap-2">
               <ModuloSelect modulos={moduloNames} value={sucessoModulo} onChange={onSucessoModuloChange} />

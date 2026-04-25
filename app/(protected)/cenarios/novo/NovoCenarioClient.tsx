@@ -35,6 +35,7 @@ import { formatCpfCnpj } from "@/lib/utils"
 import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
+import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
 
 const RISCO_OPTIONS = [
   { value: "Alto",  label: "Alto",  icon: <ArrowUp   className="size-3.5 shrink-0" />,                         color: "#ef4444" },
@@ -384,12 +385,13 @@ export default function NovoCenarioClient({
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = "prompt.md"
+    const safeName = `${id}-prompt.md`
+    a.download = safeName
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    toast.success("Arquivo prompt.md gerado com sucesso.")
+    toast.success(`Arquivo ${safeName} gerado com sucesso.`)
   }
 
   const showPromptBtn =
@@ -1011,7 +1013,7 @@ export default function NovoCenarioClient({
             )}
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setAddDepOpen(false)}>Cancelar</Button>
+            <CancelActionButton onClick={() => setAddDepOpen(false)} />
             <Button onClick={addDeps} disabled={selectedDepIds.size === 0}>Adicionar</Button>
           </DialogFooter>
         </DialogContent>
@@ -1053,7 +1055,7 @@ export default function NovoCenarioClient({
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setAddClienteOpen(false)} disabled={isClientePending}>Cancelar</Button>
+            <CancelActionButton onClick={() => setAddClienteOpen(false)} disabled={isClientePending} />
             <Button
               disabled={isClientePending}
               onClick={() => {
@@ -1148,7 +1150,7 @@ export default function NovoCenarioClient({
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setAddCredencialOpen(false)} disabled={isCredencialPending}>Cancelar</Button>
+            <CancelActionButton onClick={() => setAddCredencialOpen(false)} disabled={isCredencialPending} />
             <Button
               disabled={isCredencialPending}
               onClick={() => {
@@ -1199,7 +1201,7 @@ export default function NovoCenarioClient({
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setNoModuloOpen(false)}>Cancelar</Button>
+            <CancelActionButton onClick={() => setNoModuloOpen(false)} />
             <Button
               disabled={isModuloPending}
               onClick={() => {

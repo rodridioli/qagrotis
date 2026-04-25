@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react"
 import {
   BarChart3, Users, Clock, Calendar,
-  SlidersHorizontal,
+  SlidersHorizontal, X, Check,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -13,6 +13,7 @@ import {
   type EquipeUsuarioCadastro,
 } from "@/lib/actions/equipe"
 import { EquipePerformanceCard } from "@/components/equipe/EquipePerformanceCard"
+import { getLocalCalendarDayStartEndMs, localDayBoundsToIsoFilter } from "@/lib/local-calendar-range"
 import { EquipeAniversarioCard } from "@/components/equipe/EquipeAniversarioCard"
 import { EquipeHorariosTable } from "@/components/equipe/EquipeHorariosTable"
 import { EquipeChaptersSection } from "@/components/equipe/EquipeChaptersSection"
@@ -87,27 +88,36 @@ function tituloMesNascimentoPt(month1to12: number): string {
   return label.length ? label.charAt(0).toUpperCase() + label.slice(1) : String(month1to12)
 }
 
+/** Período em ISO para `getPerformanceData`. "Hoje" usa o mesmo dia civil que o dashboard (`getLocalCalendarDayStartEndMs`). */
 function getDateRange(periodo: string): { dataInicio?: string; dataFim?: string } {
   const now = new Date()
-  const pad = (n: number) => String(n).padStart(2, "0")
-  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-  const today = fmt(now)
+  const endOfLocalDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+  const startOfLocalDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
+
   switch (periodo) {
-    case "hoje":         return { dataInicio: today, dataFim: today }
+    case "hoje": {
+      const { startMs, endMs } = getLocalCalendarDayStartEndMs(now)
+      return localDayBoundsToIsoFilter(startMs, endMs)
+    }
     case "mes-atual": {
-      const first = new Date(now.getFullYear(), now.getMonth(), 1)
-      return { dataInicio: fmt(first), dataFim: today }
+      const first = startOfLocalDay(new Date(now.getFullYear(), now.getMonth(), 1))
+      const end = endOfLocalDay(now)
+      return { dataInicio: first.toISOString(), dataFim: end.toISOString() }
     }
     case "mes-anterior": {
-      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      const last  = new Date(now.getFullYear(), now.getMonth(), 0)
-      return { dataInicio: fmt(first), dataFim: fmt(last) }
+      const first = startOfLocalDay(new Date(now.getFullYear(), now.getMonth() - 1, 1))
+      const last = endOfLocalDay(new Date(now.getFullYear(), now.getMonth(), 0))
+      return { dataInicio: first.toISOString(), dataFim: last.toISOString() }
     }
     case "ano": {
-      const first = new Date(now.getFullYear(), 0, 1)
-      return { dataInicio: fmt(first), dataFim: today }
+      const first = startOfLocalDay(new Date(now.getFullYear(), 0, 1))
+      const end = endOfLocalDay(now)
+      return { dataInicio: first.toISOString(), dataFim: end.toISOString() }
     }
-    default: return {}
+    default:
+      return {}
   }
 }
 
@@ -190,8 +200,12 @@ function FilterModal({
             Limpar filtros
           </DialogClose>
           <div className="flex gap-2">
-            <DialogClose render={<Button variant="outline" />}>Cancelar</DialogClose>
+            <DialogClose render={<Button variant="outline" />}>
+              <X className="size-4 shrink-0" />
+              Cancelar
+            </DialogClose>
             <Button onClick={() => { onApply(); onOpenChange(false) }} disabled={pending}>
+              <Check className="size-4 shrink-0" />
               {pending ? "Aplicando…" : "Aplicar"}
             </Button>
           </div>

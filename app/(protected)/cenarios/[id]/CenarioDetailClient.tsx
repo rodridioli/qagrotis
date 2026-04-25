@@ -4,28 +4,34 @@ import React, { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { ArrowLeft, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, ExternalLink, Check, X, Paperclip } from "lucide-react"
+import { ArrowLeft, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, ExternalLink, Check, X, Paperclip, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import type { SuiteRecord } from "@/lib/actions/suites"
 import { registrarResultadoSuite } from "@/lib/actions/suites"
 import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
 import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
+import { EVIDENCE_FILE_ACCEPT, filterAllowedEvidenceFiles } from "@/lib/evidence-file-types"
+import {
+  type EvFile,
+  persistEvidenceFile,
+  deleteEvidenceFile,
+  prepareEvidenceForSessionSnapshot,
+  formatEvidenceError,
+} from "@/lib/evidence-storage"
+import { evHistoricoStorageKey, evScenarioStorageKey, trySetSessionStorageJson } from "@/lib/evidence-session-keys"
 
-export type EvFile = { name: string; type: string; dataUrl: string }
-
-export function evStorageKey(cenarioId: string, tipo: "manual" | "auto") {
-  return `qagrotis_ev_${cenarioId}_${tipo}`
-}
-
-async function fileToEvFile(file: File): Promise<EvFile> {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve({ name: file.name, type: file.type, dataUrl: reader.result as string })
-    reader.readAsDataURL(file)
-  })
-}
+export type { EvFile }
 
 interface Props {
   cenario: CenarioRecord
@@ -155,6 +161,8 @@ function BlockCard({
 export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }: Props) {
   const router = useRouter()
   const [isRegistering, setIsRegistering] = useState(false)
+  const [alertModalOpen, setAlertModalOpen] = useState(false)
+  const [alertaObs, setAlertaObs] = useState("")
   const [manualEvs, setManualEvs] = useState<EvFile[]>([])
   const [autoEvs, setAutoEvs] = useState<EvFile[]>([])
   const manualInputRef = useRef<HTMLInputElement>(null)
@@ -162,7 +170,10 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
 
   const steps = cenario.steps ?? []
   const depIds = cenario.deps ?? []
-  const isAutomatizado = cenario.tipo === "Automatizado" || cenario.tipo === "Man./Auto."
+  const showTesteManual =
+    cenario.tipo === "Manual" || cenario.tipo === "Man./Auto."
+  const showAutomacao =
+    cenario.tipo === "Automatizado" || cenario.tipo === "Man./Auto."
   const viewOnly = cenario.active === false
   const allowEvidencias = !viewOnly
 
@@ -170,49 +181,161 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
   useEffect(() => {
     if (viewOnly) return
     try {
-      const m = sessionStorage.getItem(evStorageKey(cenario.id, "manual"))
-      const a = sessionStorage.getItem(evStorageKey(cenario.id, "auto"))
+      const m = sessionStorage.getItem(evScenarioStorageKey(cenario.id, "manual"))
+      const a = sessionStorage.getItem(evScenarioStorageKey(cenario.id, "auto"))
       if (m) setManualEvs(JSON.parse(m))
       if (a) setAutoEvs(JSON.parse(a))
     } catch { /* ignore */ }
   }, [cenario.id, viewOnly])
 
-  // Persiste evidências na sessão sempre que mudam
+  // Persiste evidências na sessão (migra dataUrl grande → IDB para não estourar a quota)
   useEffect(() => {
     if (viewOnly) return
-    sessionStorage.setItem(evStorageKey(cenario.id, "manual"), JSON.stringify(manualEvs))
-  }, [cenario.id, manualEvs, viewOnly])
+    let cancel = false
+    void (async () => {
+      const safe = await prepareEvidenceForSessionSnapshot(manualEvs)
+      if (cancel) return
+      const equal =
+        safe.length === manualEvs.length &&
+        safe.every((s, i) => {
+          const o = manualEvs[i]
+          return s.name === o.name && s.type === o.type && s.idbKey === o.idbKey && s.dataUrl === o.dataUrl
+        })
+      if (!equal) {
+        setManualEvs(safe)
+        return
+      }
+      const ok = trySetSessionStorageJson(
+        evScenarioStorageKey(cenario.id, "manual"),
+        JSON.stringify(safe),
+        suite?.id ? { suiteIdForPrune: suite.id } : undefined,
+      )
+      if (!ok) toast.error("Armazenamento da sessão cheio. Exporte evidências ao Jira ou remova anexos antigos.")
+    })()
+    return () => { cancel = true }
+  }, [cenario.id, manualEvs, viewOnly, suite?.id])
 
   useEffect(() => {
     if (viewOnly) return
-    sessionStorage.setItem(evStorageKey(cenario.id, "auto"), JSON.stringify(autoEvs))
-  }, [cenario.id, autoEvs, viewOnly])
+    let cancel = false
+    void (async () => {
+      const safe = await prepareEvidenceForSessionSnapshot(autoEvs)
+      if (cancel) return
+      const equal =
+        safe.length === autoEvs.length &&
+        safe.every((s, i) => {
+          const o = autoEvs[i]
+          return s.name === o.name && s.type === o.type && s.idbKey === o.idbKey && s.dataUrl === o.dataUrl
+        })
+      if (!equal) {
+        setAutoEvs(safe)
+        return
+      }
+      const ok = trySetSessionStorageJson(
+        evScenarioStorageKey(cenario.id, "auto"),
+        JSON.stringify(safe),
+        suite?.id ? { suiteIdForPrune: suite.id } : undefined,
+      )
+      if (!ok) toast.error("Armazenamento da sessão cheio. Exporte evidências ao Jira ou remova anexos antigos.")
+    })()
+    return () => { cancel = true }
+  }, [cenario.id, autoEvs, viewOnly, suite?.id])
 
   async function handleManualFiles(e: React.ChangeEvent<HTMLInputElement>) {
     if (viewOnly) return
     const files = Array.from(e.target.files ?? [])
-    const evFiles = await Promise.all(files.map(fileToEvFile))
-    setManualEvs((prev) => [...prev, ...evFiles])
+    const { allowed, rejectedNames } = filterAllowedEvidenceFiles(files)
+    if (rejectedNames.length > 0) {
+      toast.error(
+        `Formato não suportado: ${rejectedNames.slice(0, 3).join(", ")}${rejectedNames.length > 3 ? "…" : ""}. Use imagem, PDF ou vídeo.`,
+      )
+    }
+    if (allowed.length === 0) {
+      e.target.value = ""
+      return
+    }
+    try {
+      const evFiles = await Promise.all(allowed.map((f) => persistEvidenceFile(f)))
+      setManualEvs((prev) => [...prev, ...evFiles])
+    } catch (err) {
+      toast.error(formatEvidenceError(err))
+    }
     e.target.value = ""
   }
 
   async function handleAutoFiles(e: React.ChangeEvent<HTMLInputElement>) {
     if (viewOnly) return
     const files = Array.from(e.target.files ?? [])
-    const evFiles = await Promise.all(files.map(fileToEvFile))
-    setAutoEvs((prev) => [...prev, ...evFiles])
+    const { allowed, rejectedNames } = filterAllowedEvidenceFiles(files)
+    if (rejectedNames.length > 0) {
+      toast.error(
+        `Formato não suportado: ${rejectedNames.slice(0, 3).join(", ")}${rejectedNames.length > 3 ? "…" : ""}. Use imagem, PDF ou vídeo.`,
+      )
+    }
+    if (allowed.length === 0) {
+      e.target.value = ""
+      return
+    }
+    try {
+      const evFiles = await Promise.all(allowed.map((f) => persistEvidenceFile(f)))
+      setAutoEvs((prev) => [...prev, ...evFiles])
+    } catch (err) {
+      toast.error(formatEvidenceError(err))
+    }
     e.target.value = ""
+  }
+
+  async function snapshotEvidenciasParaHistorico(timestamp: number) {
+    if (!suite) return
+    const safeM = await prepareEvidenceForSessionSnapshot(manualEvs)
+    const safeA = await prepareEvidenceForSessionSnapshot(autoEvs)
+    const km = evHistoricoStorageKey(suite.id, cenario.id, timestamp, "manual")
+    const ka = evHistoricoStorageKey(suite.id, cenario.id, timestamp, "auto")
+    const okM = trySetSessionStorageJson(km, JSON.stringify(safeM), { suiteIdForPrune: suite.id })
+    const okA = trySetSessionStorageJson(ka, JSON.stringify(safeA), { suiteIdForPrune: suite.id })
+    if (!okM || !okA) {
+      toast.error(
+        "Não foi possível guardar todas as evidências na sessão (limite do navegador). Exporte ao Jira antes de registrar ou reduza anexos.",
+      )
+    }
+    sessionStorage.removeItem(evScenarioStorageKey(cenario.id, "manual"))
+    sessionStorage.removeItem(evScenarioStorageKey(cenario.id, "auto"))
+    setManualEvs([])
+    setAutoEvs([])
   }
 
   async function handleResult(resultado: "Sucesso" | "Erro") {
     if (!suite) return
     setIsRegistering(true)
     try {
-      await registrarResultadoSuite(suite.id, cenario.id, resultado)
+      const { timestamp } = await registrarResultadoSuite(suite.id, cenario.id, resultado)
+      await snapshotEvidenciasParaHistorico(timestamp)
       toast.success("Teste registrado com sucesso!")
       router.push(`/suites/${suite.id}?tab=cenarios`)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro ao registrar o resultado")
+    } finally {
+      setIsRegistering(false)
+    }
+  }
+
+  async function handleRegistrarAlerta() {
+    if (!suite) return
+    const obs = alertaObs.trim()
+    if (!obs) {
+      toast.error("Descreva os pontos de atenção.")
+      return
+    }
+    setIsRegistering(true)
+    try {
+      const { timestamp } = await registrarResultadoSuite(suite.id, cenario.id, "Alerta", { alertaObs: obs })
+      await snapshotEvidenciasParaHistorico(timestamp)
+      toast.success("Alerta registrado com sucesso!")
+      setAlertModalOpen(false)
+      setAlertaObs("")
+      router.push(`/suites/${suite.id}?tab=historico`)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erro ao registrar o alerta")
     } finally {
       setIsRegistering(false)
     }
@@ -227,6 +350,44 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
   return (
     <div className="space-y-4">
       <LoadingOverlay visible={isRegistering} label="Registrando resultado..." />
+
+      <Dialog
+        open={alertModalOpen}
+        onOpenChange={(open) => {
+          setAlertModalOpen(open)
+          if (!open) setAlertaObs("")
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Registrar alerta</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-text-secondary">
+            Descreva os pontos de atenção desta execução. A informação fica guardada no histórico da suíte e pode ser enviada ao Jira nas exportações.
+          </p>
+          <Textarea
+            value={alertaObs}
+            onChange={(e) => setAlertaObs(e.target.value)}
+            placeholder="Pontos de atenção…"
+            className="min-h-28"
+            disabled={isRegistering}
+          />
+          <DialogFooter showCloseButton={false}>
+            <CancelActionButton
+              onClick={() => { setAlertModalOpen(false); setAlertaObs("") }}
+              disabled={isRegistering}
+            />
+            <Button
+              type="button"
+              disabled={isRegistering}
+              onClick={() => { void handleRegistrarAlerta() }}
+            >
+              <Check className="size-4 shrink-0" />
+              Confirmar alerta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Header / Breadcrumb ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -262,12 +423,18 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
           )}
           {suite && !viewOnly && (
             <>
-              <Button
-                onClick={() => handleResult("Sucesso")}
-                disabled={isRegistering}
-              >
+              <Button onClick={() => handleResult("Sucesso")} disabled={isRegistering}>
                 <Check className="size-4" />
                 Sucesso
+              </Button>
+              <Button
+                type="button"
+                variant="alertOutline"
+                disabled={isRegistering}
+                onClick={() => setAlertModalOpen(true)}
+              >
+                <TriangleAlert className="size-4 shrink-0" />
+                Alerta
               </Button>
               <Button
                 variant="destructive"
@@ -318,8 +485,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
         </div>
       </BlockCard>
 
-      {/* ── Bloco 2: Teste Manual ── */}
-      <BlockCard title="Teste Manual">
+      {/* ── Bloco 2: Teste Manual (só Manual ou Man./Auto.) ── */}
+      {showTesteManual && <BlockCard title="Teste Manual">
         <Field label="Descrição">
           <DisabledTextarea value={cenario.descricao} />
         </Field>
@@ -345,7 +512,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
               Evidências{manualEvs.length > 0 ? ` (${manualEvs.length})` : ""}
             </span>
             {allowEvidencias ? (
-              <>
+              <div className="flex flex-col items-end gap-1">
                 <Button variant="outline" onClick={() => manualInputRef.current?.click()}>
                   <Paperclip className="size-4" />
                   Anexar Evidências
@@ -354,11 +521,14 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                   ref={manualInputRef}
                   type="file"
                   multiple
-                  accept="image/*,application/pdf"
+                  accept={EVIDENCE_FILE_ACCEPT}
                   className="hidden"
                   onChange={handleManualFiles}
                 />
-              </>
+                <p className="max-w-[220px] text-right text-[10px] leading-snug text-text-secondary">
+                  Imagens, PDF ou vídeo. Ao registrar o teste, os anexos saem daqui e ficam ligados à linha do histórico para exportar ao Jira.
+                </p>
+              </div>
             ) : (
               <span className="text-xs text-text-secondary">Somente visualização</span>
             )}
@@ -375,7 +545,13 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                   {allowEvidencias && (
                     <button
                       type="button"
-                      onClick={() => setManualEvs((prev) => prev.filter((_, idx) => idx !== i))}
+                      onClick={() => {
+                        setManualEvs((prev) => {
+                          const ev = prev[i]
+                          void deleteEvidenceFile(ev)
+                          return prev.filter((_, idx) => idx !== i)
+                        })
+                      }}
                       className="text-text-secondary hover:text-destructive transition-colors"
                     >
                       <X className="size-3" />
@@ -388,10 +564,10 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
             <p className="text-xs text-text-secondary italic">Nenhuma evidência anexada.</p>
           )}
         </div>
-      </BlockCard>
+      </BlockCard>}
 
-      {/* ── Bloco 3: Automação ── */}
-      {isAutomatizado && <BlockCard title="Automação">
+      {/* ── Bloco 3: Automação (só Automatizado ou Man./Auto.) ── */}
+      {showAutomacao && <BlockCard title="Automação">
           <div className="space-y-5">
 
             {/* Credenciais — mesma linha */}
@@ -471,7 +647,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                   Evidências{autoEvs.length > 0 ? ` (${autoEvs.length})` : ""}
                 </span>
                 {allowEvidencias ? (
-                  <>
+                  <div className="flex flex-col items-end gap-1">
                     <Button variant="outline" onClick={() => autoInputRef.current?.click()}>
                       <Paperclip className="size-4" />
                       Anexar Evidências
@@ -480,11 +656,14 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                       ref={autoInputRef}
                       type="file"
                       multiple
-                      accept="image/*,application/pdf"
+                      accept={EVIDENCE_FILE_ACCEPT}
                       className="hidden"
                       onChange={handleAutoFiles}
                     />
-                  </>
+                    <p className="max-w-[220px] text-right text-[10px] leading-snug text-text-secondary">
+                      Imagens, PDF ou vídeo. Ao registrar o teste, os anexos saem daqui e ficam ligados à linha do histórico para exportar ao Jira.
+                    </p>
+                  </div>
                 ) : (
                   <span className="text-xs text-text-secondary">Somente visualização</span>
                 )}
@@ -501,7 +680,13 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                       {allowEvidencias && (
                         <button
                           type="button"
-                          onClick={() => setAutoEvs((prev) => prev.filter((_, idx) => idx !== i))}
+                          onClick={() => {
+                            setAutoEvs((prev) => {
+                              const ev = prev[i]
+                              void deleteEvidenceFile(ev)
+                              return prev.filter((_, idx) => idx !== i)
+                            })
+                          }}
                           className="text-text-secondary hover:text-destructive transition-colors"
                         >
                           <X className="size-3" />

@@ -3,7 +3,10 @@
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { ExternalLink, Loader2, RefreshCw } from "lucide-react"
+import { applyJiraAttachmentUrlsToMarkdown } from "@/lib/jira-evidence-markdown"
 import { Button } from "@/components/ui/button"
+import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
 import { Input } from "@/components/ui/input"
 import {
   Dialog,
@@ -13,6 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
+import { nomeParaTituloExportJira } from "@/lib/jira-export-nome-cenario"
 
 interface Props {
   open: boolean
@@ -39,9 +43,12 @@ function fieldMd(label: string, value: string | undefined | null): string {
 
 function buildContent(cenario: CenarioRecord, manualNames: string[], autoNames: string[]): string {
   const exportDate = new Date().toLocaleDateString("pt-BR")
+  const titulo = nomeParaTituloExportJira({
+    nomeNaSuiteOuHistorico: cenario.scenarioName ?? "",
+  })
 
   const lines: string[] = [
-    `## ${cenario.id} — ${cenario.scenarioName}`,
+    `## ${cenario.id} — ${titulo}`,
     `*Exportado em ${exportDate}*`,
     ``,
     fieldMd("Sistema", cenario.system),
@@ -66,21 +73,6 @@ function buildContent(cenario: CenarioRecord, manualNames: string[], autoNames: 
   }
 
   return lines.join("\n")
-}
-
-async function uploadFilesToJira(issueKey: string, files: File[]): Promise<string[]> {
-  if (files.length === 0) return []
-  const fd = new FormData()
-  fd.append("issueKey", issueKey)
-  files.forEach((f) => fd.append("files", f, f.name))
-  try {
-    const res = await fetch("/api/jira/attachments", { method: "POST", body: fd })
-    if (!res.ok) return []
-    const data = await res.json() as { uploaded: string[] }
-    return data.uploaded
-  } catch {
-    return []
-  }
 }
 
 export function JiraExportModal({ open, onClose, cenario, manualAttachments, autoAttachments }: Props) {
@@ -149,13 +141,32 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
     setLoading(true)
     try {
       const allFiles = [...manualAttachments, ...autoAttachments]
-      const uploadedNames = await uploadFilesToJira(issueKey, allFiles)
-
-      const content = buildContent(
+      let content = buildContent(
         cenario,
         manualAttachments.map((f) => f.name),
         autoAttachments.map((f) => f.name),
       )
+
+      if (allFiles.length > 0) {
+        const fd = new FormData()
+        fd.append("issueKey", issueKey)
+        allFiles.forEach((f) => fd.append("files", f, f.name))
+        const uploadRes = await fetch("/api/jira/attachments", { method: "POST", body: fd })
+        const uploadBody = (await uploadRes.json().catch(() => ({
+          uploaded: [] as { name: string; contentUrl: string }[],
+          errors: [] as string[],
+        }))) as { uploaded: { name: string; contentUrl: string }[]; errors?: string[] }
+        if (!uploadRes.ok) {
+          throw new Error(uploadBody.errors?.join("; ") || `Upload de anexos falhou (${uploadRes.status}).`)
+        }
+        if (uploadBody.uploaded.length === 0) {
+          throw new Error(uploadBody.errors?.join("; ") || "O Jira não aceitou os anexos.")
+        }
+        if (uploadBody.errors?.length) {
+          toast.warning(`Parte dos anexos falhou: ${uploadBody.errors.slice(0, 2).join("; ")}`)
+        }
+        content = applyJiraAttachmentUrlsToMarkdown(content, uploadBody.uploaded)
+      }
 
       const res = await fetch("/api/jira", {
         method: "POST",
@@ -166,7 +177,7 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
       if (!res.ok) throw new Error((data as string) || "Erro ao enviar para o Jira.")
 
       const uploadMsg = allFiles.length > 0
-        ? ` ${uploadedNames.length}/${allFiles.length} arquivo(s) anexado(s).`
+        ? ` ${allFiles.length} ficheiro(s) enviado(s) ao Jira.`
         : ""
 
       toast.success("Exportado para o Jira com sucesso!", {
@@ -226,8 +237,11 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
             )}
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={handleClose}>Cancelar</Button>
+            <CancelActionButton onClick={handleClose} />
             <Button onClick={handleCheckIssue} disabled={loading || !issueInput.trim()}>
+              {loading
+                ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                : <ExternalLink className="size-4 shrink-0" aria-hidden />}
               {loading ? "Verificando..." : "Exportar"}
             </Button>
           </DialogFooter>
@@ -253,18 +267,24 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <Button variant="outline" onClick={() => setExisting(null)} disabled={loading}>Cancelar</Button>
+            <CancelActionButton onClick={() => setExisting(null)} disabled={loading} />
             <Button
               variant="outline"
               onClick={() => { void doExport(issueKey, "replace") }}
               disabled={loading}
             >
+              {loading
+                ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                : <RefreshCw className="size-4 shrink-0" aria-hidden />}
               {loading ? "Enviando..." : "Substituir"}
             </Button>
             <Button
               onClick={() => { void doExport(issueKey, "append") }}
               disabled={loading}
             >
+              {loading
+                ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                : <ExternalLink className="size-4 shrink-0" aria-hidden />}
               {loading ? "Enviando..." : "Acrescentar"}
             </Button>
           </DialogFooter>

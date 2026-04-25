@@ -36,7 +36,11 @@ export interface SuiteRecord {
     data: string
     hora?: string
     timestamp?: number
-    resultado: "Sucesso" | "Erro" | "Pendente"
+    resultado: "Sucesso" | "Erro" | "Pendente" | "Alerta"
+    /** Texto da modal de alerta (só quando resultado === "Alerta"). */
+    alertaObs?: string
+    /** Email (ou identificador) de quem registrou a execução — usado no ranking do dashboard. */
+    executadoPor?: string
   }[]
 }
 
@@ -163,6 +167,9 @@ export async function atualizarSuite(id: string, data: unknown): Promise<SuiteRe
     prisma.modulo.findFirst({ where: { name: parsed.modulo, sistemaName: parsed.sistema, active: true }, select: { id: true } })
   ])
 
+  const historicoPrev = (existing.historico as unknown as NonNullable<SuiteRecord["historico"]>) ?? []
+  const historicoSynced = historicoPrev.map((h) => ({ ...h, module: parsed.modulo }))
+
   const row = await prisma.suite.update({
     where: { id },
     data: {
@@ -176,7 +183,7 @@ export async function atualizarSuite(id: string, data: unknown): Promise<SuiteRe
       cliente:   parsed.cliente,
       objetivo:  parsed.objetivo,
       cenarios:  parsed.cenarios,
-      // Preserve historico — do not overwrite
+      historico: historicoSynced,
     },
   })
 
@@ -185,8 +192,18 @@ export async function atualizarSuite(id: string, data: unknown): Promise<SuiteRe
   return toRecord(row)
 }
 
-export async function registrarResultadoSuite(suiteId: string, cenarioId: string, resultado: "Sucesso" | "Erro"): Promise<void> {
-  await requireSession()
+export async function registrarResultadoSuite(
+  suiteId: string,
+  cenarioId: string,
+  resultado: "Sucesso" | "Erro" | "Alerta",
+  options?: { alertaObs?: string },
+): Promise<{ timestamp: number }> {
+  const session = await requireSession()
+
+  const alertaObs = (options?.alertaObs ?? "").trim()
+  if (resultado === "Alerta" && !alertaObs) {
+    throw new Error("Descreva os pontos de atenção para registrar um alerta.")
+  }
 
   const suite = await prisma.suite.findUnique({ where: { id: suiteId } })
   if (!suite) throw new Error("Suíte não encontrada")
@@ -196,7 +213,12 @@ export async function registrarResultadoSuite(suiteId: string, cenarioId: string
   if (!cenarioRef) throw new Error("Cenário não pertence à suíte")
 
   const now = new Date()
-  const historicoItem = {
+  const emailRaw = session.user?.email?.trim()
+  const nameRaw = session.user?.name?.trim()
+  const executadoPor =
+    (emailRaw ? emailRaw.toLowerCase() : nameRaw) || undefined
+  type HistItem = NonNullable<SuiteRecord["historico"]>[number]
+  const historicoItem: HistItem = {
     id:       cenarioId,
     cenario:  cenarioRef.name,
     module:   cenarioRef.module,
@@ -206,6 +228,8 @@ export async function registrarResultadoSuite(suiteId: string, cenarioId: string
     hora:     now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
     timestamp: now.getTime(),
     resultado,
+    ...(resultado === "Alerta" ? { alertaObs } : {}),
+    ...(executadoPor ? { executadoPor } : {}),
   }
 
   const historico = (suite.historico as unknown as NonNullable<SuiteRecord["historico"]>) ?? []
@@ -214,6 +238,8 @@ export async function registrarResultadoSuite(suiteId: string, cenarioId: string
   await prisma.suite.update({ where: { id: suiteId }, data: { historico } })
   revalidatePath("/suites")
   revalidatePath(`/suites/${suiteId}`)
+  revalidatePath("/dashboard")
+  return { timestamp: historicoItem.timestamp }
 }
 
 // ── Dashboard-specific: minimal record with full historico ──────────────────
@@ -227,6 +253,7 @@ export interface SuiteDashboardRecord {
 
 export async function getSuitesParaDashboard(): Promise<SuiteDashboardRecord[]> {
   const rows = await prisma.suite.findMany({
+    where: { active: true },
     select: { id: true, sistema: true, modulo: true, historico: true },
   })
   return rows.map((row) => ({

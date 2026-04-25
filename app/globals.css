@@ -56,6 +56,9 @@
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-border-default: var(--border-default);
+  /** Alerta / aviso (execução de teste — alinhado a #ffb900) */
+  --color-alert: var(--alert);
+  --color-alert-foreground: var(--alert-foreground);
 
   /* ── QAgrotis Primary Scale (10 shades) ── */
   --color-primary-50: var(--qagrotis-primary-50);
@@ -116,6 +119,8 @@
   --text-primary:    #1a202c;
   --text-secondary:  #6b7280;
   --border-default:  #e5e7eb;
+  --alert:             #ffb900;
+  --alert-foreground:  #1a202c;
 
   /* Raio base da UI (~8px em fonte 16px); escala com font-size — botões, inputs, cards, ícones, tabs */
   --radius-control: 0.5em;
@@ -208,6 +213,8 @@
   --text-primary:    #e8edf5;
   --text-secondary:  #8b95a5;
   --border-default:  #252c3d;
+  --alert:             #ffb900;
+  --alert-foreground:  #0f1117;
 
   /* ── Neutral-grey scale remap (all hover/bg/text uses adapt automatically)
      Light shades → very dark surface tints (for hover states)
