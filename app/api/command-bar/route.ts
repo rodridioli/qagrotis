@@ -258,9 +258,9 @@ export async function POST(req: NextRequest) {
     }),
     prisma.cliente.findMany({
       where: { active: true },
-      select: { nome: true },
+      select: { nomeFantasia: true },
       take: 50,
-      orderBy: { nome: "asc" },
+      orderBy: { nomeFantasia: "asc" },
     }),
   ])
 
@@ -273,7 +273,7 @@ export async function POST(req: NextRequest) {
   }
 
   const modulos = modulosRaw.map((m) => m.name)
-  const clientes = clientesRaw.map((c) => c.nome)
+  const clientes = clientesRaw.map((c) => c.nomeFantasia)
   const userName = session.user.name ?? session.user.email ?? "Usuário"
 
   const systemPrompt = buildSystemPrompt(cleanPathname, cleanSistema, userName, modulos, clientes)
