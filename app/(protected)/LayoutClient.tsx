@@ -8,8 +8,6 @@ import {
   Settings, LifeBuoy, LogOut, ChevronLeft,
   ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
 } from "lucide-react"
-import { PageAssistantProvider } from "@/contexts/PageAssistantContext"
-import { PageAssistant } from "@/components/qagrotis/PageAssistant"
 import {
   Select,
   SelectTrigger,
@@ -527,9 +525,7 @@ export default function LayoutClient({
   }
 
   return (
-    <PageAssistantProvider>
     <SistemaContext.Provider value={{ sistemaSelecionado, setSistemaSelecionado: handleSistemaChange }}>
-      <PageAssistant />
       <div className="flex h-screen overflow-hidden">
         <Sidebar
           collapsed={collapsed}
@@ -568,6 +564,5 @@ export default function LayoutClient({
         </div>
       </div>
     </SistemaContext.Provider>
-    </PageAssistantProvider>
   )
 }

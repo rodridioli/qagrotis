@@ -43,7 +43,6 @@ import type { ModuloRecord } from "@/lib/actions/modulos"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 import { FileUploadButton, type UploadFile } from "@/components/qagrotis/FileUploadButton"
 import { GeradorSuggestions } from "@/components/qagrotis/GeradorSuggestions"
-import { usePageAssistantData } from "@/contexts/PageAssistantContext"
 
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -114,26 +113,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const generateInFlight = useRef(false)
   const [anexoPreviews, setAnexoPreviews] = useState<UploadFile[]>([])
 
-  // ── Expose contextual data to PageAssistant ─────────────────────────────────
-  const setPageData = usePageAssistantData()
-  useEffect(() => {
-    setPageData({
-      page: "gerador",
-      data: {
-        contextoChars: contexto.length,
-        contextoPreview: contexto.slice(0, 400),
-        temJira: jiraInput.trim().length > 0,
-        jiraConfigured,
-        anexos: anexoPreviews.length,
-        temOutput: output.length > 0,
-        outputChars: output.length,
-        abaAtiva: activeTab,
-      },
-    })
-    return () => setPageData(null)
-  }, [setPageData, contexto, jiraInput, jiraConfigured, anexoPreviews, output, activeTab])
-
-  // Import state
+// Import state
   const [importSetupOpen, setImportSetupOpen] = useState(false)
   const [importModule, setImportModule] = useState("")
   const [importItems, setImportItems] = useState<ImportItem[]>([])

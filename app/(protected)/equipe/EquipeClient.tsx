@@ -6,7 +6,6 @@ import {
   SlidersHorizontal, X, Check,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { usePageAssistantData } from "@/contexts/PageAssistantContext"
 import {
   getPerformanceData,
   getEquipeListagemCadastro,
@@ -221,7 +220,6 @@ function FilterModal({
 const DEFAULT_FILTERS = { sistema: "todos", modulo: "todos", periodo: "mes-atual" }
 
 export default function EquipeClient({ sistemas, modulosPorSistema, isAdmin }: Props) {
-  const setPageDataAssistant = usePageAssistantData()
   const [activeTab, setActiveTab] = useState<TabId>("performance")
   const [filterOpen, setFilterOpen] = useState(false)
 
@@ -243,31 +241,7 @@ export default function EquipeClient({ sistemas, modulosPorSistema, isAdmin }: P
     applied.periodo !== "mes-atual",
   ].filter(Boolean).length
 
-  // ── Expose contextual data to PageAssistant ─────────────────────────────────
-  useEffect(() => {
-    setPageDataAssistant({
-      page: "equipe",
-      data: {
-        abaAtiva: activeTab,
-        totalSistemas: sistemas.length,
-        sistemas: sistemas.slice(0, 20),
-        totalUsuarios: users.length,
-        usuarios: users.slice(0, 20).map((u) => ({
-          nome: u.name,
-          cenariosCriados: u.cenariosCriados,
-          testesExecutados: u.testesExecutados,
-          errosEncontrados: u.errosEncontrados,
-          percentualAutomatizado: u.percentualAutomatizado,
-          score: u.score,
-        })),
-        totalAniversariantes: aniversariantes.length,
-        filtros: applied,
-      },
-    })
-    return () => setPageDataAssistant(null)
-  }, [setPageDataAssistant, activeTab, sistemas, users, aniversariantes, applied])
-
-  const aniversariantesPorMes = useMemo(() => {
+const aniversariantesPorMes = useMemo(() => {
     const byMonth = new Map<number, EquipeUsuarioCadastro[]>()
     for (const u of aniversariantes) {
       const iso = u.dataNascimentoIso
