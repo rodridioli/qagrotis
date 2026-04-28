@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth"
 import { checkIsAdmin } from "@/lib/session"
 import { redirect } from "next/navigation"
 import { TarefasClient, type TarefaRow } from "./TarefasClient"
+import { TAREFAS_ASSIGNEE_EMPTY } from "./jira-tarefas-constants"
 
 type JiraIssue = {
   id: string
@@ -12,7 +13,7 @@ type JiraIssue = {
   fields?: {
     summary?: string
     status?: { name?: string }
-    assignee?: { displayName?: string } | null
+    assignee?: { displayName?: string; accountId?: string } | null
     priority?: { name?: string }
     issuetype?: { name?: string }
     updated?: string
@@ -31,10 +32,58 @@ const JIRA_PAGE_SIZE = 100
 /** Evita loop infinito / timeout em projetos enormes; pode aumentar se necessário. */
 const JIRA_MAX_PAGES = 50
 
+function pickParam(v: string | string[] | undefined): string {
+  if (v == null) return ""
+  return (Array.isArray(v) ? v[0] : v).trim()
+}
+
+/** Aspas JQL para strings (status, accountId de assignee). */
+function jqlQuotedString(s: string): string {
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
+}
+
 /**
- * Busca todas as páginas do enhanced search.
- * Importante: antes só íamos até 100 issues (`ORDER BY updated DESC`), então filtros no cliente
- * (ex.: status "Aprovação") subcontavam vs. o Jira, que considera todo o projeto.
+ * Monta JQL no servidor para o total bater com o Jira ao filtrar status/responsável.
+ * `assignee` na URL: vazio = todos; `_empty` = sem assignee; caso contrário = accountId.
+ */
+function buildUxJql(status?: string, assigneeParam?: string): string {
+  const parts: string[] = ["project = UX"]
+  const st = status?.trim()
+  if (st) parts.push(`status = ${jqlQuotedString(st)}`)
+
+  const ap = assigneeParam?.trim()
+  if (ap === TAREFAS_ASSIGNEE_EMPTY) parts.push("assignee is EMPTY")
+  else if (ap) parts.push(`assignee = ${jqlQuotedString(ap)}`)
+
+  parts.push("ORDER BY updated DESC")
+  return parts.join(" AND ")
+}
+
+async function fetchProjectStatusNames(
+  jiraBaseUrl: string,
+  credentials: string,
+): Promise<string[]> {
+  const res = await fetch(`${jiraBaseUrl}/rest/api/3/project/UX/statuses`, {
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  })
+  if (!res.ok) return []
+
+  const data = (await res.json()) as Array<{ statuses?: { name?: string }[] }>
+  const names = new Set<string>()
+  for (const block of Array.isArray(data) ? data : []) {
+    for (const s of block.statuses ?? []) {
+      if (s.name) names.add(s.name)
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b, "pt-BR"))
+}
+
+/**
+ * Busca todas as páginas do enhanced search para o JQL informado.
  */
 async function fetchAllUxIssues(
   jiraBaseUrl: string,
@@ -92,12 +141,16 @@ async function fetchAllUxIssues(
   return { issues: all, truncated, error: "" }
 }
 
-async function getUxTasksFromJira(userId: string) {
+async function getUxTasksFromJira(
+  userId: string,
+  filters: { status: string; assignee: string },
+) {
   const resolved = await resolveJiraCredentialsForRequest(userId, {})
   if (!resolved) {
     return {
       issues: [] as JiraIssue[],
       jiraBaseUrl: "",
+      statusOptions: [] as string[],
       truncated: false,
       error: "Integração com Jira não configurada para este usuário. Configure em Configurações antes de acessar Tarefas.",
     }
@@ -105,19 +158,31 @@ async function getUxTasksFromJira(userId: string) {
 
   const jiraBaseUrl = resolved.jiraUrl.replace(/\/$/, "")
   const credentials = Buffer.from(`${resolved.jiraEmail}:${resolved.apiToken}`).toString("base64")
-  const jql = "project = UX ORDER BY updated DESC"
 
-  const { issues, truncated, error } = await fetchAllUxIssues(jiraBaseUrl, credentials, jql)
+  const [statusOptions, { issues, truncated, error }] = await Promise.all([
+    fetchProjectStatusNames(jiraBaseUrl, credentials),
+    fetchAllUxIssues(
+      jiraBaseUrl,
+      credentials,
+      buildUxJql(filters.status || undefined, filters.assignee || undefined),
+    ),
+  ])
+
   return {
     issues,
     jiraBaseUrl,
+    statusOptions,
     truncated,
     error,
   }
 }
 
-export default async function TarefasPage() {
-  const [session, isAdmin] = await Promise.all([auth(), checkIsAdmin()])
+export default async function TarefasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string | string[]; assignee?: string | string[] }>
+}) {
+  const [session, isAdmin, sp] = await Promise.all([auth(), checkIsAdmin(), searchParams])
   if (!isAdmin) redirect("/dashboard")
   const userId = session?.user?.id
 
@@ -129,16 +194,27 @@ export default async function TarefasPage() {
     )
   }
 
-  const { issues, jiraBaseUrl, truncated, error } = await getUxTasksFromJira(userId)
-  const rows: TarefaRow[] = issues.map((issue) => ({
-    id: issue.id,
-    key: issue.key,
-    summary: issue.fields?.summary?.trim() || "—",
-    status: issue.fields?.status?.name || "—",
-    assignee: issue.fields?.assignee?.displayName || "Não atribuído",
-    priority: issue.fields?.priority?.name || "—",
-    updatedAt: issue.fields?.updated || "",
-  }))
+  const urlStatus = pickParam(sp.status)
+  const urlAssignee = pickParam(sp.assignee)
+
+  const { issues, jiraBaseUrl, statusOptions, truncated, error } = await getUxTasksFromJira(userId, {
+    status: urlStatus,
+    assignee: urlAssignee,
+  })
+
+  const rows: TarefaRow[] = issues.map((issue) => {
+    const acc = issue.fields?.assignee?.accountId?.trim()
+    return {
+      id: issue.id,
+      key: issue.key,
+      summary: issue.fields?.summary?.trim() || "—",
+      status: issue.fields?.status?.name || "—",
+      assignee: issue.fields?.assignee?.displayName || "Não atribuído",
+      assigneeAccountId: acc && acc.length > 0 ? acc : null,
+      priority: issue.fields?.priority?.name || "—",
+      updatedAt: issue.fields?.updated || "",
+    }
+  })
 
   return (
     <TarefasClient
@@ -147,6 +223,9 @@ export default async function TarefasPage() {
       error={error}
       truncated={truncated}
       truncatedMaxIssues={JIRA_PAGE_SIZE * JIRA_MAX_PAGES}
+      urlStatus={urlStatus}
+      urlAssignee={urlAssignee}
+      statusOptionsFromProject={statusOptions}
     />
   )
 }

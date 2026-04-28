@@ -1,10 +1,11 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { RefreshCw } from "lucide-react"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
+import { TAREFAS_ASSIGNEE_EMPTY } from "./jira-tarefas-constants"
 
 const ITEMS_PER_PAGE = 12
 
@@ -14,6 +15,8 @@ export interface TarefaRow {
   summary: string
   status: string
   assignee: string
+  /** Para filtro na URL / JQL; `null` = sem assignee no Jira. */
+  assigneeAccountId: string | null
   priority: string
   updatedAt: string
 }
@@ -25,6 +28,11 @@ interface Props {
   /** True quando o Jira ainda tinha mais páginas mas paramos no limite configurado no servidor. */
   truncated?: boolean
   truncatedMaxIssues?: number
+  /** Filtros aplicados no servidor (query string). */
+  urlStatus: string
+  urlAssignee: string
+  /** Status possíveis do projeto UX (API do Jira); fallback para valores vindos nas linhas. */
+  statusOptionsFromProject: string[]
 }
 
 function formatDate(value: string): string {
@@ -37,60 +45,89 @@ function formatDate(value: string): string {
   }).format(date)
 }
 
-export function TarefasClient({ rows, jiraBaseUrl, error, truncated, truncatedMaxIssues }: Props) {
+function buildTarefasPath(next: { status?: string; assignee?: string }): string {
+  const p = new URLSearchParams()
+  if (next.status?.trim()) p.set("status", next.status.trim())
+  if (next.assignee?.trim()) p.set("assignee", next.assignee.trim())
+  const q = p.toString()
+  return q ? `/tarefas?${q}` : "/tarefas"
+}
+
+export function TarefasClient({
+  rows,
+  jiraBaseUrl,
+  error,
+  truncated,
+  truncatedMaxIssues,
+  urlStatus,
+  urlAssignee,
+  statusOptionsFromProject,
+}: Props) {
   const router = useRouter()
+  const [isNavigating, startNavTransition] = useTransition()
   const [isRefreshing, startRefreshTransition] = useTransition()
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("")
-  const [assigneeFilter, setAssigneeFilter] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
 
-  const statusOptions = useMemo(
-    () =>
-      Array.from(new Set(rows.map((r) => r.status).filter(Boolean))).sort((a, b) =>
-        a.localeCompare(b, "pt-BR"),
-      ),
-    [rows],
-  )
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [urlStatus, urlAssignee])
 
-  const assigneeOptions = useMemo(
-    () =>
-      Array.from(new Set(rows.map((r) => r.assignee).filter(Boolean))).sort((a, b) =>
-        a.localeCompare(b, "pt-BR"),
-      ),
-    [rows],
-  )
+  const statusSelectOptions = useMemo(() => {
+    if (statusOptionsFromProject.length > 0) return statusOptionsFromProject
+    return Array.from(new Set(rows.map((r) => r.status).filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b, "pt-BR"),
+    )
+  }, [statusOptionsFromProject, rows])
+
+  /** Só assignees com accountId; “Não atribuído” é opção fixa no `<select>`. */
+  const assigneeSelectOptions = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const r of rows) {
+      const acc = r.assigneeAccountId?.trim()
+      if (!acc) continue
+      if (!m.has(acc)) m.set(acc, r.assignee)
+    }
+    return [...m.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"))
+  }, [rows])
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase()
-
+    if (!term) return rows
     return rows.filter((row) => {
-      if (statusFilter && row.status !== statusFilter) return false
-      if (assigneeFilter && row.assignee !== assigneeFilter) return false
-      if (!term) return true
-
       const haystack = `${row.key} ${row.summary} ${row.status} ${row.assignee} ${row.priority}`.toLowerCase()
       return haystack.includes(term)
     })
-  }, [rows, search, statusFilter, assigneeFilter])
+  }, [rows, search])
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / ITEMS_PER_PAGE))
   const safePage = Math.min(currentPage, totalPages)
   const pageRows = filteredRows.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE)
-  const activeFilterCount = [statusFilter, assigneeFilter].filter(Boolean).length
+  const activeFilterCount = [urlStatus, urlAssignee].filter(Boolean).length
+
+  function navigateTo(next: { status?: string; assignee?: string }) {
+    startNavTransition(() => {
+      router.push(buildTarefasPath(next))
+    })
+  }
 
   const toolbarExtra = (
     <div className="flex items-center gap-2">
       <select
-        value={statusFilter}
+        value={urlStatus}
         onChange={(e) => {
-          setStatusFilter(e.target.value)
+          const v = e.target.value
           setCurrentPage(1)
+          // Ao mudar status, limpa assignee (evita combinação inválida e simplifica a URL).
+          navigateTo({ status: v || undefined, assignee: undefined })
         }}
-        className="h-9 w-32 rounded-custom border border-border-default bg-surface-input px-2 text-xs text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 lg:w-44 lg:text-sm"
+        disabled={isNavigating}
+        className="h-9 w-32 rounded-custom border border-border-default bg-surface-input px-2 text-xs text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 lg:w-44 lg:text-sm"
       >
         <option value="">Status (todos)</option>
-        {statusOptions.map((status) => (
+        {statusSelectOptions.map((status) => (
           <option key={status} value={status}>
             {status}
           </option>
@@ -98,17 +135,23 @@ export function TarefasClient({ rows, jiraBaseUrl, error, truncated, truncatedMa
       </select>
 
       <select
-        value={assigneeFilter}
+        value={urlAssignee}
         onChange={(e) => {
-          setAssigneeFilter(e.target.value)
+          const v = e.target.value
           setCurrentPage(1)
+          navigateTo({
+            status: urlStatus || undefined,
+            assignee: v || undefined,
+          })
         }}
-        className="h-9 w-36 rounded-custom border border-border-default bg-surface-input px-2 text-xs text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 lg:w-52 lg:text-sm"
+        disabled={isNavigating}
+        className="h-9 w-36 rounded-custom border border-border-default bg-surface-input px-2 text-xs text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 lg:w-52 lg:text-sm"
       >
         <option value="">Responsável (todos)</option>
-        {assigneeOptions.map((assignee) => (
-          <option key={assignee} value={assignee}>
-            {assignee}
+        <option value={TAREFAS_ASSIGNEE_EMPTY}>Não atribuído</option>
+        {assigneeSelectOptions.map(({ value, label }) => (
+          <option key={value} value={value}>
+            {label}
           </option>
         ))}
       </select>
@@ -120,7 +163,8 @@ export function TarefasClient({ rows, jiraBaseUrl, error, truncated, truncatedMa
             router.refresh()
           })
         }
-        className="inline-flex h-9 items-center gap-1 rounded-custom border border-border-default bg-surface-input px-3 text-xs font-medium text-text-primary transition-colors hover:bg-neutral-grey-100 lg:text-sm"
+        disabled={isNavigating}
+        className="inline-flex h-9 items-center gap-1 rounded-custom border border-border-default bg-surface-input px-3 text-xs font-medium text-text-primary transition-colors hover:bg-neutral-grey-100 disabled:opacity-50 lg:text-sm"
       >
         <RefreshCw className={`size-4 ${isRefreshing ? "animate-spin" : ""}`} />
         Recarregar
@@ -133,7 +177,7 @@ export function TarefasClient({ rows, jiraBaseUrl, error, truncated, truncatedMa
       {truncated && truncatedMaxIssues != null && truncatedMaxIssues > 0 && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-text-primary">
           A listagem foi limitada a <span className="font-semibold">{truncatedMaxIssues.toLocaleString("pt-BR")}</span>{" "}
-          issues por desempenho. O Jira pode ter mais registros no projeto UX; os totais por filtro aqui refletem só o que foi carregado.
+          issues por desempenho. O Jira pode ter mais registros para este JQL; os totais aqui refletem só o que foi carregado.
         </div>
       )}
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
@@ -144,7 +188,7 @@ export function TarefasClient({ rows, jiraBaseUrl, error, truncated, truncatedMa
             setCurrentPage(1)
           }}
           searchPlaceholder="Buscar chave, resumo, status..."
-          totalLabel="Total de tarefas UX"
+          totalLabel="Total de tarefas (Jira)"
           totalCount={filteredRows.length}
           baseCount={rows.length}
           activeFilterCount={activeFilterCount}
@@ -157,11 +201,11 @@ export function TarefasClient({ rows, jiraBaseUrl, error, truncated, truncatedMa
           </div>
         ) : rows.length === 0 ? (
           <div className="m-4 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-            Nenhuma tarefa de UX encontrada no Jira.
+            Nenhuma tarefa encontrada no Jira para os filtros atuais.
           </div>
         ) : pageRows.length === 0 ? (
           <div className="m-4 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-            Nenhuma tarefa corresponde aos filtros atuais.
+            Nenhuma tarefa corresponde à busca digitada.
           </div>
         ) : (
           <>
