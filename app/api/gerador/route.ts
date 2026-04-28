@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 import { getIntegracao } from "@/lib/actions/integracoes"
 import { normalizeProvider } from "@/lib/ai/provider"
+import { prisma } from "@/lib/prisma"
 
 // Rate limit: max 30 AI generations per user per hour
 const geradorRateMap = new Map<string, { count: number; resetAt: number }>()
@@ -650,6 +651,55 @@ Cruze a análise visual com o contexto/requisitos fornecidos para gerar cenário
 
 export const dynamic = "force-dynamic"
 
+type IntegrationRuntimeConfig = {
+  id: string
+  provider: string
+  model: string
+  apiKey: string
+}
+
+async function streamByIntegration(
+  integration: IntegrationRuntimeConfig,
+  userMessage: string,
+  imagens?: { dataUrl: string; name: string }[],
+): Promise<Response> {
+  const provider = normalizeProvider(integration.provider)
+  if (!provider) {
+    return new Response(`Provedor não suportado: "${integration.provider}".`, { status: 400 })
+  }
+
+  switch (provider) {
+    case "google":
+      return streamGemini(userMessage, imagens, integration.apiKey, integration.model)
+    case "groq":
+      return streamGroq(userMessage, integration.model, integration.apiKey)
+    case "openai":
+      return streamOpenAI(userMessage, integration.model, integration.apiKey)
+    case "anthropic":
+      return streamAnthropic(userMessage, imagens, integration.apiKey)
+    case "openrouter":
+      return streamOpenRouter(userMessage, integration.model, imagens, integration.apiKey)
+  }
+}
+
+function providerFallbackRank(provider: string): number {
+  const normalized = normalizeProvider(provider)
+  switch (normalized) {
+    case "openrouter":
+      return 0
+    case "groq":
+      return 1
+    case "openai":
+      return 2
+    case "anthropic":
+      return 3
+    case "google":
+      return 4
+    default:
+      return 10
+  }
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user) {
@@ -711,27 +761,48 @@ export async function POST(req: NextRequest) {
   if (jira) textParts.push(`## Contexto / Requisitos\n${jira}`)
   if (hasImages) textParts.push(`## Imagens anexadas\n${imagens.map((img, i) => `${i + 1}. ${img.name}`).join("\n")}`)
   const userMessage = textParts.join("\n\n")
-  const { model, apiKey } = integracao
-  // Normalize provider aliases saved as "Gemini", "Open Router", etc.
-  const provider = normalizeProvider(integracao.provider)
+  const primary = {
+    id: integracao.id,
+    provider: integracao.provider,
+    model: integracao.model,
+    apiKey: integracao.apiKey,
+  }
+  const primaryResponse = await streamByIntegration(primary, userMessage, imagens)
+  if (primaryResponse.status !== 429) {
+    return primaryResponse
+  }
 
-  if (!provider) {
-    return new Response(
-      `Provedor não suportado: "${integracao.provider}". Use Google (Gemini), OpenRouter, OpenAI, Anthropic ou Groq.`,
-      { status: 400 }
+  // Auto-fallback: when selected provider is rate-limited, try other active integrations.
+  const fallbacksRaw = await prisma.integracao.findMany({
+    where: { active: true, id: { not: integracao.id } },
+    select: { id: true, provider: true, model: true, apiKey: true, createdAt: true },
+    take: 20,
+    orderBy: { createdAt: "asc" },
+  })
+
+  const fallbacks = fallbacksRaw
+    .filter((it) => it.apiKey?.trim())
+    .sort((a, b) => providerFallbackRank(a.provider) - providerFallbackRank(b.provider))
+
+  for (const candidate of fallbacks) {
+    const fallbackResponse = await streamByIntegration(
+      {
+        id: candidate.id,
+        provider: candidate.provider,
+        model: candidate.model,
+        apiKey: candidate.apiKey,
+      },
+      userMessage,
+      imagens,
     )
+
+    if (fallbackResponse.ok) {
+      const headers = new Headers(fallbackResponse.headers)
+      headers.set("x-qagrotis-fallback-integration-id", candidate.id)
+      headers.set("x-qagrotis-fallback-provider", normalizeProvider(candidate.provider) ?? candidate.provider)
+      return new Response(fallbackResponse.body, { status: fallbackResponse.status, headers })
+    }
   }
 
-  switch (provider) {
-    case "google":
-      return streamGemini(userMessage, imagens, apiKey, model)
-    case "groq":
-      return streamGroq(userMessage, model, apiKey)
-    case "openai":
-      return streamOpenAI(userMessage, model, apiKey)
-    case "anthropic":
-      return streamAnthropic(userMessage, imagens, apiKey)
-    case "openrouter":
-      return streamOpenRouter(userMessage, model, imagens, apiKey)
-  }
+  return primaryResponse
 }
