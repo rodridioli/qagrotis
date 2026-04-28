@@ -280,6 +280,7 @@ async function streamGemini(
   let res: Response | null = null
   let lastStatus = 502
   let lastError = ""
+  let sawRateLimit = false
 
   for (const candidateModel of candidateModels) {
     for (const version of GOOGLE_API_VERSIONS) {
@@ -312,7 +313,10 @@ async function streamGemini(
       }
 
       if (attempt.status === 429 || errCode === 429) {
-        return new Response("Cota excedida no Google Gemini (Free Tier). Por favor, aguarde alguns segundos ou utilize outro motor de IA (como Llama 3.1).", { status: 429 })
+        sawRateLimit = true
+        lastStatus = 429
+        lastError = errMessage || "Cota excedida."
+        continue
       }
 
       if (attempt.status === 401 || errCode === 401) {
@@ -337,6 +341,13 @@ async function streamGemini(
   }
 
   if (!res) {
+    if (sawRateLimit) {
+      return new Response(
+        "Cota excedida no Google Gemini (Free Tier) para os modelos testados. " +
+        "Aguarde alguns segundos e tente novamente, ou use outro provedor/modelo (ex.: OpenRouter/Groq).",
+        { status: 429 }
+      )
+    }
     const configuredModel = normalizeGoogleModelId(model) || model
     const suggested = candidateModels.join(", ")
     return new Response(
