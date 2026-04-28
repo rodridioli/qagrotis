@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, FileText, Rocket, BookOpen,
   Settings, LifeBuoy, LogOut, ChevronLeft,
-  ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
+  ChevronRight, Menu, Moon, Sun, Sparkles, History, Users, ClipboardList,
 } from "lucide-react"
 import {
   Select,
@@ -37,6 +37,7 @@ const NAV_ITEMS = [
   { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false },
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false },
+  { href: "/tarefas",       icon: ClipboardList,   label: "Tarefas",          alwaysEnabled: true,  adminOnly: true  },
   { href: "/documentos",    icon: BookOpen,        label: "Documentos",       alwaysEnabled: false },
   { href: "/assistente",    icon: LifeBuoy,        label: "Central de Ajuda", alwaysEnabled: false },
   { href: "/equipe",        icon: Users,           label: "Equipe",           alwaysEnabled: false },
@@ -50,6 +51,7 @@ const TITLE_MAP: Record<string, string> = {
   "/gerador":       "Gerador",
   "/suites":        "Suítes",
   "/documentos":    "Documentos",
+  "/tarefas":       "Tarefas",
   "/configuracoes": "Configurações",
   "/assistente":    "Central de Ajuda",
   "/atualizacoes":  "Atualizações",
@@ -73,11 +75,12 @@ interface SidebarProps {
   onAssistenteOpen: () => void
   hasSistemaModulo: boolean
   hasIntegracoes: boolean
+  isAdmin: boolean
   /** Navegação com transição (mantém overlay de carregamento até a rota resolver). */
   onNavigate?: (href: string) => void
 }
 
-const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasIntegracoes, onNavigate }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasIntegracoes, isAdmin, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -125,7 +128,9 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3">
           <TooltipProvider>
-            {NAV_ITEMS.map(({ href, icon: Icon, label, alwaysEnabled }) => {
+            {NAV_ITEMS.map(({ href, icon: Icon, label, alwaysEnabled, adminOnly }) => {
+              if (adminOnly && !isAdmin) return null
+
               // Compute disabled state dynamically based on system/module/AI model availability
               let disabled = false
               if (!alwaysEnabled) {
@@ -409,6 +414,7 @@ interface Props {
   sistemaNames: string[]
   integracoes?: IntegracaoRecord[]
   hasSistemaComModulo?: boolean
+  isAdmin?: boolean
 }
 
 export default function LayoutClient({
@@ -416,6 +422,7 @@ export default function LayoutClient({
   sistemaNames: sistemaNamesProp,
   integracoes: integracoesProp = [],
   hasSistemaComModulo: hasSistemaComModuloProp = false,
+  isAdmin = false,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -536,6 +543,7 @@ export default function LayoutClient({
           onAssistenteOpen={() => setAssistenteOpen(true)}
           hasSistemaModulo={hasSistemaModulo}
           hasIntegracoes={integracoes.length > 0}
+          isAdmin={isAdmin}
           onNavigate={handleNavigate}
         />
         <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />
