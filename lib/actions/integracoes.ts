@@ -2,6 +2,7 @@
 
 import { revalidatePath, updateTag } from "next/cache"
 import { LAYOUT_CACHE_TAG } from "@/lib/layout-cache"
+import { normalizeProvider } from "@/lib/ai/provider"
 import { z } from "zod"
 import { nextId } from "@/lib/db-utils"
 import { requireAdmin } from "@/lib/session"
@@ -53,10 +54,14 @@ export async function getIntegracao(id: string): Promise<IntegracaoRecord | null
 export async function criarIntegracao(data: unknown): Promise<void> {
   await requireAdmin()
   const parsed = integracaoSchema.parse(data)
+  const provider = normalizeProvider(parsed.provider)
+  if (!provider) {
+    throw new Error("Provedor não suportado. Use Google (Gemini), OpenRouter, OpenAI, Anthropic ou Groq.")
+  }
   const existing = await prisma.integracao.findMany({ select: { id: true } })
   const id = nextId(existing.map((i) => i.id), "INT")
 
-  await prisma.integracao.create({ data: { id, ...parsed, active: true } })
+  await prisma.integracao.create({ data: { id, ...parsed, provider, active: true } })
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath("/gerador")
   updateTag(LAYOUT_CACHE_TAG)
@@ -66,11 +71,15 @@ export async function atualizarIntegracao(id: string, data: unknown): Promise<vo
   await requireAdmin()
   idSchema.parse(id)
   const parsed = integracaoSchema.parse(data)
+  const provider = normalizeProvider(parsed.provider)
+  if (!provider) {
+    throw new Error("Provedor não suportado. Use Google (Gemini), OpenRouter, OpenAI, Anthropic ou Groq.")
+  }
 
   const existing = await prisma.integracao.findUnique({ where: { id }, select: { id: true } })
   if (!existing) throw new Error("Integração não encontrada")
 
-  await prisma.integracao.update({ where: { id }, data: parsed })
+  await prisma.integracao.update({ where: { id }, data: { ...parsed, provider } })
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath(`/configuracoes/modelos-de-ia/${id}/editar`)
   revalidatePath("/gerador")

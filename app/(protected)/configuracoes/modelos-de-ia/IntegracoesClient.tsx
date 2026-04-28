@@ -10,6 +10,13 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "@/components/ui/select"
+import {
   Dialog,
   DialogClose,
   DialogContent,
@@ -27,6 +34,7 @@ import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { inativarIntegracoes, ativarIntegracao, criarIntegracao, atualizarIntegracao, type IntegracaoRecord } from "@/lib/actions/integracoes"
+import { normalizeProvider } from "@/lib/ai/provider"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -70,7 +78,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
   // ── Modelo de IA modal (criar / editar) ─────────────────────────────────────
   const [integracaoModalOpen, setIntegracaoModalOpen] = useState(false)
   const [integracaoEditando, setIntegracaoEditando] = useState<IntegracaoRecord | null>(null)
-  const [intProvider, setIntProvider] = useState("OpenRouter")
+  const [intProvider, setIntProvider] = useState<"openrouter" | "groq" | "google" | "openai" | "anthropic">("openrouter")
   const [intModel, setIntModel] = useState("google/gemini-2.0-flash-exp:free")
   const [intApiKey, setIntApiKey] = useState("")
   const [intShowKey, setIntShowKey] = useState(false)
@@ -79,7 +87,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
 
   function openAdicionarIntegracao() {
     setIntegracaoEditando(null)
-    setIntProvider("OpenRouter")
+    setIntProvider("openrouter")
     setIntModel("google/gemini-2.0-flash-exp:free")
     setIntApiKey("")
     setIntShowKey(false)
@@ -89,7 +97,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
 
   function openEditarIntegracao(item: IntegracaoRecord) {
     setIntegracaoEditando(item)
-    setIntProvider(item.provider || "OpenRouter")
+    setIntProvider(normalizeProvider(item.provider) ?? "openrouter")
     setIntModel(item.model ?? "")
     setIntApiKey(item.apiKey ?? "")
     setIntShowKey(false)
@@ -97,8 +105,15 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
     setIntegracaoModalOpen(true)
   }
 
-  const handleIntProviderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setIntProvider(e.target.value)
+  const handleIntProviderChange = (value: string | null) => {
+    if (!value) return
+    const next = value as typeof intProvider
+    setIntProvider(next)
+    if (next === "openrouter") setIntModel("google/gemini-2.0-flash-exp:free")
+    else if (next === "google") setIntModel("gemini-2.0-flash-exp")
+    else if (next === "groq") setIntModel("llama-3.1-70b-versatile")
+    else if (next === "openai") setIntModel("gpt-4o-mini")
+    else if (next === "anthropic") setIntModel("claude-opus-4-6")
     setIntKeyStatus("idle")
   }
 
@@ -522,12 +537,20 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                 <label className="text-sm font-medium text-text-primary">
                   Provedor <span className="text-destructive">*</span>
                 </label>
-                <Input
-                  value={intProvider}
-                  onChange={handleIntProviderChange}
-                  placeholder="Ex.: OpenRouter, OpenAI, Groq..."
-                  disabled={isIntegracaoModalPending}
-                />
+                <Select value={intProvider} onValueChange={handleIntProviderChange} disabled={isIntegracaoModalPending}>
+                  <SelectTrigger>
+                    <SelectValue>
+                      <span className="capitalize">{intProvider}</span>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectPopup>
+                    <SelectItem value="openrouter">OpenRouter (Gratuito)</SelectItem>
+                    <SelectItem value="groq">Groq (Llama, Mixtral)</SelectItem>
+                    <SelectItem value="google">Google Gemini</SelectItem>
+                    <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                    <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+                  </SelectPopup>
+                </Select>
               </div>
 
               {/* Modelo */}
@@ -541,7 +564,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                   placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
                   disabled={isIntegracaoModalPending}
                 />
-                {intProvider.toLowerCase().includes("openrouter") && (
+                {intProvider === "openrouter" && (
                   <p className="text-[10px] text-text-secondary">
                     Com visão: <span className="font-medium">google/gemini-2.0-flash-exp:free</span> · meta-llama/llama-3.2-11b-vision-instruct:free
                   </p>

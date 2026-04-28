@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth"
+import { normalizeProvider } from "@/lib/ai/provider"
 import { NextRequest } from "next/server"
 
 // Rate limit: max 10 validation requests per user per minute
@@ -44,10 +45,12 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json() as { apiKey?: string; provider?: string }
   const key = body.apiKey?.trim()
-  // Normalize to lowercase to handle "OpenRouter", "Google", etc.
-  const provider = (body.provider || "google").toLowerCase().trim()
+  const provider = normalizeProvider(body.provider) ?? normalizeProvider("google")
 
   if (!key) return new Response("apiKey é obrigatória.", { status: 400 })
+  if (!provider) {
+    return new Response("Provedor não suportado. Use: Google (Gemini), OpenRouter, OpenAI, Anthropic ou Groq.", { status: 400 })
+  }
 
   if (provider === "google") {
     for (const model of CANDIDATE_MODELS) {

@@ -6,7 +6,15 @@ import { useRouter } from "next/navigation"
 import { AlertCircle, ArrowLeft, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "@/components/ui/select"
 import { atualizarIntegracao, type IntegracaoRecord } from "@/lib/actions/integracoes"
+import { normalizeProvider } from "@/lib/ai/provider"
 import { toast } from "sonner"
 
 
@@ -19,7 +27,9 @@ interface Props {
 export default function EditarIntegracaoClient({ integracao }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [provider, setProvider] = useState(integracao.provider || "OpenRouter")
+  const [provider, setProvider] = useState<"openrouter" | "groq" | "google" | "openai" | "anthropic">(
+    normalizeProvider(integracao.provider) ?? "openrouter"
+  )
 
   const [model, setModel] = useState(integracao.model ?? "gemini-2.0-flash")
   const [apiKey, setApiKey] = useState(integracao.apiKey)
@@ -69,8 +79,16 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
     })
   }
 
-  const handleProviderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setProvider(e.target.value)
+  const handleProviderChange = (value: string | null) => {
+    if (!value) return
+    const next = value as typeof provider
+    setProvider(next)
+    if (next === "openrouter") setModel("google/gemini-2.0-flash-exp:free")
+    else if (next === "google") setModel("gemini-2.0-flash-exp")
+    else if (next === "groq") setModel("llama-3.1-70b-versatile")
+    else if (next === "openai") setModel("gpt-4o-mini")
+    else if (next === "anthropic") setModel("claude-opus-4-6")
+    setKeyStatus("idle")
   }
 
 
@@ -121,12 +139,20 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
             <label className="text-sm font-medium text-text-primary">
               Provedor <span className="text-destructive">*</span>
             </label>
-            <Input
-              value={provider}
-              onChange={handleProviderChange}
-              placeholder="Ex.: OpenRouter, OpenAI, Groq..."
-              disabled={isPending}
-            />
+            <Select value={provider} onValueChange={handleProviderChange} disabled={isPending}>
+              <SelectTrigger>
+                <SelectValue>
+                  <span className="capitalize">{provider}</span>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup>
+                <SelectItem value="openrouter">OpenRouter (Gratuito)</SelectItem>
+                <SelectItem value="groq">Groq (Llama, Mixtral)</SelectItem>
+                <SelectItem value="google">Google Gemini</SelectItem>
+                <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+              </SelectPopup>
+            </Select>
           </div>
 
           {/* Modelo */}
@@ -140,13 +166,13 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
               placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
               disabled={isPending}
             />
-            {provider.toLowerCase().includes("openrouter") && (
+            {provider === "openrouter" && (
               <p className="text-[10px] text-text-secondary">Modelos gratuitos: meta-llama/llama-3.1-8b-instruct:free · mistralai/mistral-7b-instruct:free · google/gemma-2-9b-it:free · microsoft/phi-3-mini-128k-instruct:free</p>
             )}
-            {provider.toLowerCase().includes("groq") && (
+            {provider === "groq" && (
               <p className="text-[10px] text-text-secondary">Sugestão: llama-3.1-70b-versatile, llama-3.1-8b-instant</p>
             )}
-            {provider.toLowerCase().includes("google") && (
+            {provider === "google" && (
               <p className="text-[10px] text-text-secondary">Sugestão: gemini-2.0-flash-exp, gemini-1.5-flash</p>
             )}
           </div>

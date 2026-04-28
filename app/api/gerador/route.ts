@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 import { getIntegracao } from "@/lib/actions/integracoes"
+import { normalizeProvider } from "@/lib/ai/provider"
 
 // Rate limit: max 30 AI generations per user per hour
 const geradorRateMap = new Map<string, { count: number; resetAt: number }>()
@@ -625,8 +626,15 @@ export async function POST(req: NextRequest) {
   if (hasImages) textParts.push(`## Imagens anexadas\n${imagens.map((img, i) => `${i + 1}. ${img.name}`).join("\n")}`)
   const userMessage = textParts.join("\n\n")
   const { model, apiKey } = integracao
-  // Normalize provider to lowercase to handle values saved as "OpenRouter", "Google", etc.
-  const provider = integracao.provider.toLowerCase().trim()
+  // Normalize provider aliases saved as "Gemini", "Open Router", etc.
+  const provider = normalizeProvider(integracao.provider)
+
+  if (!provider) {
+    return new Response(
+      `Provedor não suportado: "${integracao.provider}". Use Google (Gemini), OpenRouter, OpenAI, Anthropic ou Groq.`,
+      { status: 400 }
+    )
+  }
 
   switch (provider) {
     case "google":
@@ -639,7 +647,5 @@ export async function POST(req: NextRequest) {
       return streamAnthropic(userMessage, imagens, apiKey)
     case "openrouter":
       return streamOpenRouter(userMessage, model, imagens, apiKey)
-    default:
-      return new Response("Provedor não suportado.", { status: 400 })
   }
 }
