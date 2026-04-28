@@ -259,8 +259,10 @@ async function streamGemini(
     return unique
   }
 
+  // Keep instruction in user text for broad compatibility across Gemini API variants.
+  const geminiInputText = `${SYSTEM_PROMPT}\n\n${userMessage}`
   // Build message parts — text first, then inline images
-  const userParts: unknown[] = [{ text: userMessage }]
+  const userParts: unknown[] = [{ text: geminiInputText }]
   if (images?.length) {
     for (const img of images) {
       const commaIdx = img.dataUrl.indexOf(",")
@@ -286,7 +288,6 @@ async function streamGemini(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
           contents: [{ role: "user", parts: userParts }],
           generationConfig: { maxOutputTokens: 8192 },
         }),
