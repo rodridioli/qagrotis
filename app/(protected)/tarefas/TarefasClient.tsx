@@ -107,8 +107,14 @@ export function TarefasClient({
   const activeFilterCount = [urlStatus, urlAssignee].filter(Boolean).length
 
   function navigateTo(next: { status?: string; assignee?: string }) {
-    /** Não usar `startTransition` aqui: em App Router pode atrasar/cancelar soft navigation e os filtros “não mudam”. */
-    void router.push(buildTarefasPath(next))
+    const href = buildTarefasPath(next)
+    /**
+     * Só mudar `searchParams` às vezes não reexecuta o RSC como esperado.
+     * `Promise.resolve(router.push)` cobre tanto `void` quanto `Promise` e só então `refresh`.
+     */
+    void Promise.resolve(router.push(href)).finally(() => {
+      router.refresh()
+    })
   }
 
   const toolbarExtra = (
