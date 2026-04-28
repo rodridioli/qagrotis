@@ -22,6 +22,9 @@ interface Props {
   rows: TarefaRow[]
   jiraBaseUrl: string
   error: string
+  /** True quando o Jira ainda tinha mais páginas mas paramos no limite configurado no servidor. */
+  truncated?: boolean
+  truncatedMaxIssues?: number
 }
 
 function formatDate(value: string): string {
@@ -34,7 +37,7 @@ function formatDate(value: string): string {
   }).format(date)
 }
 
-export function TarefasClient({ rows, jiraBaseUrl, error }: Props) {
+export function TarefasClient({ rows, jiraBaseUrl, error, truncated, truncatedMaxIssues }: Props) {
   const router = useRouter()
   const [isRefreshing, startRefreshTransition] = useTransition()
   const [search, setSearch] = useState("")
@@ -127,6 +130,12 @@ export function TarefasClient({ rows, jiraBaseUrl, error }: Props) {
 
   return (
     <div className="space-y-4">
+      {truncated && truncatedMaxIssues != null && truncatedMaxIssues > 0 && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-text-primary">
+          A listagem foi limitada a <span className="font-semibold">{truncatedMaxIssues.toLocaleString("pt-BR")}</span>{" "}
+          issues por desempenho. O Jira pode ter mais registros no projeto UX; os totais por filtro aqui refletem só o que foi carregado.
+        </div>
+      )}
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
         <TableToolbar
           search={search}
