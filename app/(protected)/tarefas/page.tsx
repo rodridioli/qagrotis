@@ -47,16 +47,16 @@ function jqlQuotedString(s: string): string {
  * `assignee` na URL: vazio = todos; `_empty` = sem assignee; caso contrário = accountId.
  */
 function buildUxJql(status?: string, assigneeParam?: string): string {
-  const parts: string[] = ["project = UX"]
+  const clauses: string[] = ["project = UX"]
   const st = status?.trim()
-  if (st) parts.push(`status = ${jqlQuotedString(st)}`)
+  if (st) clauses.push(`status = ${jqlQuotedString(st)}`)
 
   const ap = assigneeParam?.trim()
-  if (ap === TAREFAS_ASSIGNEE_EMPTY) parts.push("assignee is EMPTY")
-  else if (ap) parts.push(`assignee = ${jqlQuotedString(ap)}`)
+  if (ap === TAREFAS_ASSIGNEE_EMPTY) clauses.push("assignee is EMPTY")
+  else if (ap) clauses.push(`assignee = ${jqlQuotedString(ap)}`)
 
-  parts.push("ORDER BY updated DESC")
-  return parts.join(" AND ")
+  /** `ORDER BY` não pode ir ligado com `AND` — senão o Jira interpreta ORDER como nome de campo (400). */
+  return `${clauses.join(" AND ")} ORDER BY updated DESC`
 }
 
 async function fetchProjectStatusNames(
