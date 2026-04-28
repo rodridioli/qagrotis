@@ -64,7 +64,6 @@ export function TarefasClient({
   statusOptionsFromProject,
 }: Props) {
   const router = useRouter()
-  const [isNavigating, startNavTransition] = useTransition()
   const [isRefreshing, startRefreshTransition] = useTransition()
   const [search, setSearch] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
@@ -108,9 +107,8 @@ export function TarefasClient({
   const activeFilterCount = [urlStatus, urlAssignee].filter(Boolean).length
 
   function navigateTo(next: { status?: string; assignee?: string }) {
-    startNavTransition(() => {
-      router.push(buildTarefasPath(next))
-    })
+    /** Não usar `startTransition` aqui: em App Router pode atrasar/cancelar soft navigation e os filtros “não mudam”. */
+    void router.push(buildTarefasPath(next))
   }
 
   const toolbarExtra = (
@@ -123,8 +121,7 @@ export function TarefasClient({
           // Ao mudar status, limpa assignee (evita combinação inválida e simplifica a URL).
           navigateTo({ status: v || undefined, assignee: undefined })
         }}
-        disabled={isNavigating}
-        className="h-9 w-32 rounded-custom border border-border-default bg-surface-input px-2 text-xs text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 lg:w-44 lg:text-sm"
+        className="h-9 w-32 rounded-custom border border-border-default bg-surface-input px-2 text-xs text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 lg:w-44 lg:text-sm"
       >
         <option value="">Status (todos)</option>
         {statusSelectOptions.map((status) => (
@@ -144,8 +141,7 @@ export function TarefasClient({
             assignee: v || undefined,
           })
         }}
-        disabled={isNavigating}
-        className="h-9 w-36 rounded-custom border border-border-default bg-surface-input px-2 text-xs text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 lg:w-52 lg:text-sm"
+        className="h-9 w-36 rounded-custom border border-border-default bg-surface-input px-2 text-xs text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 lg:w-52 lg:text-sm"
       >
         <option value="">Responsável (todos)</option>
         <option value={TAREFAS_ASSIGNEE_EMPTY}>Não atribuído</option>
@@ -163,8 +159,7 @@ export function TarefasClient({
             router.refresh()
           })
         }
-        disabled={isNavigating}
-        className="inline-flex h-9 items-center gap-1 rounded-custom border border-border-default bg-surface-input px-3 text-xs font-medium text-text-primary transition-colors hover:bg-neutral-grey-100 disabled:opacity-50 lg:text-sm"
+        className="inline-flex h-9 items-center gap-1 rounded-custom border border-border-default bg-surface-input px-3 text-xs font-medium text-text-primary transition-colors hover:bg-neutral-grey-100 lg:text-sm"
       >
         <RefreshCw className={`size-4 ${isRefreshing ? "animate-spin" : ""}`} />
         Recarregar
@@ -190,7 +185,11 @@ export function TarefasClient({
           searchPlaceholder="Buscar chave, resumo, status..."
           totalLabel="Total de tarefas (Jira)"
           totalCount={filteredRows.length}
-          baseCount={rows.length}
+          /**
+           * `TableToolbar` esconde busca e `extra` quando `baseCount === 0`.
+           * Com filtro Jira que retorna 0 linhas, `rows.length` zera e sumiam os selects — impossível limpar o filtro.
+           */
+          baseCount={Math.max(rows.length, 1)}
           activeFilterCount={activeFilterCount}
           extra={toolbarExtra}
         />
