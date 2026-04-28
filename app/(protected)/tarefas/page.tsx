@@ -36,18 +36,21 @@ async function getUxTasksFromJira(userId: string) {
   const jiraBaseUrl = resolved.jiraUrl.replace(/\/$/, "")
   const credentials = Buffer.from(`${resolved.jiraEmail}:${resolved.apiToken}`).toString("base64")
   const jql = "project = UX ORDER BY updated DESC"
-  const fields = "summary,status,assignee,priority,issuetype,updated"
-
-  const response = await fetch(
-    `${jiraBaseUrl}/rest/api/3/search?jql=${encodeURIComponent(jql)}&maxResults=100&fields=${encodeURIComponent(fields)}`,
-    {
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        Accept: "application/json",
-      },
-      cache: "no-store",
+  /** Atlassian removeu GET `/rest/api/3/search` (410); usar enhanced search. */
+  const response = await fetch(`${jiraBaseUrl}/rest/api/3/search/jql`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
     },
-  )
+    body: JSON.stringify({
+      jql,
+      maxResults: 100,
+      fields: ["summary", "status", "assignee", "priority", "issuetype", "updated"],
+    }),
+    cache: "no-store",
+  })
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "")
