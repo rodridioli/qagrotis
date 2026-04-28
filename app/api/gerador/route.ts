@@ -230,6 +230,35 @@ async function streamGemini(
   const apiKey = keyOverride || process.env.GOOGLE_API_KEY
   if (!apiKey) return new Response("Informe sua GOOGLE_API_KEY no campo de API Key.", { status: 500 })
 
+  const GOOGLE_MODEL_FALLBACKS = [
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash-latest",
+  ]
+  const GOOGLE_API_VERSIONS = ["v1beta", "v1"] as const
+
+  function normalizeGoogleModelId(rawModel: string): string {
+    const trimmed = rawModel.trim()
+    if (!trimmed) return ""
+    const noPrefix = trimmed.replace(/^models\//i, "")
+    const noProviderPrefix = noPrefix.toLowerCase().startsWith("google/") ? noPrefix.slice("google/".length) : noPrefix
+    return noProviderPrefix.replace(/:free$/i, "").trim()
+  }
+
+  function buildGoogleModelCandidates(rawModel: string): string[] {
+    const first = normalizeGoogleModelId(rawModel)
+    const candidates = [first, ...GOOGLE_MODEL_FALLBACKS]
+    const seen = new Set<string>()
+    const unique: string[] = []
+    for (const item of candidates) {
+      const normalized = normalizeGoogleModelId(item)
+      if (!normalized || seen.has(normalized)) continue
+      seen.add(normalized)
+      unique.push(normalized)
+    }
+    return unique
+  }
+
   // Build message parts — text first, then inline images
   const userParts: unknown[] = [{ text: userMessage }]
   if (images?.length) {
@@ -245,30 +274,75 @@ async function streamGemini(
     }
   }
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: "user", parts: userParts }],
-        generationConfig: { maxOutputTokens: 8192 },
-      }),
-    }
-  )
+  const candidateModels = buildGoogleModelCandidates(model)
+  let res: Response | null = null
+  let lastStatus = 502
+  let lastError = ""
 
-  if (!res.ok) {
-    const errText = await res.text()
-    try {
-      const errJson = JSON.parse(errText)
-      if (errJson.error?.code === 429) {
+  for (const candidateModel of candidateModels) {
+    for (const version of GOOGLE_API_VERSIONS) {
+      const endpoint = `https://generativelanguage.googleapis.com/${version}/models/${candidateModel}:streamGenerateContent?alt=sse&key=${apiKey}`
+      const attempt = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: [{ role: "user", parts: userParts }],
+          generationConfig: { maxOutputTokens: 8192 },
+        }),
+      })
+
+      if (attempt.ok) {
+        res = attempt
+        break
+      }
+
+      const errText = await attempt.text()
+      let errMessage = errText
+      let errCode: number | undefined
+      let errStatus: string | undefined
+      try {
+        const errJson = JSON.parse(errText) as { error?: { code?: number; message?: string; status?: string } }
+        errCode = errJson.error?.code
+        errStatus = errJson.error?.status
+        errMessage = errJson.error?.message || errText
+      } catch {
+        // keep raw text
+      }
+
+      if (attempt.status === 429 || errCode === 429) {
         return new Response("Cota excedida no Google Gemini (Free Tier). Por favor, aguarde alguns segundos ou utilize outro motor de IA (como Llama 3.1).", { status: 429 })
       }
-      return new Response(`Erro na API Google Gemini: ${errJson.error?.message || errText}`, { status: res.status })
-    } catch {
-      return new Response(`Erro na API Google Gemini: ${errText}`, { status: res.status })
+
+      if (attempt.status === 401 || errCode === 401) {
+        return new Response("Chave Google inválida ou sem permissão para o Gemini.", { status: 401 })
+      }
+
+      const isModelNotFound =
+        attempt.status === 404 ||
+        errCode === 404 ||
+        errStatus === "NOT_FOUND" ||
+        /not found/i.test(errMessage)
+
+      if (isModelNotFound) {
+        lastStatus = 404
+        lastError = errMessage
+        continue
+      }
+
+      return new Response(`Erro na API Google Gemini: ${errMessage}`, { status: attempt.status })
     }
+    if (res) break
+  }
+
+  if (!res) {
+    const configuredModel = normalizeGoogleModelId(model) || model
+    const suggested = candidateModels.join(", ")
+    return new Response(
+      `Erro na API Google Gemini: não foi possível usar o modelo configurado "${configuredModel}". ` +
+      `Modelos tentados: ${suggested}. Detalhe: ${lastError || "modelo não disponível para esta chave/API."}`,
+      { status: lastStatus }
+    )
   }
 
   const encoder = new TextEncoder()
