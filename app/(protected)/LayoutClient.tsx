@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useTransition } from "react"
+import React, { useState, useEffect, useTransition, useRef } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
@@ -332,6 +332,8 @@ interface TopbarProps {
   sistemaNames: string[]
   sistemaSelecionado: string
   onSistemaChange: (v: string) => void
+  /** Bloqueia o seletor enquanto a UI aplica o novo sistema. */
+  sistemaSelectPending?: boolean
   isDark: boolean
   onToggleTheme: () => void
   role: Role
@@ -352,6 +354,7 @@ const Topbar = React.memo(function Topbar({
   sistemaNames,
   sistemaSelecionado,
   onSistemaChange,
+  sistemaSelectPending = false,
   isDark,
   onToggleTheme,
   role,
@@ -431,7 +434,11 @@ const Topbar = React.memo(function Topbar({
         </button>
         {can(role, "topbar.sistemaSelector") && (
           sistemaNames.length > 0 ? (
-            <Select value={sistemaSelecionado} onValueChange={(v) => onSistemaChange(v ?? "")}>
+            <Select
+              value={sistemaSelecionado}
+              onValueChange={(v) => onSistemaChange(v ?? "")}
+              disabled={sistemaSelectPending}
+            >
               <SelectTrigger className="h-auto flex w-20 max-w-20 gap-1 overflow-hidden px-2 py-1.5 text-xs sm:w-auto sm:min-w-32 sm:max-w-56 sm:gap-1.5 sm:px-3 sm:text-sm">
                 <span className="hidden sm:inline truncate text-text-secondary">Sistema: </span>
                 <SelectValue className="truncate font-medium" />
@@ -512,6 +519,9 @@ export default function LayoutClient({
   const [isDark, setIsDark] = useState(false)
   const [assistenteOpen, setAssistenteOpen] = useState(false)
   const [isPending, startNavigationTransition] = useTransition()
+  const [isSistemaChangePending, startSistemaChangeTransition] = useTransition()
+  const [sistemaSwitchOverlay, setSistemaSwitchOverlay] = useState(false)
+  const sistemaSwitchStartedAt = useRef(0)
 
   // ── Preserve last-known-good menu data ──────────────────────────────────────
   const [stableNames, setStableNames] = useState(sistemaNamesProp)
@@ -584,9 +594,25 @@ export default function LayoutClient({
     sistemaSelecionado !== ""
 
   function handleSistemaChange(value: string) {
-    setSistemaSelecionado(value)
-    localStorage.setItem(STORAGE_KEY, value)
+    if (!value || value === sistemaSelecionado) return
+    sistemaSwitchStartedAt.current = Date.now()
+    setSistemaSwitchOverlay(true)
+    startSistemaChangeTransition(() => {
+      setSistemaSelecionado(value)
+      localStorage.setItem(STORAGE_KEY, value)
+    })
   }
+
+  const MIN_SISTEMA_SWITCH_MS = 380
+  useEffect(() => {
+    if (!sistemaSwitchOverlay) return
+    if (!isSistemaChangePending) {
+      const elapsed = Date.now() - sistemaSwitchStartedAt.current
+      const remaining = Math.max(0, MIN_SISTEMA_SWITCH_MS - elapsed)
+      const id = window.setTimeout(() => setSistemaSwitchOverlay(false), remaining)
+      return () => window.clearTimeout(id)
+    }
+  }, [sistemaSwitchOverlay, isSistemaChangePending])
 
   function handleToggleTheme() {
     const next = !isDark
@@ -639,17 +665,20 @@ export default function LayoutClient({
             sistemaNames={sistemaNames}
             sistemaSelecionado={sistemaSelecionado}
             onSistemaChange={handleSistemaChange}
+            sistemaSelectPending={sistemaSwitchOverlay || isSistemaChangePending}
             isDark={isDark}
             onToggleTheme={handleToggleTheme}
             role={role}
             accessProfile={accessProfile}
           />
           <main className="relative flex-1 overflow-auto bg-surface-default p-4 lg:p-6">
-            {isPending && (
+            {(isPending || sistemaSwitchOverlay) && (
               <div className="absolute inset-0 z-50 flex items-center justify-center bg-surface-default/80 backdrop-blur-sm">
                 <div className="flex flex-col items-center gap-3">
                   <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
-                  <span className="text-sm text-text-secondary">Carregando...</span>
+                  <span className="text-sm text-text-secondary">
+                    {isPending ? "Carregando…" : "A trocar de sistema…"}
+                  </span>
                 </div>
               </div>
             )}

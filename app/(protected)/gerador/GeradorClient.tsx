@@ -33,6 +33,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import { normalizeJiraIssueKey } from "@/lib/jira-issue-key"
 import { criarCenario, atualizarCenario, type CenarioRecord } from "@/lib/actions/cenarios"
 import { encontrarOuCriarCredencialPorImportacao } from "@/lib/actions/credenciais"
 import { parseMarkdownCenarios, buildImportItems, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
@@ -246,10 +247,15 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
     const jiraAttachments: { list: { name: string; dataUrl: string }[] } = { list: [] }
     if (jiraInput.trim()) {
       try {
-        // Extract issue key from full URL or use as-is
-        const issueKey = jiraInput.trim().includes("/")
-          ? jiraInput.trim().split("/").pop() ?? jiraInput.trim()
-          : jiraInput.trim()
+        const issueKey = normalizeJiraIssueKey(jiraInput)
+        if (!issueKey) {
+          setActiveTab("contexto")
+          toast.error(
+            "Chave ou URL do Jira inválida. Use PROJETO-123 (ex.: UX-951 ou ux-951) ou cole a URL da issue.",
+          )
+          setLoading(false)
+          return
+        }
         const jiraRes = await fetch(api("/api/jira"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -660,10 +666,10 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
               <Input
                 value={jiraInput}
                 onChange={(e) => setJiraInput(e.target.value)}
-                placeholder="https://agrotis.atlassian.net/browse/AC-1641 ou AC-1641"
+                placeholder="https://…/browse/UX-951 ou UX-951 (ux-951 também vale)"
               />
               <p className="text-xs text-text-secondary">
-                O conteúdo da issue será analisado junto com o contexto e os anexos.
+                Cole a URL da issue ou só a chave; o projeto pode estar em minúsculas (ex.: ux-951). O conteúdo da issue será analisado junto com o contexto e os anexos.
               </p>
             </div>
           )}

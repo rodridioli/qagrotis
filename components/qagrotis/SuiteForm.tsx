@@ -44,6 +44,7 @@ import { downloadMarkdownFile, suiteMarkdownDownloadFilename } from "@/lib/suite
 import { type EvFile, deleteEvidenceFile, evidenceFileToBlob } from "@/lib/evidence-storage"
 import { evHistoricoStorageKey, evScenarioStorageKey } from "@/lib/evidence-session-keys"
 import { applyJiraAttachmentUrlsToMarkdown } from "@/lib/jira-evidence-markdown"
+import { normalizeJiraIssueKey } from "@/lib/jira-issue-key"
 import { toast } from "sonner"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 
@@ -206,15 +207,8 @@ export function SuiteForm({
     ].join("\n")
   }
 
-  function parseIssueKey(input: string): string {
-    // Accept full URL or bare key
-    const trimmed = input.trim()
-    if (trimmed.includes("/")) return trimmed.split("/").pop() ?? trimmed
-    return trimmed
-  }
-
   async function handleJiraExport() {
-    const issueKey = parseIssueKey(jiraIssueInput)
+    const issueKey = normalizeJiraIssueKey(jiraIssueInput)
     if (!issueKey) { toast.error("Informe a URL ou chave da issue."); return }
     try {
       const cr = await fetch("/api/jira/credentials", { credentials: "same-origin" })
@@ -1339,7 +1333,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                 URL ou chave da issue <span className="text-destructive">*</span>
               </label>
               <Input
-                placeholder="https://agrotis.atlassian.net/browse/UX-951 ou UX-951"
+                placeholder="https://…/browse/UX-951 ou ux-951 (qualquer caixa)"
                 value={jiraIssueInput}
                 onChange={(e) => setJiraIssueInput(e.target.value)}
                 onBlur={() => setJiraInputTouched(true)}
@@ -1367,7 +1361,9 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
       <Dialog open={jiraModalOpen && jiraExisting !== null} onOpenChange={(v) => { if (!v) { setJiraExisting(null) } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{jiraExisting?.summary || parseIssueKey(jiraIssueInput)}</DialogTitle>
+            <DialogTitle>
+              {jiraExisting?.summary || normalizeJiraIssueKey(jiraIssueInput) || jiraIssueInput.trim()}
+            </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3 py-2">
             <p className="text-sm text-text-secondary">
@@ -1385,7 +1381,10 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             <CancelActionButton onClick={() => setJiraExisting(null)} disabled={jiraPending !== null} />
             <Button
               variant="outline"
-              onClick={() => { void sendToJira(parseIssueKey(jiraIssueInput), "replace") }}
+              onClick={() => {
+                const k = normalizeJiraIssueKey(jiraIssueInput)
+                if (k) void sendToJira(k, "replace")
+              }}
               disabled={jiraPending !== null}
             >
               {jiraPending === "replace"
@@ -1394,7 +1393,10 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
               {jiraPending === "replace" ? "Enviando..." : "Substituir"}
             </Button>
             <Button
-              onClick={() => { void sendToJira(parseIssueKey(jiraIssueInput), "append") }}
+              onClick={() => {
+                const k = normalizeJiraIssueKey(jiraIssueInput)
+                if (k) void sendToJira(k, "append")
+              }}
               disabled={jiraPending !== null}
             >
               {jiraPending === "append"

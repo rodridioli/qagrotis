@@ -1,8 +1,7 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 import { resolveJiraCredentialsForRequest, isSameJiraHost } from "@/lib/jira-credentials-db"
-
-const ISSUE_KEY_RE = /^[A-Z][A-Z0-9_]+-\d+$/
+import { normalizeJiraIssueKey } from "@/lib/jira-issue-key"
 
 // GET is no longer supported - all Jira calls use POST with action field
 // This handler prevents 404 errors from cached old code
@@ -31,9 +30,9 @@ export async function POST(req: NextRequest) {
   catch { return new Response("JSON inválido.", { status: 400 }) }
 
   const action = body.action ?? "update"
-  const issueKey = body.issueKey
+  const issueKey = typeof body.issueKey === "string" ? normalizeJiraIssueKey(body.issueKey) : null
 
-  if (!issueKey || !ISSUE_KEY_RE.test(issueKey)) {
+  if (!issueKey) {
     return new Response("issueKey inválido.", { status: 400 })
   }
 

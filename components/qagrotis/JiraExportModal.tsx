@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import type { CenarioRecord } from "@/lib/actions/cenarios"
 import { nomeParaTituloExportJira } from "@/lib/jira-export-nome-cenario"
+import { normalizeJiraIssueKey } from "@/lib/jira-issue-key"
 
 interface Props {
   open: boolean
@@ -24,12 +25,6 @@ interface Props {
   cenario: CenarioRecord
   manualAttachments: File[]
   autoAttachments: File[]
-}
-
-function parseIssueKey(input: string): string {
-  const trimmed = input.trim()
-  if (trimmed.includes("/")) return trimmed.split("/").pop() ?? trimmed
-  return trimmed
 }
 
 function fieldMd(label: string, value: string | undefined | null): string {
@@ -92,7 +87,7 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
   }
 
   async function handleCheckIssue() {
-    const key = parseIssueKey(issueInput)
+    const key = normalizeJiraIssueKey(issueInput)
     if (!key) { toast.error("Informe a URL ou chave da issue."); return }
 
     try {
@@ -192,7 +187,7 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
     }
   }
 
-  const issueKey = parseIssueKey(issueInput)
+  const issueKey = normalizeJiraIssueKey(issueInput) ?? ""
 
   return (
     <>
@@ -208,7 +203,7 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
                 URL ou chave da issue <span className="text-destructive">*</span>
               </label>
               <Input
-                placeholder="https://agrotis.atlassian.net/browse/UX-951 ou UX-951"
+                placeholder="https://…/browse/UX-951 ou ux-951 (qualquer caixa)"
                 value={issueInput}
                 onChange={(e) => setIssueInput(e.target.value)}
                 onBlur={() => setInputTouched(true)}

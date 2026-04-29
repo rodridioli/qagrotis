@@ -1,8 +1,7 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 import { resolveJiraCredentialsForRequest } from "@/lib/jira-credentials-db"
-
-const ISSUE_KEY_RE = /^[A-Z][A-Z0-9_]+-\d+$/
+import { normalizeJiraIssueKey } from "@/lib/jira-issue-key"
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -12,8 +11,9 @@ export async function POST(req: NextRequest) {
   try { formData = await req.formData() }
   catch { return new Response("FormData inválido.", { status: 400 }) }
 
-  const issueKey = formData.get("issueKey") as string
-  if (!issueKey || !ISSUE_KEY_RE.test(issueKey)) {
+  const rawKey = formData.get("issueKey")
+  const issueKey = typeof rawKey === "string" ? normalizeJiraIssueKey(rawKey) : null
+  if (!issueKey) {
     return new Response("issueKey inválido.", { status: 400 })
   }
 
