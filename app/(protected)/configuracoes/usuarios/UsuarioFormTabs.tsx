@@ -1,9 +1,8 @@
 "use client"
 
 import React, { useState, useTransition, useEffect } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Check, Eye, EyeOff, RefreshCw, Plus, Trash2, GlobeIcon as Globe, ExternalLink, MessageSquare, PhoneIcon as Phone, MapIcon as Map, BookOpen, Rocket, User as UserIcon } from "lucide-react"
+import { Check, Eye, EyeOff, RefreshCw, Plus, Trash2, ExternalLink, MessageSquare, MapIcon as Map, BookOpen, User as UserIcon } from "lucide-react"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,7 +44,7 @@ export default function UsuarioFormTabs({
 }: UsuarioFormTabsProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [activeTab, setActiveTab] = useState<"cadastro" | "endereco" | "formacao" | "carreira">("cadastro")
+  const [activeTab, setActiveTab] = useState<"cadastro" | "endereco" | "formacao">("cadastro")
 
   // --- Cadastro ---
   const [nome, setNome] = useState(initialData?.name ?? "")
@@ -93,17 +92,12 @@ export default function UsuarioFormTabs({
   const [languages, setLanguages] = useState<any[]>(initialData?.languages ?? [])
   const [certifications, setCertifications] = useState<any[]>(initialData?.certifications ?? [])
 
-  // --- Progressão de Carreira ---
-  const [careerHistory, setCareerHistory] = useState<any[]>(initialData?.careerHistory ?? [])
-
   const canSeeRestricted = mode === "create" || (sessionUser?.id === userId || (sessionUser?.type === "Administrador" && sessionUser?.accessProfile === "MGR"))
-  const canEditCarreira = sessionUser?.type === "Administrador" && sessionUser?.accessProfile === "MGR"
 
   const TABS = [
     { id: "cadastro" as const, label: "Cadastro", icon: UserIcon, disabled: false },
     { id: "endereco" as const, label: "Endereço", icon: Map, disabled: !canSeeRestricted },
     { id: "formacao" as const, label: "Formação", icon: BookOpen, disabled: !canSeeRestricted },
-    { id: "carreira" as const, label: "Progressão", icon: Rocket, disabled: !canSeeRestricted },
   ]
 
   // --- Helpers ---
@@ -171,7 +165,6 @@ export default function UsuarioFormTabs({
         courses,
         languages,
         certifications,
-        careerHistory,
       }
 
       if (mode === "create") {
@@ -213,19 +206,6 @@ export default function UsuarioFormTabs({
       } as any)
     }
   }
-
-  const companyTenure = React.useMemo(() => {
-    if (careerHistory.length === 0) return "0 dias"
-    const dates = careerHistory.map(h => new Date(h.date).getTime()).filter(t => !isNaN(t))
-    if (dates.length === 0) return "0 dias"
-    const start = Math.min(...dates)
-    const end = Date.now()
-    const diff = end - start
-    const years = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25))
-    const months = Math.floor((diff % (1000 * 60 * 60 * 24 * 365.25)) / (1000 * 60 * 60 * 24 * 30.44))
-    if (years === 0) return `${months} ${months === 1 ? 'mês' : 'meses'}`
-    return `${years} ${years === 1 ? 'ano' : 'anos'} e ${months} ${months === 1 ? 'mês' : 'meses'}`
-  }, [careerHistory])
 
   const isAdmin = sessionUser?.type === "Administrador"
   const backHref = isAdmin ? "/configuracoes/usuarios" : "/configuracoes"
@@ -580,97 +560,6 @@ export default function UsuarioFormTabs({
                 ))}
               </div>
             </div>
-            </div>
-          )}
-
-          {activeTab === "carreira" && (
-            <div>
-              <div className="flex items-center justify-between gap-2 border-b border-border-default px-5 py-3">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-sm font-semibold">Histórico de Carreira</h3>
-                  {careerHistory.length > 0 && (
-                    <span className="text-xs font-medium text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-full">
-                      {companyTenure.includes("ano") ? companyTenure.replace(" e ", " e ").replace("anos", "anos").replace("ano", "ano") + " de Agrotis" : companyTenure + " de Agrotis"}
-                    </span>
-                  )}
-                </div>
-                {canEditCarreira && (
-                  <Button variant="outline" size="sm" onClick={() => setCareerHistory([...careerHistory, { date: new Date().toISOString().split('T')[0], cargo: "", salary: "", type: "Admissão" }])}>
-                    <Plus className="size-3.5 mr-1" /> Adicionar
-                  </Button>
-                )}
-              </div>
-
-              {careerHistory.length === 0 ? (
-                <div className="m-4 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-                  Nenhum registro encontrado.
-                </div>
-              ) : (
-              <div className="overflow-x-auto">
-                <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
-                  <colgroup>
-                    <col className="w-52" />
-                    <col />
-                    <col className="w-36" />
-                    <col className="w-44" />
-                    {canEditCarreira && <col className="w-16" />}
-                  </colgroup>
-                  <thead>
-                    <tr className="border-b border-border-default bg-neutral-grey-50">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Data</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cargo</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Salário</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                      {canEditCarreira && <th className="py-3 pl-2 pr-4" />}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {careerHistory.map((item, idx) => (
-                      <tr key={idx} className="border-b border-border-default last:border-0 transition-colors">
-                        {canEditCarreira ? (
-                          <>
-                            <td className="bg-surface-card px-4 py-3">
-                              <Input type="date" value={item.date} onChange={e => { const n = [...careerHistory]; n[idx].date = e.target.value; setCareerHistory(n) }} className={`h-9 w-full ${inputNativePickerRightClassName()}`} />
-                            </td>
-                            <td className="bg-surface-card px-4 py-3">
-                              <Input value={item.cargo} onChange={e => { const n = [...careerHistory]; n[idx].cargo = e.target.value; setCareerHistory(n) }} className="h-9" placeholder="Ex: Analista Jr" />
-                            </td>
-                            <td className="bg-surface-card px-4 py-3">
-                              <Input value={item.salary} onChange={e => { const n = [...careerHistory]; n[idx].salary = e.target.value; setCareerHistory(n) }} className="h-9 w-full" placeholder="R$ 0,00" />
-                            </td>
-                            <td className="bg-surface-card px-4 py-3">
-                              <Select value={item.type} onValueChange={v => { const n = [...careerHistory]; n[idx].type = v; setCareerHistory(n) }}>
-                                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                <SelectPopup>
-                                  {["Admissão", "Promoção", "Aumento", "Troca de Cargo"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                </SelectPopup>
-                              </Select>
-                            </td>
-                            <td className="bg-surface-card py-3 pl-2 pr-4 text-right">
-                              <button
-                                type="button"
-                                onClick={() => setCareerHistory(careerHistory.filter((_, i) => i !== idx))}
-                                className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
-                                aria-label="Remover registro"
-                              >
-                                <Trash2 className="size-4" />
-                              </button>
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="bg-surface-card px-4 py-3 text-text-primary">{item.date ? new Date(item.date).toLocaleDateString("pt-BR") : "—"}</td>
-                            <td className="bg-surface-card px-4 py-3 text-text-primary">{item.cargo || "—"}</td>
-                            <td className="bg-surface-card px-4 py-3 text-text-primary">{item.salary || "—"}</td>
-                            <td className="bg-surface-card px-4 py-3 text-text-primary">{item.type || "—"}</td>
-                          </>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              )}
             </div>
           )}
         </div>
