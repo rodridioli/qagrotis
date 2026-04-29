@@ -172,8 +172,8 @@ export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="space-y-4 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-2">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+        <div className="min-w-0 flex-1 space-y-4 rounded-xl bg-surface-card p-5 shadow-card">
           <div className="space-y-1.5">
             <label htmlFor="nome" className="text-sm font-medium text-text-primary">
               Nome <span className="text-destructive">*</span>
@@ -423,14 +423,14 @@ export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }
           </div>
         </div>
 
-        <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <h2 className="mb-3 text-base font-semibold text-text-primary">Foto de Perfil</h2>
+        <aside className="w-full shrink-0 space-y-3 rounded-xl bg-surface-card p-5 shadow-card lg:w-72 lg:max-w-full">
+          <h2 className="text-base font-semibold text-text-primary">Foto de Perfil</h2>
           <PhotoUpload
             preview={photoPreview}
             onFileSelect={handlePhotoSelect}
             onRemove={() => { setPhotoFile(null); setPhotoPreview(null) }}
           />
-        </div>
+        </aside>
       </div>
     </div>
   )

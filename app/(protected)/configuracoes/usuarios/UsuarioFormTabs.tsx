@@ -263,8 +263,8 @@ export default function UsuarioFormTabs({
         <div>
           {activeTab === "cadastro" && (
             <div className="p-5">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-4">
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+              <div className="min-w-0 flex-1 space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Nome <span className="text-destructive">*</span></label>
                   <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" />
@@ -365,14 +365,14 @@ export default function UsuarioFormTabs({
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <aside className="w-full shrink-0 space-y-3 lg:w-72 lg:max-w-full">
                 <h2 className="text-base font-semibold text-text-primary">Foto de Perfil</h2>
                 <PhotoUpload
                   preview={photoPreview}
                   onFileSelect={handlePhotoSelect}
                   onRemove={() => { setPhotoFile(null); setPhotoPreview(null) }}
                 />
-              </div>
+              </aside>
             </div>
             </div>
           )}
