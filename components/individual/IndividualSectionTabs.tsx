@@ -52,7 +52,7 @@ export function IndividualSectionTabsPresentation({
   querySuffix,
 }: IndividualSectionTabsPresentationProps) {
   return (
-    <div className="flex flex-wrap gap-0.5 rounded-custom border border-border-default bg-surface-card p-1 shadow-card">
+    <div className="flex w-fit max-w-full flex-wrap gap-0.5 rounded-custom border border-border-default bg-surface-card p-1 shadow-card">
       {SECTIONS.map(({ href, label, icon: Icon }) => {
         const active = pathname === `/individual/${href}`
         return (
