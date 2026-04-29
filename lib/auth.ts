@@ -142,45 +142,58 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       // Enriquecer com type + accessProfile (RBAC) e foto do perfil.
-      // Lê em toda chamada para refletir mudanças sem exigir relogin.
+      // Não consultar prisma.user aqui: em vários deploys QA o id da sessão é CreatedUser (U-*)
+      // e a tabela Auth `User` pode não existir ou não corresponder — gerava 500 no callback.
       if (token.id || token.email) {
-        const prisma = await getPrisma()
-        const userId = token.id as string | undefined
-        const email = (token.email as string | undefined)?.trim().toLowerCase()
+        try {
+          const prisma = await getPrisma()
+          const userId = token.id as string | undefined
+          const email = (token.email as string | undefined)?.trim().toLowerCase()
 
-        const [profile, createdById, oauthUser] = await Promise.all([
-          userId
-            ? prisma.userProfile.findUnique({
-                where: { userId },
-                select: { type: true, accessProfile: true, photoPath: true },
-              })
-            : Promise.resolve(null),
-          userId
-            ? prisma.createdUser.findUnique({
-                where: { id: userId },
-                select: { type: true, accessProfile: true, photoPath: true },
-              })
-            : Promise.resolve(null),
-          userId
-            ? prisma.user.findUnique({ where: { id: userId }, select: { image: true } })
-            : Promise.resolve(null),
-        ])
+          const [profile, createdById] = await Promise.all([
+            userId
+              ? prisma.userProfile.findUnique({
+                  where: { userId },
+                  select: { type: true, accessProfile: true, photoPath: true },
+                })
+              : Promise.resolve(null),
+            userId
+              ? prisma.createdUser.findUnique({
+                  where: { id: userId },
+                  select: { type: true, accessProfile: true, photoPath: true },
+                })
+              : Promise.resolve(null),
+          ])
 
-        let created = createdById
-        if (!created && email) {
-          created = await prisma.createdUser.findFirst({
-            where: { email: { equals: email, mode: "insensitive" } },
-            select: { type: true, accessProfile: true, photoPath: true },
-          })
+          let created = createdById
+          if (!created && email) {
+            created = await prisma.createdUser.findFirst({
+              where: { email: { equals: email, mode: "insensitive" } },
+              select: { type: true, accessProfile: true, photoPath: true },
+            })
+          }
+
+          const resolvedType = profile?.type ?? created?.type ?? "Padrão"
+          const resolvedProfile = profile?.accessProfile ?? created?.accessProfile ?? "QA"
+          token.type = resolvedType === "Administrador" ? "Administrador" : "Padrão"
+          token.accessProfile = resolvedProfile as "QA" | "UX" | "TW" | "MGR"
+          let mergedPhoto =
+            profile?.photoPath ?? created?.photoPath ?? null
+          if (
+            !mergedPhoto &&
+            user &&
+            account?.provider === "google" &&
+            typeof user.image === "string"
+          ) {
+            mergedPhoto = user.image
+          }
+          token.photoPath = photoPathForJwtCookie(mergedPhoto)
+        } catch (e) {
+          console.error("[auth jwt] enrich token failed", e)
+          token.type = token.type ?? "Padrão"
+          token.accessProfile = (token.accessProfile as "QA" | "UX" | "TW" | "MGR" | undefined) ?? "QA"
+          token.photoPath = null
         }
-
-        const resolvedType = profile?.type ?? created?.type ?? "Padrão"
-        const resolvedProfile = profile?.accessProfile ?? created?.accessProfile ?? "QA"
-        token.type = resolvedType === "Administrador" ? "Administrador" : "Padrão"
-        token.accessProfile = resolvedProfile as "QA" | "UX" | "TW" | "MGR"
-        const mergedPhoto =
-          profile?.photoPath ?? created?.photoPath ?? oauthUser?.image ?? null
-        token.photoPath = photoPathForJwtCookie(mergedPhoto)
       }
       return token
     },
@@ -189,8 +202,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string
       }
       if (session.user) {
-        session.user.type = token.type
-        session.user.accessProfile = token.accessProfile
+        session.user.type = token.type ?? "Padrão"
+        session.user.accessProfile =
+          (token.accessProfile as "QA" | "UX" | "TW" | "MGR" | undefined) ?? "QA"
         session.user.photoPath = (token.photoPath as string | null | undefined) ?? null
       }
       return session
