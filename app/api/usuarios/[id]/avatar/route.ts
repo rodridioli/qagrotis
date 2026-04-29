@@ -4,6 +4,71 @@ import { checkIsAdmin } from "@/lib/session"
 import { getQaUserProfile } from "@/lib/actions/usuarios"
 import { revalidatePath } from "next/cache"
 
+const MAX_AVATAR_BYTES = 6 * 1024 * 1024
+
+function parseDataImageResponse(dataUrl: string): { contentType: string; body: Buffer } | null {
+  if (!dataUrl.startsWith("data:")) return null
+  const comma = dataUrl.indexOf(",")
+  if (comma < 0) return null
+  const meta = dataUrl.slice(5, comma).trim()
+  const m = /^image\/(jpeg|png|gif|webp);base64$/i.exec(meta)
+  if (!m) return null
+  const payload = dataUrl.slice(comma + 1)
+  try {
+    const body = Buffer.from(payload, "base64")
+    if (body.length === 0 || body.length > MAX_AVATAR_BYTES) return null
+    const ext = m[1].toLowerCase()
+    return { contentType: `image/${ext}`, body }
+  } catch {
+    return null
+  }
+}
+
+/** Avatar para `<img>`: data URLs não vão no JWT (cookie); o cliente usa esta rota. */
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return new NextResponse(null, { status: 401 })
+  }
+
+  const { id } = await params
+  if (!/^[A-Za-z0-9_-]+$/.test(id)) {
+    return new NextResponse(null, { status: 400 })
+  }
+
+  const isSelf = session.user.id === id
+  const isAdmin = await checkIsAdmin()
+  if (!isSelf && !isAdmin) {
+    return new NextResponse(null, { status: 403 })
+  }
+
+  const profile = await getQaUserProfile(id)
+  const photo = profile?.photoPath?.trim()
+  if (!photo) {
+    return new NextResponse(null, { status: 404 })
+  }
+
+  if (photo.startsWith("https://") || photo.startsWith("http://")) {
+    return NextResponse.redirect(photo)
+  }
+
+  const parsed = parseDataImageResponse(photo)
+  if (parsed) {
+    return new NextResponse(parsed.body, {
+      status: 200,
+      headers: {
+        "Content-Type": parsed.contentType,
+        "Cache-Control": "private, max-age=300",
+      },
+    })
+  }
+
+  return new NextResponse(null, { status: 404 })
+}
+
 const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
 const ALLOWED_TYPES: Record<string, string> = {
   jpg:  "image/jpeg",

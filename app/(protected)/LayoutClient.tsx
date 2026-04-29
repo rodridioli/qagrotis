@@ -376,12 +376,18 @@ const Topbar = React.memo(function Topbar({
       .map((n) => n[0])
       .join("")
       .toUpperCase() || "QA"
-  const photoPath = sessionForUi?.user?.photoPath ?? null
+  const sessionPhoto = sessionForUi?.user?.photoPath ?? null
+  const internalId = sessionForUi?.user?.id
+  const avatarApi = internalId ? `/api/usuarios/${internalId}/avatar` : null
+  /** `data:` não entra no JWT (limite do cookie); avatar enviado pelo formulário usa a API. */
+  const avatarSrc =
+    sessionPhoto && !sessionPhoto.startsWith("data:")
+      ? sessionPhoto
+      : avatarApi
   const [avatarFailed, setAvatarFailed] = useState(false)
   useEffect(() => {
     setAvatarFailed(false)
-  }, [photoPath])
-  const internalId = sessionForUi?.user?.id
+  }, [avatarSrc])
   const profileHref = internalId
     ? `/configuracoes/usuarios/${internalId}/editar`
     : "/configuracoes/usuarios"
@@ -461,10 +467,10 @@ const Topbar = React.memo(function Topbar({
           aria-label="Meu Perfil"
           className="relative hidden size-8 shrink-0 overflow-hidden rounded-full transition-opacity hover:opacity-80 sm:flex"
         >
-          {photoPath && !avatarFailed ? (
-            // eslint-disable-next-line @next/next/no-img-element -- data URLs + URLs dinâmicas do perfil
+          {avatarSrc && !avatarFailed ? (
+            // eslint-disable-next-line @next/next/no-img-element -- URL curta na sessão ou rota /api/.../avatar
             <img
-              src={photoPath}
+              src={avatarSrc}
               alt=""
               className="size-full object-cover"
               onError={() => setAvatarFailed(true)}

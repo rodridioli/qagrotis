@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials"
 import { authConfig } from "@/lib/auth.config"
 import { verifyPassword, nextId } from "@/lib/db-utils"
 import { resolveGoogleAccess, resolveGoogleInternalId } from "@/lib/auth-google"
+import { photoPathForJwtCookie } from "@/lib/jwt-photo-path"
 
 /** Dynamic import so /api/auth/session does not load @prisma/client until login flows need the DB. */
 async function getPrisma() {
@@ -177,8 +178,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const resolvedProfile = profile?.accessProfile ?? created?.accessProfile ?? "QA"
         token.type = resolvedType === "Administrador" ? "Administrador" : "Padrão"
         token.accessProfile = resolvedProfile as "QA" | "UX" | "TW" | "MGR"
-        token.photoPath =
+        const mergedPhoto =
           profile?.photoPath ?? created?.photoPath ?? oauthUser?.image ?? null
+        token.photoPath = photoPathForJwtCookie(mergedPhoto)
       }
       return token
     },
