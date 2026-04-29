@@ -285,7 +285,7 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
   const diasTrabalhoHibrido =
     formatoEff === "Híbrido" ? normalizeDiasTrabalhoHibrido(diasRaw) : []
 
-  return {
+  const profile: QaUserProfile = {
     name:            savedProfile?.name ?? base.name,
     email:           savedProfile?.email ?? base.email,
     type:            savedProfile?.type ?? base.type,
@@ -532,7 +532,7 @@ export async function criarQaUser(data: {
 
     // Validação MGR + Administrador
     const validProfiles = ["QA", "UX", "TW", "MGR"] as const
-    let resolvedAccessProfile: "QA" | "UX" | "TW" | "MGR" = (validProfiles as readonly string[]).includes(data.accessProfile ?? "") ? (data.accessProfile as "QA" | "UX" | "TW" | "MGR") : "QA"
+    const resolvedAccessProfile: "QA" | "UX" | "TW" | "MGR" = (validProfiles as readonly string[]).includes(data.accessProfile ?? "") ? (data.accessProfile as "QA" | "UX" | "TW" | "MGR") : "QA"
     if (resolvedAccessProfile === "MGR" && parsed.type !== "Administrador") {
       return { error: "Perfil MGR exige Tipo Administrador." }
     }
@@ -757,7 +757,8 @@ export async function atualizarQaUser(
       return { error: "Caminho de foto inválido." }
     }
 
-    const classificacaoValida = sanitizeClassificacao(data.classificacao)
+    const classificacaoParsed =
+      data.classificacao !== undefined ? sanitizeClassificacao(data.classificacao) : undefined
     const dataNascimento =
       data.dataNascimento === undefined ? undefined : parseDateInput(data.dataNascimento)
     const horarioEntrada =
@@ -789,7 +790,7 @@ export async function atualizarQaUser(
       name: string
       email: string
       type: string
-      classificacao: string | null
+      classificacao?: string | null
       photoPath?: string | null
       dataNascimento?: Date | null
       horarioEntrada?: string | null
@@ -814,10 +815,12 @@ export async function atualizarQaUser(
       certifications?: any[] | null
       careerHistory?: any[] | null
     } = {
-      name:          parsed.name,
-      email:         parsed.email,
-      type:          parsed.type,
-      classificacao: classificacaoValida,
+      name:  parsed.name,
+      email: parsed.email,
+      type:  parsed.type,
+    }
+    if (classificacaoParsed !== undefined) {
+      profileData.classificacao = classificacaoParsed
     }
     if (resolvedAccessProfile) (profileData as { accessProfile?: string }).accessProfile = resolvedAccessProfile
     if (safePhotoPath !== undefined) profileData.photoPath = safePhotoPath
@@ -838,7 +841,7 @@ export async function atualizarQaUser(
         email: parsed.email,
         type: parsed.type,
         accessProfile: resolvedAccessProfile ?? null,
-        classificacao: classificacaoValida,
+        classificacao: classificacaoParsed !== undefined ? classificacaoParsed : null,
         photoPath: safePhotoPath ?? null,
         dataNascimento: dataNascimento ?? null,
         horarioEntrada: horarioEntrada ?? null,
@@ -866,7 +869,7 @@ export async function atualizarQaUser(
           email: parsed.email,
           type: parsed.type,
           ...(resolvedAccessProfile ? { accessProfile: resolvedAccessProfile } : {}),
-          classificacao: classificacaoValida,
+          ...(classificacaoParsed !== undefined ? { classificacao: classificacaoParsed } : {}),
           ...(dataNascimento !== undefined ? { dataNascimento } : {}),
           ...(horarioEntrada !== undefined ? { horarioEntrada } : {}),
           ...(horarioSaida !== undefined ? { horarioSaida } : {}),

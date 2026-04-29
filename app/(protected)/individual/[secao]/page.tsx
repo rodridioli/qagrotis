@@ -7,6 +7,7 @@ import { getActiveQaUsers } from "@/lib/actions/usuarios"
 import { serializeRscProps } from "@/lib/rsc-serialize"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { IndividualSecaoDevelopmentPanel } from "../IndividualSecaoDevelopmentPanel"
+import { IndividualSectionTabs } from "@/components/individual/IndividualSectionTabs"
 
 const SECTION_LABELS: Record<string, string> = {
   dominio: "Domínio",
@@ -85,6 +86,8 @@ export default async function IndividualSecaoPage({
   return (
     <div className="space-y-4">
       <PageBreadcrumb backHref={backHref} items={breadcrumbItems} />
+
+      <IndividualSectionTabs querySuffix={querySuffix} />
 
       {showMgrUserFilter ? (
         <IndividualSecaoDevelopmentPanel secao={secao} users={avatarUsers} selectedUserId={targetUserId} />

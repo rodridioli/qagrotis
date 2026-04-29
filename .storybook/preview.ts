@@ -38,6 +38,8 @@ const preview: Preview = {
             "QAgrotisLogo",
             "QAgrotisIcon",
           ],
+          "Individual",
+          ["SectionTabs"],
         ],
       },
     },

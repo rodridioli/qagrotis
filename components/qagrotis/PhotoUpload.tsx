@@ -56,33 +56,31 @@ export function PhotoUpload({ preview, onFileSelect, onRemove }: PhotoUploadProp
         onChange={handleChange}
       />
       {preview ? (
-        <div className="relative flex h-64 w-full shrink-0 items-center justify-center sm:h-72">
-          <div className="relative aspect-square h-full max-h-full w-auto max-w-full">
-            <div className="absolute inset-0 overflow-hidden rounded-full border border-border-default shadow-sm">
-              <Image
-                src={preview}
-                alt="Foto de perfil"
-                fill
-                unoptimized
-                className="object-cover"
-                sizes="(max-width: 640px) 100vw, 288px"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={onRemove}
-              aria-label="Remover foto"
-              className="absolute right-2 top-2 z-20 flex size-9 items-center justify-center rounded-full bg-destructive text-primary-foreground shadow-md ring-2 ring-surface-card hover:bg-destructive/90"
-            >
-              <Trash2 className="size-4 shrink-0" />
-            </button>
+        <div className="relative w-full max-w-xs shrink-0">
+          <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-border-default bg-neutral-grey-50 shadow-sm">
+            <Image
+              src={preview}
+              alt="Foto de perfil"
+              fill
+              unoptimized
+              className="object-cover"
+              sizes="(max-width: 1024px) 100vw, 320px"
+            />
           </div>
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label="Remover foto"
+            className="absolute -right-1 -top-1 z-20 flex size-10 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md transition-colors hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <Trash2 className="size-5 shrink-0" aria-hidden />
+          </button>
         </div>
       ) : (
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="flex h-64 w-full flex-col items-center justify-center gap-3 rounded-custom border-2 border-dashed border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100 sm:h-72"
+          className="flex aspect-square w-full max-w-xs flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100"
         >
           <CloudUpload className="size-8" />
           <div className="text-center">

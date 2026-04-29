@@ -424,7 +424,7 @@ export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }
         </div>
 
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
-          <h2 className="mb-3 font-semibold text-text-primary">Foto de Perfil</h2>
+          <h2 className="mb-3 text-base font-semibold text-text-primary">Foto de Perfil</h2>
           <PhotoUpload
             preview={photoPreview}
             onFileSelect={handlePhotoSelect}

@@ -382,8 +382,8 @@ export default function UsuarioFormTabs({
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h2 className="font-semibold text-text-primary">Foto de Perfil</h2>
+              <div className="space-y-3">
+                <h2 className="text-base font-semibold text-text-primary">Foto de Perfil</h2>
                 <PhotoUpload
                   preview={photoPreview}
                   onFileSelect={handlePhotoSelect}
