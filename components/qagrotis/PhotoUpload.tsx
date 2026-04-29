@@ -5,6 +5,7 @@ import Image from "next/image"
 import { CloudUpload, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { PhotoCropModal } from "./PhotoCropModal"
+import { cn } from "@/lib/utils"
 
 interface PhotoUploadProps {
   preview: string | null
@@ -56,19 +57,19 @@ export function PhotoUpload({ preview, onFileSelect, onRemove }: PhotoUploadProp
         onChange={handleChange}
       />
       {preview ? (
-        <div className="relative h-48 w-full">
+        <div className="relative mx-auto size-48 shrink-0 overflow-hidden rounded-full border border-border-default shadow-sm">
           <Image
             src={preview}
             alt="Foto de perfil"
             fill
             unoptimized
-            className="rounded-custom object-cover"
+            className="object-cover"
           />
           <button
             type="button"
             onClick={onRemove}
             aria-label="Remover foto"
-            className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
+            className="absolute right-1 top-1 flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
           >
             <Trash2 className="size-4 text-primary-foreground" />
           </button>
@@ -77,12 +78,14 @@ export function PhotoUpload({ preview, onFileSelect, onRemove }: PhotoUploadProp
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="flex h-48 w-full flex-col items-center justify-center gap-3 rounded-custom border-2 border-dashed border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100"
+          className={cn(
+            "mx-auto flex size-48 shrink-0 flex-col items-center justify-center gap-2 rounded-full border-2 border-dashed border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100",
+          )}
         >
-          <CloudUpload className="size-8" />
-          <div className="text-center">
-            <p className="text-sm font-medium">Upload de imagem</p>
-            <p className="text-xs">JPG ou PNG · 400×400 px</p>
+          <CloudUpload className="size-7" />
+          <div className="px-2 text-center">
+            <p className="text-xs font-medium">Upload</p>
+            <p className="text-[10px] leading-tight">JPG ou PNG · 400×400</p>
           </div>
         </button>
       )}

@@ -5,6 +5,7 @@ import Image from "next/image"
 import { notFound } from "next/navigation"
 import { getQaUsers } from "@/lib/actions/usuarios"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { cn } from "@/lib/utils"
 
 function getInitials(name: string): string {
   return name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()
@@ -88,10 +89,15 @@ export default async function UsuarioDetailPage({ params }: { params: Promise<{ 
               width={80}
               height={80}
               unoptimized
-              className="size-20 rounded-full object-cover"
+              className={cn("size-20 rounded-full object-cover", !user.active && "grayscale")}
             />
           ) : (
-            <div className="flex size-20 items-center justify-center rounded-full bg-primary-100 text-2xl font-semibold text-brand-primary">
+            <div
+              className={cn(
+                "flex size-20 items-center justify-center rounded-full bg-primary-100 text-2xl font-semibold text-brand-primary",
+                !user.active && "opacity-75 grayscale",
+              )}
+            >
               {getInitials(user.name)}
             </div>
           )}

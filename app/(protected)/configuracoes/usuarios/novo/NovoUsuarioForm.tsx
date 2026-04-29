@@ -35,6 +35,7 @@ interface NovoUsuarioFormProps {
 export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }: NovoUsuarioFormProps = {}) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const accessProfileSelectDisabled = manageableProfiles.length === 1
 
   const [nome, setNome] = useState("")
   const [email, setEmail] = useState("")
@@ -233,11 +234,12 @@ export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }
               <Select
                 value={accessProfile}
                 onValueChange={(v) => {
+                  if (accessProfileSelectDisabled) return
                   const next = (v ?? "QA") as AccessProfile
                   setAccessProfile(next)
                   if (next === "MGR") setTipo("Administrador")
                 }}
-                disabled={isPending}
+                disabled={isPending || accessProfileSelectDisabled}
               >
                 <SelectTrigger id="accessProfile"><SelectValue /></SelectTrigger>
                 <SelectPopup>

@@ -187,27 +187,30 @@ export function DashboardClient({
   const [missingCreatedAtFallback] = useState(() => Date.now())
 
   // ── User map ───────────────────────────────────────────────────────────────
+  type ResolvedUser = { displayName: string; photoPath: string | null; inactive: boolean }
+
   const userMap = useMemo(() => {
-    const map = new Map<string, { displayName: string; photoPath: string | null }>()
+    const map = new Map<string, ResolvedUser>()
     for (const u of allUsers) {
       const display = u.name || (u.email ? u.email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase()) : "Usuário")
       const photoPath = u.photoPath ?? null
+      const inactive = !u.active
+      const entry: ResolvedUser = { displayName: display, photoPath, inactive }
       // Key by email (exact + lowercase), and name for backward compat / session fallbacks
       if (u.email) {
         const em = u.email.trim()
-        const entry = { displayName: display, photoPath }
         map.set(em, entry)
         map.set(em.toLowerCase(), entry)
       }
-      if (u.name && u.name !== u.email) map.set(u.name, { displayName: display, photoPath })
+      if (u.name && u.name !== u.email) map.set(u.name, { displayName: display, photoPath, inactive })
     }
     return map
   }, [allUsers])
 
-  function resolveUser(createdBy: string | undefined): { displayName: string; photoPath: string | null } {
-    if (!createdBy) return { displayName: "Desconhecido", photoPath: null }
+  function resolveUser(createdBy: string | undefined): ResolvedUser {
+    if (!createdBy) return { displayName: "Desconhecido", photoPath: null, inactive: false }
     if (createdBy === RANKING_SEM_ATRIBUICAO) {
-      return { displayName: "Sem atribuição", photoPath: null }
+      return { displayName: "Sem atribuição", photoPath: null, inactive: false }
     }
     // Try exact match (email or name)
     const found = userMap.get(createdBy)
@@ -221,7 +224,7 @@ export function DashboardClient({
     for (const u of allUsers) {
       if (u.name && u.name.toLowerCase().includes(lower)) {
         const display = u.name
-        return { displayName: display, photoPath: u.photoPath ?? null }
+        return { displayName: display, photoPath: u.photoPath ?? null, inactive: !u.active }
       }
     }
     // Fallback: format email as name
@@ -230,9 +233,13 @@ export function DashboardClient({
       const byEmail = allUsers.find(
         (u) => (u.email ?? "").toLowerCase() === createdBy.toLowerCase(),
       )
-      return { displayName: byEmail?.name || name, photoPath: byEmail?.photoPath ?? null }
+      return {
+        displayName: byEmail?.name || name,
+        photoPath: byEmail?.photoPath ?? null,
+        inactive: byEmail ? !byEmail.active : false,
+      }
     }
-    return { displayName: createdBy, photoPath: null }
+    return { displayName: createdBy, photoPath: null, inactive: false }
   }
 
   // ── Cenários filtrados ─────────────────────────────────────────────────────

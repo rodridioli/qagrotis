@@ -67,7 +67,11 @@ interface Props {
   sucessoModulo:     string
   onSucessoModuloChange: (v: string) => void
   ultimasAutomacoes: UltimaAutomacao[]
-  resolveUser: (createdBy: string | undefined) => { displayName: string; photoPath: string | null }
+  resolveUser: (createdBy: string | undefined) => {
+    displayName: string
+    photoPath: string | null
+    inactive: boolean
+  }
   cenariosPorModulo: { name: string; value: number }[]
 }
 
@@ -192,14 +196,17 @@ function Avatar({
   photoPath,
   colorIndex,
   size = "md",
+  inactive = false,
 }: {
   displayName: string
   photoPath: string | null
   colorIndex: number
   size?: "sm" | "md"
+  inactive?: boolean
 }) {
   const sz = size === "sm" ? "size-6" : "size-8"
   const textSz = size === "sm" ? "text-[10px]" : "text-xs"
+  const gray = inactive ? " grayscale" : ""
   return (
     <div className="relative shrink-0 flex items-center justify-center">
       {photoPath ? (
@@ -207,7 +214,7 @@ function Avatar({
         <img
           src={photoPath}
           alt={displayName}
-          className={`${sz} rounded-full object-cover`}
+          className={`${sz} rounded-full object-cover${gray}`}
           onError={e => {
             e.currentTarget.style.display = "none"
             const sib = e.currentTarget.nextElementSibling as HTMLElement | null
@@ -216,7 +223,7 @@ function Avatar({
         />
       ) : null}
       <div
-        className={`${sz} ${textSz} rounded-full items-center justify-center ${AVATAR_COLORS[colorIndex % AVATAR_COLORS.length]}`}
+        className={`${sz} ${textSz} rounded-full items-center justify-center ${AVATAR_COLORS[colorIndex % AVATAR_COLORS.length]}${inactive ? " opacity-80 grayscale" : ""}`}
         style={{ display: photoPath ? "none" : "flex" }}
       >
         {getInitials(displayName)}
@@ -331,7 +338,7 @@ export function DashboardCharts({
                  </thead>
                  <tbody className="divide-y divide-border-default/30">
                    {rankingData.map((item, i) => {
-                     const { displayName, photoPath } = resolveUser(item.createdBy)
+                     const { displayName, photoPath, inactive } = resolveUser(item.createdBy)
                      const position = i + 1
                      return (
                        <tr key={`${item.createdBy}-${position}`} className="transition-colors">
@@ -340,7 +347,7 @@ export function DashboardCharts({
                          </td>
                          <td className="py-2.5 px-2">
                            <div className="flex min-w-0 items-center gap-2.5">
-                             <Avatar displayName={displayName} photoPath={photoPath} colorIndex={i} size="sm" />
+                             <Avatar displayName={displayName} photoPath={photoPath} colorIndex={i} size="sm" inactive={inactive} />
                              <span className="truncate text-xs font-normal text-text-primary">
                                {displayName}
                              </span>
@@ -605,7 +612,11 @@ function UltimasAutomacoesPaginado({
   resolveUser,
 }: {
   items: UltimaAutomacao[]
-  resolveUser: (createdBy: string | undefined) => { displayName: string; photoPath: string | null }
+  resolveUser: (createdBy: string | undefined) => {
+    displayName: string
+    photoPath: string | null
+    inactive: boolean
+  }
 }) {
   const [page, setPage] = useState(0)
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE)
@@ -615,11 +626,11 @@ function UltimasAutomacoesPaginado({
     <div className="space-y-3">
       {pageItems.map((item, i) => {
         const globalIndex = page * ITEMS_PER_PAGE + i
-        const { displayName, photoPath } = resolveUser(item.createdBy)
+        const { displayName, photoPath, inactive } = resolveUser(item.createdBy)
         return (
           <div key={item.id} className="rounded-lg border border-border-default p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <Avatar displayName={displayName} photoPath={photoPath} colorIndex={globalIndex} size="sm" />
+              <Avatar displayName={displayName} photoPath={photoPath} colorIndex={globalIndex} size="sm" inactive={inactive} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-text-primary">{displayName}</p>
                 <p className="text-xs text-text-secondary/70">{formatDateTime(item.createdAt)}</p>

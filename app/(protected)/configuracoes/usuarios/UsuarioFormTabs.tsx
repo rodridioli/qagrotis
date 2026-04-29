@@ -52,6 +52,14 @@ export default function UsuarioFormTabs({
   const [email, setEmail] = useState(initialData?.email ?? "")
   const [tipo, setTipo] = useState<string>(initialData?.type ?? "Padrão")
   const [accessProfile, setAccessProfile] = useState<AccessProfile>((initialData?.accessProfile as AccessProfile) ?? manageableProfiles[0] ?? "QA")
+  /** Admin QA/UX/TW: só um perfil gerenciável — campo travado nesse valor. */
+  const accessProfileSelectDisabled = manageableProfiles.length === 1
+  const lockedAccessProfile = accessProfileSelectDisabled ? manageableProfiles[0] ?? null : null
+
+  useEffect(() => {
+    if (!lockedAccessProfile) return
+    setAccessProfile(lockedAccessProfile)
+  }, [lockedAccessProfile])
   const [cargo, setCargo] = useState(initialData?.classificacao ?? "")
   const [dataNascimento, setDataNascimento] = useState(initialData?.dataNascimento ?? "")
   const [horarioEntrada, setHorarioEntrada] = useState(initialData?.horarioEntrada ?? "")
@@ -295,10 +303,24 @@ export default function UsuarioFormTabs({
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">Perfil de Acesso</label>
-                    <Select value={accessProfile} onValueChange={(v: any) => setAccessProfile(v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    <Select
+                      value={accessProfile}
+                      onValueChange={(v) => {
+                        if (accessProfileSelectDisabled) return
+                        const next = (v ?? manageableProfiles[0] ?? "QA") as AccessProfile
+                        setAccessProfile(next)
+                      }}
+                      disabled={accessProfileSelectDisabled}
+                    >
+                      <SelectTrigger aria-readonly={accessProfileSelectDisabled}>
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectPopup>
-                        {manageableProfiles.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                        {manageableProfiles.map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {p}
+                          </SelectItem>
+                        ))}
                       </SelectPopup>
                     </Select>
                   </div>

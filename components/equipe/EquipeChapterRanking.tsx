@@ -88,7 +88,10 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
                             />
                           ) : (
                             <div
-                              className="flex size-6 shrink-0 items-center justify-center rounded-full bg-neutral-grey-100 text-[9px] font-semibold text-text-secondary sm:size-7 sm:text-[10px]"
+                              className={cn(
+                                "flex size-6 shrink-0 items-center justify-center rounded-full bg-neutral-grey-100 text-[9px] font-semibold text-text-secondary sm:size-7 sm:text-[10px]",
+                                !e.active && "opacity-75 grayscale",
+                              )}
                               aria-hidden
                             >
                               {getInitials(e.name)}

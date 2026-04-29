@@ -35,6 +35,7 @@ import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { inativarQaUsers, ativarQaUser, getQaUsers, type QaUserRecord } from "@/lib/actions/usuarios"
+import type { AccessProfile } from "@/lib/rbac/policy"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -55,6 +56,13 @@ function getInitials(name: string): string {
     .toUpperCase()
 }
 
+/** Mesma regra do servidor em `usuarios/page.tsx` após `getQaUsers()`. */
+function filterUsersForList(all: QaUserRecord[], filter: AccessProfile | null): QaUserRecord[] {
+  if (!filter) return all
+  if (filter === "QA") return all.filter((u) => (u.accessProfile ?? "QA") === "QA")
+  return all.filter((u) => u.accessProfile === filter)
+}
+
 interface FilterState {
   tipo: string
   apenasInativos: boolean
@@ -64,6 +72,8 @@ interface Props {
   initialUsers: QaUserRecord[]
   currentUserId: string | null
   isAdmin: boolean
+  /** Admin QA/UX/TW: reaplica o filtro de perfil após recarregar lista no cliente. */
+  listProfileFilter?: AccessProfile | null
   /** true quando getQaUsers() falhou no servidor — lista veio vazia por erro, não porque não há cadastros */
   usersFetchFailed?: boolean
   usersFetchErrorMessage?: string | null
@@ -73,6 +83,7 @@ export default function UsuariosClient({
   initialUsers,
   currentUserId,
   isAdmin,
+  listProfileFilter = null,
   usersFetchFailed = false,
   usersFetchErrorMessage = null,
 }: Props) {
@@ -91,8 +102,10 @@ export default function UsuariosClient({
   useEffect(() => {
     if (!currentUserId) return
     if (initialUsers.some((u) => u.id === currentUserId)) return
-    getQaUsers().then((fresh) => setUsers(fresh)).catch(() => {})
-  }, [currentUserId, initialUsers])
+    getQaUsers()
+      .then((fresh) => setUsers(filterUsersForList(fresh, listProfileFilter)))
+      .catch(() => {})
+  }, [currentUserId, initialUsers, listProfileFilter])
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
 
@@ -253,7 +266,7 @@ export default function UsuariosClient({
     setReloadBusy(true)
     try {
       const fresh = await getQaUsers()
-      setUsers(fresh)
+      setUsers(filterUsersForList(fresh, listProfileFilter))
       setFetchRecovered(true)
       toast.success("Lista de usuários carregada.")
       router.refresh()
@@ -429,10 +442,18 @@ export default function UsuariosClient({
                                 width={28}
                                 height={28}
                                 unoptimized
-                                className="size-7 shrink-0 rounded-full object-cover"
+                                className={cn(
+                                  "size-7 shrink-0 rounded-full object-cover",
+                                  !u.active && "grayscale",
+                                )}
                               />
                             ) : (
-                              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-brand-primary">
+                              <div
+                                className={cn(
+                                  "flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-brand-primary",
+                                  !u.active && "opacity-70 grayscale",
+                                )}
+                              >
                                 {getInitials(u.name)}
                               </div>
                             )}

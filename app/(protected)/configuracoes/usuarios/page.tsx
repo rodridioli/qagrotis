@@ -26,9 +26,15 @@ export default async function UsuariosPage() {
     viewerType === "Administrador" &&
     viewerProfile !== null &&
     viewerProfile !== "MGR"
-  const users = restrictByProfile
-    ? allUsers.filter((u) => (u.accessProfile ?? null) === viewerProfile)
-    : allUsers
+  /** QA: inclui cadastros sem perfil gravado (legado = QA). UX/TW: apenas perfil explícito. */
+  const users =
+    restrictByProfile && viewerProfile
+      ? viewerProfile === "QA"
+        ? allUsers.filter((u) => (u.accessProfile ?? "QA") === "QA")
+        : allUsers.filter((u) => u.accessProfile === viewerProfile)
+      : allUsers
+  const listProfileFilter =
+    restrictByProfile && viewerProfile ? viewerProfile : null
 
   if (rUsers.status === "rejected") {
     console.error("[usuarios/page] getQaUsers:", rUsers.reason)
@@ -60,6 +66,7 @@ export default async function UsuariosPage() {
       initialUsers={serializeRscProps(users)}
       currentUserId={currentUserId}
       isAdmin={isAdmin}
+      listProfileFilter={listProfileFilter}
       usersFetchFailed={usersFetchFailed}
       usersFetchErrorMessage={usersFetchErrorMessage}
     />

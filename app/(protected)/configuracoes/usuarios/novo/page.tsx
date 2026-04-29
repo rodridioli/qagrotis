@@ -17,7 +17,15 @@ export default async function NovoUsuarioPage() {
     <UsuarioFormTabs
       mode="create"
       manageableProfiles={allowed}
-      sessionUser={session?.user as any}
+      sessionUser={
+        session?.user?.id
+          ? {
+              id: session.user.id,
+              type: session.user.type ?? "Padrão",
+              accessProfile: session.user.accessProfile,
+            }
+          : undefined
+      }
     />
   )
 }

@@ -6,14 +6,28 @@ import type { UserPerformanceData } from "@/lib/actions/equipe"
 
 const FALLBACK_ROW_LABELS = ["Gerencial", "Plataforma", "SAP-B1"] as const
 
-export function UserAvatar({ name, photoPath, size }: { name: string; photoPath: string | null; size: number }) {
+export function UserAvatar({
+  name,
+  photoPath,
+  size,
+  inactive = false,
+}: {
+  name: string
+  photoPath: string | null
+  size: number
+  /** Cadastro inativo: foto em escala de cinza (qualquer tipo/perfil). */
+  inactive?: boolean
+}) {
   const initials = name
     .split(" ")
     .slice(0, 2)
     .map((n) => n[0])
     .join("")
     .toUpperCase()
-  const cls = "flex-shrink-0 rounded-full object-cover ring-2 ring-border-default"
+  const cls = cn(
+    "flex-shrink-0 rounded-full object-cover ring-2 ring-border-default",
+    inactive && "grayscale",
+  )
   if (photoPath) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -30,6 +44,7 @@ export function UserAvatar({ name, photoPath, size }: { name: string; photoPath:
       className={cn(
         cls,
         "flex items-center justify-center bg-neutral-grey-100 text-sm font-semibold text-text-primary",
+        inactive && "opacity-80",
       )}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.34) }}
     >
