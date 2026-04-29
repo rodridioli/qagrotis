@@ -3,7 +3,8 @@
 import { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Eye, EyeOff, MoreVertical, Plus, X, Check } from "lucide-react"
+import { Eye, EyeOff, MoreVertical, Plus, X, Check } from "lucide-react"
+import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -151,21 +152,12 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
     <div className="space-y-4">
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-sm">
-          <Link
-            href="/configuracoes"
-            title="Voltar"
-            aria-label="Voltar"
-            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-          >
-            <ArrowLeft className="size-4" />
-          </Link>
-          <Link href="/configuracoes" className="text-text-secondary hover:text-brand-primary">
-            Configurações
-          </Link>
-          <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">Credenciais</span>
-        </div>
+        <PageBreadcrumb
+          items={[
+            { label: "Configurações", href: "/configuracoes" },
+            { label: "Credenciais" },
+          ]}
+        />
 
         <Button onClick={() => setAddOpen(true)} className="gap-2">
           <Plus className="size-4" />

@@ -20,11 +20,13 @@ export type Capability =
   | "menu.equipe"
   | "menu.configuracoes"
   | "menu.atualizacoes"
-  | "menu.tarefas"
   | "menu.pdi"
   | "menu.mapaConhecimento"
   | "menu.avaliacaoDesempenho"
   | "menu.feedbacks"
+  | "menu.individual"
+  // Individual
+  | "individual.viewOthers"
   // Topbar
   | "topbar.sistemaSelector"
   // Sub-páginas de configurações
@@ -72,6 +74,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.documentos",
       "menu.assistente",
       "menu.equipe",
+      "menu.individual",
       "menu.configuracoes",
       "menu.atualizacoes",
       "topbar.sistemaSelector",
@@ -91,6 +94,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.documentos",
       "menu.assistente",
       "menu.equipe",
+      "menu.individual",
       "menu.configuracoes",
       "menu.atualizacoes",
       "topbar.sistemaSelector",
@@ -113,11 +117,12 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.painel",
       "menu.assistente",
       "menu.equipe",
+      "menu.individual",
       "menu.configuracoes",
       "menu.atualizacoes",
       "config.jira",
     ],
-    disabled: ["menu.tarefas", "menu.gerador", "menu.documentos"],
+    disabled: ["menu.gerador", "menu.documentos"],
     manageableProfiles: [],
   },
   "Administrador:UX": {
@@ -125,6 +130,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.painel",
       "menu.assistente",
       "menu.equipe",
+      "menu.individual",
       "menu.configuracoes",
       "menu.atualizacoes",
       "config.usuarios",
@@ -132,7 +138,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.jira",
       "users.create",
     ],
-    disabled: ["menu.tarefas", "menu.gerador", "menu.documentos"],
+    disabled: ["menu.gerador", "menu.documentos"],
     manageableProfiles: ["UX"],
   },
 
@@ -142,11 +148,12 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.painel",
       "menu.assistente",
       "menu.equipe",
+      "menu.individual",
       "menu.configuracoes",
       "menu.atualizacoes",
       "config.jira",
     ],
-    disabled: ["menu.tarefas", "menu.gerador", "menu.documentos"],
+    disabled: ["menu.gerador", "menu.documentos"],
     manageableProfiles: [],
   },
   "Administrador:TW": {
@@ -154,6 +161,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.painel",
       "menu.assistente",
       "menu.equipe",
+      "menu.individual",
       "menu.configuracoes",
       "menu.atualizacoes",
       "config.usuarios",
@@ -161,7 +169,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.jira",
       "users.create",
     ],
-    disabled: ["menu.tarefas", "menu.gerador", "menu.documentos"],
+    disabled: ["menu.gerador", "menu.documentos"],
     manageableProfiles: ["TW"],
   },
 
@@ -175,11 +183,11 @@ const POLICY: Record<Role, RoleConfig> = {
   "Administrador:MGR": {
     capabilities: [
       "menu.painel",
-      "menu.tarefas",
       "menu.pdi",
       "menu.documentos",
       "menu.assistente",
       "menu.equipe",
+      "menu.individual",
       "menu.configuracoes",
       "menu.atualizacoes",
       "menu.mapaConhecimento",
@@ -191,6 +199,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "users.create",
       "users.editProfileFields",
       "equipe.performance.filterByProfile",
+      "individual.viewOthers",
     ],
     disabled: [],
     manageableProfiles: ["QA", "UX", "TW", "MGR"],

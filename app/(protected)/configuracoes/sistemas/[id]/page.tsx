@@ -2,9 +2,10 @@ export const metadata = { title: "Sistema" }
 
 import React from "react"
 import Link from "next/link"
-import { ArrowLeft, Pencil } from "lucide-react"
+import { Pencil } from "lucide-react"
 import { notFound } from "next/navigation"
 import { getSistema } from "@/lib/actions/sistemas"
+import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 
 export default async function SistemaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -15,24 +16,13 @@ export default async function SistemaDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-sm">
-          <Link
-            href="/configuracoes/sistemas"
-            title="Voltar"
-            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-          >
-            <ArrowLeft className="size-4" />
-          </Link>
-          <Link href="/configuracoes" className="text-text-secondary hover:text-brand-primary">
-            Configurações
-          </Link>
-          <span className="text-text-secondary">/</span>
-          <Link href="/configuracoes/sistemas" className="text-text-secondary hover:text-brand-primary">
-            Sistemas
-          </Link>
-          <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">{sistema.id}</span>
-        </div>
+        <PageBreadcrumb
+          items={[
+            { label: "Configurações", href: "/configuracoes" },
+            { label: "Sistemas", href: "/configuracoes/sistemas" },
+            { label: sistema.id },
+          ]}
+        />
         <Link href={`/configuracoes/sistemas/${id}/editar`}>
           <button
             type="button"

@@ -4,8 +4,9 @@ import React, { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power, AlertCircle, RefreshCw } from "lucide-react"
+import { ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power, AlertCircle, RefreshCw } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
+import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -273,21 +274,12 @@ export default function UsuariosClient({
       <LoadingOverlay visible={isInativando} label="Inativando usuários..." />
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-sm">
-          <Link
-            href="/configuracoes"
-            title="Voltar"
-            aria-label="Voltar"
-            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-          >
-            <ArrowLeft className="size-4" />
-          </Link>
-          <Link href="/configuracoes" className="text-text-secondary hover:text-brand-primary">
-            Configurações
-          </Link>
-          <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">Usuários</span>
-        </div>
+        <PageBreadcrumb
+          items={[
+            { label: "Configurações", href: "/configuracoes" },
+            { label: "Usuários" },
+          ]}
+        />
 
         {isAdmin && (
           <div className="flex items-center gap-3">

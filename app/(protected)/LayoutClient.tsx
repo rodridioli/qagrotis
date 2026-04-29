@@ -7,7 +7,7 @@ import {
   LayoutDashboard, FileText, Rocket, BookOpen,
   Settings, LifeBuoy, LogOut, ChevronLeft,
   ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
-  ListTodo, Target, Network, ClipboardCheck, MessageSquare,
+  Target, Network, ClipboardCheck, MessageSquare, User,
 } from "lucide-react"
 import { buildRole, can, isDisabled, isVisible, type Role, type Capability, type AccessProfile } from "@/lib/rbac/policy"
 import {
@@ -38,12 +38,12 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false, capability: "menu.painel" },
   { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false, capability: "menu.suites" },
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
-  { href: "/tarefas",       icon: ListTodo,        label: "Tarefas",          alwaysEnabled: true,  capability: "menu.tarefas" },
   { href: "/pdi",           icon: Target,          label: "PDI",              alwaysEnabled: true,  capability: "menu.pdi" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
   { href: "/documentos",    icon: BookOpen,        label: "Documentos",       alwaysEnabled: false, capability: "menu.documentos" },
   { href: "/assistente",    icon: LifeBuoy,        label: "Central de Ajuda", alwaysEnabled: false, capability: "menu.assistente" },
   { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
+  { href: "/individual",    icon: User,            label: "Individual",             alwaysEnabled: true,  capability: "menu.individual" },
   { href: "/mapa-conhecimento",     icon: Network,         label: "Mapa de Conhecimento",   alwaysEnabled: true,  capability: "menu.mapaConhecimento" },
   { href: "/avaliacao-desempenho",  icon: ClipboardCheck,  label: "Avaliação de Desempenho", alwaysEnabled: true,  capability: "menu.avaliacaoDesempenho" },
   { href: "/feedbacks",             icon: MessageSquare,   label: "Feedbacks",              alwaysEnabled: true,  capability: "menu.feedbacks" },
@@ -59,12 +59,12 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
 const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability; label?: string }>>> = {
   "Administrador:MGR": [
     { capability: "menu.painel" },
-    { capability: "menu.tarefas" },
     { capability: "menu.feedbacks" },
     { capability: "menu.avaliacaoDesempenho", label: "Avaliações" },
     { capability: "menu.pdi" },
     { capability: "menu.mapaConhecimento", label: "Domínio" },
     { capability: "menu.equipe" },
+    { capability: "menu.individual" },
     { capability: "menu.documentos" },
     { capability: "menu.assistente" },
     { capability: "menu.configuracoes" },
@@ -78,11 +78,11 @@ const TITLE_MAP: Record<string, string> = {
   "/gerador":       "Gerador",
   "/suites":        "Suítes",
   "/documentos":    "Documentos",
-  "/tarefas":       "Tarefas",
   "/configuracoes": "Configurações",
   "/assistente":    "Central de Ajuda",
   "/atualizacoes":  "Atualizações",
   "/equipe":        "Equipe",
+  "/individual":    "Individual",
 }
 
 function getTitle(pathname: string): string {

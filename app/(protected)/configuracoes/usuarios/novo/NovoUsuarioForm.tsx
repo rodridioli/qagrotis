@@ -1,9 +1,9 @@
 "use client"
 
 import React, { useState, useTransition } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Check, Eye, EyeOff, RefreshCw } from "lucide-react"
+import { Check, Eye, EyeOff, RefreshCw } from "lucide-react"
+import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -158,24 +158,13 @@ export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-sm">
-          <Link
-            href="/configuracoes/usuarios"
-            title="Voltar"
-            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-          >
-            <ArrowLeft className="size-4" />
-          </Link>
-          <Link href="/configuracoes" className="text-text-secondary hover:text-brand-primary">
-            Configurações
-          </Link>
-          <span className="text-text-secondary">/</span>
-          <Link href="/configuracoes/usuarios" className="text-text-secondary hover:text-brand-primary">
-            Usuários
-          </Link>
-          <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">Novo Usuário</span>
-        </div>
+        <PageBreadcrumb
+          items={[
+            { label: "Configurações", href: "/configuracoes" },
+            { label: "Usuários", href: "/configuracoes/usuarios" },
+            { label: "Novo Usuário" },
+          ]}
+        />
         <Button onClick={handleSave} disabled={isPending}>
           <Check className="size-4" />
           {isPending ? "Salvando…" : "Salvar"}

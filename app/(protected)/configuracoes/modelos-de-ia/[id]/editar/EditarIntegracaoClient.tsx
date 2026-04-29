@@ -1,9 +1,9 @@
 "use client"
 
 import React, { useState, useTransition, useCallback } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertCircle, ArrowLeft, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react"
+import { AlertCircle, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react"
+import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -105,25 +105,13 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-sm">
-          <Link
-            href="/configuracoes/modelos-de-ia"
-            title="Voltar"
-            aria-label="Voltar"
-            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-          >
-            <ArrowLeft className="size-4" />
-          </Link>
-          <Link href="/configuracoes" className="text-text-secondary hover:text-brand-primary">
-            Configurações
-          </Link>
-          <span className="text-text-secondary">/</span>
-          <Link href="/configuracoes/modelos-de-ia" className="text-text-secondary hover:text-brand-primary">
-            Modelos de IA
-          </Link>
-          <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">Editar — {integracao.id}</span>
-        </div>
+        <PageBreadcrumb
+          items={[
+            { label: "Configurações", href: "/configuracoes" },
+            { label: "Modelos de IA", href: "/configuracoes/modelos-de-ia" },
+            { label: `Editar — ${integracao.id}` },
+          ]}
+        />
         <Button onClick={handleSave} disabled={isSaveDisabled}>
           <Check className="size-4" />
           {isPending ? "Salvando…" : "Salvar"}

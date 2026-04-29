@@ -3,8 +3,9 @@
 import React, { useEffect, useState, useMemo, useTransition, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertCircle, ArrowLeft, Check, ChevronDown, ChevronUp, Eye, EyeOff, Filter, Loader2, MoreVertical, Plus, Power, RotateCcw, ShieldCheck, X } from "lucide-react"
+import { AlertCircle, Check, ChevronDown, ChevronUp, Eye, EyeOff, Filter, Loader2, MoreVertical, Plus, Power, RotateCcw, ShieldCheck, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
+import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -291,21 +292,12 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
       <LoadingOverlay visible={isInativando} label="Inativando modelos de IA..." />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-sm">
-          <Link
-            href="/configuracoes"
-            title="Voltar"
-            aria-label="Voltar"
-            className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-          >
-            <ArrowLeft className="size-4" />
-          </Link>
-          <Link href="/configuracoes" className="text-text-secondary hover:text-brand-primary">
-            Configurações
-          </Link>
-          <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">Modelos de IA</span>
-        </div>
+        <PageBreadcrumb
+          items={[
+            { label: "Configurações", href: "/configuracoes" },
+            { label: "Modelos de IA" },
+          ]}
+        />
 
         {isAdmin && (
           <div className="flex items-center gap-3">
