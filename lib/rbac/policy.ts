@@ -183,16 +183,12 @@ const POLICY: Record<Role, RoleConfig> = {
   "Administrador:MGR": {
     capabilities: [
       "menu.painel",
-      "menu.pdi",
       "menu.documentos",
       "menu.assistente",
       "menu.equipe",
       "menu.individual",
       "menu.configuracoes",
       "menu.atualizacoes",
-      "menu.mapaConhecimento",
-      "menu.avaliacaoDesempenho",
-      "menu.feedbacks",
       "config.usuarios",
       "config.modelosIA",
       "config.jira",

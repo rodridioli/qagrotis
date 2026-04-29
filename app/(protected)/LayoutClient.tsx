@@ -59,10 +59,6 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
 const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability; label?: string }>>> = {
   "Administrador:MGR": [
     { capability: "menu.painel" },
-    { capability: "menu.feedbacks" },
-    { capability: "menu.avaliacaoDesempenho", label: "Avaliações" },
-    { capability: "menu.pdi" },
-    { capability: "menu.mapaConhecimento", label: "Domínio" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.documentos" },
