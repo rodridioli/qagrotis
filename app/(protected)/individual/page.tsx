@@ -6,8 +6,7 @@ import { redirect } from "next/navigation"
 import { Target, ClipboardCheck, MessageSquare, Award, TrendingUp } from "lucide-react"
 import { auth } from "@/lib/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
-import { getQaUsers } from "@/lib/actions/usuarios"
-import IndividualUserSelector from "./IndividualUserSelector"
+import { getActiveQaUsers } from "@/lib/actions/usuarios"
 
 interface SectionCard {
   href: string
@@ -37,26 +36,27 @@ export default async function IndividualPage({
   const canViewOthers = can(role, "individual.viewOthers")
   const { userId: requestedUserId } = await searchParams
 
-  let targetUserId = session.user.id
-  if (requestedUserId && requestedUserId !== session.user.id) {
-    if (!canViewOthers) redirect("/individual")
-    targetUserId = requestedUserId
+  if (!canViewOthers && requestedUserId) {
+    redirect("/individual")
   }
 
-  const users = canViewOthers ? await getQaUsers() : []
-  const isViewingOther = targetUserId !== session.user.id
-  const querySuffix = isViewingOther ? `?userId=${encodeURIComponent(targetUserId)}` : ""
+  const activeUsers = canViewOthers
+    ? (await getActiveQaUsers()).slice().sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+    : []
+
+  let querySuffix = ""
+  if (canViewOthers && activeUsers.length > 0) {
+    const ids = new Set(activeUsers.map((u) => u.id))
+    if (!requestedUserId || !ids.has(requestedUserId)) {
+      redirect(`/individual?userId=${encodeURIComponent(activeUsers[0].id)}`)
+    }
+    querySuffix = `?userId=${encodeURIComponent(requestedUserId)}`
+  } else if (canViewOthers && requestedUserId) {
+    redirect("/individual")
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      {canViewOthers && users.length > 0 && (
-        <IndividualUserSelector
-          users={users.map((u) => ({ id: u.id, name: u.name }))}
-          selectedUserId={targetUserId}
-          selfId={session.user.id}
-        />
-      )}
-
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {SECTIONS.map(({ href, icon: Icon, label }) => (
           <Link

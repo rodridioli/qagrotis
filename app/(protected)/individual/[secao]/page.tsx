@@ -3,8 +3,10 @@ export const dynamic = "force-dynamic"
 import { notFound, redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
-import { getQaUsers } from "@/lib/actions/usuarios"
+import { getActiveQaUsers } from "@/lib/actions/usuarios"
+import { serializeRscProps } from "@/lib/rsc-serialize"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { IndividualSecaoDevelopmentPanel } from "../IndividualSecaoDevelopmentPanel"
 
 const SECTION_LABELS: Record<string, string> = {
   dominio: "Domínio",
@@ -44,36 +46,53 @@ export default async function IndividualSecaoPage({
   const canViewOthers = can(role, "individual.viewOthers")
   const { userId: requestedUserId } = await searchParams
 
+  if (!canViewOthers && requestedUserId) {
+    redirect(`/individual/${secao}`)
+  }
+
+  const activeUsers = canViewOthers
+    ? (await getActiveQaUsers()).slice().sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+    : []
+
   let targetUserId = session.user.id
   let targetUserName: string | null = null
 
-  if (requestedUserId && requestedUserId !== session.user.id) {
-    if (!canViewOthers) redirect(`/individual/${secao}`)
+  if (canViewOthers && activeUsers.length > 0) {
+    const ids = new Set(activeUsers.map((u) => u.id))
+    if (!requestedUserId || !ids.has(requestedUserId)) {
+      redirect(`/individual/${secao}?userId=${encodeURIComponent(activeUsers[0].id)}`)
+    }
     targetUserId = requestedUserId
-    const users = await getQaUsers()
-    targetUserName = users.find((u) => u.id === requestedUserId)?.name ?? requestedUserId
+    targetUserName = activeUsers.find((u) => u.id === requestedUserId)?.name ?? null
+  } else if (canViewOthers && activeUsers.length === 0 && requestedUserId) {
+    redirect(`/individual/${secao}`)
   }
 
-  const isViewingOther = targetUserId !== session.user.id
-  const querySuffix = isViewingOther ? `?userId=${encodeURIComponent(targetUserId)}` : ""
+  const showMgrUserFilter = canViewOthers && activeUsers.length > 0
+  const querySuffix = showMgrUserFilter ? `?userId=${encodeURIComponent(targetUserId)}` : ""
   const backHref = `/individual${querySuffix}`
 
   const breadcrumbItems = [
     { label: "Individual", href: backHref },
-    ...(isViewingOther && targetUserName ? [{ label: targetUserName }] : []),
+    ...(showMgrUserFilter && targetUserName ? [{ label: targetUserName }] : []),
     { label },
   ]
+
+  const avatarUsers = serializeRscProps(
+    activeUsers.map((u) => ({ id: u.id, name: u.name, photoPath: u.photoPath })),
+  )
 
   return (
     <div className="space-y-4">
       <PageBreadcrumb backHref={backHref} items={breadcrumbItems} />
 
-      <div className="flex min-h-[40vh] items-center justify-center rounded-xl bg-surface-card p-12 shadow-card">
-        <div className="text-center">
-          <p className="text-lg font-semibold text-text-primary">{label}</p>
-          <p className="mt-2 text-sm text-text-secondary">Em desenvolvimento</p>
+      {showMgrUserFilter ? (
+        <IndividualSecaoDevelopmentPanel secao={secao} users={avatarUsers} selectedUserId={targetUserId} />
+      ) : (
+        <div className="flex min-h-[40vh] items-center justify-center rounded-xl bg-surface-card p-12 shadow-card">
+          <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>
         </div>
-      </div>
+      )}
     </div>
   )
 }

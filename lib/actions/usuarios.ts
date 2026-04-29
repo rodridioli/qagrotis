@@ -215,6 +215,12 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
   return mergeQaUsersByEmail(createdRecords, oauthRecords)
 }
 
+/** Mesma lista que {@link getQaUsers}, restringida a cadastros ativos (ex.: Individual / MGR). */
+export async function getActiveQaUsers(): Promise<QaUserRecord[]> {
+  const all = await getQaUsers()
+  return all.filter((u) => u.active)
+}
+
 async function resolveEmailForQaUserId(id: string): Promise<string | null> {
   const row = await prisma.createdUser.findUnique({ where: { id }, select: { email: true } })
   if (row?.email?.trim()) return row.email.trim().toLowerCase()
