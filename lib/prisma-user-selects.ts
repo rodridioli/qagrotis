@@ -44,7 +44,6 @@ export const CREATED_USER_READ_SELECT = {
   accessProfile: true,
   classificacao: true,
   photoPath: true,
-  password: true,
   createdAt: true,
   dataNascimento: true,
   horarioEntrada: true,

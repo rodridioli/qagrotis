@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 import { resolveJiraCredentialsForRequest, isSameJiraHost } from "@/lib/jira-credentials-db"
 import { normalizeJiraIssueKey } from "@/lib/jira-issue-key"
+import { validateOrigin } from "@/lib/security"
 
 // GET is no longer supported - all Jira calls use POST with action field
 // This handler prevents 404 errors from cached old code
@@ -13,6 +14,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const csrfError = validateOrigin(req)
+  if (csrfError) return csrfError
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
 

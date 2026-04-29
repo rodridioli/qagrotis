@@ -466,7 +466,7 @@ export default function NovoCenarioClient({
                 type="button"
                 onClick={() => setActiveTab(id)}
                 disabled={disabled}
-                className={`flex flex-1 flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 border-b-2 -mb-px px-1 sm:px-4 py-2 sm:py-3 font-medium transition-all ${
+                className={`flex flex-1 flex-col sm:flex-row items-center justify-center gap-1.5 border-b-2 -mb-px px-1 sm:px-4 py-2 sm:py-3 font-medium transition-all ${
                   activeTab === id
                     ? "border-brand-primary text-brand-primary bg-brand-primary/5"
                     : disabled

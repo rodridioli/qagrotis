@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Check, Plus, MoreVertical, Trash2, ExternalLink, FileDown, Loader2, Play, Power, RefreshCw } from "lucide-react"
+import { Check, Plus, MoreVertical, Trash2, ExternalLink, FileDown, Loader2, Play, Power, RefreshCw, FileText, FlaskConical, History } from "lucide-react"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -716,9 +716,9 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
   }
 
   const TABS = [
-    { id: "cadastro" as const,  label: "Cadastro",  badge: null, disabled: false },
-    { id: "cenarios" as const,  label: "Testes",  badge: cenarios.length, disabled: false },
-    { id: "historico" as const, label: "Concluídos", badge: historico.length > 0 ? historico.length : null, disabled: mode === "create" },
+    { id: "cadastro" as const,  label: "Cadastro",   icon: FileText,    badge: null, disabled: false },
+    { id: "cenarios" as const,  label: "Testes",     icon: FlaskConical, badge: cenarios.length, disabled: false },
+    { id: "historico" as const, label: "Concluídos", icon: History,     badge: historico.length > 0 ? historico.length : null, disabled: mode === "create" },
   ]
 
   return (
@@ -763,8 +763,8 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
       {/* Tab container */}
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
         {/* Tab nav */}
-        <div className="flex border-b border-border-default">
-          {TABS.map(({ id, label, badge, disabled }) => (
+        <div className="flex border-b border-border-default overflow-x-auto no-scrollbar">
+          {TABS.map(({ id, label, icon: Icon, badge, disabled }) => (
             <button
               key={id}
               type="button"
@@ -779,6 +779,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                   : "border-transparent text-text-secondary hover:text-text-primary hover:bg-neutral-grey-50"
               }`}
             >
+              <Icon className="size-4 shrink-0" />
               {label}
               {badge !== null && badge > 0 && (
                 <span className={`inline-flex items-center justify-center rounded-full text-xs font-semibold min-w-4.5 h-4.5 px-1 ${

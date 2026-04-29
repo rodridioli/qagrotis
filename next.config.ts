@@ -11,6 +11,8 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   // Basic XSS protection for older browsers
   { key: "X-XSS-Protection", value: "1; mode=block" },
+  // Enforce HTTPS for 2 years, including subdomains
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
 ]
 
 const nextConfig: NextConfig = {

@@ -7,6 +7,7 @@ import {
   readLegacyJiraCookies,
   upsertUserJiraCredentials,
 } from "@/lib/jira-credentials-db"
+import { validateOrigin } from "@/lib/security"
 
 const LEGACY_JIRA_COOKIES = ["jira_url", "jira_email", "jira_token"] as const
 
@@ -62,6 +63,8 @@ export async function GET() {
 
 // POST — grava integração Jira por usuário (PostgreSQL), com fallback para cookies se a migração não existir
 export async function POST(req: NextRequest) {
+  const csrfError = validateOrigin(req)
+  if (csrfError) return csrfError
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
 
@@ -121,7 +124,9 @@ export async function POST(req: NextRequest) {
 }
 
 // DELETE — remove integração do usuário
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
+  const csrfError = validateOrigin(req)
+  if (csrfError) return csrfError
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
 

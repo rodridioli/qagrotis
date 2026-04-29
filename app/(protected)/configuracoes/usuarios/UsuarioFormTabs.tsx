@@ -253,7 +253,7 @@ export default function UsuarioFormTabs({
                   : "border-transparent text-text-secondary hover:text-text-primary hover:bg-neutral-grey-50"
               }`}
             >
-              <tab.icon className="size-4" />
+              <tab.icon className="size-4 shrink-0" />
               {tab.label}
             </button>
           ))}
