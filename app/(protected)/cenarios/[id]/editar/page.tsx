@@ -1,3 +1,5 @@
+export const metadata = { title: "Editar cenário" }
+
 import { notFound } from "next/navigation"
 import { getCenario, getCenarios } from "@/lib/actions/cenarios"
 import { getModulos } from "@/lib/actions/modulos"

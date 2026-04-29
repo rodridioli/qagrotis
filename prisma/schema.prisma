@@ -195,12 +195,20 @@ model Suite {
 
 // ── Auth / user management ────────────────────────────────────────────────────
 
+enum AccessProfile {
+  QA
+  UX
+  TW
+  MGR
+}
+
 // Users created by admins (have passwords, managed manually)
 model CreatedUser {
   id               String    @id
   name             String
   email            String    @unique
   type             String    @default("Padrão")
+  accessProfile    AccessProfile?
   classificacao    String?
   photoPath        String?
   dataNascimento   DateTime?
@@ -211,6 +219,25 @@ model CreatedUser {
   diasTrabalhoHibrido Json?
   password         String    @default("")
   createdAt        DateTime  @default(now())
+
+  // --- Novos Campos ---
+  cep              String?
+  address          String?
+  addressNumber    String?
+  neighborhood     String?
+  country          String?
+  state            String?
+  city             String?
+  phone            String?
+  emergencyContact String?
+  instagram        String?
+  linkedin         String?
+
+  education        Json?     // [{ title, institution, year }]
+  courses          Json?     // [{ name, institution, year, hours }]
+  languages        Json?     // [{ name, level }]
+  certifications   Json?     // [{ title, institution, year }]
+  careerHistory    Json?     // [{ date, cargo, salary, type }]
 }
 
 /// Credenciais Jira por usuário (mesmo userId da sessão: CreatedUser ou fallback OAuth).
@@ -229,6 +256,7 @@ model UserProfile {
   name            String?
   email           String?
   type            String?
+  accessProfile   AccessProfile?
   classificacao   String?
   photoPath       String?
   dataNascimento  DateTime?
@@ -236,6 +264,25 @@ model UserProfile {
   horarioSaida    String?
   formatoTrabalho String?
   diasTrabalhoHibrido Json?
+
+  // --- Novos Campos ---
+  cep              String?
+  address          String?
+  addressNumber    String?
+  neighborhood     String?
+  country          String?
+  state            String?
+  city             String?
+  phone            String?
+  emergencyContact String?
+  instagram        String?
+  linkedin         String?
+
+  education        Json?
+  courses          Json?
+  languages        Json?
+  certifications   Json?
+  careerHistory    Json?
 }
 
 // Soft-delete registry for mock users (mock users cannot be deleted from constants)

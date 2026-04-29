@@ -3,7 +3,8 @@
 import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Check, Plus, MoreVertical, Trash2, ExternalLink, FileDown, Loader2, Play, Power, RefreshCw } from "lucide-react"
+import { Check, Plus, MoreVertical, Trash2, ExternalLink, FileDown, Loader2, Play, Power, RefreshCw } from "lucide-react"
+import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -722,8 +723,8 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
 
   const TABS = [
     { id: "cadastro" as const,  label: "Cadastro",  badge: null, disabled: false },
-    { id: "cenarios" as const,  label: "Cenários",  badge: cenarios.length, disabled: false },
-    { id: "historico" as const, label: "Histórico", badge: historico.length > 0 ? historico.length : null, disabled: mode === "create" },
+    { id: "cenarios" as const,  label: "Testes",  badge: cenarios.length, disabled: false },
+    { id: "historico" as const, label: "Concluídos", badge: historico.length > 0 ? historico.length : null, disabled: mode === "create" },
   ]
 
   return (
@@ -731,16 +732,12 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
       <LoadingOverlay visible={isSaving} label="Salvando suíte..." />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm">
-          <Link href="/suites" className="flex items-center gap-1 text-text-secondary hover:text-brand-primary">
-            <ArrowLeft className="size-4" />
-            Suítes
-          </Link>
-          <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">
-            {mode === "create" ? "Nova Suíte" : (suite?.id ?? "Editar")}
-          </span>
-        </div>
+        <PageBreadcrumb
+          items={[
+            { label: "Suítes", href: "/suites" },
+            { label: mode === "create" ? "Nova Suíte" : (suite?.id ?? "Editar") },
+          ]}
+        />
         {encerrada ? (
           <Button
             variant="outline"
@@ -881,19 +878,6 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
             >
               <FileDown className="size-4" />
               Exportar.md
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={selectedCenarios.size === 0}
-              onClick={() => {
-                setJiraContent(buildCenariosJiraContent(selectedCenarios))
-                setJiraEvidences([])
-                setJiraModalOpen(true)
-              }}
-            >
-              <ExternalLink className="size-4" />
-              Exportar para o Jira
             </Button>
             {!encerrada && (
               <Button variant="outline" size="sm" onClick={() => setAddCenarioOpen(true)}>

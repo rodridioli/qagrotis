@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
 import { resolveJiraCredentialsForRequest } from "@/lib/jira-credentials-db"
 
+const ISSUE_KEY_RE = /^[A-Z][A-Z0-9_]+-\d+$/
+
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
@@ -11,16 +13,12 @@ export async function POST(req: NextRequest) {
   catch { return new Response("FormData inválido.", { status: 400 }) }
 
   const issueKey = formData.get("issueKey") as string
-  const jiraUrlField = (formData.get("jiraUrl") as string | null) ?? ""
-  const emailField = (formData.get("email") as string | null) ?? ""
-  const apiTokenField = (formData.get("apiToken") as string | null) ?? ""
+  if (!issueKey || !ISSUE_KEY_RE.test(issueKey)) {
+    return new Response("issueKey inválido.", { status: 400 })
+  }
 
-  const resolved = await resolveJiraCredentialsForRequest(session.user.id, {
-    jiraUrl: jiraUrlField || undefined,
-    email: emailField || undefined,
-    apiToken: apiTokenField || undefined,
-  })
-  if (!resolved || !issueKey) {
+  const resolved = await resolveJiraCredentialsForRequest(session.user.id)
+  if (!resolved) {
     return new Response("Campos obrigatórios ausentes. Configure a Integração Jira em Configurações.", { status: 400 })
   }
 

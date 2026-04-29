@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
-import type { IntegracaoRecord } from "@/lib/actions/integracoes"
+import type { IntegracaoSafeRecord } from "@/lib/actions/integracoes"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,7 +26,7 @@ interface Message {
 export interface AssistenteDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  integracoes?: IntegracaoRecord[]
+  integracoes?: IntegracaoSafeRecord[]
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────

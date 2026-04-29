@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic"
+export const metadata = { title: "Cenário" }
 
 import { notFound } from "next/navigation"
 import { getCenario, getCenarios } from "@/lib/actions/cenarios"

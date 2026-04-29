@@ -198,10 +198,10 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
               <table className="qagrotis-table-row-hover w-full text-sm">
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                    <th className="w-32 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Credencial</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">URL do Ambiente</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
+                    <th className="w-48 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
                     <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4 w-12" />
                   </tr>
                 </thead>

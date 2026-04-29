@@ -4,11 +4,13 @@
  * `ensureUserHybridWorkDaysColumns` antes das queries
  * se o deploy ainda não aplicou migrações (ADD COLUMN IF NOT EXISTS no ensure).
  */
+// v2 - forced refresh 2026-04-28
 export const USER_PROFILE_READ_SELECT = {
   userId: true,
   name: true,
   email: true,
   type: true,
+  accessProfile: true,
   classificacao: true,
   photoPath: true,
   dataNascimento: true,
@@ -16,6 +18,22 @@ export const USER_PROFILE_READ_SELECT = {
   horarioSaida: true,
   formatoTrabalho: true,
   diasTrabalhoHibrido: true,
+  cep: true,
+  address: true,
+  addressNumber: true,
+  neighborhood: true,
+  country: true,
+  state: true,
+  city: true,
+  phone: true,
+  emergencyContact: true,
+  instagram: true,
+  linkedin: true,
+  education: true,
+  courses: true,
+  languages: true,
+  certifications: true,
+  careerHistory: true,
 } as const
 
 export const CREATED_USER_READ_SELECT = {
@@ -23,6 +41,7 @@ export const CREATED_USER_READ_SELECT = {
   name: true,
   email: true,
   type: true,
+  accessProfile: true,
   classificacao: true,
   photoPath: true,
   password: true,
@@ -32,4 +51,20 @@ export const CREATED_USER_READ_SELECT = {
   horarioSaida: true,
   formatoTrabalho: true,
   diasTrabalhoHibrido: true,
+  cep: true,
+  address: true,
+  addressNumber: true,
+  neighborhood: true,
+  country: true,
+  state: true,
+  city: true,
+  phone: true,
+  emergencyContact: true,
+  instagram: true,
+  linkedin: true,
+  education: true,
+  courses: true,
+  languages: true,
+  certifications: true,
+  careerHistory: true,
 } as const

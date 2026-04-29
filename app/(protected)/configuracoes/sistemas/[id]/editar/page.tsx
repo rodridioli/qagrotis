@@ -1,3 +1,5 @@
+export const metadata = { title: "Editar sistema" }
+
 import { notFound, redirect } from "next/navigation"
 import { getSistema } from "@/lib/actions/sistemas"
 import { checkIsAdmin } from "@/lib/session"

@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth"
 import { getQaUsers } from "@/lib/actions/usuarios"
 import { checkIsAdmin } from "@/lib/session"
 import { serializeRscProps } from "@/lib/rsc-serialize"
+import { type AccessProfile } from "@/lib/rbac/policy"
 import UsuariosClient from "./UsuariosClient"
 
 // Always render fresh — Google OAuth creates users at login time and must appear immediately
@@ -14,9 +15,20 @@ export default async function UsuariosPage() {
     checkIsAdmin(),
   ])
 
-  const users = rUsers.status === "fulfilled" ? rUsers.value : []
+  const allUsers = rUsers.status === "fulfilled" ? rUsers.value : []
   const session = rSession.status === "fulfilled" ? rSession.value : null
   const isAdmin = rAdmin.status === "fulfilled" ? rAdmin.value : false
+
+  // RBAC: Admin+QA/UX/TW só vê usuários do próprio perfil; Admin+MGR vê todos.
+  const viewerType = session?.user?.type ?? null
+  const viewerProfile = (session?.user?.accessProfile ?? null) as AccessProfile | null
+  const restrictByProfile =
+    viewerType === "Administrador" &&
+    viewerProfile !== null &&
+    viewerProfile !== "MGR"
+  const users = restrictByProfile
+    ? allUsers.filter((u) => (u.accessProfile ?? null) === viewerProfile)
+    : allUsers
 
   if (rUsers.status === "rejected") {
     console.error("[usuarios/page] getQaUsers:", rUsers.reason)

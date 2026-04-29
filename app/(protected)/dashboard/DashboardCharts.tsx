@@ -266,6 +266,16 @@ export function DashboardCharts({
   ultimasAutomacoes, resolveUser,
   cenariosPorModulo,
 }: Props) {
+  const [loading, setLoading] = useState<Record<string, boolean>>({})
+
+  const withLoading = (key: string, fn: (v: any) => void) => (v: any) => {
+    setLoading(prev => ({ ...prev, [key]: true }))
+    fn(v)
+    setTimeout(() => {
+      setLoading(prev => ({ ...prev, [key]: false }))
+    }, 400)
+  }
+
   const rankingModulos = rankingModuloNames ?? moduloNames
   const totalExecucoes = testesData.reduce((acc, d) => acc + d.value, 0)
   const totalErros = errosData.reduce((acc, d) => acc + d.value, 0)
@@ -279,18 +289,23 @@ export function DashboardCharts({
       <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
 
         {/* Execuções por usuário (histórico de suítes) */}
-        <div className="flex min-w-0 flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
+        <div className="relative flex min-w-0 flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
+          {loading.ranking && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-surface-card/60 backdrop-blur-[1px]">
+              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary border-t-transparent" />
+            </div>
+          )}
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Testes:{" "}
               <span className="text-brand-primary">{rankingTotalTestes.toLocaleString("pt-BR")}</span>
             </h2>
             <div className="flex shrink-0 items-center gap-2">
-              <ModuloSelect modulos={rankingModulos} value={rankingModulo} onChange={onRankingModuloChange} />
+              <ModuloSelect modulos={rankingModulos} value={rankingModulo} onChange={withLoading("ranking", onRankingModuloChange)} />
               <FilterSelect<RankingFilter>
                 options={RANKING_OPTS}
                 value={rankingFilter}
-                onChange={onRankingFilterChange}
+                onChange={withLoading("ranking", onRankingFilterChange)}
                 label="Filtro período ranking"
               />
             </div>
@@ -368,17 +383,22 @@ export function DashboardCharts({
       <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-5">
 
         {/* Testes executados */}
-        <div className="col-span-1 min-w-0 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
+        <div className="relative col-span-1 min-w-0 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
+          {loading.testes && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-surface-card/60 backdrop-blur-[1px]">
+              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary border-t-transparent" />
+            </div>
+          )}
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Testes executados: <span className="text-brand-primary">{totalExecucoes.toLocaleString("pt-BR")}</span>
             </h2>
             <div className="flex shrink-0 items-center gap-2">
-              <ModuloSelect modulos={moduloNames} value={testesModulo} onChange={onTestesModuloChange} />
+              <ModuloSelect modulos={moduloNames} value={testesModulo} onChange={withLoading("testes", onTestesModuloChange)} />
               <FilterSelect<TestesFilter>
                 options={TESTES_OPTS}
                 value={testesFilter}
-                onChange={onTestesFilterChange}
+                onChange={withLoading("testes", onTestesFilterChange)}
                 label="Filtro período testes"
               />
             </div>
@@ -447,17 +467,22 @@ export function DashboardCharts({
       <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
 
         {/* Erros */}
-        <div className="min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
+        <div className="relative min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
+          {loading.erros && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-surface-card/60 backdrop-blur-[1px]">
+              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary border-t-transparent" />
+            </div>
+          )}
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Erros: <span className="text-destructive">{totalErros.toLocaleString("pt-BR")}</span>
             </h2>
             <div className="flex shrink-0 items-center gap-2">
-              <ModuloSelect modulos={moduloNames} value={errosModulo} onChange={onErrosModuloChange} />
+              <ModuloSelect modulos={moduloNames} value={errosModulo} onChange={withLoading("erros", onErrosModuloChange)} />
               <FilterSelect<ChartFilter>
                 options={CHART_OPTS}
                 value={errosFilter}
-                onChange={onErrosFilterChange}
+                onChange={withLoading("erros", onErrosFilterChange)}
                 label="Filtro período erros"
               />
             </div>
@@ -480,18 +505,23 @@ export function DashboardCharts({
         </div>
 
         {/* Alertas */}
-        <div className="min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
+        <div className="relative min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
+          {loading.alertas && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-surface-card/60 backdrop-blur-[1px]">
+              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary border-t-transparent" />
+            </div>
+          )}
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Alertas:{" "}
               <span className="text-[color:var(--alert)]">{totalAlertas.toLocaleString("pt-BR")}</span>
             </h2>
             <div className="flex shrink-0 items-center gap-2">
-              <ModuloSelect modulos={moduloNames} value={alertasModulo} onChange={onAlertasModuloChange} />
+              <ModuloSelect modulos={moduloNames} value={alertasModulo} onChange={withLoading("alertas", onAlertasModuloChange)} />
               <FilterSelect<ChartFilter>
                 options={CHART_OPTS}
                 value={alertasFilter}
-                onChange={onAlertasFilterChange}
+                onChange={withLoading("alertas", onAlertasFilterChange)}
                 label="Filtro período alertas"
               />
             </div>
@@ -514,17 +544,22 @@ export function DashboardCharts({
         </div>
 
         {/* Sucesso */}
-        <div className="min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
+        <div className="relative min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
+          {loading.sucesso && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-surface-card/60 backdrop-blur-[1px]">
+              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary border-t-transparent" />
+            </div>
+          )}
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">
               Sucesso: <span className="text-qagrotis-primary-500">{totalSucesso.toLocaleString("pt-BR")}</span>
             </h2>
             <div className="flex shrink-0 items-center gap-2">
-              <ModuloSelect modulos={moduloNames} value={sucessoModulo} onChange={onSucessoModuloChange} />
+              <ModuloSelect modulos={moduloNames} value={sucessoModulo} onChange={withLoading("sucesso", onSucessoModuloChange)} />
               <FilterSelect<ChartFilter>
                 options={CHART_OPTS}
                 value={sucessoFilter}
-                onChange={onSucessoFilterChange}
+                onChange={withLoading("sucesso", onSucessoFilterChange)}
                 label="Filtro período sucesso"
               />
             </div>

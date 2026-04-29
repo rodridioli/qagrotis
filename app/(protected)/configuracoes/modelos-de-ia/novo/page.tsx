@@ -1,3 +1,5 @@
+export const metadata = { title: "Novo modelo de IA" }
+
 import { redirect } from "next/navigation"
 import { checkIsAdmin } from "@/lib/session"
 import NovaIntegracaoForm from "./NovaIntegracaoForm"

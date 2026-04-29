@@ -17,6 +17,7 @@ export interface UserPerformanceData {
   userId: string
   name: string
   email: string
+  accessProfile?: "QA" | "UX" | "TW" | "MGR" | null
   classificacao: string | null
   photoPath: string | null
   /** Sistemas e módulos onde o usuário tem cenários (atividade) no período filtrado */
@@ -58,7 +59,7 @@ export async function getPerformanceData(filters: {
       prisma.inactiveUser.findMany({ select: { userId: true } }),
       prisma.userProfile.findMany({ select: USER_PROFILE_READ_SELECT }),
       prisma.createdUser.findMany({
-        select: { id: true, name: true, email: true, classificacao: true, photoPath: true },
+        select: { id: true, name: true, email: true, accessProfile: true, classificacao: true, photoPath: true },
       }),
       prisma.user.findMany({
         select: { id: true, name: true, email: true, image: true },
@@ -102,12 +103,13 @@ export async function getPerformanceData(filters: {
     const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
     const profileMap = new Map(profiles.map((p) => [p.userId, p]))
 
-    type UserInfo = { id: string; name: string; email: string; classificacao: string | null; photoPath: string | null; active: boolean }
+    type UserInfo = { id: string; name: string; email: string; accessProfile: "QA" | "UX" | "TW" | "MGR" | null; classificacao: string | null; photoPath: string | null; active: boolean }
     const usersByEmail = new Map<string, UserInfo>()
     const upsert = (base: {
       id: string
       name: string
       email: string
+      accessProfile?: "QA" | "UX" | "TW" | "MGR" | null
       classificacao?: string | null
       photoPath?: string | null
       active: boolean
@@ -119,6 +121,7 @@ export async function getPerformanceData(filters: {
         id: base.id,
         name: p?.name ?? base.name,
         email,
+        accessProfile: ((p?.accessProfile ?? base.accessProfile) ?? null) as "QA" | "UX" | "TW" | "MGR" | null,
         classificacao: p?.classificacao ?? base.classificacao ?? null,
         photoPath: p?.photoPath ?? base.photoPath ?? null,
         active: base.active && !inactiveIds.has(base.id),
@@ -130,6 +133,7 @@ export async function getPerformanceData(filters: {
         id: u.id,
         name: u.name,
         email: u.email,
+        accessProfile: (u as { accessProfile?: "QA" | "UX" | "TW" | "MGR" | null }).accessProfile ?? null,
         classificacao: u.classificacao ?? null,
         photoPath: u.photoPath ?? null,
         active: true,
@@ -142,6 +146,7 @@ export async function getPerformanceData(filters: {
           id: u.id,
           name: u.name ?? u.email,
           email: u.email,
+          accessProfile: null,
           classificacao: null,
           photoPath: u.image ?? null,
           active: true,
@@ -265,6 +270,7 @@ export async function getPerformanceData(filters: {
         name: u.name,
         email: u.email,
         classificacao: u.classificacao,
+        accessProfile: u.accessProfile,
         photoPath: u.photoPath,
         atividadePorSistema,
         cenariosCriados,

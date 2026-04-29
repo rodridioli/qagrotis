@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { sendWelcomeEmail } from "@/lib/email"
+import { sendInviteEmail } from "@/lib/email"
+import { gerarConvite } from "@/lib/actions/invite-tokens"
 import { nextId, verifyPassword, hashPassword } from "@/lib/db-utils"
 import { requireAdmin, requireSession, checkIsAdmin } from "@/lib/session"
 import { prisma } from "@/lib/prisma"
@@ -14,6 +15,7 @@ import {
   ensureUserDataNascimentoColumns,
   ensureUserHybridWorkDaysColumns,
   ensureUserWorkScheduleColumns,
+  ensureUserExtendedProfileColumns,
 } from "@/lib/prisma-schema-ensure"
 import {
   diasTrabalhoHibridoForStorage,
@@ -27,6 +29,7 @@ export interface QaUserRecord {
   name: string
   email: string
   type: string
+  accessProfile?: "QA" | "UX" | "TW" | "MGR" | null
   classificacao?: string | null
   active: boolean
   photoPath: string | null
@@ -37,6 +40,7 @@ export interface QaUserProfile {
   name: string
   email: string
   type: string
+  accessProfile?: "QA" | "UX" | "TW" | "MGR" | null
   classificacao?: string | null
   photoPath: string | null
   /** ISO `yyyy-mm-dd` quando definida */
@@ -47,6 +51,26 @@ export interface QaUserProfile {
   formatoTrabalho?: string | null
   /** Dias presenciais no modo Híbrido (ids `seg`…`dom`); vazio fora do modo Híbrido. */
   diasTrabalhoHibrido: string[]
+
+  // Novos campos (Endereço e Contato)
+  cep?: string | null
+  address?: string | null
+  addressNumber?: string | null
+  neighborhood?: string | null
+  country?: string | null
+  state?: string | null
+  city?: string | null
+  phone?: string | null
+  emergencyContact?: string | null
+  instagram?: string | null
+  linkedin?: string | null
+
+  // Novos campos (Listas)
+  education?: any[] | null
+  courses?: any[] | null
+  languages?: any[] | null
+  certifications?: any[] | null
+  careerHistory?: any[] | null
 }
 
 // ── Validation schemas ──────────────────────────────────────────────────────
@@ -135,6 +159,7 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
   await ensureUserDataNascimentoColumns()
   await ensureUserWorkScheduleColumns()
   await ensureUserHybridWorkDaysColumns()
+  await ensureUserExtendedProfileColumns()
   const [inactiveRecords, profiles, createdUsers, oauthUsers] = await Promise.all([
     prisma.inactiveUser.findMany({ select: { userId: true } }),
     prisma.userProfile.findMany({ select: USER_PROFILE_READ_SELECT }),
@@ -161,6 +186,7 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
       name:          p?.name ?? u.name,
       email:         p?.email ?? u.email,
       type:          p?.type ?? u.type,
+      accessProfile: (p?.accessProfile ?? u.accessProfile ?? null) as "QA" | "UX" | "TW" | "MGR" | null,
       classificacao: sanitizeClassificacao(p?.classificacao ?? u.classificacao ?? null),
       active:        !inactiveIds.has(u.id),
       photoPath:     p?.photoPath ?? u.photoPath,
@@ -178,6 +204,7 @@ export async function getQaUsers(): Promise<QaUserRecord[]> {
         name:          p?.name ?? u.name ?? u.email ?? "",
         email:         p?.email ?? u.email ?? "",
         type:          p?.type ?? "Padrão",
+        accessProfile: (p?.accessProfile ?? null) as "QA" | "UX" | "TW" | "MGR" | null,
         classificacao: sanitizeClassificacao(p?.classificacao ?? null),
         active:        !inactiveIds.has(u.id),
         photoPath:     p?.photoPath ?? u.image ?? null,
@@ -224,6 +251,7 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
   await ensureUserDataNascimentoColumns()
   await ensureUserWorkScheduleColumns()
   await ensureUserHybridWorkDaysColumns()
+  await ensureUserExtendedProfileColumns()
 
   const [savedProfile, createdUser, oauthUser] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId: id }, select: USER_PROFILE_READ_SELECT }),
@@ -255,6 +283,7 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
     name:            savedProfile?.name ?? base.name,
     email:           savedProfile?.email ?? base.email,
     type:            savedProfile?.type ?? base.type,
+    accessProfile:   (savedProfile?.accessProfile ?? createdUser?.accessProfile ?? null) as "QA" | "UX" | "TW" | "MGR" | null,
     classificacao:   sanitizeClassificacao(savedProfile?.classificacao ?? (createdUser?.classificacao ?? null)),
     photoPath:       savedProfile?.photoPath ?? (createdUser?.photoPath ?? oauthUser?.image ?? null),
     dataNascimento:  dn ? toDateInputValue(dn) : null,
@@ -263,6 +292,46 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
     formatoTrabalho: formatoMerged,
     diasTrabalhoHibrido,
   }
+
+  // ── Controle de Acesso para Campos Sensíveis ───────────────────────────
+  // Regra: Próprio usuário OU (Admin E Perfil MGR)
+  let session: Awaited<ReturnType<typeof requireSession>> | null = null
+  try {
+    session = await requireSession()
+  } catch {
+    // Se não houver sessão, retornamos perfil básico sem campos sensíveis
+  }
+
+  const isSelf = session?.user?.id === id
+  const isAdminMgr =
+    session?.user?.type === "Administrador" &&
+    (session?.user as any)?.accessProfile === "MGR"
+
+  const canSeeRestricted = isSelf || isAdminMgr
+
+  if (canSeeRestricted) {
+    return {
+      ...profile,
+      cep:              savedProfile?.cep              ?? createdUser?.cep              ?? null,
+      address:          savedProfile?.address          ?? createdUser?.address          ?? null,
+      addressNumber:    savedProfile?.addressNumber    ?? createdUser?.addressNumber    ?? null,
+      neighborhood:     savedProfile?.neighborhood     ?? createdUser?.neighborhood     ?? null,
+      country:          savedProfile?.country          ?? createdUser?.country          ?? null,
+      state:            savedProfile?.state            ?? createdUser?.state            ?? null,
+      city:             savedProfile?.city             ?? createdUser?.city             ?? null,
+      phone:            savedProfile?.phone            ?? createdUser?.phone            ?? null,
+      emergencyContact: savedProfile?.emergencyContact ?? createdUser?.emergencyContact ?? null,
+      instagram:        savedProfile?.instagram        ?? createdUser?.instagram        ?? null,
+      linkedin:         savedProfile?.linkedin         ?? createdUser?.linkedin         ?? null,
+      education:        (savedProfile?.education       ?? createdUser?.education        ?? []) as any[],
+      courses:          (savedProfile?.courses         ?? createdUser?.courses          ?? []) as any[],
+      languages:        (savedProfile?.languages       ?? createdUser?.languages        ?? []) as any[],
+      certifications:   (savedProfile?.certifications  ?? createdUser?.certifications   ?? []) as any[],
+      careerHistory:    (savedProfile?.careerHistory   ?? createdUser?.careerHistory    ?? []) as any[],
+    }
+  }
+
+  return profile
 }
 
 export async function ativarQaUser(id: string): Promise<{ error?: string }> {
@@ -341,6 +410,7 @@ export async function criarQaUser(data: {
   name: string
   email: string
   type: string
+  accessProfile?: "QA" | "UX" | "TW" | "MGR"
   classificacao?: string | null
   dataNascimento?: string | null
   horarioEntrada?: string | null
@@ -349,6 +419,24 @@ export async function criarQaUser(data: {
   diasTrabalhoHibrido?: string[]
   password: string
   photoPath?: string | null
+
+  // Novos campos
+  cep?: string | null
+  address?: string | null
+  addressNumber?: string | null
+  neighborhood?: string | null
+  country?: string | null
+  state?: string | null
+  city?: string | null
+  phone?: string | null
+  emergencyContact?: string | null
+  instagram?: string | null
+  linkedin?: string | null
+  education?: any[] | null
+  courses?: any[] | null
+  languages?: any[] | null
+  certifications?: any[] | null
+  careerHistory?: any[] | null
 }): Promise<{ id?: string; error?: string; emailEnviado?: boolean }> {
   // Auth — return error instead of throwing so Next.js error boundary isn't triggered
   try {
@@ -417,6 +505,32 @@ export async function criarQaUser(data: {
     const formatoTrabalho = sanitizeFormatoTrabalho(data.formatoTrabalho ?? undefined)
     const diasTrabalhoHibrido = diasTrabalhoHibridoForStorage(formatoTrabalho, data.diasTrabalhoHibrido)
 
+    const extendedData = {
+      cep:              data.cep ?? null,
+      address:          data.address ?? null,
+      addressNumber:    data.addressNumber ?? null,
+      neighborhood:     data.neighborhood ?? null,
+      country:          data.country ?? null,
+      state:            data.state ?? null,
+      city:             data.city ?? null,
+      phone:            data.phone ?? null,
+      emergencyContact: data.emergencyContact ?? null,
+      instagram:        data.instagram ?? null,
+      linkedin:         data.linkedin ?? null,
+      education:        data.education ?? [],
+      courses:          data.courses ?? [],
+      languages:        data.languages ?? [],
+      certifications:   data.certifications ?? [],
+      careerHistory:    data.careerHistory ?? [],
+    }
+
+    // Validação MGR + Administrador
+    const validProfiles = ["QA", "UX", "TW", "MGR"] as const
+    let resolvedAccessProfile: "QA" | "UX" | "TW" | "MGR" = (validProfiles as readonly string[]).includes(data.accessProfile ?? "") ? (data.accessProfile as "QA" | "UX" | "TW" | "MGR") : "QA"
+    if (resolvedAccessProfile === "MGR" && parsed.type !== "Administrador") {
+      return { error: "Perfil MGR exige Tipo Administrador." }
+    }
+
     let createdId = ""
     if (existingCreated && inactiveIds.has(existingCreated.id)) {
       // Reactivate existing inactive user
@@ -426,6 +540,7 @@ export async function criarQaUser(data: {
           data: {
             name: parsed.name,
             type: parsed.type,
+            accessProfile: resolvedAccessProfile,
             classificacao: classificacaoValida,
             password: hashedPassword,
             photoPath: data.photoPath ?? null,
@@ -434,6 +549,7 @@ export async function criarQaUser(data: {
             horarioSaida,
             formatoTrabalho,
             diasTrabalhoHibrido,
+            ...extendedData,
           },
         }),
         prisma.inactiveUser.delete({ where: { userId: existingCreated.id } }),
@@ -449,6 +565,7 @@ export async function criarQaUser(data: {
           name: parsed.name,
           email: parsed.email,
           type: parsed.type,
+          accessProfile: resolvedAccessProfile,
           classificacao: classificacaoValida,
           photoPath: data.photoPath ?? null,
           password: hashedPassword,
@@ -457,15 +574,16 @@ export async function criarQaUser(data: {
           horarioSaida,
           formatoTrabalho,
           diasTrabalhoHibrido,
+          ...extendedData,
         },
       })
       createdId = id
     }
 
     revalidatePath("/configuracoes/usuarios")
-    return { 
-      id: createdId, 
-      emailEnviado: await sendAndGetStatus(parsed.email, parsed.name, data.password) 
+    return {
+      id: createdId,
+      emailEnviado: await sendAndGetStatus(createdId, parsed.email, parsed.name),
     }
   } catch (e) {
     console.error("[criarQaUser]", e)
@@ -473,12 +591,13 @@ export async function criarQaUser(data: {
   }
 }
 
-async function sendAndGetStatus(email: string, name: string, pass: string): Promise<boolean> {
+async function sendAndGetStatus(userId: string, email: string, name: string): Promise<boolean> {
   try {
-    await sendWelcomeEmail({ to: email, name, password: pass })
+    const token = await gerarConvite(userId, email)
+    await sendInviteEmail({ to: email, name, token })
     return true
   } catch {
-    console.warn(`[welcome] E-mail não enviado para ${email}.`)
+    console.warn(`[invite] E-mail não enviado para ${email}.`)
     return false
   }
 }
@@ -514,6 +633,7 @@ export async function atualizarQaUser(
     name: string
     email: string
     type: string
+    accessProfile?: "QA" | "UX" | "TW" | "MGR"
     classificacao?: string | null
     dataNascimento?: string | null
     horarioEntrada?: string | null
@@ -524,6 +644,24 @@ export async function atualizarQaUser(
     photoPath?: string | null
     /** Nova senha local (CreatedUser). Omitir ou vazio = não alterar. */
     newPassword?: string | null
+
+    // Novos campos
+    cep?: string | null
+    address?: string | null
+    addressNumber?: string | null
+    neighborhood?: string | null
+    country?: string | null
+    state?: string | null
+    city?: string | null
+    phone?: string | null
+    emergencyContact?: string | null
+    instagram?: string | null
+    linkedin?: string | null
+    education?: any[] | null
+    courses?: any[] | null
+    languages?: any[] | null
+    certifications?: any[] | null
+    careerHistory?: any[] | null
   }
 ): Promise<{ error?: string }> {
   let session: Awaited<ReturnType<typeof requireSession>>
@@ -554,6 +692,44 @@ export async function atualizarQaUser(
 
     // Non-admins cannot change user type (prevents privilege escalation)
     const type = isAdmin ? data.type : targetProfile.type
+
+    // accessProfile: somente admin pode alterar; não-admin mantém o atual
+    const validProfiles = ["QA", "UX", "TW", "MGR"] as const
+    const currentProfile = (targetProfile as { accessProfile?: string }).accessProfile
+    const incomingProfile = data.accessProfile && (validProfiles as readonly string[]).includes(data.accessProfile)
+      ? data.accessProfile
+      : undefined
+    const resolvedAccessProfile = isAdmin && incomingProfile
+      ? incomingProfile
+      : (currentProfile as "QA" | "UX" | "TW" | "MGR" | undefined)
+    if (resolvedAccessProfile === "MGR" && type !== "Administrador") {
+      return { error: "Perfil MGR exige Tipo Administrador." }
+    }
+
+    const sessionUserId = session.user?.id
+    const isSelf = sessionUserId === id
+    const isAdminMgr = isAdmin && (session.user as any)?.accessProfile === "MGR"
+    const canEditSensitive = isSelf || isAdminMgr
+
+    const sensitiveData: Record<string, any> = {}
+    if (canEditSensitive) {
+      if (data.cep !== undefined)              sensitiveData.cep = data.cep
+      if (data.address !== undefined)          sensitiveData.address = data.address
+      if (data.addressNumber !== undefined)    sensitiveData.addressNumber = data.addressNumber
+      if (data.neighborhood !== undefined)     sensitiveData.neighborhood = data.neighborhood
+      if (data.country !== undefined)          sensitiveData.country = data.country
+      if (data.state !== undefined)            sensitiveData.state = data.state
+      if (data.city !== undefined)             sensitiveData.city = data.city
+      if (data.phone !== undefined)            sensitiveData.phone = data.phone
+      if (data.emergencyContact !== undefined) sensitiveData.emergencyContact = data.emergencyContact
+      if (data.instagram !== undefined)        sensitiveData.instagram = data.instagram
+      if (data.linkedin !== undefined)         sensitiveData.linkedin = data.linkedin
+      if (data.education !== undefined)        sensitiveData.education = data.education
+      if (data.courses !== undefined)          sensitiveData.courses = data.courses
+      if (data.languages !== undefined)        sensitiveData.languages = data.languages
+      if (data.certifications !== undefined)   sensitiveData.certifications = data.certifications
+      if (data.careerHistory !== undefined)    sensitiveData.careerHistory = data.careerHistory
+    }
 
     let parsed: { name: string; email: string; type: "Padrão" | "Administrador" }
     try {
@@ -614,18 +790,39 @@ export async function atualizarQaUser(
       horarioSaida?: string | null
       formatoTrabalho?: string | null
       diasTrabalhoHibrido?: string[] | null
+      // Novos campos
+      cep?: string | null
+      address?: string | null
+      addressNumber?: string | null
+      neighborhood?: string | null
+      country?: string | null
+      state?: string | null
+      city?: string | null
+      phone?: string | null
+      emergencyContact?: string | null
+      instagram?: string | null
+      linkedin?: string | null
+      education?: any[] | null
+      courses?: any[] | null
+      languages?: any[] | null
+      certifications?: any[] | null
+      careerHistory?: any[] | null
     } = {
       name:          parsed.name,
       email:         parsed.email,
       type:          parsed.type,
       classificacao: classificacaoValida,
     }
+    if (resolvedAccessProfile) (profileData as { accessProfile?: string }).accessProfile = resolvedAccessProfile
     if (safePhotoPath !== undefined) profileData.photoPath = safePhotoPath
     if (dataNascimento !== undefined) profileData.dataNascimento = dataNascimento
     if (horarioEntrada !== undefined) profileData.horarioEntrada = horarioEntrada
     if (horarioSaida !== undefined) profileData.horarioSaida = horarioSaida
     if (formatoTrabalho !== undefined) profileData.formatoTrabalho = formatoTrabalho
     if (diasTrabalhoHibridoDb !== undefined) profileData.diasTrabalhoHibrido = diasTrabalhoHibridoDb
+
+    // Atribuição de campos sensíveis se o usuário tiver permissão
+    Object.assign(profileData, sensitiveData)
 
     await prisma.userProfile.upsert({
       where:  { userId: id },
@@ -634,6 +831,7 @@ export async function atualizarQaUser(
         name: parsed.name,
         email: parsed.email,
         type: parsed.type,
+        accessProfile: resolvedAccessProfile ?? null,
         classificacao: classificacaoValida,
         photoPath: safePhotoPath ?? null,
         dataNascimento: dataNascimento ?? null,
@@ -641,6 +839,7 @@ export async function atualizarQaUser(
         horarioSaida: horarioSaida ?? null,
         formatoTrabalho: formatoTrabalho ?? null,
         diasTrabalhoHibrido: diasTrabalhoHibridoDb !== undefined ? diasTrabalhoHibridoDb : null,
+        ...sensitiveData,
       },
       update: profileData,
     })
@@ -660,6 +859,7 @@ export async function atualizarQaUser(
           name: parsed.name,
           email: parsed.email,
           type: parsed.type,
+          ...(resolvedAccessProfile ? { accessProfile: resolvedAccessProfile } : {}),
           classificacao: classificacaoValida,
           ...(dataNascimento !== undefined ? { dataNascimento } : {}),
           ...(horarioEntrada !== undefined ? { horarioEntrada } : {}),
@@ -668,6 +868,7 @@ export async function atualizarQaUser(
           ...(diasTrabalhoHibridoDb !== undefined ? { diasTrabalhoHibrido: diasTrabalhoHibridoDb } : {}),
           ...(safePhotoPath !== undefined ? { photoPath: safePhotoPath } : {}),
           ...(newPw ? { password: hashPassword(newPw) } : {}),
+          ...sensitiveData,
         },
       })
     }

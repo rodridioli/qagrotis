@@ -1,3 +1,5 @@
+export const metadata = { title: "Novo módulo" }
+
 import { redirect } from "next/navigation"
 import { getSistemas } from "@/lib/actions/sistemas"
 import { checkIsAdmin } from "@/lib/session"

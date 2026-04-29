@@ -5,6 +5,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredWorkSchedule?: boolean
   __qagrotisEnsuredHybridWeekdays?: boolean
   __qagrotisEnsuredEquipeChapters?: boolean
+  __qagrotisEnsuredExtendedProfile?: boolean
 }
 
 /**
@@ -137,5 +138,39 @@ CREATE TABLE IF NOT EXISTS "EquipeChapterRating" (
     g.__qagrotisEnsuredEquipeChapters = true
   } catch (e) {
     console.error("[prisma-schema-ensure] EquipeChapter tables", e)
+  }
+}
+
+/**
+ * Garante colunas de endereço, contato, formação e carreira em CreatedUser e UserProfile.
+ */
+export async function ensureUserExtendedProfileColumns(): Promise<void> {
+  if (g.__qagrotisEnsuredExtendedProfile) return
+  const cols = [
+    ["cep", "TEXT"],
+    ["address", "TEXT"],
+    ["addressNumber", "TEXT"],
+    ["neighborhood", "TEXT"],
+    ["country", "TEXT"],
+    ["state", "TEXT"],
+    ["city", "TEXT"],
+    ["phone", "TEXT"],
+    ["emergencyContact", "TEXT"],
+    ["instagram", "TEXT"],
+    ["linkedin", "TEXT"],
+    ["education", "JSONB"],
+    ["courses", "JSONB"],
+    ["languages", "JSONB"],
+    ["certifications", "JSONB"],
+    ["careerHistory", "JSONB"],
+  ]
+  try {
+    for (const [name, type] of cols) {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "CreatedUser" ADD COLUMN IF NOT EXISTS "${name}" ${type}`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "${name}" ${type}`)
+    }
+    g.__qagrotisEnsuredExtendedProfile = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] extended profile columns", e)
   }
 }

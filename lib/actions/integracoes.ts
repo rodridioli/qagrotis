@@ -18,6 +18,9 @@ export interface IntegracaoRecord {
   createdAt: number
 }
 
+// Versão sem apiKey, segura para enviar a contextos cliente
+export type IntegracaoSafeRecord = Omit<IntegracaoRecord, "apiKey">
+
 const integracaoSchema = z.object({
   descricao: z.string().max(200, "Máximo de 200 caracteres").optional().default(""),
   provider:  z.string().min(1, "Provedor é obrigatório"),
@@ -35,6 +38,19 @@ export async function getIntegracoes(): Promise<IntegracaoRecord[]> {
   return rows.map((r) => ({
     ...r,
     provider: r.provider,
+    createdAt: r.createdAt != null ? r.createdAt.getTime() : Date.now(),
+  }))
+}
+
+// Não retorna apiKey — usar em contextos que serializam props para o cliente
+export async function getIntegracoesSafe(): Promise<IntegracaoSafeRecord[]> {
+  const rows = await prisma.integracao.findMany({
+    orderBy: { createdAt: "asc" },
+    take: 100,
+    select: { id: true, descricao: true, provider: true, model: true, active: true, createdAt: true },
+  })
+  return rows.map((r) => ({
+    ...r,
     createdAt: r.createdAt != null ? r.createdAt.getTime() : Date.now(),
   }))
 }

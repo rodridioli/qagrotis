@@ -143,9 +143,9 @@ export function AtualizacoesClient({ entries }: Props) {
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Versão</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Data</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Categoria</th>
+                    <th className="w-32 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Versão</th>
+                    <th className="w-32 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Data</th>
+                    <th className="w-40 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Categoria</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Alterações</th>
                     <th className="px-4 py-3" />
                   </tr>

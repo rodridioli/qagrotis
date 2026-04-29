@@ -32,9 +32,10 @@ function getEncryptionKey(): Buffer | null {
 export function encryptField(plaintext: string): string {
   const key = getEncryptionKey()
   if (!key) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("[encryptField] ENCRYPTION_KEY não configurada — campo salvo sem criptografia.")
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("ENCRYPTION_KEY ausente: configure uma chave hex de 64 caracteres antes de armazenar campos sensíveis.")
     }
+    console.warn("[encryptField] ENCRYPTION_KEY não configurada — campo salvo sem criptografia.")
     return plaintext
   }
   const iv       = randomBytes(12)
@@ -52,9 +53,10 @@ export function decryptField(value: string): string {
   if (!value.startsWith(ENC_PREFIX)) return value // plaintext or empty
   const key = getEncryptionKey()
   if (!key) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("[decryptField] ENCRYPTION_KEY não configurada — não é possível descriptografar.")
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("ENCRYPTION_KEY ausente: não é possível descriptografar campos sensíveis em produção.")
     }
+    console.warn("[decryptField] ENCRYPTION_KEY não configurada — não é possível descriptografar.")
     return value
   }
   try {

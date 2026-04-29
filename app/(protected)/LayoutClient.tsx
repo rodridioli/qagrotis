@@ -6,8 +6,10 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, FileText, Rocket, BookOpen,
   Settings, LifeBuoy, LogOut, ChevronLeft,
-  ChevronRight, Menu, Moon, Sun, Sparkles, History, Users, ClipboardList,
+  ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
+  ListTodo, Target, Network, ClipboardCheck, MessageSquare,
 } from "lucide-react"
+import { buildRole, can, isDisabled, isVisible, type Role, type Capability, type AccessProfile } from "@/lib/rbac/policy"
 import {
   Select,
   SelectTrigger,
@@ -27,23 +29,48 @@ import { QAgrotisIcon } from "@/components/qagrotis/QAgrotisIcon"
 import { signOut, useSession } from "next-auth/react"
 import { SistemaContext } from "@/lib/modulo-context"
 import { AssistenteDrawer } from "@/components/qagrotis/AssistenteDrawer"
-import type { IntegracaoRecord } from "@/lib/actions/integracoes"
+import type { IntegracaoSafeRecord } from "@/lib/actions/integracoes"
 
 const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"
 
-const NAV_ITEMS = [
-  { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false },
-  { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false },
-  { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false },
-  { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false },
-  { href: "/tarefas",       icon: ClipboardList,   label: "Tarefas",          alwaysEnabled: true,  adminOnly: true  },
-  { href: "/documentos",    icon: BookOpen,        label: "Documentos",       alwaysEnabled: false },
-  { href: "/assistente",    icon: LifeBuoy,        label: "Central de Ajuda", alwaysEnabled: false },
-  { href: "/equipe",        icon: Users,           label: "Equipe",           alwaysEnabled: false },
-  { href: "/configuracoes", icon: Settings,        label: "Configurações",    alwaysEnabled: true  },
-  { href: "/atualizacoes",  icon: History,         label: "Atualizações",     alwaysEnabled: false },
+const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alwaysEnabled: boolean; capability: Capability }> = [
+  { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false, capability: "menu.painel" },
+  { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false, capability: "menu.suites" },
+  { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
+  { href: "/tarefas",       icon: ListTodo,        label: "Tarefas",          alwaysEnabled: true,  capability: "menu.tarefas" },
+  { href: "/pdi",           icon: Target,          label: "PDI",              alwaysEnabled: true,  capability: "menu.pdi" },
+  { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
+  { href: "/documentos",    icon: BookOpen,        label: "Documentos",       alwaysEnabled: false, capability: "menu.documentos" },
+  { href: "/assistente",    icon: LifeBuoy,        label: "Central de Ajuda", alwaysEnabled: false, capability: "menu.assistente" },
+  { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
+  { href: "/mapa-conhecimento",     icon: Network,         label: "Mapa de Conhecimento",   alwaysEnabled: true,  capability: "menu.mapaConhecimento" },
+  { href: "/avaliacao-desempenho",  icon: ClipboardCheck,  label: "Avaliação de Desempenho", alwaysEnabled: true,  capability: "menu.avaliacaoDesempenho" },
+  { href: "/feedbacks",             icon: MessageSquare,   label: "Feedbacks",              alwaysEnabled: true,  capability: "menu.feedbacks" },
+  { href: "/configuracoes", icon: Settings,        label: "Configurações",          alwaysEnabled: true,  capability: "menu.configuracoes" },
+  { href: "/atualizacoes",  icon: History,         label: "Atualizações",     alwaysEnabled: true,  capability: "menu.atualizacoes" },
 ]
+
+/**
+ * Overrides de menu por Role: ordem dos itens + relabel opcional.
+ * Quando há override, só os itens listados aparecem (na ordem dada).
+ * Sem override → ordem padrão de NAV_ITEMS.
+ */
+const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability; label?: string }>>> = {
+  "Administrador:MGR": [
+    { capability: "menu.painel" },
+    { capability: "menu.tarefas" },
+    { capability: "menu.feedbacks" },
+    { capability: "menu.avaliacaoDesempenho", label: "Avaliações" },
+    { capability: "menu.pdi" },
+    { capability: "menu.mapaConhecimento", label: "Domínio" },
+    { capability: "menu.equipe" },
+    { capability: "menu.documentos" },
+    { capability: "menu.assistente" },
+    { capability: "menu.configuracoes" },
+    { capability: "menu.atualizacoes" },
+  ],
+}
 
 const TITLE_MAP: Record<string, string> = {
   "/dashboard":     "Painel",
@@ -75,12 +102,12 @@ interface SidebarProps {
   onAssistenteOpen: () => void
   hasSistemaModulo: boolean
   hasIntegracoes: boolean
-  isAdmin: boolean
+  role: Role
   /** Navegação com transição (mantém overlay de carregamento até a rota resolver). */
   onNavigate?: (href: string) => void
 }
 
-const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasIntegracoes, isAdmin, onNavigate }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasIntegracoes, role, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -128,19 +155,26 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3">
           <TooltipProvider>
-            {NAV_ITEMS.map(({ href, icon: Icon, label, alwaysEnabled, adminOnly }) => {
-              if (adminOnly && !isAdmin) return null
-
-              // Compute disabled state dynamically based on system/module/AI model availability
-              let disabled = false
-              if (!alwaysEnabled) {
-                if (href === "/documentos") {
-                  disabled = true
-                } else if (href === "/gerador" || href === "/assistente") {
-                  // Gerador + Assistente: require sistema+módulo AND modelo de IA
+            {(() => {
+              const override = MENU_OVERRIDE_BY_ROLE[role]
+              if (!override) {
+                return NAV_ITEMS.filter((item) => isVisible(role, item.capability))
+              }
+              const byCapability = new Map(NAV_ITEMS.map((it) => [it.capability, it]))
+              return override.flatMap(({ capability, label }) => {
+                const base = byCapability.get(capability)
+                if (!base || !isVisible(role, capability)) return []
+                return [{ ...base, label: label ?? base.label }]
+              })
+            })().map(({ href, icon: Icon, label, alwaysEnabled, capability }) => {
+              // RBAC primeiro: se policy diz que está disabled (item visível mas inativo), respeita.
+              const rbacDisabled = isDisabled(role, capability)
+              // Depois, contexto (sem sistema/integração) só se RBAC permite a feature.
+              let disabled = rbacDisabled
+              if (!disabled && !alwaysEnabled) {
+                if (href === "/gerador" || href === "/assistente") {
                   disabled = !hasSistemaModulo || !hasIntegracoes
-                } else if (href === "/dashboard" || href === "/suites" || href === "/cenarios" || href === "/equipe") {
-                  // Painel, Suítes, Cenários, Equipe: require sistema with módulo linked
+                } else if (href === "/dashboard" || href === "/suites" || href === "/cenarios") {
                   disabled = !hasSistemaModulo
                 }
               }
@@ -304,6 +338,15 @@ interface TopbarProps {
   onSistemaChange: (v: string) => void
   isDark: boolean
   onToggleTheme: () => void
+  role: Role
+  accessProfile: AccessProfile
+}
+
+const PROFILE_BADGE: Record<AccessProfile, { bg: string; label: string }> = {
+  QA:  { bg: "bg-emerald-500", label: "QA"  },
+  UX:  { bg: "bg-violet-500",  label: "UX"  },
+  TW:  { bg: "bg-amber-500",   label: "TW"  },
+  MGR: { bg: "bg-sky-600",     label: "MGR" },
 }
 
 const Topbar = React.memo(function Topbar({
@@ -315,6 +358,8 @@ const Topbar = React.memo(function Topbar({
   onSistemaChange,
   isDark,
   onToggleTheme,
+  role,
+  accessProfile,
 }: TopbarProps) {
   const pathname = usePathname()
   const title = getTitle(pathname)
@@ -377,22 +422,36 @@ const Topbar = React.memo(function Topbar({
             : <Moon className="size-4" />
           }
         </button>
-        {sistemaNames.length > 0 ? (
-          <Select value={sistemaSelecionado} onValueChange={(v) => onSistemaChange(v ?? "")}>
-            <SelectTrigger className="h-auto flex w-20 max-w-20 gap-1 overflow-hidden px-2 py-1.5 text-xs sm:w-auto sm:min-w-32 sm:max-w-56 sm:gap-1.5 sm:px-3 sm:text-sm">
-              <span className="hidden sm:inline truncate text-text-secondary">Sistema: </span>
-              <SelectValue className="truncate font-medium" />
-            </SelectTrigger>
-            <SelectPopup>
-              {sistemaNames.map((name) => (
-                <SelectItem key={name} value={name}>{name}</SelectItem>
-              ))}
-            </SelectPopup>
-          </Select>
-        ) : (
-          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-custom border border-border-default bg-surface-input px-3 py-1.5 text-sm text-text-secondary/60">
-            <span className="text-text-secondary">Sistema:</span>
-            <span className="font-medium">Não cadastrado</span>
+        {can(role, "topbar.sistemaSelector") && (
+          sistemaNames.length > 0 ? (
+            <Select value={sistemaSelecionado} onValueChange={(v) => onSistemaChange(v ?? "")}>
+              <SelectTrigger className="h-auto flex w-20 max-w-20 gap-1 overflow-hidden px-2 py-1.5 text-xs sm:w-auto sm:min-w-32 sm:max-w-56 sm:gap-1.5 sm:px-3 sm:text-sm">
+                <span className="hidden sm:inline truncate text-text-secondary">Sistema: </span>
+                <SelectValue className="truncate font-medium" />
+              </SelectTrigger>
+              <SelectPopup>
+                {sistemaNames.map((name) => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          ) : (
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-custom border border-border-default bg-surface-input px-3 py-1.5 text-sm text-text-secondary/60">
+              <span className="text-text-secondary">Sistema:</span>
+              <span className="font-medium">Não cadastrado</span>
+            </span>
+          )
+        )}
+        {sessionUiReady && (
+          <span
+            className={cn(
+              "hidden sm:inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white",
+              PROFILE_BADGE[accessProfile].bg
+            )}
+            title={`Perfil de acesso: ${PROFILE_BADGE[accessProfile].label}`}
+            aria-label={`Perfil de acesso ${PROFILE_BADGE[accessProfile].label}`}
+          >
+            {PROFILE_BADGE[accessProfile].label}
           </span>
         )}
         <Link
@@ -412,7 +471,7 @@ const Topbar = React.memo(function Topbar({
 interface Props {
   children: React.ReactNode
   sistemaNames: string[]
-  integracoes?: IntegracaoRecord[]
+  integracoes?: IntegracaoSafeRecord[]
   hasSistemaComModulo?: boolean
   isAdmin?: boolean
 }
@@ -426,6 +485,9 @@ export default function LayoutClient({
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const role: Role = buildRole(session?.user?.type, session?.user?.accessProfile)
+  const accessProfile: AccessProfile = (session?.user?.accessProfile as AccessProfile) ?? "QA"
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isDark, setIsDark] = useState(false)
@@ -487,15 +549,18 @@ export default function LayoutClient({
   }, [])
 
   // ── Redirect if no systems ────────────────────────────────────────────────────
+  // Apenas para roles que dependem de Sistema (QA). Outros perfis não precisam.
+  const needsSistema = can(role, "topbar.sistemaSelector")
   useEffect(() => {
-    if (!hasActiveSistema && !pathname.startsWith("/configuracoes/sistemas")) {
+    if (needsSistema && !hasActiveSistema && !pathname.startsWith("/configuracoes/sistemas")) {
       router.push("/configuracoes/sistemas")
     }
-  }, [hasActiveSistema, pathname, router])
+  }, [needsSistema, hasActiveSistema, pathname, router])
 
   // Show loading screen only during the brief hydration gap where props arrived
   // but sistemaSelecionado hasn't been initialized yet.
   const isReady =
+    !needsSistema ||
     !hasActiveSistema ||
     sistemaSelecionado !== ""
 
@@ -543,7 +608,7 @@ export default function LayoutClient({
           onAssistenteOpen={() => setAssistenteOpen(true)}
           hasSistemaModulo={hasSistemaModulo}
           hasIntegracoes={integracoes.length > 0}
-          isAdmin={isAdmin}
+          role={role}
           onNavigate={handleNavigate}
         />
         <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />
@@ -557,6 +622,8 @@ export default function LayoutClient({
             onSistemaChange={handleSistemaChange}
             isDark={isDark}
             onToggleTheme={handleToggleTheme}
+            role={role}
+            accessProfile={accessProfile}
           />
           <main className="relative flex-1 overflow-auto bg-surface-default p-4 lg:p-6">
             {isPending && (
@@ -567,7 +634,7 @@ export default function LayoutClient({
                 </div>
               </div>
             )}
-            {(hasActiveSistema || pathname.startsWith("/configuracoes/sistemas")) ? children : null}
+            {(!needsSistema || hasActiveSistema || pathname.startsWith("/configuracoes/sistemas")) ? children : null}
           </main>
         </div>
       </div>

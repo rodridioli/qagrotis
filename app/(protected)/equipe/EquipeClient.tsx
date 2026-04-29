@@ -28,10 +28,27 @@ import {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+type AccessProfileId = "QA" | "UX" | "TW" | "MGR"
+
 interface Props {
   sistemas: string[]
   modulosPorSistema: Record<string, string[]>
   isAdmin: boolean
+  userAccessProfile: AccessProfileId
+  canFilterByProfile: boolean
+}
+
+const PROFILE_OPTIONS: { value: Exclude<AccessProfileId, "MGR">; label: string }[] = [
+  { value: "QA", label: "QA" },
+  { value: "UX", label: "UX" },
+  { value: "TW", label: "TW" },
+]
+
+const PROFILE_LABEL: Record<AccessProfileId, string> = {
+  QA: "QA",
+  UX: "UX",
+  TW: "TW",
+  MGR: "Manager",
 }
 
 type TabId =
@@ -219,9 +236,18 @@ function FilterModal({
 
 const DEFAULT_FILTERS = { sistema: "todos", modulo: "todos", periodo: "mes-atual" }
 
-export default function EquipeClient({ sistemas, modulosPorSistema, isAdmin }: Props) {
+export default function EquipeClient({
+  sistemas,
+  modulosPorSistema,
+  isAdmin,
+  userAccessProfile,
+  canFilterByProfile,
+}: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("performance")
   const [filterOpen, setFilterOpen] = useState(false)
+  const initialProfile: Exclude<AccessProfileId, "MGR"> =
+    userAccessProfile === "MGR" ? "QA" : (userAccessProfile as Exclude<AccessProfileId, "MGR">)
+  const [selectedProfile, setSelectedProfile] = useState<Exclude<AccessProfileId, "MGR">>(initialProfile)
 
   const [draft, setDraft] = useState(DEFAULT_FILTERS)
   const [applied, setApplied] = useState(DEFAULT_FILTERS)
@@ -364,6 +390,23 @@ const aniversariantesPorMes = useMemo(() => {
           ))}
         </div>
 
+        {/* Profile selector — only MGR escolhe; demais perfis veem só o próprio (sem badge). */}
+        {activeTab === "performance" && canFilterByProfile && (
+          <Select
+            value={selectedProfile}
+            onValueChange={(v) => setSelectedProfile(v as Exclude<AccessProfileId, "MGR">)}
+          >
+            <SelectTrigger className="h-9 w-32" aria-label="Filtrar por perfil de acesso">
+              {PROFILE_LABEL[selectedProfile]}
+            </SelectTrigger>
+            <SelectPopup>
+              {PROFILE_OPTIONS.map((p) => (
+                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        )}
+
         {/* Filter icon — matches TableToolbar pattern exactly */}
         {activeTab === "performance" && (
           <button
@@ -405,19 +448,25 @@ const aniversariantesPorMes = useMemo(() => {
             <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
               <p className="text-center text-sm text-destructive">{performanceError}</p>
             </div>
-          ) : users.length === 0 ? (
-            <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card">
-              <p className="text-sm text-text-secondary">
-                Nenhum dado encontrado para os filtros selecionados.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {users.map((u, idx) => (
-                <EquipePerformanceCard key={u.userId} user={u} rank={idx + 1} />
-              ))}
-            </div>
-          )}
+          ) : (() => {
+            const visibleUsers = users.filter((u) => (u.accessProfile ?? "QA") === selectedProfile)
+            if (visibleUsers.length === 0) {
+              return (
+                <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card">
+                  <p className="text-sm text-text-secondary">
+                    Nenhum dado encontrado para os filtros selecionados.
+                  </p>
+                </div>
+              )
+            }
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {visibleUsers.map((u, idx) => (
+                  <EquipePerformanceCard key={u.userId} user={u} rank={idx + 1} />
+                ))}
+              </div>
+            )
+          })()}
         </div>
       )}
 

@@ -25,14 +25,21 @@ import {
   type DiaSemanaHibridoId,
 } from "@/lib/usuario-trabalho"
 import { toast } from "sonner"
+import { ACCESS_PROFILES, type AccessProfile } from "@/lib/rbac/policy"
 
-export default function NovoUsuarioForm() {
+interface NovoUsuarioFormProps {
+  /** Perfis que o admin logado pode atribuir (vem do server). */
+  manageableProfiles?: AccessProfile[]
+}
+
+export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }: NovoUsuarioFormProps = {}) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
   const [nome, setNome] = useState("")
   const [email, setEmail] = useState("")
   const [tipo, setTipo] = useState<string>("Padrão")
+  const [accessProfile, setAccessProfile] = useState<AccessProfile>(manageableProfiles[0] ?? "QA")
   const [cargo, setCargo] = useState("")
   const [dataNascimento, setDataNascimento] = useState("")
   const [horarioEntrada, setHorarioEntrada] = useState("")
@@ -91,6 +98,7 @@ export default function NovoUsuarioForm() {
         name: nome,
         email,
         type: tipo,
+        accessProfile,
         classificacao: cargo.trim() || null,
         dataNascimento: dataNascimento.trim() || null,
         horarioEntrada: horarioEntrada.trim() || null,
@@ -123,6 +131,7 @@ export default function NovoUsuarioForm() {
             name: nome,
             email,
             type: tipo,
+            accessProfile,
             classificacao: cargo.trim() || null,
             dataNascimento: dataNascimento.trim() || null,
             horarioEntrada: horarioEntrada.trim() || null,
@@ -138,9 +147,9 @@ export default function NovoUsuarioForm() {
       }
 
       if (result.emailEnviado) {
-        toast.success("Usuário criado. E-mail com senha enviado.")
+        toast.success("Usuário criado. E-mail de convite enviado.")
       } else {
-        toast.success("Usuário criado. O e-mail com senha não pôde ser enviado — informe-o manualmente.")
+        toast.success("Usuário criado. O e-mail de convite não pôde ser enviado — gere um novo convite manualmente.")
       }
       router.push("/configuracoes/usuarios")
     })
@@ -202,17 +211,59 @@ export default function NovoUsuarioForm() {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor="tipo" className="text-sm font-medium text-text-primary">
-              Tipo <span className="text-destructive">*</span>
-            </label>
-            <Select value={tipo} onValueChange={(v) => setTipo(v ?? "Padrão")} disabled={isPending}>
-              <SelectTrigger id="tipo"><SelectValue /></SelectTrigger>
-              <SelectPopup>
-                <SelectItem value="Padrão">Padrão</SelectItem>
-                <SelectItem value="Administrador">Administrador</SelectItem>
-              </SelectPopup>
-            </Select>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="tipo" className="text-sm font-medium text-text-primary">
+                Tipo <span className="text-destructive">*</span>
+              </label>
+              <Select
+                value={tipo}
+                onValueChange={(v) => {
+                  const next = v ?? "Padrão"
+                  setTipo(next)
+                  if (next === "Padrão" && accessProfile === "MGR") {
+                    setAccessProfile(manageableProfiles.find((p) => p !== "MGR") ?? "QA")
+                  }
+                }}
+                disabled={isPending || accessProfile === "MGR"}
+              >
+                <SelectTrigger id="tipo"><SelectValue /></SelectTrigger>
+                <SelectPopup>
+                  <SelectItem value="Padrão">Padrão</SelectItem>
+                  <SelectItem value="Administrador">Administrador</SelectItem>
+                </SelectPopup>
+              </Select>
+              {accessProfile === "MGR" && (
+                <p className="text-xs text-text-secondary">MGR exige Tipo Administrador.</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="accessProfile" className="text-sm font-medium text-text-primary">
+                Perfil de Acesso <span className="text-destructive">*</span>
+              </label>
+              <Select
+                value={accessProfile}
+                onValueChange={(v) => {
+                  const next = (v ?? "QA") as AccessProfile
+                  setAccessProfile(next)
+                  if (next === "MGR") setTipo("Administrador")
+                }}
+                disabled={isPending}
+              >
+                <SelectTrigger id="accessProfile"><SelectValue /></SelectTrigger>
+                <SelectPopup>
+                  {manageableProfiles.map((p) => (
+                    <SelectItem
+                      key={p}
+                      value={p}
+                      disabled={p === "MGR" && tipo === "Padrão"}
+                    >
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
@@ -376,7 +427,7 @@ export default function NovoUsuarioForm() {
               </div>
             </div>
             <p className="text-xs text-text-secondary">
-              O usuário receberá um e-mail com a senha e deverá alterá-la no primeiro acesso.
+              O usuário receberá um e-mail de convite com link para definir a própria senha (a senha acima fica como reserva e não é enviada por e-mail).
             </p>
           </div>
         </div>

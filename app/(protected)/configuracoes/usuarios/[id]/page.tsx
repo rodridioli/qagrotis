@@ -1,9 +1,10 @@
+export const metadata = { title: "Usuário" }
+
 import React from "react"
 import Image from "next/image"
-import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
 import { notFound } from "next/navigation"
 import { getQaUsers } from "@/lib/actions/usuarios"
+import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 
 function getInitials(name: string): string {
   return name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()
@@ -42,24 +43,13 @@ export default async function UsuarioDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-1.5 text-sm">
-        <Link
-          href="/configuracoes/usuarios"
-          title="Voltar"
-          className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-        >
-          <ArrowLeft className="size-4" />
-        </Link>
-        <Link href="/configuracoes" className="text-text-secondary hover:text-brand-primary">
-          Configurações
-        </Link>
-        <span className="text-text-secondary">/</span>
-        <Link href="/configuracoes/usuarios" className="text-text-secondary hover:text-brand-primary">
-          Usuários
-        </Link>
-        <span className="text-text-secondary">/</span>
-        <span className="font-medium text-text-primary">{user.id}</span>
-      </div>
+      <PageBreadcrumb
+        items={[
+          { label: "Configurações", href: "/configuracoes" },
+          { label: "Usuários", href: "/configuracoes/usuarios" },
+          { label: user.id },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Main info */}

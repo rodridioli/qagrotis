@@ -86,7 +86,7 @@ function StatBox({
 }: {
   label: string
   value: number
-  variant: "cenarios" | "testes" | "success" | "error"
+  variant: "cenarios" | "testes" | "success" | "error" | "info"
 }) {
   const surface = cn(
     "flex w-full min-w-0 flex-col items-center justify-center rounded-lg px-1 py-2 sm:px-1.5 sm:py-2.5",
@@ -95,6 +95,7 @@ function StatBox({
     variant === "testes" && "bg-secondary-100 dark:bg-secondary-800/50",
     variant === "success" && "bg-primary-50 dark:bg-primary-950/45",
     variant === "error" && "bg-red-100 dark:bg-red-950/40",
+    variant === "info" && "bg-blue-100 dark:bg-blue-950/45",
   )
   const numCls = cn(
     "text-base font-bold tabular-nums sm:text-lg",
@@ -102,6 +103,7 @@ function StatBox({
     variant === "testes" && "text-secondary-800 dark:text-secondary-100",
     variant === "success" && "text-primary-800 dark:text-primary-200",
     variant === "error" && "text-destructive dark:text-red-300",
+    variant === "info" && "text-blue-800 dark:text-blue-200",
   )
   return (
     <div className={surface}>
@@ -135,7 +137,40 @@ export interface EquipePerformanceCardProps {
   rank: number
 }
 
+type CardLabels = {
+  cenarios: string
+  testes: string
+  sucesso: string
+  erros?: string         // omitido = não renderiza o box "Erros"
+  automatizados?: string // omitido = não renderiza a barra de automatizados
+}
+
+const LABELS_BY_PROFILE: Record<string, CardLabels> = {
+  UX: {
+    cenarios: "Protótipos",
+    testes: "Pesquisas",
+    sucesso: "Validações",
+    erros: "Usabilidade",
+    automatizados: "Taxa de Retorno",
+  },
+  TW: {
+    cenarios: "Novos",
+    testes: "Revisões",
+    sucesso: "Outros",
+  },
+}
+
+const DEFAULT_LABELS: CardLabels = {
+  cenarios: "Cenários",
+  testes: "Testes",
+  sucesso: "Sucesso",
+  erros: "Erros",
+  automatizados: "Automatizados",
+}
+
 export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps) {
+  const labels = LABELS_BY_PROFILE[user.accessProfile ?? ""] ?? DEFAULT_LABELS
+  const errosVariant: "error" | "info" = user.accessProfile === "UX" ? "info" : "error"
   const hasAnySistema = user.atividadePorSistema.length > 0
   const detailRowsResolved = useMemo(() => {
     if (!hasAnySistema) {
@@ -182,18 +217,26 @@ export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps
         ))}
       </div>
 
-      {/* Quatro métricas em uma linha (referência); colunas estreitas em mobile */}
-      <div className="grid grid-cols-4 gap-1.5 border-t border-border-default px-3 py-3 sm:gap-2 sm:px-4 sm:py-4">
-        <StatBox label="Cenários" value={user.cenariosCriados} variant="cenarios" />
-        <StatBox label="Testes" value={user.testesExecutados} variant="testes" />
-        <StatBox label="Sucesso" value={user.sucessos} variant="success" />
-        <StatBox label="Erros" value={user.errosEncontrados} variant="error" />
+      {/* Métricas: 4 colunas (com Erros) ou 3 colunas (sem Erros). */}
+      <div
+        className={cn(
+          "grid gap-1.5 border-t border-border-default px-3 py-3 sm:gap-2 sm:px-4 sm:py-4",
+          labels.erros ? "grid-cols-4" : "grid-cols-3",
+        )}
+      >
+        <StatBox label={labels.cenarios} value={user.cenariosCriados} variant="cenarios" />
+        <StatBox label={labels.testes} value={user.testesExecutados} variant="testes" />
+        <StatBox label={labels.sucesso} value={user.sucessos} variant="success" />
+        {labels.erros && (
+          <StatBox label={labels.erros} value={user.errosEncontrados} variant={errosVariant} />
+        )}
       </div>
 
+      {labels.automatizados && (
       <div className="border-t border-border-default px-4 pb-4 pt-3">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <span className="text-[10px] font-bold uppercase tracking-wide text-text-secondary">
-            Automatizados
+            {labels.automatizados}
           </span>
           <span className="text-xs font-semibold tabular-nums text-text-primary sm:text-sm">
             {user.testesAutomatizados} de {user.cenariosCriados} - {user.percentualAutomatizado}%
@@ -201,6 +244,7 @@ export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps
         </div>
         <ProgressBar value={user.percentualAutomatizado} />
       </div>
+      )}
     </article>
   )
 }

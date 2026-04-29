@@ -4,7 +4,8 @@ import React, { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { ArrowLeft, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, ExternalLink, Check, X, Paperclip, TriangleAlert } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, Check, X, Paperclip, TriangleAlert } from "lucide-react"
+import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
 import {
@@ -391,29 +392,16 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
 
       {/* ── Header / Breadcrumb ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm">
-          <Link
-            href={suite ? "/suites" : "/cenarios"}
-            title={suite ? "Voltar para Suítes" : "Voltar para Cenários"}
-            className="flex items-center gap-1 text-text-secondary hover:text-brand-primary"
-          >
-            <ArrowLeft className="size-4" />
-            {suite ? "Suítes" : "Cenários"}
-          </Link>
-          {suite && (
-            <>
-              <span className="text-text-secondary">/</span>
-              <Link
-                href={`/suites/${suite.id}`}
-                className="text-text-secondary hover:text-brand-primary"
-              >
-                {suite.id}
-              </Link>
-            </>
-          )}
-          <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">{cenario.id}</span>
-        </div>
+        <PageBreadcrumb
+          items={suite ? [
+            { label: "Suítes", href: "/suites" },
+            { label: suite.id, href: `/suites/${suite.id}` },
+            { label: cenario.id },
+          ] : [
+            { label: "Cenários", href: "/cenarios" },
+            { label: cenario.id },
+          ]}
+        />
 
         <div className="flex flex-wrap items-center gap-2">
           {viewOnly && (
@@ -526,7 +514,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                   onChange={handleManualFiles}
                 />
                 <p className="max-w-[220px] text-right text-[10px] leading-snug text-text-secondary">
-                  Imagens, PDF ou vídeo. Ao registrar o teste, os anexos saem daqui e ficam ligados à linha do histórico para exportar ao Jira.
+                  Imagens, PDF ou vídeo MP4 curto/leve.
                 </p>
               </div>
             ) : (
@@ -561,7 +549,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
               ))}
             </div>
           ) : (
-            <p className="text-xs text-text-secondary italic">Nenhuma evidência anexada.</p>
+            <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">Nenhuma evidência anexada.</div>
           )}
         </div>
       </BlockCard>}
@@ -618,25 +606,15 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
               )}
             </div>
 
-            {/* URL do Script + botão Executar */}
+            {/* URL do Script */}
             <div>
               <p className="text-xs font-semibold text-text-secondary mb-2">URL do Script</p>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm cursor-not-allowed select-none min-h-9.5 flex items-center">
-                  {cenario.urlScript ? (
-                    <span className="text-brand-primary break-all">{cenario.urlScript}</span>
-                  ) : (
-                    <span className="text-text-secondary italic">—</span>
-                  )}
-                </div>
-                <Button
-                  disabled
-                  title="Funcionalidade disponível em breve"
-                  className="shrink-0"
-                >
-                  <ExternalLink className="size-4" />
-                  Executar
-                </Button>
+              <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 text-sm cursor-not-allowed select-none min-h-9.5 flex items-center">
+                {cenario.urlScript ? (
+                  <span className="text-brand-primary break-all">{cenario.urlScript}</span>
+                ) : (
+                  <span className="text-text-secondary italic">—</span>
+                )}
               </div>
             </div>
 
@@ -661,7 +639,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                       onChange={handleAutoFiles}
                     />
                     <p className="max-w-[220px] text-right text-[10px] leading-snug text-text-secondary">
-                      Imagens, PDF ou vídeo. Ao registrar o teste, os anexos saem daqui e ficam ligados à linha do histórico para exportar ao Jira.
+                      Imagens, PDF ou vídeo MP4 curto/leve.
                     </p>
                   </div>
                 ) : (
@@ -696,7 +674,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-text-secondary italic">Nenhuma evidência anexada.</p>
+                <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">Nenhuma evidência anexada.</div>
               )}
             </div>
 
@@ -717,12 +695,12 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
               </colgroup>
               <thead>
                 <tr className="border-b border-border-default bg-neutral-grey-50">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                  <th className="w-24 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cliente</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                  <th className="w-36 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
+                  <th className="w-32 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
+                  <th className="w-40 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cliente</th>
+                  <th className="w-32 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
                 </tr>
               </thead>
               <tbody>
