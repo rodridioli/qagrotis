@@ -56,22 +56,27 @@ export function PhotoUpload({ preview, onFileSelect, onRemove }: PhotoUploadProp
         onChange={handleChange}
       />
       {preview ? (
-        <div className="relative mx-auto size-48 shrink-0 overflow-hidden rounded-full border border-border-default shadow-sm">
-          <Image
-            src={preview}
-            alt="Foto de perfil"
-            fill
-            unoptimized
-            className="object-cover"
-          />
-          <button
-            type="button"
-            onClick={onRemove}
-            aria-label="Remover foto"
-            className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
-          >
-            <Trash2 className="size-4 text-primary-foreground" />
-          </button>
+        <div className="relative flex h-48 w-full shrink-0 items-center justify-center">
+          <div className="relative aspect-square h-full max-h-full w-auto max-w-full">
+            <div className="absolute inset-0 overflow-hidden rounded-full border border-border-default shadow-sm">
+              <Image
+                src={preview}
+                alt="Foto de perfil"
+                fill
+                unoptimized
+                className="object-cover"
+                sizes="256px"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={onRemove}
+              aria-label="Remover foto"
+              className="absolute right-2 top-2 z-20 flex size-9 items-center justify-center rounded-full bg-destructive text-primary-foreground shadow-md ring-2 ring-surface-card hover:bg-destructive/90"
+            >
+              <Trash2 className="size-4 shrink-0" />
+            </button>
+          </div>
         </div>
       ) : (
         <button
