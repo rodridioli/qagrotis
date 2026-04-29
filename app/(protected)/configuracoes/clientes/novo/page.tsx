@@ -1,3 +1,5 @@
+export const metadata = { title: "Novo cliente" }
+
 import { redirect } from "next/navigation"
 import { checkIsAdmin } from "@/lib/session"
 import NovoClienteForm from "./NovoClienteForm"

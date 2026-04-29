@@ -1,3 +1,5 @@
+export const metadata = { title: "Sistema" }
+
 import React from "react"
 import Link from "next/link"
 import { ArrowLeft, Pencil } from "lucide-react"

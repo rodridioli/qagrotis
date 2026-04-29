@@ -342,9 +342,9 @@ export default function ModulosClient({ initialModulos: initialModulosParam, ini
                       </button>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Nome</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
+                    <th className="w-40 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Cenários</th>
+                    <th className="w-24 whitespace-nowrap px-4 py-3 text-center text-xs font-semibold text-text-secondary">Cenários</th>
                     <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
                   </tr>
                 </thead>

@@ -396,8 +396,8 @@ export default function UsuariosClient({
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">E-mail</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cargo</th>
+                    <th className="w-40 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                    <th className="w-56 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cargo</th>
                     <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
                   </tr>
                 </thead>

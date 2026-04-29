@@ -585,9 +585,10 @@ export async function POST(req: NextRequest) {
   const imagens = Array.isArray(body.imagens) ? body.imagens : undefined
   const integrationId =
     typeof body.integrationId === "string" ? body.integrationId.trim() : ""
-  const ctx = typeof body.context === "string" ? body.context.trim() : ""
-  const leg = typeof body.jira === "string" ? body.jira.trim() : ""
-  const pr = typeof body.prompt === "string" ? body.prompt.trim() : ""
+  const MAX_USER_INPUT = 20_000
+  const ctx = typeof body.context === "string" ? body.context.trim().slice(0, MAX_USER_INPUT) : ""
+  const leg = typeof body.jira === "string" ? body.jira.trim().slice(0, MAX_USER_INPUT) : ""
+  const pr = typeof body.prompt === "string" ? body.prompt.trim().slice(0, MAX_USER_INPUT) : ""
   const jira = ctx || leg || pr
 
   const rateUserId = session.user.id ?? session.user.email ?? "session"

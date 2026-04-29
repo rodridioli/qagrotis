@@ -79,18 +79,49 @@ export async function deleteUserJiraCredentials(userId: string): Promise<void> {
   }
 }
 
-/** Mescla corpo da requisição com BD e, se preciso, cookies legados. */
+/**
+ * Resolve credenciais a partir do BD do usuário (com fallback para cookies legados).
+ * NÃO confia no body/form da requisição: dados controlados pelo cliente são ignorados
+ * para impedir SSRF lateral via `jiraUrl`.
+ */
 export async function resolveJiraCredentialsForRequest(
   userId: string,
-  partial: { jiraUrl?: string; email?: string; apiToken?: string },
+  _partial?: { jiraUrl?: string; email?: string; apiToken?: string },
 ): Promise<StoredJiraCredentials | null> {
+  void _partial
   const [stored, legacy] = await Promise.all([
     getUserJiraCredentials(userId),
     readLegacyJiraCookies(),
   ])
-  const jiraUrl = partial.jiraUrl?.trim() || stored?.jiraUrl || legacy?.jiraUrl || ""
-  const jiraEmail = partial.email?.trim() || stored?.jiraEmail || legacy?.jiraEmail || ""
-  const apiToken = partial.apiToken?.trim() || stored?.apiToken || legacy?.apiToken || ""
+  const jiraUrl = stored?.jiraUrl || legacy?.jiraUrl || ""
+  const jiraEmail = stored?.jiraEmail || legacy?.jiraEmail || ""
+  const apiToken = stored?.apiToken || legacy?.apiToken || ""
   if (!jiraUrl || !jiraEmail || !apiToken) return null
+  if (!isAllowedJiraUrl(jiraUrl)) return null
   return { jiraUrl, jiraEmail, apiToken }
+}
+
+/** Valida que a URL do Jira é HTTPS e não aponta para hosts internos/privados. */
+export function isAllowedJiraUrl(url: string): boolean {
+  let u: URL
+  try { u = new URL(url) } catch { return false }
+  if (u.protocol !== "https:") return false
+  const host = u.hostname.toLowerCase()
+  if (host === "localhost" || host === "127.0.0.1" || host === "::1") return false
+  if (/^10\./.test(host)) return false
+  if (/^192\.168\./.test(host)) return false
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false
+  if (/^169\.254\./.test(host)) return false
+  return true
+}
+
+/** Verifica que `targetUrl` está no mesmo host (ou subdomínio Atlassian) da URL Jira armazenada. */
+export function isSameJiraHost(storedUrl: string, targetUrl: string): boolean {
+  let stored: URL, target: URL
+  try { stored = new URL(storedUrl); target = new URL(targetUrl) } catch { return false }
+  if (target.protocol !== "https:") return false
+  if (target.hostname.toLowerCase() === stored.hostname.toLowerCase()) return true
+  // Anexos Atlassian Cloud podem residir em *.atlassian.net e api.media.atlassian.com
+  const allowed = ["atlassian.net", "atlassian.com", "media.atlassian.com"]
+  return allowed.some((d) => target.hostname.toLowerCase().endsWith(`.${d}`) || target.hostname.toLowerCase() === d)
 }

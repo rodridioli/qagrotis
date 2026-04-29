@@ -1,3 +1,5 @@
+export const metadata = { title: "Editar módulo" }
+
 import { notFound, redirect } from "next/navigation"
 import { getModulo } from "@/lib/actions/modulos"
 import { getSistemas } from "@/lib/actions/sistemas"

@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic"
+export const metadata = { title: "Modelos de IA" }
 
 import { getIntegracoes } from "@/lib/actions/integracoes"
 import { checkIsAdmin } from "@/lib/session"

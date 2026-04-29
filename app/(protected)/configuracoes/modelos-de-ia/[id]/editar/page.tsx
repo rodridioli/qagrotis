@@ -1,3 +1,5 @@
+export const metadata = { title: "Editar modelo de IA" }
+
 import { notFound, redirect } from "next/navigation"
 import { getIntegracao } from "@/lib/actions/integracoes"
 import { checkIsAdmin } from "@/lib/session"

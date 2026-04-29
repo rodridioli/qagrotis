@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic"
+export const metadata = { title: "Atualizações" }
 
 import { getChangelog } from "@/lib/actions/changelog"
 import { AtualizacoesClient } from "./AtualizacoesClient"

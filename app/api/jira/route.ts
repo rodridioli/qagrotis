@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth"
 import { NextRequest } from "next/server"
-import { resolveJiraCredentialsForRequest } from "@/lib/jira-credentials-db"
+import { resolveJiraCredentialsForRequest, isSameJiraHost } from "@/lib/jira-credentials-db"
+
+const ISSUE_KEY_RE = /^[A-Z][A-Z0-9_]+-\d+$/
 
 // GET is no longer supported - all Jira calls use POST with action field
 // This handler prevents 404 errors from cached old code
@@ -31,12 +33,12 @@ export async function POST(req: NextRequest) {
   const action = body.action ?? "update"
   const issueKey = body.issueKey
 
-  const resolved = await resolveJiraCredentialsForRequest(session.user.id, {
-    jiraUrl: body.jiraUrl,
-    email: body.email,
-    apiToken: body.apiToken,
-  })
-  if (!resolved || !issueKey) {
+  if (!issueKey || !ISSUE_KEY_RE.test(issueKey)) {
+    return new Response("issueKey inválido.", { status: 400 })
+  }
+
+  const resolved = await resolveJiraCredentialsForRequest(session.user.id)
+  if (!resolved) {
     return new Response("Campos obrigatórios ausentes. Configure a Integração Jira em Configurações.", { status: 400 })
   }
 
@@ -88,6 +90,7 @@ export async function POST(req: NextRequest) {
 
     const attachmentData: { name: string; mimeType: string; dataUrl: string }[] = []
     for (const att of supported) {
+      if (!att.content || !isSameJiraHost(jiraUrl, att.content)) continue
       try {
         const attRes = await fetch(att.content, { headers: { "Authorization": `Basic ${credentials}` } })
         if (attRes.ok) {

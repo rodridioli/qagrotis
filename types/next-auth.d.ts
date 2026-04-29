@@ -1,4 +1,5 @@
 import type { Plan } from "@prisma/client"
+import type { AccessProfile, UserType } from "@/lib/rbac/policy"
 
 declare module "next-auth" {
   interface Session {
@@ -8,6 +9,8 @@ declare module "next-auth" {
       email?: string | null
       image?: string | null
       plan?: Plan
+      type?: UserType
+      accessProfile?: AccessProfile
     }
   }
 
@@ -17,5 +20,14 @@ declare module "next-auth" {
     stripeCustomerId?: string | null
     stripeSubscriptionId?: string | null
     stripeCurrentPeriodEnd?: Date | null
+    type?: UserType
+    accessProfile?: AccessProfile
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    type?: UserType
+    accessProfile?: AccessProfile
   }
 }

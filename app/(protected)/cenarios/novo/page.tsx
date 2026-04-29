@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic"
+export const metadata = { title: "Novo cenário" }
 
 import { getModulos } from "@/lib/actions/modulos"
 import { getSistemas } from "@/lib/actions/sistemas"

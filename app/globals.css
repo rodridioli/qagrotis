@@ -484,10 +484,24 @@
   100% { opacity: 0; transform: scale(0.6) rotate(18deg); }
 }
 
-/* ── Tabelas: hover da linha em todas as células (border-collapse + colunas sticky) ──
-   `tr:hover` com background não pinta de forma confiável todas as <td>; força o fundo
-   em cada célula usando os tokens --neutral-grey-* já remapeados em :root / .dark. */
 @layer utilities {
+  /* ── Tabelas: Padronização de Altura e Hover ── */
+  
+  /* Altura padrão da linha ~56px para acomodar botões size-8 e badges com respiro */
+  .qagrotis-table-row-hover tbody tr,
+  .qagrotis-table-row-hover-subtle tbody tr,
+  .qagrotis-table-row-hover-muted tbody tr,
+  .qagrotis-table-row-hover thead tr {
+    height: 3.5rem;
+  }
+
+  /* Alinhamento central e padding horizontal consistente */
+  .qagrotis-table-row-hover td,
+  .qagrotis-table-row-hover th {
+    vertical-align: middle;
+    /* py-3 (12px) é o padrão, mas em tr fixo ele age como respiro mínimo */
+  }
+
   .qagrotis-table-row-hover tbody > tr:hover > td,
   .qagrotis-table-row-hover tbody > tr:hover > th {
     background-color: var(--neutral-grey-50) !important;

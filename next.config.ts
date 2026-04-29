@@ -15,6 +15,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   typescript: {
+    // TODO(security/B1): existem erros TS pré-existentes (CenariosClient, ClientesClient,
+    // suites, usuarios, stories) — corrigir e mudar para `false`.
     ignoreBuildErrors: true,
   },
   experimental: {

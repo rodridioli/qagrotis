@@ -3,7 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowDown, ArrowLeft, ArrowUp, Bot, Check, Circle, ClipboardList, Eye, EyeOff, FileDown, GripVertical, LayoutList, Network, Plus, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, Check, Circle, ClipboardList, Eye, EyeOff, FileDown, GripVertical, Network, Plus, Trash2 } from "lucide-react"
+import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
@@ -43,12 +44,10 @@ const RISCO_OPTIONS = [
   { value: "Baixo", label: "Baixo", icon: <ArrowDown className="size-3.5 shrink-0" />,                         color: "#3b82f6" },
 ]
 
-type TabId = "cadastro" | "manual" | "automatizado" | "dependencias"
+type TabId = "caso" | "dependencias"
 
 const TAB_ICONS: Record<TabId, React.ElementType> = {
-  cadastro: LayoutList,
-  manual: ClipboardList,
-  automatizado: Bot,
+  caso: ClipboardList,
   dependencias: Network,
 }
 
@@ -99,7 +98,7 @@ export default function NovoCenarioClient({
   const [scenarioName, setScenarioName] = useState("")
 
   // ── Switches ─────────────────────────────────────────────────────────────────
-  const [manual, setManual] = useState(false)
+  const [manual, setManual] = useState(true)
   const [automatizado, setAutomatizado] = useState(false)
 
   // ── Teste Manual fields ──────────────────────────────────────────────────────
@@ -113,7 +112,6 @@ export default function NovoCenarioClient({
   // ── Credencial (teste automatizado) ─────────────────────────────────────────
   const [credenciais, setCredenciais] = useState<CredencialRecord[]>(initialCredenciais)
   const [credencialId, setCredencialId] = useState("")
-  const [credencialError, setCredencialError] = useState("")
   const [addCredencialOpen, setAddCredencialOpen] = useState(false)
   const [newCredNome, setNewCredNome] = useState("")
   const [newCredUrl, setNewCredUrl] = useState("")
@@ -153,7 +151,7 @@ export default function NovoCenarioClient({
   const [deps, setDeps] = useState<Dep[]>([])
 
   // ── Tab state ────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<TabId>("cadastro")
+  const [activeTab, setActiveTab] = useState<TabId>("caso")
 
   // ── Save state ───────────────────────────────────────────────────────────────
   const [isSaving, startSaveTransition] = useTransition()
@@ -201,31 +199,32 @@ export default function NovoCenarioClient({
     return { items: all.slice(0, DEP_LIMIT), total: all.length }
   }, [allCenarios, depSistema, depModulo, depSearch, existingDepIds])
 
-  // ── Switch toggles — stay on cadastro tab ──────────────────────────────────
+  // ── Switch toggles ────────────────────────────────────────────────────────
   function toggleManual() {
     const next = !manual
-    setManual(next)
-    if (!next) {
-      if (activeTab === "manual") setActiveTab("cadastro")
-      if (!automatizado && activeTab === "dependencias") setActiveTab("cadastro")
+    // Garante ao menos um tipo selecionado
+    if (!next && !automatizado) {
+      toast.error("É obrigatório manter ao menos um tipo selecionado.")
+      return
     }
+    setManual(next)
+    if (!next && !automatizado && activeTab === "dependencias") setActiveTab("caso")
   }
 
   function toggleAutomatizado() {
     const next = !automatizado
-    setAutomatizado(next)
-    if (!next) {
-      if (activeTab === "automatizado") setActiveTab("cadastro")
-      if (!manual && activeTab === "dependencias") setActiveTab("cadastro")
+    if (!next && !manual) {
+      toast.error("É obrigatório manter ao menos um tipo selecionado.")
+      return
     }
+    setAutomatizado(next)
+    if (!next && !manual && activeTab === "dependencias") setActiveTab("caso")
   }
 
   // ── Visible tabs ─────────────────────────────────────────────────────────────
   const visibleTabs: { id: TabId; label: string; shortLabel: string; badge: number | null; disabled?: boolean }[] = [
-    { id: "cadastro",     label: "Cadastro",           shortLabel: "Cadastro",      badge: null },
-    { id: "manual",       label: "Teste Manual",       shortLabel: "Manual",        badge: null, disabled: !manual },
-    { id: "automatizado", label: "Teste Automatizado", shortLabel: "Automatizado",  badge: null, disabled: !automatizado },
-    { id: "dependencias", label: "Dependências",       shortLabel: "Dependências",  badge: deps.length > 0 ? deps.length : null, disabled: !(manual || automatizado) },
+    { id: "caso",         label: "Caso de Teste", shortLabel: "Caso de Teste", badge: null },
+    { id: "dependencias", label: "Dependências",  shortLabel: "Dependências",  badge: deps.length > 0 ? deps.length : null, disabled: !(manual || automatizado) },
   ]
 
   // ── Steps ────────────────────────────────────────────────────────────────────
@@ -233,8 +232,7 @@ export default function NovoCenarioClient({
     const newId = Date.now()
     pendingFocusStepId.current = newId
     setHasSaved(false)
-    // Ensure the automatizado tab is active so the input is visible and focusable
-    setActiveTab("automatizado")
+    setActiveTab("caso")
     setSteps((prev) => [...prev, { id: newId, acao: "", resultado: "" }])
   }
 
@@ -260,30 +258,30 @@ export default function NovoCenarioClient({
 
   // ── Save ─────────────────────────────────────────────────────────────────────
   async function handleSave(): Promise<boolean> {
-    if (!moduloValue) { toast.error("Módulo é obrigatório."); setActiveTab("cadastro"); return false }
-    if (!risco) { toast.error("Risco é obrigatório."); setActiveTab("cadastro"); return false }
-    if (!manual && !automatizado) { toast.error("É obrigatório habilitar pelo menos um tipo: Manual ou Automatizado."); setActiveTab("cadastro"); return false }
-    if (!scenarioName.trim()) { toast.error("Nome do cenário é obrigatório."); setActiveTab(manual ? "manual" : "automatizado"); return false }
+    if (!moduloValue) { toast.error("Módulo é obrigatório."); setActiveTab("caso"); return false }
+    if (!risco) { toast.error("Risco é obrigatório."); setActiveTab("caso"); return false }
+    if (!manual && !automatizado) { toast.error("É obrigatório habilitar pelo menos um tipo: Manual ou Automatizado."); setActiveTab("caso"); return false }
+    if (!scenarioName.trim()) { toast.error("Nome do cenário é obrigatório."); setActiveTab("caso"); return false }
+    if (!descricao.trim()) { toast.error("Descrição é obrigatória."); setActiveTab("caso"); return false }
 
     if (manual) {
-      if (!descricao.trim()) { toast.error("Descrição é obrigatória."); setActiveTab("manual"); return false }
-      if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); setActiveTab("manual"); return false }
+      if (!bdd.trim()) { toast.error("BDD (Gherkin) é obrigatório para Teste Manual."); setActiveTab("caso"); return false }
     }
 
     if (automatizado) {
-      if (!descricao.trim()) { toast.error("Descrição é obrigatória."); setActiveTab("automatizado"); return false }
       if (!credencialId) {
-        setCredencialError("Credenciais é obrigatório.")
-        setActiveTab("automatizado")
+        toast.error("Credenciais é obrigatório.")
+        setActiveTab("caso")
         return false
       }
-      if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); setActiveTab("automatizado"); return false }
       if (steps.filter((s) => s.acao.trim() && s.resultado.trim()).length === 0) {
         toast.error("Adicione pelo menos 1 passo com ação e resultado.")
-        setActiveTab("automatizado")
+        setActiveTab("caso")
         return false
       }
     }
+
+    if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); setActiveTab("caso"); return false }
 
     const tipo: "Manual" | "Automatizado" | "Man./Auto." =
       manual && automatizado ? "Man./Auto." : automatizado ? "Automatizado" : "Manual"
@@ -435,14 +433,12 @@ export default function NovoCenarioClient({
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm">
-          <Link href="/cenarios" className="flex items-center gap-1 text-text-secondary hover:text-brand-primary">
-            <ArrowLeft className="size-4" />
-            Cenários
-          </Link>
-          <span className="text-text-secondary">/</span>
-          <span className="font-medium text-text-primary">Novo Cenário</span>
-        </div>
+        <PageBreadcrumb
+          items={[
+            { label: "Cenários", href: "/cenarios" },
+            { label: "Novo Cenário" },
+          ]}
+        />
         <div className="flex items-center gap-3">
           {showPromptBtn && (
             <Button variant="outline" onClick={exportarPrompt} disabled={isSaving}>
@@ -499,8 +495,9 @@ export default function NovoCenarioClient({
           })}
         </div>
 
-        {/* ── Cadastro tab ── */}
-        <div className={`p-5 space-y-4${activeTab !== "cadastro" ? " hidden" : ""}`}>
+        {/* ── Caso de Teste tab (unificada) ── */}
+        <div className={`p-5 space-y-4${activeTab !== "caso" ? " hidden" : ""}`}>
+          {/* Sistema + Módulo */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
@@ -535,6 +532,7 @@ export default function NovoCenarioClient({
             </div>
           </div>
 
+          {/* Cliente + Risco */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Cliente</label>
@@ -574,9 +572,23 @@ export default function NovoCenarioClient({
             </div>
           </div>
 
-          {/* Tipo de teste — toggle switches */}
+          {/* Cenário */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">
+              Cenário <span className="text-destructive">*</span>
+            </label>
+            <Input
+              value={scenarioName}
+              onChange={(e) => { setScenarioName(e.target.value); setHasSaved(false) }}
+              placeholder="Nome do cenário de teste"
+            />
+          </div>
+
+          {/* Tipo de teste */}
           <div className="rounded-lg border border-border-default bg-neutral-grey-50 p-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-secondary">Tipo de teste</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-secondary">
+              Tipo de teste <span className="text-destructive">*</span>
+            </p>
             <div className="flex flex-wrap items-center gap-6">
               {[
                 { label: "Manual", checked: manual, toggle: toggleManual, id: "switch-manual" },
@@ -602,61 +614,53 @@ export default function NovoCenarioClient({
               ))}
             </div>
             {!manual && !automatizado && (
-              <p className="mt-2 text-xs text-text-secondary">
-                Habilite pelo menos um tipo para continuar.
+              <p className="mt-2 text-xs text-destructive">
+                Selecione ao menos um tipo (Manual ou Automatizado).
               </p>
             )}
           </div>
-        </div>
 
-        {/* ── Teste Manual tab ── */}
-        {manual && (
-          <div className={`p-5 space-y-4${activeTab !== "manual" ? " hidden" : ""}`}>
+          {/* Descrição */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">
+              Descrição <span className="text-destructive">*</span>
+            </label>
+            <AutoResizeTextarea
+              value={descricao}
+              onChange={(e) => { setDescricao(e.target.value); setHasSaved(false) }}
+              placeholder="Descrição do cenário de teste..."
+              className="min-h-[100px]"
+            />
+          </div>
+
+          {/* Regra de Negócio */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">Regra de Negócio</label>
+            <AutoResizeTextarea
+              value={regraDeNegocio}
+              onChange={(e) => setRegraDeNegocio(e.target.value)}
+              placeholder="Descreva a regra de negócio..."
+              className="min-h-[100px]"
+            />
+          </div>
+
+          {/* Pré-condições */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">Pré-condições</label>
+            <AutoResizeTextarea
+              value={preCondicoes}
+              onChange={(e) => { setPreCondicoes(e.target.value); setHasSaved(false) }}
+              placeholder="Pré-condições necessárias..."
+              className="min-h-[100px]"
+            />
+          </div>
+
+          {/* BDD (obrigatório quando Manual) */}
+          {manual && (
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
-                Cenário <span className="text-destructive">*</span>
+                BDD (Gherkin) <span className="text-destructive">*</span>
               </label>
-              <Input
-                value={scenarioName}
-                onChange={(e) => { setScenarioName(e.target.value); setHasSaved(false) }}
-                placeholder="Nome do cenário de teste"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                Descrição <span className="text-destructive">*</span>
-              </label>
-              <AutoResizeTextarea
-                value={descricao}
-                onChange={(e) => { setDescricao(e.target.value); setHasSaved(false) }}
-                placeholder="Descrição do cenário de teste..."
-                className="min-h-[100px]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Regra de Negócio</label>
-              <AutoResizeTextarea
-                value={regraDeNegocio}
-                onChange={(e) => setRegraDeNegocio(e.target.value)}
-                placeholder="Descreva a regra de negócio..."
-                className="min-h-[100px]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Pré-condições</label>
-              <AutoResizeTextarea
-                value={preCondicoes}
-                onChange={(e) => setPreCondicoes(e.target.value)}
-                placeholder="Pré-condições necessárias..."
-                className="min-h-[100px]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">BDD (Gherkin)</label>
               <AutoResizeTextarea
                 value={bdd}
                 onChange={(e) => setBdd(e.target.value)}
@@ -664,186 +668,131 @@ export default function NovoCenarioClient({
                 className="min-h-[100px]"
               />
             </div>
+          )}
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                Resultado Esperado <span className="text-destructive">*</span>
-              </label>
-              <AutoResizeTextarea
-                value={resultadoEsperado}
-                onChange={(e) => setResultadoEsperado(e.target.value)}
-                placeholder="Descreva o resultado esperado..."
-                className="min-h-[100px]"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ── Teste Automatizado tab ── */}
-        {automatizado && (
-          <div className={`p-5 space-y-5${activeTab !== "automatizado" ? " hidden" : ""}`}>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                Cenário <span className="text-destructive">*</span>
-              </label>
-              <Input
-                value={scenarioName}
-                onChange={(e) => { setScenarioName(e.target.value); setHasSaved(false) }}
-                placeholder="Nome do cenário de teste"
-              />
-            </div>
-
-            {/* Credentials */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                Credenciais <span className="text-destructive">*</span>
-              </label>
-              <CredencialCombobox
-                credenciais={credenciais}
-                value={credencialId}
-                onChange={(v) => {
-                  setCredencialId(v)
-                  setHasSaved(false)
-                  if (v) setCredencialError("")
-                }}
-                onAddCredencial={() => setAddCredencialOpen(true)}
-              />
-              {credencialError && (
-                <p className="text-sm text-destructive" role="alert">{credencialError}</p>
-              )}
-            </div>
-
-            <div className="border-t border-border-default" />
-
-            {/* Descrição (mesmo estado que Teste Manual) */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                Descrição <span className="text-destructive">*</span>
-              </label>
-              <AutoResizeTextarea
-                value={descricao}
-                onChange={(e) => { setDescricao(e.target.value); setHasSaved(false) }}
-                placeholder="Descrição do cenário de teste..."
-                className="min-h-[100px]"
-              />
-            </div>
-
-            {/* Pré-condições */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Pré-condições</label>
-              <AutoResizeTextarea
-                value={preCondicoes}
-                onChange={(e) => { setPreCondicoes(e.target.value); setHasSaved(false) }}
-                placeholder="Pré-condições necessárias..."
-                className="min-h-[100px]"
-              />
-            </div>
-
-            {/* Passo a passo */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-                  Passo a passo <span className="text-destructive">*</span>
-                </h3>
-                <Button variant="outline" size="sm" onClick={addStepRow}>
-                  <Plus className="size-4" />
-                  Adicionar passo
-                </Button>
+          {/* Bloco automatizado: Credencial, Passo a Passo, URL do Script */}
+          {automatizado && (
+            <>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">
+                  Credencial <span className="text-destructive">*</span>
+                </label>
+                <CredencialCombobox
+                  credenciais={credenciais}
+                  value={credencialId}
+                  onChange={(v) => {
+                    setCredencialId(v)
+                    setHasSaved(false)
+                  }}
+                  onAddCredencial={() => setAddCredencialOpen(true)}
+                />
               </div>
-              {steps.length === 0 ? (
-                <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
-                  Nenhum passo adicionado.
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+                    Passo a passo <span className="text-destructive">*</span>
+                  </h3>
+                  <Button variant="outline" size="sm" onClick={addStepRow}>
+                    <Plus className="size-4" />
+                    Adicionar passo
+                  </Button>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="qagrotis-table-row-hover w-full border-collapse text-sm">
-                    <thead>
-                      <tr className="border-b border-border-default">
-                        <th className="w-8 py-2" />
-                        <th className="w-8 py-2 text-left text-xs font-semibold text-text-secondary">#</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-text-secondary">Ação</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-text-secondary">Resultado esperado</th>
-                        <th className="w-8 py-2" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {steps.map((s, idx) => (
-                        <tr
-                          key={s.id}
-                          onDragOver={(e) => handleStepDragOver(e, s.id)}
-                          className="group border-b border-border-default last:border-0"
-                        >
-                          <td
-                            draggable
-                            onDragStart={() => { draggedStepId.current = s.id }}
-                            onDragEnd={() => { draggedStepId.current = null }}
-                            className="cursor-grab py-1.5 pr-1 active:cursor-grabbing"
-                          >
-                            <GripVertical className="size-4 text-text-secondary opacity-40 transition-opacity group-hover:opacity-100" />
-                          </td>
-                          <td className="w-8 py-1.5 text-xs font-medium text-text-secondary">{idx + 1}</td>
-                          <td className="px-2 py-1.5" onMouseDown={(e) => e.stopPropagation()}>
-                            <Input
-                              ref={(el) => { stepInputRefs.current[s.id] = el }}
-                              value={s.acao}
-                              onChange={(e) => updateStep(s.id, "acao", e.target.value)}
-                              placeholder="Descreva a ação..."
-                            />
-                          </td>
-                          <td className="px-2 py-1.5" onMouseDown={(e) => e.stopPropagation()}>
-                            <Input
-                              value={s.resultado}
-                              onChange={(e) => updateStep(s.id, "resultado", e.target.value)}
-                              placeholder="Resultado esperado..."
-                            />
-                          </td>
-                          <td className="py-1.5 pl-1">
-                            <button
-                              type="button"
-                              onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
-                              className="flex size-7 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90"
-                            >
-                              <Trash2 className="size-4" style={{ color: "white" }} />
-                            </button>
-                          </td>
+                {steps.length === 0 ? (
+                  <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
+                    Nenhum passo adicionado.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="qagrotis-table-row-hover w-full border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-border-default">
+                          <th className="w-8 py-2" />
+                          <th className="w-8 py-2 text-left text-xs font-semibold text-text-secondary">#</th>
+                          <th className="px-2 py-2 text-left text-xs font-semibold text-text-secondary">Ação</th>
+                          <th className="px-2 py-2 text-left text-xs font-semibold text-text-secondary">Resultado esperado</th>
+                          <th className="w-8 py-2" />
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                      </thead>
+                      <tbody>
+                        {steps.map((s, idx) => (
+                          <tr
+                            key={s.id}
+                            onDragOver={(e) => handleStepDragOver(e, s.id)}
+                            className="group border-b border-border-default last:border-0"
+                          >
+                            <td
+                              draggable
+                              onDragStart={() => { draggedStepId.current = s.id }}
+                              onDragEnd={() => { draggedStepId.current = null }}
+                              className="cursor-grab py-1.5 pr-1 active:cursor-grabbing"
+                            >
+                              <GripVertical className="size-4 text-text-secondary opacity-40 transition-opacity group-hover:opacity-100" />
+                            </td>
+                            <td className="w-8 py-1.5 text-xs font-medium text-text-secondary">{idx + 1}</td>
+                            <td className="px-2 py-1.5" onMouseDown={(e) => e.stopPropagation()}>
+                              <Input
+                                ref={(el) => { stepInputRefs.current[s.id] = el }}
+                                value={s.acao}
+                                onChange={(e) => updateStep(s.id, "acao", e.target.value)}
+                                placeholder="Descreva a ação..."
+                              />
+                            </td>
+                            <td className="px-2 py-1.5" onMouseDown={(e) => e.stopPropagation()}>
+                              <Input
+                                value={s.resultado}
+                                onChange={(e) => updateStep(s.id, "resultado", e.target.value)}
+                                placeholder="Resultado esperado..."
+                              />
+                            </td>
+                            <td className="py-1.5 pl-1 text-right">
+                              <button
+                                type="button"
+                                onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
+                                className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                aria-label="Remover passo"
+                              >
+                                <Trash2 className="size-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
 
-            {/* Resultado Esperado */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">
-                Resultado Esperado <span className="text-destructive">*</span>
-              </label>
-              <AutoResizeTextarea
-                value={resultadoEsperado}
-                onChange={(e) => { setResultadoEsperado(e.target.value); setHasSaved(false) }}
-                onKeyDown={(e) => {
-                  if (e.key === "Tab" && !e.shiftKey) {
-                    e.preventDefault()
-                    addStepRow()
-                  }
-                }}
-                placeholder="Descreva o resultado esperado do teste automatizado..."
-                className="min-h-[100px]"
-              />
-            </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">URL do Script</label>
+                <Input
+                  value={urlScript}
+                  onChange={(e) => { setUrlScript(e.target.value); setHasSaved(false) }}
+                  placeholder="https://github.com/..."
+                />
+              </div>
+            </>
+          )}
 
-            {/* URL do Script */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">URL do Script</label>
-              <Input
-                value={urlScript}
-                onChange={(e) => { setUrlScript(e.target.value); setHasSaved(false) }}
-                placeholder="https://github.com/..."
-              />
-            </div>
+          {/* Resultado Esperado */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">
+              Resultado Esperado <span className="text-destructive">*</span>
+            </label>
+            <AutoResizeTextarea
+              value={resultadoEsperado}
+              onChange={(e) => { setResultadoEsperado(e.target.value); setHasSaved(false) }}
+              onKeyDown={(e) => {
+                if (automatizado && e.key === "Tab" && !e.shiftKey) {
+                  e.preventDefault()
+                  addStepRow()
+                }
+              }}
+              placeholder="Descreva o resultado esperado..."
+              className="min-h-[100px]"
+            />
           </div>
-        )}
+        </div>
 
         {/* ── Dependências tab ── */}
         {(manual || automatizado) && (
@@ -866,11 +815,11 @@ export default function NovoCenarioClient({
                   </colgroup>
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
+                      <th className="w-24 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
+                      <th className="w-32 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                      <th className="w-36 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
+                      <th className="w-32 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>

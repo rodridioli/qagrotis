@@ -318,13 +318,13 @@ const showBulkActions = !filters.apenasInativos
                       </button>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Suíte</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Versão</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Testes</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Automação</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Erros</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">CT</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Situação</th>
+                    <th className="w-32 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Versão</th>
+                    <th className="w-40 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
+                    <th className="w-24 whitespace-nowrap px-4 py-3 text-center text-xs font-semibold text-text-secondary">Testes</th>
+                    <th className="w-32 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Automação</th>
+                    <th className="w-24 whitespace-nowrap px-4 py-3 text-center text-xs font-semibold text-text-secondary">Erros</th>
+                    <th className="w-24 whitespace-nowrap px-4 py-3 text-center text-xs font-semibold text-text-secondary">CT</th>
+                    <th className="w-32 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Situação</th>
                     <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
                   </tr>
                 </thead>

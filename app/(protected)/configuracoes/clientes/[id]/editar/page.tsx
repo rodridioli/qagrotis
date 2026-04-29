@@ -1,3 +1,5 @@
+export const metadata = { title: "Editar cliente" }
+
 import { notFound } from "next/navigation"
 import { getCliente } from "@/lib/actions/clientes"
 import EditarClienteClient from "./EditarClienteClient"

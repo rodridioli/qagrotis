@@ -1,8 +1,10 @@
 "use client"
 
-import React, { useRef } from "react"
+import React, { useRef, useState } from "react"
 import Image from "next/image"
 import { CloudUpload, Trash2 } from "lucide-react"
+import { toast } from "sonner"
+import { PhotoCropModal } from "./PhotoCropModal"
 
 interface PhotoUploadProps {
   preview: string | null
@@ -10,15 +12,38 @@ interface PhotoUploadProps {
   onRemove: () => void
 }
 
+const TARGET_SIZE = 400
+const ACCEPTED_MIMES = ["image/jpeg", "image/png"]
+
 export function PhotoUpload({ preview, onFileSelect, onRemove }: PhotoUploadProps) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const [cropFile, setCropFile] = useState<File | null>(null)
+  const [cropOpen, setCropOpen] = useState(false)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
-    onFileSelect(file)
-    // Reset input so the same file can be re-selected
     e.target.value = ""
+    if (!file) return
+    if (!ACCEPTED_MIMES.includes(file.type)) {
+      toast.error("Use uma imagem JPG ou PNG.")
+      return
+    }
+    const url = URL.createObjectURL(file)
+    const img = new window.Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      if (img.naturalWidth === TARGET_SIZE && img.naturalHeight === TARGET_SIZE) {
+        onFileSelect(file)
+      } else {
+        setCropFile(file)
+        setCropOpen(true)
+      }
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      toast.error("Não foi possível ler a imagem.")
+    }
+    img.src = url
   }
 
   return (
@@ -26,7 +51,7 @@ export function PhotoUpload({ preview, onFileSelect, onRemove }: PhotoUploadProp
       <input
         ref={fileRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png"
         className="hidden"
         onChange={handleChange}
       />
@@ -57,10 +82,17 @@ export function PhotoUpload({ preview, onFileSelect, onRemove }: PhotoUploadProp
           <CloudUpload className="size-8" />
           <div className="text-center">
             <p className="text-sm font-medium">Upload de imagem</p>
-            <p className="text-xs">PNG, JPG até 5MB</p>
+            <p className="text-xs">JPG ou PNG · 400×400 px</p>
           </div>
         </button>
       )}
+
+      <PhotoCropModal
+        file={cropFile}
+        open={cropOpen}
+        onOpenChange={(o) => { setCropOpen(o); if (!o) setCropFile(null) }}
+        onConfirm={(cropped) => onFileSelect(cropped)}
+      />
     </>
   )
 }

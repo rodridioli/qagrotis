@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache"
 import { getSistemas } from "@/lib/actions/sistemas"
-import { getIntegracoes } from "@/lib/actions/integracoes"
+import { getIntegracoesSafe } from "@/lib/actions/integracoes"
 import { getModulos } from "@/lib/actions/modulos"
 
 // Cache tag used to invalidate menu data when systems/integracoes change
@@ -10,7 +10,7 @@ export const getLayoutMenuData = unstable_cache(
   async () => {
     const [sistemas, integracoes, modulos] = await Promise.all([
       getSistemas(),
-      getIntegracoes(),
+      getIntegracoesSafe(),
       getModulos(),
     ])
     const sistemaNames = sistemas.filter((s) => s.active).map((s) => s.name)

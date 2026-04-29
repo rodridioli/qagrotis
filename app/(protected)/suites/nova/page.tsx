@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic"
+export const metadata = { title: "Nova suíte" }
 
 import { Suspense } from "react"
 

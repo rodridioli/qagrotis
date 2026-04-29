@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic"
+export const metadata = { title: "Credenciais" }
 
 import { getCredenciais } from "@/lib/actions/credenciais"
 import { CredenciaisClient } from "./CredenciaisClient"

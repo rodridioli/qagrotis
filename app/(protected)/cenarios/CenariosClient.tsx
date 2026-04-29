@@ -451,11 +451,11 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
                       </button>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cenário</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cliente</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Testes</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary">Erros</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                    <th className="w-40 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Módulo</th>
+                    <th className="w-40 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cliente</th>
+                    <th className="w-24 whitespace-nowrap px-4 py-3 text-center text-xs font-semibold text-text-secondary">Testes</th>
+                    <th className="w-24 whitespace-nowrap px-4 py-3 text-center text-xs font-semibold text-text-secondary">Erros</th>
+                    <th className="w-32 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
                     <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
                   </tr>
                 </thead>

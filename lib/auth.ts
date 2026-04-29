@@ -139,11 +139,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       } else if (user) {
         token.id = user.id
       }
+
+      // Enriquecer com type + accessProfile (RBAC).
+      // Lê em toda chamada para refletir mudanças sem exigir relogin.
+      if (token.id || token.email) {
+        const prisma = await getPrisma()
+        const userId = token.id as string | undefined
+        const email = (token.email as string | undefined)?.trim().toLowerCase()
+        const profile = userId
+          ? await prisma.userProfile.findUnique({
+              where: { userId },
+              select: { type: true, accessProfile: true },
+            })
+          : null
+        const created = email
+          ? await prisma.createdUser.findFirst({
+              where: { email: { equals: email, mode: "insensitive" } },
+              select: { type: true, accessProfile: true },
+            })
+          : null
+        const resolvedType = profile?.type ?? created?.type ?? "Padrão"
+        const resolvedProfile = profile?.accessProfile ?? created?.accessProfile ?? "QA"
+        token.type = resolvedType === "Administrador" ? "Administrador" : "Padrão"
+        token.accessProfile = resolvedProfile as "QA" | "UX" | "TW" | "MGR"
+      }
       return token
     },
     session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string
+      }
+      if (session.user) {
+        session.user.type = token.type
+        session.user.accessProfile = token.accessProfile
       }
       return session
     },
