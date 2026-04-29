@@ -56,7 +56,7 @@ export function PhotoUpload({ preview, onFileSelect, onRemove }: PhotoUploadProp
         onChange={handleChange}
       />
       {preview ? (
-        <div className="relative flex h-48 w-full shrink-0 items-center justify-center">
+        <div className="relative flex h-64 w-full shrink-0 items-center justify-center sm:h-72">
           <div className="relative aspect-square h-full max-h-full w-auto max-w-full">
             <div className="absolute inset-0 overflow-hidden rounded-full border border-border-default shadow-sm">
               <Image
@@ -65,7 +65,7 @@ export function PhotoUpload({ preview, onFileSelect, onRemove }: PhotoUploadProp
                 fill
                 unoptimized
                 className="object-cover"
-                sizes="256px"
+                sizes="(max-width: 640px) 100vw, 288px"
               />
             </div>
             <button
@@ -82,7 +82,7 @@ export function PhotoUpload({ preview, onFileSelect, onRemove }: PhotoUploadProp
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="flex h-48 w-full flex-col items-center justify-center gap-3 rounded-custom border-2 border-dashed border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100"
+          className="flex h-64 w-full flex-col items-center justify-center gap-3 rounded-custom border-2 border-dashed border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100 sm:h-72"
         >
           <CloudUpload className="size-8" />
           <div className="text-center">
