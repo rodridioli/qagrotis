@@ -8,6 +8,8 @@ declare module "next-auth" {
       name?: string | null
       email?: string | null
       image?: string | null
+      /** Foto do perfil QA (upload / URL); espelha o token JWT. */
+      photoPath?: string | null
       plan?: Plan
       type?: UserType
       accessProfile?: AccessProfile
@@ -29,5 +31,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     type?: UserType
     accessProfile?: AccessProfile
+    photoPath?: string | null
   }
 }

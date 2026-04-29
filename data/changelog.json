@@ -1,5 +1,87 @@
 [
   {
+    "version": "1.6.24",
+    "commit": "deploy-vercel",
+    "date": "2026-04-29",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Individual: abas por seção (Ficha, Domínio, Férias, etc.), sem breadcrumb duplicado; MGR seleciona colaborador por avatares com `userId` na URL",
+      "`/individual` redireciona para `/individual/ficha` mantendo filtros; faixa de avatares alinhada à esquerda",
+      "Usuários: filtro por perfil (admin), perfil travado na edição para não-admin, fluxo de foto com preview circular, área maior e botão remover visível",
+      "RBAC: itens de menu não permitidos ao perfil MGR ficam ocultos (Feedbacks, Avaliações, PDI, Domínio)",
+      "Breadcrumbs padronizados no app; remoção da aba Progressão no formulário novo/editar de usuário; ajustes de largura nas abas Individual",
+      "Correções em leitura/patch de perfil (cargo) e leve limpeza de repositório"
+    ]
+  },
+  {
+    "version": "1.6.23",
+    "commit": "deploy-vercel",
+    "date": "2026-04-28",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Tarefas (admin Jira): filtros de status e assignee via JQL na URL, JQL com ORDER BY correto, paginação alinhada ao total retornado",
+      "Suspense nos filtros de tarefas, push de URL sem transition engasgada, lista visível mesmo com zero resultados",
+      "Migração da busca Jira para `/rest/api/3/search/jql` e UX da listagem com filtros",
+      "Gerador/Gemini: fallbacks automáticos em 429, tentativa de todos os modelos fallback, remoção de `systemInstruction` incompatível",
+      "Integrações: normalização de provider e menos erros 422 no Gemini"
+    ]
+  },
+  {
+    "version": "1.6.22",
+    "commit": "deploy-vercel",
+    "date": "2026-04-25",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Command Bar (Ctrl+K): busca real no banco, sugestões categorizadas e iterações de estabilidade (contexto sistema/módulos, módulo Cliente)",
+      "Assistente contextual e sugestões no gerador; remoção da barra de comando com voz após experimentação",
+      "Renomeio de “Assistente de IA” para “Central de Ajuda”; script de baseline de migrações Prisma para deploy (P3005)",
+      "Revert da proposta de PageAssistant contextual"
+    ]
+  },
+  {
+    "version": "1.6.21",
+    "commit": "deploy-vercel",
+    "date": "2026-04-24",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Segurança: criptografia AES-256-GCM, correção de IDOR e endurecimento geral",
+      "Dashboard: bloco Alertas, ranking de execuções com título “Testes: [total]”, ajustes de layout e totais",
+      "Evidências: vídeo/PDF, armazenamento grande em IndexedDB, toasts de erro; histórico por execução e upload Jira",
+      "Suítes: alerta no histórico, referência na UI/Jira, export Markdown; importação de cenários (credencial, passos, suite)",
+      "Modal de avaliações na equipe; import Markdown com fixtures; diversas correções de credenciais e URLs QA"
+    ]
+  },
+  {
+    "version": "1.6.20",
+    "commit": "deploy-vercel",
+    "date": "2026-04-23",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Equipe — Chapters: modal com múltiplos autores, fotos, data de evento livre, ranking top 10 com paginação e coluna de avaliação",
+      "Equipe — Performance: ranking padronizado, autores inativos no histórico, criação de tabelas em runtime quando necessário",
+      "Jira: credenciais por usuário na base, fallback de cookies se migração ausente, export sem fences problemáticos",
+      "Changelog incluído no fluxo de build/deploy e cabeçalhos de cache em `/atualizacoes`",
+      "Usuários: listagem só ativos por padrão; dias da semana no modo Híbrido; melhorias em horários e aniversários"
+    ]
+  },
+  {
+    "version": "1.6.19",
+    "commit": "deploy-vercel",
+    "date": "2026-04-22",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "Equipe: aniversários agrupados por mês; filtro de cenários e percentual de automação respeitando o período selecionado",
+      "Usuários e equipe: coluna Cargo, formato de trabalho com três opções, abas e validações alinhadas ao cadastro",
+      "Ajustes de UI (calendário em data de nascimento, tabelas); disparo de redeploy Vercel para refletir layout"
+    ]
+  },
+  {
     "version": "1.6.18",
     "commit": "deploy-vercel",
     "date": "2026-04-19",

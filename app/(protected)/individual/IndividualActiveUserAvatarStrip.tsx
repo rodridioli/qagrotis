@@ -28,7 +28,7 @@ export function IndividualActiveUserAvatarStrip({ secao, users, selectedUserId }
 
   return (
     <div
-      className="flex flex-wrap items-center justify-center gap-y-2 pl-2"
+      className="flex w-full flex-wrap items-center justify-start gap-y-2 pl-2"
       role="toolbar"
       aria-label="Selecionar usuário para visualizar dados"
     >

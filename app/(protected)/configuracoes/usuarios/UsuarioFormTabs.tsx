@@ -25,6 +25,7 @@ import {
   type DiaSemanaHibridoId,
 } from "@/lib/usuario-trabalho"
 import { toast } from "sonner"
+import { useSession } from "next-auth/react"
 import { ACCESS_PROFILES, type AccessProfile } from "@/lib/rbac/policy"
 
 interface UsuarioFormTabsProps {
@@ -43,6 +44,7 @@ export default function UsuarioFormTabs({
   sessionUser,
 }: UsuarioFormTabsProps) {
   const router = useRouter()
+  const { update: updateSession } = useSession()
   const [isPending, startTransition] = useTransition()
   const [activeTab, setActiveTab] = useState<"cadastro" | "endereco" | "formacao">("cadastro")
 
@@ -186,6 +188,7 @@ export default function UsuarioFormTabs({
         }
         await handlePhotoUpload(userId!)
         toast.success("Usuário atualizado.")
+        if (sessionUser?.id === userId) await updateSession()
         router.refresh()
       }
     })

@@ -5,7 +5,6 @@ import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
 import { getActiveQaUsers } from "@/lib/actions/usuarios"
-import { IndividualSectionTabs } from "@/components/individual/IndividualSectionTabs"
 
 export default async function IndividualPage({
   searchParams,
@@ -22,7 +21,7 @@ export default async function IndividualPage({
   const { userId: requestedUserId } = await searchParams
 
   if (!canViewOthers && requestedUserId) {
-    redirect("/individual")
+    redirect("/individual/ficha")
   }
 
   const activeUsers = canViewOthers
@@ -33,16 +32,12 @@ export default async function IndividualPage({
   if (canViewOthers && activeUsers.length > 0) {
     const ids = new Set(activeUsers.map((u) => u.id))
     if (!requestedUserId || !ids.has(requestedUserId)) {
-      redirect(`/individual?userId=${encodeURIComponent(activeUsers[0].id)}`)
+      redirect(`/individual/ficha?userId=${encodeURIComponent(activeUsers[0].id)}`)
     }
     querySuffix = `?userId=${encodeURIComponent(requestedUserId)}`
   } else if (canViewOthers && requestedUserId) {
-    redirect("/individual")
+    redirect("/individual/ficha")
   }
 
-  return (
-    <div className="flex flex-col gap-6">
-      <IndividualSectionTabs querySuffix={querySuffix} />
-    </div>
-  )
+  redirect(`/individual/ficha${querySuffix}`)
 }

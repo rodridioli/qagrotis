@@ -140,28 +140,45 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id
       }
 
-      // Enriquecer com type + accessProfile (RBAC).
+      // Enriquecer com type + accessProfile (RBAC) e foto do perfil.
       // Lê em toda chamada para refletir mudanças sem exigir relogin.
       if (token.id || token.email) {
         const prisma = await getPrisma()
         const userId = token.id as string | undefined
         const email = (token.email as string | undefined)?.trim().toLowerCase()
-        const profile = userId
-          ? await prisma.userProfile.findUnique({
-              where: { userId },
-              select: { type: true, accessProfile: true },
-            })
-          : null
-        const created = email
-          ? await prisma.createdUser.findFirst({
-              where: { email: { equals: email, mode: "insensitive" } },
-              select: { type: true, accessProfile: true },
-            })
-          : null
+
+        const [profile, createdById, oauthUser] = await Promise.all([
+          userId
+            ? prisma.userProfile.findUnique({
+                where: { userId },
+                select: { type: true, accessProfile: true, photoPath: true },
+              })
+            : Promise.resolve(null),
+          userId
+            ? prisma.createdUser.findUnique({
+                where: { id: userId },
+                select: { type: true, accessProfile: true, photoPath: true },
+              })
+            : Promise.resolve(null),
+          userId
+            ? prisma.user.findUnique({ where: { id: userId }, select: { image: true } })
+            : Promise.resolve(null),
+        ])
+
+        let created = createdById
+        if (!created && email) {
+          created = await prisma.createdUser.findFirst({
+            where: { email: { equals: email, mode: "insensitive" } },
+            select: { type: true, accessProfile: true, photoPath: true },
+          })
+        }
+
         const resolvedType = profile?.type ?? created?.type ?? "Padrão"
         const resolvedProfile = profile?.accessProfile ?? created?.accessProfile ?? "QA"
         token.type = resolvedType === "Administrador" ? "Administrador" : "Padrão"
         token.accessProfile = resolvedProfile as "QA" | "UX" | "TW" | "MGR"
+        token.photoPath =
+          profile?.photoPath ?? created?.photoPath ?? oauthUser?.image ?? null
       }
       return token
     },
@@ -172,6 +189,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.type = token.type
         session.user.accessProfile = token.accessProfile
+        session.user.photoPath = (token.photoPath as string | null | undefined) ?? null
       }
       return session
     },

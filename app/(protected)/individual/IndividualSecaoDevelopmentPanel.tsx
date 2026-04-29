@@ -14,7 +14,7 @@ export function IndividualSecaoDevelopmentPanel({
   selectedUserId,
 }: Props) {
   return (
-    <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center gap-8">
+    <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-stretch gap-8">
       {users.length > 0 ? (
         <IndividualActiveUserAvatarStrip secao={secao} users={users} selectedUserId={selectedUserId} />
       ) : null}

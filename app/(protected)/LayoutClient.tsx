@@ -376,6 +376,11 @@ const Topbar = React.memo(function Topbar({
       .map((n) => n[0])
       .join("")
       .toUpperCase() || "QA"
+  const photoPath = sessionForUi?.user?.photoPath ?? null
+  const [avatarFailed, setAvatarFailed] = useState(false)
+  useEffect(() => {
+    setAvatarFailed(false)
+  }, [photoPath])
   const internalId = sessionForUi?.user?.id
   const profileHref = internalId
     ? `/configuracoes/usuarios/${internalId}/editar`
@@ -454,9 +459,21 @@ const Topbar = React.memo(function Topbar({
           href={profileHref}
           title="Editar meu perfil"
           aria-label="Meu Perfil"
-          className="hidden size-8 items-center justify-center rounded-full bg-brand-primary text-xs font-semibold text-white transition-opacity hover:opacity-80 sm:flex"
+          className="relative hidden size-8 shrink-0 overflow-hidden rounded-full transition-opacity hover:opacity-80 sm:flex"
         >
-          {initials}
+          {photoPath && !avatarFailed ? (
+            // eslint-disable-next-line @next/next/no-img-element -- data URLs + URLs dinâmicas do perfil
+            <img
+              src={photoPath}
+              alt=""
+              className="size-full object-cover"
+              onError={() => setAvatarFailed(true)}
+            />
+          ) : (
+            <span className="flex size-full items-center justify-center bg-brand-primary text-xs font-semibold text-white">
+              {initials}
+            </span>
+          )}
         </Link>
       </div>
     </header>
