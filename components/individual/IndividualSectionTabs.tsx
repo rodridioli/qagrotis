@@ -3,16 +3,42 @@
 import type { ElementType } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Target, ClipboardCheck, MessageSquare, Award, TrendingUp } from "lucide-react"
+import {
+  IdCard,
+  Target,
+  Calendar,
+  CalendarX,
+  ClipboardCheck,
+  MessageSquare,
+  Award,
+  TrendingUp,
+  LineChart,
+} from "lucide-react"
+import {
+  INDIVIDUAL_SECTION_LABELS,
+  INDIVIDUAL_SECTION_ORDER,
+  type IndividualSectionSlug,
+} from "@/lib/individual-sections"
 import { cn } from "@/lib/utils"
 
-const SECTIONS: { href: string; label: string; icon: ElementType }[] = [
-  { href: "dominio", icon: Target, label: "Domínio" },
-  { href: "avaliacoes", icon: ClipboardCheck, label: "Avaliações" },
-  { href: "feedbacks", icon: MessageSquare, label: "Feedbacks" },
-  { href: "conquistas", icon: Award, label: "Conquistas" },
-  { href: "pdi", icon: TrendingUp, label: "PDI" },
-]
+const ICONS: Record<IndividualSectionSlug, ElementType> = {
+  ficha: IdCard,
+  dominio: Target,
+  ferias: Calendar,
+  ausencias: CalendarX,
+  avaliacoes: ClipboardCheck,
+  feedbacks: MessageSquare,
+  conquistas: Award,
+  pdi: TrendingUp,
+  progressao: LineChart,
+}
+
+const SECTIONS: { href: IndividualSectionSlug; label: string; icon: ElementType }[] =
+  INDIVIDUAL_SECTION_ORDER.map((href) => ({
+    href,
+    label: INDIVIDUAL_SECTION_LABELS[href],
+    icon: ICONS[href],
+  }))
 
 export interface IndividualSectionTabsPresentationProps {
   pathname: string

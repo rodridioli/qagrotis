@@ -14,11 +14,13 @@ export function IndividualSecaoDevelopmentPanel({
   selectedUserId,
 }: Props) {
   return (
-    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-8 rounded-xl bg-surface-card p-8 shadow-card">
+    <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center gap-8">
       {users.length > 0 ? (
         <IndividualActiveUserAvatarStrip secao={secao} users={users} selectedUserId={selectedUserId} />
       ) : null}
-      <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>
+      <div className="flex w-full flex-1 flex-col items-center justify-center py-16">
+        <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>
+      </div>
     </div>
   )
 }

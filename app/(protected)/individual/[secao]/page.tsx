@@ -5,17 +5,9 @@ import { auth } from "@/lib/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
 import { getActiveQaUsers } from "@/lib/actions/usuarios"
 import { serializeRscProps } from "@/lib/rsc-serialize"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { IndividualSecaoDevelopmentPanel } from "../IndividualSecaoDevelopmentPanel"
 import { IndividualSectionTabs } from "@/components/individual/IndividualSectionTabs"
-
-const SECTION_LABELS: Record<string, string> = {
-  dominio: "Domínio",
-  avaliacoes: "Avaliações",
-  feedbacks: "Feedbacks",
-  conquistas: "Conquistas",
-  pdi: "PDI",
-}
+import { individualSectionLabel, isIndividualSectionSlug } from "@/lib/individual-sections"
 
 export async function generateMetadata({
   params,
@@ -23,7 +15,7 @@ export async function generateMetadata({
   params: Promise<{ secao: string }>
 }) {
   const { secao } = await params
-  const label = SECTION_LABELS[secao]
+  const label = isIndividualSectionSlug(secao) ? individualSectionLabel(secao) : undefined
   return { title: label ? `Individual — ${label}` : "Individual" }
 }
 
@@ -35,8 +27,7 @@ export default async function IndividualSecaoPage({
   searchParams: Promise<{ userId?: string }>
 }) {
   const { secao } = await params
-  const label = SECTION_LABELS[secao]
-  if (!label) notFound()
+  if (!isIndividualSectionSlug(secao)) notFound()
 
   const session = await auth()
   if (!session?.user) redirect("/login")
@@ -56,7 +47,6 @@ export default async function IndividualSecaoPage({
     : []
 
   let targetUserId = session.user.id
-  let targetUserName: string | null = null
 
   if (canViewOthers && activeUsers.length > 0) {
     const ids = new Set(activeUsers.map((u) => u.id))
@@ -64,20 +54,12 @@ export default async function IndividualSecaoPage({
       redirect(`/individual/${secao}?userId=${encodeURIComponent(activeUsers[0].id)}`)
     }
     targetUserId = requestedUserId
-    targetUserName = activeUsers.find((u) => u.id === requestedUserId)?.name ?? null
   } else if (canViewOthers && activeUsers.length === 0 && requestedUserId) {
     redirect(`/individual/${secao}`)
   }
 
   const showMgrUserFilter = canViewOthers && activeUsers.length > 0
   const querySuffix = showMgrUserFilter ? `?userId=${encodeURIComponent(targetUserId)}` : ""
-  const backHref = `/individual${querySuffix}`
-
-  const breadcrumbItems = [
-    { label: "Individual", href: backHref },
-    ...(showMgrUserFilter && targetUserName ? [{ label: targetUserName }] : []),
-    { label },
-  ]
 
   const avatarUsers = serializeRscProps(
     activeUsers.map((u) => ({ id: u.id, name: u.name, photoPath: u.photoPath })),
@@ -85,14 +67,12 @@ export default async function IndividualSecaoPage({
 
   return (
     <div className="space-y-4">
-      <PageBreadcrumb backHref={backHref} items={breadcrumbItems} />
-
       <IndividualSectionTabs querySuffix={querySuffix} />
 
       {showMgrUserFilter ? (
         <IndividualSecaoDevelopmentPanel secao={secao} users={avatarUsers} selectedUserId={targetUserId} />
       ) : (
-        <div className="flex min-h-[40vh] items-center justify-center rounded-xl bg-surface-card p-12 shadow-card">
+        <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center justify-center py-16">
           <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>
         </div>
       )}

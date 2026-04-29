@@ -14,6 +14,13 @@ const meta: Meta<typeof IndividualSectionTabsPresentation> = {
 export default meta
 type Story = StoryObj<typeof IndividualSectionTabsPresentation>
 
+export const FichaAtiva: Story = {
+  args: {
+    pathname: "/individual/ficha",
+    querySuffix: "?userId=U-23",
+  },
+}
+
 export const DominioAtivo: Story = {
   args: {
     pathname: "/individual/dominio",
@@ -21,9 +28,23 @@ export const DominioAtivo: Story = {
   },
 }
 
+export const FeriasAtivas: Story = {
+  args: {
+    pathname: "/individual/ferias",
+    querySuffix: "",
+  },
+}
+
 export const PdiAtivoSemQuery: Story = {
   args: {
     pathname: "/individual/pdi",
+    querySuffix: "",
+  },
+}
+
+export const ProgressaoAtiva: Story = {
+  args: {
+    pathname: "/individual/progressao",
     querySuffix: "",
   },
 }
