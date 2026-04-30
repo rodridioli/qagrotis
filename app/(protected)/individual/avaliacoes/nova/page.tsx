@@ -3,8 +3,7 @@ export const dynamic = "force-dynamic"
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
-import { getActiveQaUsers } from "@/lib/actions/usuarios"
-import { NovaIndividualAvaliacaoCadastroClient } from "@/components/individual/NovaIndividualAvaliacaoCadastroClient"
+import { createDraftIndividualPerformanceEvaluation } from "@/lib/actions/individual-performance-evaluations"
 
 export const metadata = { title: "Nova avaliação" }
 
@@ -22,16 +21,10 @@ export default async function NovaIndividualAvaliacaoPage({
   const { userId } = await searchParams
   if (!userId?.trim()) redirect("/individual/ficha")
 
-  const activeUsers = await getActiveQaUsers()
-  const u = activeUsers.find((x) => x.id === userId)
-  if (!u) {
-    redirect("/individual/avaliacoes")
+  const res = await createDraftIndividualPerformanceEvaluation(userId)
+  if ("error" in res) {
+    redirect(`/individual/avaliacoes?userId=${encodeURIComponent(userId)}`)
   }
 
-  return (
-    <NovaIndividualAvaliacaoCadastroClient
-      evaluatedUserId={userId}
-      evaluatedUser={{ name: u.name, email: u.email ?? null, photoPath: u.photoPath }}
-    />
-  )
+  redirect(`/individual/avaliacoes/${res.id}?userId=${encodeURIComponent(userId)}`)
 }

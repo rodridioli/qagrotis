@@ -18,7 +18,11 @@ import {
 import { UserAvatar } from "@/components/equipe/EquipePerformanceCard"
 import { PerformanceEvaluationSectionGrid } from "@/components/individual/PerformanceEvaluationSectionGrid"
 import type { EvaluatedUserSummary } from "@/components/individual/individualEvaluationTypes"
-import { updateIndividualPerformanceEvaluation, type IndividualPerformanceEvaluationDetail } from "@/lib/actions/individual-performance-evaluations"
+import {
+  updateIndividualPerformanceEvaluation,
+  type IndividualPerformanceEvaluationDetail,
+  type IndividualPerformanceEvaluationStatusDto,
+} from "@/lib/actions/individual-performance-evaluations"
 import {
   computePerformanceScorePercent,
   DEFAULT_EVALUATION_PERIOD,
@@ -63,6 +67,11 @@ export function IndividualPerformanceEvaluationPageClient({
     isEvaluationPeriodSlug(initialDetail.periodo) ? initialDetail.periodo : DEFAULT_EVALUATION_PERIOD,
   )
   const [busy, setBusy] = React.useState<"save" | "complete" | null>(null)
+  const [evalStatus, setEvalStatus] = React.useState<IndividualPerformanceEvaluationStatusDto>(initialDetail.status)
+
+  React.useEffect(() => {
+    setEvalStatus(initialDetail.status)
+  }, [initialDetail.status])
 
   const userQuery = `?userId=${encodeURIComponent(evaluatedUserId)}`
   const listHref = `/individual/avaliacoes${userQuery}`
@@ -102,8 +111,14 @@ export function IndividualPerformanceEvaluationPageClient({
         toast.error(res.error)
         return
       }
-      toast.success(mode === "complete" ? "Avaliação concluída." : "Rascunho salvo.")
-      router.push(listHref)
+      if (mode === "complete") {
+        toast.success("Avaliação concluída com sucesso!")
+        router.push(listHref)
+        router.refresh()
+        return
+      }
+      setEvalStatus("RASCUNHO")
+      toast.success("Salvo com sucesso.")
       router.refresh()
     } catch (e) {
       console.error(e)
@@ -132,10 +147,6 @@ export function IndividualPerformanceEvaluationPageClient({
               { label: evaluationDisplayCodigo(detail.codigo) },
             ]}
           />
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-semibold text-text-primary sm:text-xl">Avaliação de desempenho</h1>
-            <AvaliacaoSituacaoBadge situacao={detail.status === "CONCLUIDA" ? "Concluída" : "Rascunho"} />
-          </div>
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -169,6 +180,12 @@ export function IndividualPerformanceEvaluationPageClient({
               {evaluatedUser.email ? (
                 <p className="truncate text-sm text-text-secondary">{evaluatedUser.email}</p>
               ) : null}
+              <div className="mt-3 border-t border-border-default pt-3">
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                  <span className="text-sm font-semibold text-text-primary">Avaliação de desempenho</span>
+                  <AvaliacaoSituacaoBadge situacao={evalStatus === "CONCLUIDA" ? "Concluída" : "Rascunho"} />
+                </div>
+              </div>
             </div>
           </div>
         </div>
