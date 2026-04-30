@@ -9,6 +9,7 @@ const sampleRows: IndividualPerformanceEvaluationListRow[] = [
     dataYmd: "2025-12-12",
     pontuacaoPercent: 86,
     status: "CONCLUIDA",
+    periodo: "T1_TRIMESTRE",
   },
   {
     id: "a2",
@@ -16,6 +17,7 @@ const sampleRows: IndividualPerformanceEvaluationListRow[] = [
     dataYmd: "2025-11-03",
     pontuacaoPercent: 72,
     status: "CONCLUIDA",
+    periodo: "S1_SEMESTRE",
   },
   {
     id: "a3",
@@ -23,6 +25,7 @@ const sampleRows: IndividualPerformanceEvaluationListRow[] = [
     dataYmd: "2026-01-20",
     pontuacaoPercent: null,
     status: "RASCUNHO",
+    periodo: "T4_TRIMESTRE",
   },
 ]
 

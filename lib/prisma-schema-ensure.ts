@@ -210,6 +210,9 @@ CREATE TABLE IF NOT EXISTS "IndividualPerformanceEvaluation" (
     await prisma.$executeRawUnsafe(
       `CREATE INDEX IF NOT EXISTS "IndividualPerformanceEvaluation_evaluatedUserId_idx" ON "IndividualPerformanceEvaluation"("evaluatedUserId")`,
     )
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "IndividualPerformanceEvaluation" ADD COLUMN IF NOT EXISTS "periodo" TEXT NOT NULL DEFAULT 'T1_TRIMESTRE'`,
+    )
     g.__qagrotisEnsuredIndividualPerformanceEval = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualPerformanceEvaluation", e)

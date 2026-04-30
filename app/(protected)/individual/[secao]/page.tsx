@@ -62,7 +62,7 @@ export default async function IndividualSecaoPage({
   const querySuffix = showMgrUserFilter ? `?userId=${encodeURIComponent(targetUserId)}` : ""
 
   const avatarUsers = serializeRscProps(
-    activeUsers.map((u) => ({ id: u.id, name: u.name, photoPath: u.photoPath })),
+    activeUsers.map((u) => ({ id: u.id, name: u.name, photoPath: u.photoPath, email: u.email })),
   )
 
   return (

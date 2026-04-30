@@ -54,9 +54,7 @@ export function IndividualSectionTabsPresentation({
   return (
     <div className="flex w-fit max-w-full flex-wrap gap-0.5 rounded-custom border border-border-default bg-surface-card p-1 shadow-card">
       {SECTIONS.map(({ href, label, icon: Icon }) => {
-        const active =
-          pathname === `/individual/${href}` ||
-          (href === "avaliacoes" && pathname.startsWith("/individual/avaliacao"))
+        const active = pathname === `/individual/${href}`
         return (
           <Link
             key={href}

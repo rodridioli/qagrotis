@@ -9,6 +9,8 @@ import { buildRole, can } from "@/lib/rbac/policy"
 import { getActiveQaUsers } from "@/lib/actions/usuarios"
 import {
   computePerformanceScorePercent,
+  DEFAULT_EVALUATION_PERIOD,
+  isEvaluationPeriodSlug,
   parseSelectionsJson,
   PERFORMANCE_COMPETENCY_IDS,
   selectionsCompleteSchema,
@@ -16,6 +18,15 @@ import {
 
 const userIdSchema = z.string().min(1).max(128)
 const idSchema = z.string().min(1).max(128)
+
+const periodoSchema = z.enum([
+  "T1_TRIMESTRE",
+  "T2_TRIMESTRE",
+  "T3_TRIMESTRE",
+  "T4_TRIMESTRE",
+  "S1_SEMESTRE",
+  "S2_SEMESTRE",
+])
 
 export type IndividualPerformanceEvaluationStatusDto = "RASCUNHO" | "CONCLUIDA"
 
@@ -26,6 +37,7 @@ export interface IndividualPerformanceEvaluationListRow {
   dataYmd: string
   pontuacaoPercent: number | null
   status: IndividualPerformanceEvaluationStatusDto
+  periodo: string
 }
 
 async function requireMgrPerformanceAccess(): Promise<{
@@ -83,6 +95,7 @@ export async function listIndividualPerformanceEvaluations(
         updatedAt: true,
         pontuacaoPercent: true,
         status: true,
+        periodo: true,
       },
     })) as {
       id: string
@@ -90,6 +103,7 @@ export async function listIndividualPerformanceEvaluations(
       updatedAt: Date
       pontuacaoPercent: number | null
       status: string
+      periodo: string | null
     }[]
     return rows.map((row) => ({
       id: row.id,
@@ -97,6 +111,7 @@ export async function listIndividualPerformanceEvaluations(
       dataYmd: ymdFromDate(row.updatedAt),
       pontuacaoPercent: row.pontuacaoPercent,
       status: row.status as IndividualPerformanceEvaluationStatusDto,
+      periodo: row.periodo && isEvaluationPeriodSlug(row.periodo) ? row.periodo : DEFAULT_EVALUATION_PERIOD,
     }))
   } catch (e) {
     console.error("[listIndividualPerformanceEvaluations]", e)
@@ -111,6 +126,7 @@ export interface IndividualPerformanceEvaluationDetail {
   status: IndividualPerformanceEvaluationStatusDto
   selections: Record<string, number>
   pontuacaoPercent: number | null
+  periodo: string
 }
 
 export async function getIndividualPerformanceEvaluation(
@@ -127,6 +143,7 @@ export async function getIndividualPerformanceEvaluation(
     })
     if (!row) return null
     await assertEvaluatedUserInScope(row.evaluatedUserId)
+    const p = (row as { periodo?: string | null }).periodo
     return {
       id: row.id,
       evaluatedUserId: row.evaluatedUserId,
@@ -134,6 +151,7 @@ export async function getIndividualPerformanceEvaluation(
       status: row.status as IndividualPerformanceEvaluationStatusDto,
       selections: parseSelectionsJson(row.selections),
       pontuacaoPercent: row.pontuacaoPercent,
+      periodo: p && isEvaluationPeriodSlug(p) ? p : DEFAULT_EVALUATION_PERIOD,
     }
   } catch (e) {
     console.error("[getIndividualPerformanceEvaluation]", e)
@@ -143,11 +161,14 @@ export async function getIndividualPerformanceEvaluation(
 
 export async function createDraftIndividualPerformanceEvaluation(
   evaluatedUserId: string,
+  periodo?: string,
 ): Promise<{ id: string } | { error: string }> {
   try {
     const { session } = await requireMgrPerformanceAccess()
     await assertEvaluatedUserInScope(evaluatedUserId)
     await ensureIndividualPerformanceEvaluationTable()
+
+    const periodoOk = periodo && isEvaluationPeriodSlug(periodo) ? periodo : DEFAULT_EVALUATION_PERIOD
 
     const agg = await prisma.individualPerformanceEvaluation.aggregate({
       where: { evaluatedUserId },
@@ -163,11 +184,11 @@ export async function createDraftIndividualPerformanceEvaluation(
         status: "RASCUNHO",
         selections: {},
         pontuacaoPercent: null,
+        periodo: periodoOk,
       },
       select: { id: true },
     })
     revalidatePath("/individual/avaliacoes")
-    revalidatePath("/individual/avaliacao")
     return { id: created.id }
   } catch (e) {
     console.error("[createDraftIndividualPerformanceEvaluation]", e)
@@ -179,6 +200,7 @@ const updateBodySchema = z.object({
   id: idSchema,
   selections: z.record(z.string(), z.number().int().min(0).max(4)),
   mode: z.enum(["save", "complete"]),
+  periodo: periodoSchema.optional(),
 })
 
 export async function updateIndividualPerformanceEvaluation(
@@ -224,10 +246,10 @@ export async function updateIndividualPerformanceEvaluation(
         selections: selections as object,
         status,
         pontuacaoPercent,
+        ...(parsed.data.periodo !== undefined ? { periodo: parsed.data.periodo } : {}),
       },
     })
     revalidatePath("/individual/avaliacoes")
-    revalidatePath("/individual/avaliacao")
     return {}
   } catch (e) {
     console.error("[updateIndividualPerformanceEvaluation]", e)
@@ -252,7 +274,6 @@ export async function deleteIndividualPerformanceEvaluation(id: string): Promise
 
     await prisma.individualPerformanceEvaluation.delete({ where: { id } })
     revalidatePath("/individual/avaliacoes")
-    revalidatePath("/individual/avaliacao")
     return {}
   } catch (e) {
     console.error("[deleteIndividualPerformanceEvaluation]", e)

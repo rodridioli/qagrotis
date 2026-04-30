@@ -22,7 +22,15 @@ export function IndividualSecaoDevelopmentPanel({
         <IndividualActiveUserAvatarStrip secao={secao} users={users} selectedUserId={selectedUserId} />
       ) : null}
       {showAvaliacoes ? (
-        <IndividualAvaliacoesSection evaluatedUserId={selectedUserId} />
+        <IndividualAvaliacoesSection
+          evaluatedUserId={selectedUserId}
+          evaluatedUser={(() => {
+            const u = users.find((x) => x.id === selectedUserId)
+            return u
+              ? { name: u.name, photoPath: u.photoPath, email: u.email }
+              : { name: "", photoPath: null as string | null }
+          })()}
+        />
       ) : (
         <div className="flex w-full flex-1 flex-col items-center justify-center py-16">
           <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>

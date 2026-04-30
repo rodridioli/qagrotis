@@ -360,6 +360,8 @@ model IndividualPerformanceEvaluation {
   selections         Json                                 @default("{}")
   /** Percentual global (planilha); nulo quando incompleto em rascunho. */
   pontuacaoPercent   Float?
+  /** Período de referência (trimestre ou semestre). */
+  periodo            String                               @default("T1_TRIMESTRE")
   createdAt          DateTime                             @default(now())
   updatedAt          DateTime                             @updatedAt
 

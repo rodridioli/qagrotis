@@ -143,13 +143,47 @@ export function scorePercentToneClass(percent: number): string {
   return "text-green-600 dark:text-green-400"
 }
 
+/** Cabeçalhos de coluna em tons pastéis (grelha de competências). */
 export function columnHeaderToneClass(colIndex: number): string {
   const tones = [
-    "bg-destructive/15 text-destructive",
-    "bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-200",
-    "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100",
-    "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-100",
-    "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-100",
+    "bg-rose-50/90 text-rose-700/80 dark:bg-rose-950/30 dark:text-rose-200/90",
+    "bg-orange-50/95 text-orange-800/75 dark:bg-orange-950/25 dark:text-orange-200/85",
+    "bg-amber-50/95 text-amber-800/75 dark:bg-amber-950/25 dark:text-amber-100/90",
+    "bg-sky-50/95 text-sky-800/75 dark:bg-sky-950/25 dark:text-sky-100/90",
+    "bg-emerald-50/95 text-emerald-800/75 dark:bg-emerald-950/25 dark:text-emerald-100/90",
   ]
-  return tones[colIndex] ?? "bg-muted text-muted-foreground"
+  return tones[colIndex] ?? "bg-muted/60 text-muted-foreground"
 }
+
+export const EVALUATION_PERIOD_SLUGS = [
+  "T1_TRIMESTRE",
+  "T2_TRIMESTRE",
+  "T3_TRIMESTRE",
+  "T4_TRIMESTRE",
+  "S1_SEMESTRE",
+  "S2_SEMESTRE",
+] as const
+
+export type EvaluationPeriodSlug = (typeof EVALUATION_PERIOD_SLUGS)[number]
+
+const PERIOD_LABELS: Record<EvaluationPeriodSlug, string> = {
+  T1_TRIMESTRE: "1º Trimestre",
+  T2_TRIMESTRE: "2º Trimestre",
+  T3_TRIMESTRE: "3º Trimestre",
+  T4_TRIMESTRE: "4º Trimestre",
+  S1_SEMESTRE: "1º Semestre",
+  S2_SEMESTRE: "2º Semestre",
+}
+
+export function evaluationPeriodLabel(slug: string): string {
+  if ((EVALUATION_PERIOD_SLUGS as readonly string[]).includes(slug)) {
+    return PERIOD_LABELS[slug as EvaluationPeriodSlug]
+  }
+  return slug
+}
+
+export function isEvaluationPeriodSlug(s: string): s is EvaluationPeriodSlug {
+  return (EVALUATION_PERIOD_SLUGS as readonly string[]).includes(s)
+}
+
+export const DEFAULT_EVALUATION_PERIOD: EvaluationPeriodSlug = "T1_TRIMESTRE"
