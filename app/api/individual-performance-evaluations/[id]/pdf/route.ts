@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
 import { getIndividualPerformanceEvaluation } from "@/lib/actions/individual-performance-evaluations"
-import { evaluationDisplayCodigo, evaluationPeriodLabel } from "@/lib/individual-performance-evaluation"
-import { jsPDF } from "jspdf"
+import { getQaUserProfile } from "@/lib/actions/usuarios"
+import { evaluationDisplayCodigo } from "@/lib/individual-performance-evaluation"
+import { buildIndividualEvaluationPdfBuffer } from "@/lib/pdf/individual-evaluation-report"
 
 export const runtime = "nodejs"
 
@@ -21,6 +22,10 @@ export async function GET(
     return new NextResponse(null, { status: 403 })
   }
 
+  if (session.user.type !== "Administrador" || session.user.accessProfile !== "MGR") {
+    return new NextResponse(null, { status: 403 })
+  }
+
   const { id } = await params
   if (!id || id.length > 128) {
     return new NextResponse(null, { status: 400 })
@@ -31,26 +36,19 @@ export async function GET(
     return new NextResponse(null, { status: 404 })
   }
 
-  const doc = new jsPDF()
-  let y = 14
-  doc.setFontSize(14)
-  doc.text("Avaliação de desempenho", 14, y)
-  y += 10
-  doc.setFontSize(10)
-  doc.text(`Código: ${evaluationDisplayCodigo(ev.codigo)}`, 14, y)
-  y += 6
-  doc.text(`Situação: ${ev.status === "CONCLUIDA" ? "Concluída" : "Rascunho"}`, 14, y)
-  y += 6
-  doc.text(`Período: ${evaluationPeriodLabel(ev.periodo)}`, 14, y)
-  y += 6
-  if (ev.pontuacaoPercent != null) {
-    doc.text(`Pontuação: ${ev.pontuacaoPercent.toFixed(1).replace(".", ",")}%`, 14, y)
-  }
+  const profile = await getQaUserProfile(ev.evaluatedUserId)
+  const evaluatorName =
+    (typeof session.user.name === "string" && session.user.name.trim()) ||
+    (typeof session.user.email === "string" && session.user.email) ||
+    "—"
 
-  const out = doc.output("arraybuffer")
-  const buf = Buffer.from(new Uint8Array(out as ArrayBuffer))
+  const buf = buildIndividualEvaluationPdfBuffer(ev, {
+    evaluatedName: profile?.name?.trim() || "—",
+    evaluatedEmail: profile?.email?.trim() ?? null,
+    evaluatorName,
+  })
 
-  return new NextResponse(buf, {
+  return new NextResponse(new Uint8Array(buf), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

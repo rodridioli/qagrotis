@@ -22,6 +22,9 @@ export interface PerformanceEvaluationSectionGridProps {
   defaultOpen?: boolean
 }
 
+const competencyStickyColClass =
+  "sticky left-0 z-20 min-w-[12rem] border-r border-border-default bg-neutral-grey-50 px-3 text-left sm:min-w-[14rem] sm:px-4 dark:bg-neutral-grey-900/40"
+
 export function PerformanceEvaluationSectionGrid({
   section,
   selections,
@@ -77,10 +80,10 @@ export function PerformanceEvaluationSectionGrid({
       <div id={`sec-${section.id}-panel`} className="overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
-            <tr>
+            <tr className="border-b border-border-default">
               <th
                 scope="col"
-                className="sticky left-0 z-10 min-w-[12rem] bg-surface-card px-3 py-2 text-left text-xs font-medium text-text-secondary sm:min-w-[14rem] sm:px-4"
+                className={cn(competencyStickyColClass, "py-2.5 text-xs font-semibold text-text-secondary")}
               >
                 Competência
               </th>
@@ -99,13 +102,14 @@ export function PerformanceEvaluationSectionGrid({
             </tr>
           </thead>
           <tbody>
-            {section.competencies.map((c) => (
+            {section.competencies.map((c, idx) => (
               <tr key={c.id} className="border-t border-border-default">
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 bg-surface-card px-3 py-2.5 text-left font-normal text-text-primary sm:px-4"
+                  className={cn(competencyStickyColClass, "py-2.5 font-normal text-text-primary")}
                 >
-                  {c.label}
+                  <span className="text-text-secondary tabular-nums">{idx + 1}.</span>{" "}
+                  <span>{c.label}</span>
                 </th>
                 {EVALUATION_LEVEL_LABELS.map((_, col) => {
                   const selected = selections[c.id] === col
@@ -141,10 +145,10 @@ export function PerformanceEvaluationSectionGrid({
                 })}
               </tr>
             ))}
-            <tr className="border-t border-border-default bg-muted/30">
+            <tr className="border-t border-border-default">
               <th
                 scope="row"
-                className="sticky left-0 z-10 bg-muted/30 px-3 py-2 text-left text-xs font-medium text-text-secondary sm:px-4"
+                className={cn(competencyStickyColClass, "py-2 text-xs font-medium text-text-secondary")}
               >
                 Pontuação (% por coluna)
               </th>
@@ -152,8 +156,8 @@ export function PerformanceEvaluationSectionGrid({
                 <td
                   key={col}
                   className={cn(
-                    "px-1 py-2 text-center text-xs font-medium tabular-nums sm:px-2",
-                    columnHeaderToneClass(col),
+                    "px-1 py-2 text-center text-xs font-semibold tabular-nums text-text-primary sm:px-2",
+                    evaluationColumnBodyCellClass(col),
                   )}
                 >
                   {p.toFixed(1).replace(".", ",")}%

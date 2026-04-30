@@ -143,6 +143,40 @@ export function scorePercentToneClass(percent: number): string {
   return "text-green-600 dark:text-green-400"
 }
 
+/** Fundo e borda do cartão de pontuação (mesmas faixas que {@link scorePercentToneClass}). */
+export function scorePercentCardShellClass(percent: number | null): string {
+  if (percent == null || Number.isNaN(percent)) {
+    return "border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/35"
+  }
+  if (percent < 70) {
+    return "border-red-200/90 bg-red-50/95 dark:border-red-900/55 dark:bg-red-950/40"
+  }
+  if (percent < 80) {
+    return "border-orange-200/90 bg-orange-50/95 dark:border-orange-900/50 dark:bg-orange-950/30"
+  }
+  if (percent < 90) {
+    return "border-sky-200/90 bg-sky-50/95 dark:border-sky-900/50 dark:bg-sky-950/30"
+  }
+  return "border-emerald-200/90 bg-emerald-50/90 dark:border-emerald-900/50 dark:bg-emerald-950/30"
+}
+
+/** Cápsula do ícone de pontuação no cartão (contraste com o fundo do cartão). */
+export function scorePercentGaugeIconClass(percent: number | null): string {
+  if (percent == null || Number.isNaN(percent)) {
+    return "bg-neutral-grey-100 text-text-secondary dark:bg-neutral-grey-800 dark:text-neutral-grey-300"
+  }
+  if (percent < 70) {
+    return "bg-red-100 text-red-700 dark:bg-red-900/55 dark:text-red-200"
+  }
+  if (percent < 80) {
+    return "bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200"
+  }
+  if (percent < 90) {
+    return "bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200"
+  }
+  return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200"
+}
+
 /** Rótulo qualitativo da pontuação global (cartão de resumo, alinhado às faixas de cor). */
 export function performanceScoreQualitativeLabel(percent: number | null): string {
   if (percent == null || Number.isNaN(percent)) return "—"
