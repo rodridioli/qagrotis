@@ -6,6 +6,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredHybridWeekdays?: boolean
   __qagrotisEnsuredEquipeChapters?: boolean
   __qagrotisEnsuredExtendedProfile?: boolean
+  __qagrotisEnsuredIndividualPerformanceEval?: boolean
 }
 
 /**
@@ -172,5 +173,45 @@ export async function ensureUserExtendedProfileColumns(): Promise<void> {
     g.__qagrotisEnsuredExtendedProfile = true
   } catch (e) {
     console.error("[prisma-schema-ensure] extended profile columns", e)
+  }
+}
+
+/**
+ * Garante tabela e enum de avaliações de desempenho (Individual / MGR).
+ * DDL idempotente — espelha `prisma/migrations/20260429120000_individual_performance_evaluation/migration.sql`.
+ */
+export async function ensureIndividualPerformanceEvaluationTable(): Promise<void> {
+  if (g.__qagrotisEnsuredIndividualPerformanceEval) return
+  try {
+    await prisma.$executeRawUnsafe(`
+DO $$ BEGIN
+    CREATE TYPE "IndividualPerformanceEvaluationStatus" AS ENUM ('RASCUNHO', 'CONCLUIDA');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+`)
+    await prisma.$executeRawUnsafe(`
+CREATE TABLE IF NOT EXISTS "IndividualPerformanceEvaluation" (
+    "id" TEXT NOT NULL,
+    "evaluatedUserId" TEXT NOT NULL,
+    "evaluatorUserId" TEXT NOT NULL,
+    "codigo" INTEGER NOT NULL,
+    "status" "IndividualPerformanceEvaluationStatus" NOT NULL DEFAULT 'RASCUNHO',
+    "selections" JSONB NOT NULL DEFAULT '{}',
+    "pontuacaoPercent" DOUBLE PRECISION,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "IndividualPerformanceEvaluation_pkey" PRIMARY KEY ("id")
+);
+`)
+    await prisma.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IndividualPerformanceEvaluation_evaluatedUserId_codigo_key" ON "IndividualPerformanceEvaluation"("evaluatedUserId", "codigo")`,
+    )
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "IndividualPerformanceEvaluation_evaluatedUserId_idx" ON "IndividualPerformanceEvaluation"("evaluatedUserId")`,
+    )
+    g.__qagrotisEnsuredIndividualPerformanceEval = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] IndividualPerformanceEvaluation", e)
   }
 }

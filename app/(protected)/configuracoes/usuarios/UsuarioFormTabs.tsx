@@ -141,7 +141,7 @@ export default function UsuarioFormTabs({
     if (password && password !== confirmPassword) { toast.error("As senhas não coincidem."); return }
 
     startTransition(async () => {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         name: nome,
         email,
         type: tipo,
@@ -170,44 +170,78 @@ export default function UsuarioFormTabs({
       }
 
       if (mode === "create") {
-        payload.password = password
-        const result = await criarQaUser(payload)
+        ;(payload as { password: string }).password = password
+        const result = await criarQaUser(payload as Parameters<typeof criarQaUser>[0])
         if (result.error || !result.id) {
           toast.error(result.error ?? "Erro ao criar usuário.")
           return
         }
-        await handlePhotoUpload(result.id)
+        if (photoFile) {
+          const fd = new FormData()
+          fd.set("photo", photoFile)
+          const res = await fetch(`/api/usuarios/${result.id}/avatar`, { method: "PUT", body: fd })
+          if (res.ok) {
+            const json = (await res.json()) as { photoPath?: string }
+            if (json.photoPath) {
+              const r2 = await atualizarQaUser(result.id, {
+                name: nome,
+                email,
+                type: tipo,
+                photoPath: json.photoPath,
+              })
+              if (r2.error) toast.error(r2.error)
+            }
+          } else {
+            toast.error("Usuário criado, mas a foto não pôde ser enviada.")
+          }
+        }
         toast.success(result.emailEnviado ? "Usuário criado. E-mail enviado." : "Usuário criado.")
         router.push("/configuracoes/usuarios")
       } else {
-        if (password) payload.newPassword = password
-        const result = await atualizarQaUser(userId!, payload)
+        if (password) (payload as { newPassword: string }).newPassword = password
+
+        let photoPathUpdate: string | null | undefined
+        if (photoFile) {
+          const fd = new FormData()
+          fd.set("photo", photoFile)
+          const res = await fetch(`/api/usuarios/${userId!}/avatar`, { method: "PUT", body: fd })
+          if (!res.ok) {
+            let msg = "Não foi possível enviar a nova foto."
+            try {
+              const j = (await res.json()) as { error?: string }
+              if (j.error) msg = j.error
+            } catch {
+              /* ignore */
+            }
+            toast.error(msg)
+            return
+          }
+          const json = (await res.json()) as { photoPath?: string }
+          if (!json.photoPath) {
+            toast.error("Resposta inválida ao enviar foto.")
+            return
+          }
+          photoPathUpdate = json.photoPath
+        } else {
+          const hadInitialPhoto = !!(initialData?.photoPath && String(initialData.photoPath).trim())
+          if (hadInitialPhoto && photoPreview == null) {
+            photoPathUpdate = null
+          }
+        }
+        if (photoPathUpdate !== undefined) {
+          ;(payload as { photoPath: string | null }).photoPath = photoPathUpdate
+        }
+
+        const result = await atualizarQaUser(userId!, payload as Parameters<typeof atualizarQaUser>[1])
         if (result.error) {
           toast.error(result.error)
           return
         }
-        await handlePhotoUpload(userId!)
         toast.success("Usuário atualizado.")
         if (sessionUser?.id === userId) await updateSession()
         router.refresh()
       }
     })
-  }
-
-  async function handlePhotoUpload(targetId: string) {
-    if (!photoFile) return
-    const fd = new FormData()
-    fd.set("photo", photoFile)
-    const res = await fetch(`/api/usuarios/${targetId}/avatar`, { method: "PUT", body: fd })
-    if (res.ok) {
-      const json = await res.json()
-      await atualizarQaUser(targetId, {
-        name: nome,
-        email,
-        type: tipo,
-        photoPath: json.photoPath,
-      } as any)
-    }
   }
 
   const isAdmin = sessionUser?.type === "Administrador"
@@ -276,7 +310,12 @@ export default function UsuarioFormTabs({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">Tipo</label>
-                    <Select value={tipo} onValueChange={setTipo}>
+                    <Select
+                      value={tipo}
+                      onValueChange={(v) => {
+                        if (v === "Padrão" || v === "Administrador") setTipo(v)
+                      }}
+                    >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectPopup>
                         <SelectItem value="Padrão">Padrão</SelectItem>
@@ -290,8 +329,9 @@ export default function UsuarioFormTabs({
                       value={accessProfile}
                       onValueChange={(v) => {
                         if (accessProfileSelectDisabled) return
-                        const next = (v ?? manageableProfiles[0] ?? "QA") as AccessProfile
-                        setAccessProfile(next)
+                        if (!v) return
+                        const next = v as AccessProfile
+                        if ((manageableProfiles as readonly string[]).includes(next)) setAccessProfile(next)
                       }}
                       disabled={accessProfileSelectDisabled}
                     >
@@ -329,7 +369,12 @@ export default function UsuarioFormTabs({
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">Formato</label>
-                    <Select value={formatoTrabalho} onValueChange={setFormatoTrabalho}>
+                    <Select
+                      value={formatoTrabalho}
+                      onValueChange={(v) => {
+                        if (v && (FORMATOS_TRABALHO as readonly string[]).includes(v)) setFormatoTrabalho(v)
+                      }}
+                    >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectPopup>
                         {FORMATOS_TRABALHO.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
@@ -338,7 +383,11 @@ export default function UsuarioFormTabs({
                   </div>
                 </div>
                 {formatoTrabalho === "Híbrido" && (
-                  <HybridWorkWeekdaysField value={diasHibrido} onChange={setDiasHibrido} />
+                  <HybridWorkWeekdaysField
+                    idPrefix={mode === "edit" && userId ? `edit-${userId}` : "novo-usuario"}
+                    value={diasHibrido}
+                    onChange={setDiasHibrido}
+                  />
                 )}
                 
                 <div className="border-t border-border-default pt-4 space-y-4">

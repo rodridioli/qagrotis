@@ -211,7 +211,6 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
     if (!ativarId) return
     try {
       await ativarCliente(ativarId)
-      setLocalClientes((prev) => prev.filter((c) => c.id !== ativarId))
       toast.success("Cadastro ativado com sucesso.")
       router.refresh()
     } catch {
@@ -236,8 +235,6 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
     startTransition(async () => {
       try {
         await inativarClientes(ids)
-        const idSet = new Set(ids)
-        setLocalClientes((prev) => prev.map((c) => idSet.has(c.id) ? { ...c, active: false } : c))
         setIsInativando(false)
         router.refresh()
         toast.success(

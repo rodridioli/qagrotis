@@ -178,7 +178,6 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
     if (!ativarId) return
     try {
       await ativarCenario(ativarId)
-      setInitialCenarios((prev) => prev.filter((c) => c.id !== ativarId))
       toast.success("Cadastro ativado com sucesso.")
       router.refresh()
     } catch {
@@ -204,8 +203,6 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
     startTransition(async () => {
       try {
         await inativarCenarios(ids)
-        const idSet = new Set(ids)
-        setInitialCenarios((prev) => prev.map((c) => idSet.has(c.id) ? { ...c, active: false } : c))
         setIsInativando(false)
         router.refresh()
         toast.success(

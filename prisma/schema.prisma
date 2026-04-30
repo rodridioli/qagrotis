@@ -341,6 +341,32 @@ model EquipeChapterAuthor {
   @@index([userId])
 }
 
+// ── Individual / Avaliação de desempenho (MGR) ───────────────────────────────
+
+enum IndividualPerformanceEvaluationStatus {
+  RASCUNHO
+  CONCLUIDA
+}
+
+/** Avaliação de desempenho por usuário (avaliado); gestor grava competências e situação. */
+model IndividualPerformanceEvaluation {
+  id                 String                               @id @default(cuid())
+  evaluatedUserId   String
+  evaluatorUserId   String
+  /** Sequência por usuário avaliado (ex.: 1, 2, 3…). */
+  codigo             Int
+  status             IndividualPerformanceEvaluationStatus @default(RASCUNHO)
+  /** Mapa competênciaId → índice da coluna 0..4 (Não Atende … Excelente). */
+  selections         Json                                 @default("{}")
+  /** Percentual global (planilha); nulo quando incompleto em rascunho. */
+  pontuacaoPercent   Float?
+  createdAt          DateTime                             @default(now())
+  updatedAt          DateTime                             @updatedAt
+
+  @@unique([evaluatedUserId, codigo])
+  @@index([evaluatedUserId])
+}
+
 // Test environment credentials (URL, username, password) reusable across scenarios
 model Credencial {
   id          String    @id

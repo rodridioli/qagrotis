@@ -57,7 +57,8 @@ export async function GET(
 
   const parsed = parseDataImageResponse(photo)
   if (parsed) {
-    return new NextResponse(parsed.body, {
+    const body = new Uint8Array(parsed.body)
+    return new NextResponse(body, {
       status: 200,
       headers: {
         "Content-Type": parsed.contentType,

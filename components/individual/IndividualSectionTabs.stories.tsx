@@ -55,3 +55,11 @@ export const RaizIndividual: Story = {
     querySuffix: "",
   },
 }
+
+/** Rota de edição de avaliação mantém o destaque na aba Avaliações. */
+export const AvaliacoesAtivaNaSubrota: Story = {
+  args: {
+    pathname: "/individual/avaliacao/clxyz123",
+    querySuffix: "?userId=U-23",
+  },
+}

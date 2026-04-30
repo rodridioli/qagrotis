@@ -142,6 +142,16 @@ function validatePhotoPath(photoPath: string | null | undefined): string | null 
     }
     return photoPath
   }
+  // Fotos OAuth / externas (ex.: Google image URL)
+  if (photoPath.startsWith("https://") || photoPath.startsWith("http://")) {
+    try {
+      const u = new URL(photoPath)
+      if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error("inv")
+      return photoPath
+    } catch {
+      throw new Error("Caminho de foto inválido.")
+    }
+  }
   // Accept legacy filesystem paths under /uploads/
   if (
     !photoPath.startsWith("/uploads/") ||
@@ -749,6 +759,13 @@ export async function atualizarQaUser(
       return { error: "Dados inválidos." }
     }
 
+    const previousEmailNorm = targetProfile.email.trim().toLowerCase()
+    if (parsed.email !== previousEmailNorm) {
+      if (await hasActiveOtherWithSameEmail(id, parsed.email)) {
+        return { error: "E-mail já cadastrado para outro usuário ativo." }
+      }
+    }
+
     // Validate photo path to prevent directory traversal
     let safePhotoPath: string | null | undefined
     try {
@@ -882,12 +899,36 @@ export async function atualizarQaUser(
       })
     }
 
+    const authUser = await prisma.user.findUnique({ where: { id }, select: { id: true } })
+    if (authUser) {
+      try {
+        await prisma.user.update({
+          where: { id },
+          data: { name: parsed.name, email: parsed.email },
+        })
+      } catch (syncErr) {
+        const code =
+          typeof syncErr === "object" && syncErr !== null && "code" in syncErr
+            ? String((syncErr as { code: string }).code)
+            : ""
+        if (code === "P2002") {
+          return { error: "E-mail já cadastrado (conta de autenticação)." }
+        }
+        console.error("[atualizarQaUser] sync prisma.user", syncErr)
+      }
+    }
+
     revalidatePath("/configuracoes/usuarios")
     revalidatePath(`/configuracoes/usuarios/${id}`)
     revalidatePath(`/configuracoes/usuarios/${id}/editar`)
     return {}
   } catch (e) {
     console.error("[atualizarQaUser]", e)
+    const code =
+      typeof e === "object" && e !== null && "code" in e ? String((e as { code: string }).code) : ""
+    if (code === "P2002") {
+      return { error: "E-mail já cadastrado. Escolha outro endereço." }
+    }
     return { error: "Erro ao atualizar usuário. Tente novamente." }
   }
 }
