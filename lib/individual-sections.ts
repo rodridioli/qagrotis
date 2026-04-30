@@ -1,4 +1,4 @@
-/** Slugs e rótulos das abas da área Individual (server-safe). */
+/** Slugs e rótulos das secções Individual — menu lateral (MGR) ou abas (demais roles) (server-safe). */
 
 export const INDIVIDUAL_SECTION_ORDER = [
   "ficha",

@@ -67,7 +67,7 @@ export default async function IndividualSecaoPage({
 
   return (
     <div className="space-y-4">
-      <IndividualSectionTabs querySuffix={querySuffix} />
+      {!canViewOthers ? <IndividualSectionTabs querySuffix={querySuffix} /> : null}
 
       {showMgrUserFilter ? (
         <IndividualSecaoDevelopmentPanel secao={secao} users={avatarUsers} selectedUserId={targetUserId} />

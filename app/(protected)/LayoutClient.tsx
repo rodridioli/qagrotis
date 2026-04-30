@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useTransition, useRef } from "react"
+import React, { useState, useEffect, useTransition, useRef, Suspense } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
@@ -24,6 +24,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { IndividualSidebarNavGroup } from "@/components/individual/IndividualSidebarNavGroup"
+import { individualSectionLabel } from "@/lib/individual-sections"
 import { QAgrotisLogo } from "@/components/qagrotis/QAgrotisLogo"
 import { QAgrotisIcon } from "@/components/qagrotis/QAgrotisIcon"
 import { signOut, useSession } from "next-auth/react"
@@ -82,6 +84,11 @@ const TITLE_MAP: Record<string, string> = {
 }
 
 function getTitle(pathname: string): string {
+  if (pathname.startsWith("/individual/")) {
+    const secao = pathname.split("/")[2] ?? ""
+    const label = individualSectionLabel(secao)
+    if (label) return `Individual — ${label}`
+  }
   for (const [key, value] of Object.entries(TITLE_MAP)) {
     if (pathname.startsWith(key)) return value
   }
@@ -163,6 +170,27 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                 return [{ ...base, label: label ?? base.label }]
               })
             })().map(({ href, icon: Icon, label, alwaysEnabled, capability }) => {
+              if (href === "/individual" && can(role, "individual.viewOthers")) {
+                return (
+                  <Suspense
+                    key="individual-sidebar-tree"
+                    fallback={
+                      <div
+                        className={cn(
+                          "flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-text-secondary",
+                          collapsed ? "lg:justify-center" : "",
+                        )}
+                      >
+                        <User className="size-4.5 shrink-0 text-text-secondary" aria-hidden />
+                        {!collapsed ? <span className="truncate">Individual</span> : null}
+                      </div>
+                    }
+                  >
+                    <IndividualSidebarNavGroup collapsed={collapsed} onNavigate={onNavigate} />
+                  </Suspense>
+                )
+              }
+
               // RBAC primeiro: se policy diz que está disabled (item visível mas inativo), respeita.
               const rbacDisabled = isDisabled(role, capability)
               // Depois, contexto (sem sistema/integração) só se RBAC permite a feature.
