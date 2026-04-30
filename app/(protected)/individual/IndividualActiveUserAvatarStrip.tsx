@@ -34,7 +34,7 @@ export function IndividualActiveUserAvatarStrip({ secao, users, selectedUserId }
   }
 
   return (
-    <TooltipProvider>
+    <TooltipProvider delay={80} closeDelay={0} timeout={120}>
       <div
         className="flex w-full flex-wrap items-center justify-start gap-y-2 pl-2"
         role="toolbar"
@@ -52,10 +52,10 @@ export function IndividualActiveUserAvatarStrip({ secao, users, selectedUserId }
                     aria-label={`${u.name}${selected ? " (selecionado)" : ""}`}
                     onClick={() => select(u.id)}
                     className={cn(
-                      "relative rounded-full border-[3px] border-surface-card bg-surface-card shadow-sm transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2",
+                      "relative rounded-full border-[3px] border-surface-card bg-surface-card shadow-sm duration-100 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 motion-reduce:transition-none",
                       selected
-                        ? "z-20 scale-110 border-brand-primary ring-2 ring-brand-primary/35"
-                        : "z-10 hover:z-30 hover:scale-105",
+                        ? "z-20 border-brand-primary ring-2 ring-brand-primary/35"
+                        : "z-10 hover:z-30 hover:ring-1 hover:ring-brand-primary/25",
                     )}
                     style={{ marginLeft: idx === 0 ? 0 : -12 }}
                   />

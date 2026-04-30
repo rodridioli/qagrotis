@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { ClipboardPlus, Search } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Plus, Search } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,11 +10,6 @@ import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { IndividualAvaliacoesTable } from "@/components/individual/IndividualAvaliacoesTable"
 import {
-  IndividualPerformanceEvaluationModal,
-  type EvaluatedUserSummary,
-} from "@/components/individual/IndividualPerformanceEvaluationModal"
-import {
-  createDraftIndividualPerformanceEvaluation,
   deleteIndividualPerformanceEvaluation,
   listIndividualPerformanceEvaluations,
   type IndividualPerformanceEvaluationListRow,
@@ -23,7 +19,6 @@ const AVALIACOES_PAGE_SIZE = 20
 
 export interface IndividualAvaliacoesSectionProps {
   evaluatedUserId: string
-  evaluatedUser: EvaluatedUserSummary
 }
 
 function matchesDateSearch(dataYmd: string, query: string): boolean {
@@ -42,17 +37,16 @@ function matchesDateSearch(dataYmd: string, query: string): boolean {
   )
 }
 
-export function IndividualAvaliacoesSection({ evaluatedUserId, evaluatedUser }: IndividualAvaliacoesSectionProps) {
+export function IndividualAvaliacoesSection({ evaluatedUserId }: IndividualAvaliacoesSectionProps) {
+  const router = useRouter()
+  const [isNavigating, startTransition] = React.useTransition()
   const [rows, setRows] = React.useState<IndividualPerformanceEvaluationListRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [creating, setCreating] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [deleteRow, setDeleteRow] = React.useState<IndividualPerformanceEvaluationListRow | null>(null)
   const [q, setQ] = React.useState("")
   const [page, setPage] = React.useState(1)
-  const [modalOpen, setModalOpen] = React.useState(false)
-  const [modalEvalId, setModalEvalId] = React.useState<string | null>(null)
 
   const refetch = React.useCallback(async () => {
     setLoading(true)
@@ -92,32 +86,18 @@ export function IndividualAvaliacoesSection({ evaluatedUserId, evaluatedUser }: 
     return filtered.slice(start, start + AVALIACOES_PAGE_SIZE)
   }, [filtered, page])
 
-  async function onAdd() {
-    setModalOpen(true)
-    setModalEvalId(null)
-    setCreating(true)
-    try {
-      const res = await createDraftIndividualPerformanceEvaluation(evaluatedUserId)
-      if ("error" in res) {
-        toast.error(res.error)
-        setModalOpen(false)
-        setModalEvalId(null)
-        return
-      }
-      setModalEvalId(res.id)
-    } catch (e) {
-      console.error(e)
-      toast.error("Não foi possível criar a avaliação.")
-      setModalOpen(false)
-      setModalEvalId(null)
-    } finally {
-      setCreating(false)
-    }
+  const userQ = `?userId=${encodeURIComponent(evaluatedUserId)}`
+
+  function onAdd() {
+    startTransition(() => {
+      router.push(`/individual/avaliacoes/nova${userQ}`)
+    })
   }
 
   function onEdit(row: IndividualPerformanceEvaluationListRow) {
-    setModalEvalId(row.id)
-    setModalOpen(true)
+    startTransition(() => {
+      router.push(`/individual/avaliacoes/${row.id}${userQ}`)
+    })
   }
 
   async function confirmDelete() {
@@ -131,11 +111,6 @@ export function IndividualAvaliacoesSection({ evaluatedUserId, evaluatedUser }: 
     setDeleteOpen(false)
     setDeleteRow(null)
     void refetch()
-  }
-
-  function handleModalOpenChange(open: boolean) {
-    setModalOpen(open)
-    if (!open) setModalEvalId(null)
   }
 
   return (
@@ -155,11 +130,11 @@ export function IndividualAvaliacoesSection({ evaluatedUserId, evaluatedUser }: 
         <Button
           type="button"
           className="w-full shrink-0 gap-2 sm:w-auto"
-          onClick={() => void onAdd()}
-          disabled={creating || loading}
+          onClick={onAdd}
+          disabled={loading || isNavigating}
         >
-          <ClipboardPlus className="size-4" aria-hidden />
-          {creating ? "A criar…" : "Adicionar Avaliação"}
+          <Plus className="size-4" aria-hidden />
+          {isNavigating ? "A abrir…" : "Adicionar Avaliação"}
         </Button>
       </div>
 
@@ -194,16 +169,6 @@ export function IndividualAvaliacoesSection({ evaluatedUserId, evaluatedUser }: 
           }
         />
       )}
-
-      <IndividualPerformanceEvaluationModal
-        open={modalOpen}
-        onOpenChange={handleModalOpenChange}
-        evaluationId={modalEvalId}
-        isCreatingEval={creating && modalOpen && modalEvalId === null}
-        evaluatedUserId={evaluatedUserId}
-        evaluatedUser={evaluatedUser}
-        onSaved={() => void refetch()}
-      />
 
       <ConfirmDialog
         open={deleteOpen}

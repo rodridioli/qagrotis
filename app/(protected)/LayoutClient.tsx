@@ -84,6 +84,8 @@ const TITLE_MAP: Record<string, string> = {
 }
 
 function getTitle(pathname: string): string {
+  if (pathname.startsWith("/individual/avaliacoes/nova")) return "Nova avaliação"
+  if (/^\/individual\/avaliacoes\/[^/]+$/.test(pathname)) return "Avaliação de desempenho"
   if (pathname.startsWith("/individual/")) {
     const secao = pathname.split("/")[2] ?? ""
     const label = individualSectionLabel(secao)

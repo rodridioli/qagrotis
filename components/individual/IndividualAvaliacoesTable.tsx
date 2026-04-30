@@ -8,7 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
+import { AvaliacaoPeriodoBadge, AvaliacaoSituacaoBadge } from "@/components/qagrotis/StatusBadge"
 import type { IndividualPerformanceEvaluationListRow } from "@/lib/actions/individual-performance-evaluations"
 import { evaluationPeriodLabel, scorePercentToneClass } from "@/lib/individual-performance-evaluation"
 import { cn } from "@/lib/utils"
@@ -59,14 +59,21 @@ export function IndividualAvaliacoesTable({
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="border-b border-border-default last:border-b-0 transition-colors">
-                <td className="whitespace-nowrap px-3 py-3 tabular-nums text-text-primary sm:px-4">{r.codigo}</td>
+                <td className="whitespace-nowrap px-3 py-3 sm:px-4">
+                  <button
+                    type="button"
+                    onClick={() => onEdit(r)}
+                    className="cursor-pointer font-semibold text-brand-primary tabular-nums hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
+                    aria-label={`Abrir avaliação código ${r.codigo}`}
+                  >
+                    {r.codigo}
+                  </button>
+                </td>
                 <td className="whitespace-nowrap px-3 py-3 tabular-nums text-text-primary sm:px-4">
                   {formatDataPt(r.dataYmd)}
                 </td>
                 <td className="px-3 py-3 sm:px-4">
-                  <Badge variant="outline" className="font-normal">
-                    {evaluationPeriodLabel(r.periodo)}
-                  </Badge>
+                  <AvaliacaoPeriodoBadge label={evaluationPeriodLabel(r.periodo)} />
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 sm:px-4">
                   {r.pontuacaoPercent != null ? (
@@ -78,11 +85,7 @@ export function IndividualAvaliacoesTable({
                   )}
                 </td>
                 <td className="px-3 py-3 sm:px-4">
-                  {r.status === "CONCLUIDA" ? (
-                    <Badge variant="default">Concluída</Badge>
-                  ) : (
-                    <Badge variant="secondary">Rascunho</Badge>
-                  )}
+                  <AvaliacaoSituacaoBadge situacao={r.status === "CONCLUIDA" ? "Concluída" : "Rascunho"} />
                 </td>
                 <td className="px-2 py-3 text-center sm:px-3">
                   <DropdownMenu>

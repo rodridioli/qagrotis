@@ -131,7 +131,9 @@ export function IndividualSidebarNavGroup({ collapsed, onNavigate }: IndividualS
           <ul className="flex flex-col gap-0.5">
           {INDIVIDUAL_NAV_ENTRIES.map(({ slug, label, icon: Icon }) => {
             const href = `/individual/${slug}${suffix}`
-            const active = pathname === `/individual/${slug}`
+            const active =
+              pathname === `/individual/${slug}` ||
+              (slug === "avaliacoes" && pathname.startsWith("/individual/avaliacoes/"))
             return (
               <li key={slug}>
                 <button

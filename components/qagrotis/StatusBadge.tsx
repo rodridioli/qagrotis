@@ -78,6 +78,27 @@ function ChangelogTagBadge({ tag }: { tag: string }) {
   return badge(colorClass, tag)
 }
 
+/** Situação da avaliação individual — mesmo padrão visual de {@link SuiteSituacaoBadge}. */
+type AvaliacaoSituacaoUi = "Rascunho" | "Concluída"
+
+function AvaliacaoSituacaoBadge({ situacao }: { situacao: AvaliacaoSituacaoUi }) {
+  const styles: Record<AvaliacaoSituacaoUi, string> = {
+    Rascunho:
+      "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:border-blue-400/30 dark:bg-blue-400/10 dark:text-blue-300",
+    Concluída:
+      "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400",
+  }
+  return badge(styles[situacao], situacao)
+}
+
+/** Período (trimestre/semestre) — pill neutra, alinhada às suítes (sem `rounded-4xl` do Badge UI). */
+function AvaliacaoPeriodoBadge({ label }: { label: string }) {
+  return badge(
+    "border-border-default bg-neutral-grey-50 text-text-secondary dark:border-neutral-grey-700 dark:bg-neutral-grey-900/50 dark:text-neutral-grey-200",
+    label,
+  )
+}
+
 function StatusBadge({ label, colorClass }: { label: string; colorClass: string }) {
   return <span className={cn(BASE, colorClass)}>{label}</span>
 }
@@ -105,5 +126,7 @@ export {
   UserTipoBadge,
   PriorityBadge,
   ChangelogTagBadge,
+  AvaliacaoSituacaoBadge,
+  AvaliacaoPeriodoBadge,
 }
-export type { CenarioTipo, SuiteTipo, SuiteSituacao, ChangelogTag, ResultadoTipo }
+export type { CenarioTipo, SuiteTipo, SuiteSituacao, ChangelogTag, ResultadoTipo, AvaliacaoSituacaoUi }
