@@ -28,6 +28,7 @@ import {
   isEvaluationPeriodSlug,
   PERFORMANCE_EVALUATION_SECTIONS,
   scorePercentToneClass,
+  formatIndividualEvaluationCodigo,
   type EvaluationPeriodSlug,
 } from "@/lib/individual-performance-evaluation"
 import { cn } from "@/lib/utils"
@@ -160,7 +161,7 @@ export function IndividualPerformanceEvaluationPageClient({
           items={[
             { label: "Individual", href: fichaHref },
             { label: "Avaliações", href: listHref },
-            { label: `Código ${detail.codigo}` },
+            { label: formatIndividualEvaluationCodigo(detail.codigo) },
           ]}
         />
 

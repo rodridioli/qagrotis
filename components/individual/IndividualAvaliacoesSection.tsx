@@ -2,23 +2,27 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Search } from "lucide-react"
+import { Plus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
+import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { IndividualAvaliacoesTable } from "@/components/individual/IndividualAvaliacoesTable"
 import {
   deleteIndividualPerformanceEvaluation,
+  getIndividualPerformanceEvaluation,
   listIndividualPerformanceEvaluations,
   type IndividualPerformanceEvaluationListRow,
 } from "@/lib/actions/individual-performance-evaluations"
+import { downloadIndividualEvaluationPdf } from "@/lib/individual-performance-evaluation-pdf"
 
 const AVALIACOES_PAGE_SIZE = 20
 
 export interface IndividualAvaliacoesSectionProps {
   evaluatedUserId: string
+  evaluatedDisplayName: string
+  evaluatedEmail?: string
 }
 
 function matchesDateSearch(dataYmd: string, query: string): boolean {
@@ -37,7 +41,11 @@ function matchesDateSearch(dataYmd: string, query: string): boolean {
   )
 }
 
-export function IndividualAvaliacoesSection({ evaluatedUserId }: IndividualAvaliacoesSectionProps) {
+export function IndividualAvaliacoesSection({
+  evaluatedUserId,
+  evaluatedDisplayName,
+  evaluatedEmail,
+}: IndividualAvaliacoesSectionProps) {
   const router = useRouter()
   const [isNavigating, startTransition] = React.useTransition()
   const [rows, setRows] = React.useState<IndividualPerformanceEvaluationListRow[]>([])
@@ -100,6 +108,26 @@ export function IndividualAvaliacoesSection({ evaluatedUserId }: IndividualAvali
     })
   }
 
+  async function onExportPdf(row: IndividualPerformanceEvaluationListRow) {
+    try {
+      const detail = await getIndividualPerformanceEvaluation(row.id)
+      if (!detail || detail.evaluatedUserId !== evaluatedUserId) {
+        toast.error("Não foi possível carregar a avaliação para exportar.")
+        return
+      }
+      downloadIndividualEvaluationPdf({
+        detail,
+        evaluatedName: evaluatedDisplayName,
+        evaluatedEmail: evaluatedEmail ?? null,
+        dataExibicaoYmd: row.dataYmd,
+      })
+      toast.success("PDF transferido.")
+    } catch (e) {
+      console.error(e)
+      toast.error("Não foi possível gerar o PDF.")
+    }
+  }
+
   async function confirmDelete() {
     if (!deleteRow) return
     const res = await deleteIndividualPerformanceEvaluation(deleteRow.id)
@@ -114,25 +142,9 @@ export function IndividualAvaliacoesSection({ evaluatedUserId }: IndividualAvali
   }
 
   return (
-    <div className="flex w-full flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="relative min-w-0 flex-1 sm:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary" />
-          <Input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por data…"
-            className="pl-9"
-            aria-label="Buscar avaliações por data"
-          />
-        </div>
-        <Button
-          type="button"
-          className="w-full shrink-0 gap-2 sm:w-auto"
-          onClick={onAdd}
-          disabled={loading || isNavigating}
-        >
+    <div className="w-full space-y-4">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <Button type="button" className="gap-2" onClick={onAdd} disabled={loading || isNavigating}>
           <Plus className="size-4" aria-hidden />
           {isNavigating ? "A abrir…" : "Adicionar Avaliação"}
         </Button>
@@ -144,31 +156,57 @@ export function IndividualAvaliacoesSection({ evaluatedUserId }: IndividualAvali
         </div>
       ) : null}
 
-      {loading ? (
-        <div className="flex min-h-[12rem] items-center justify-center rounded-xl border border-border-default bg-surface-card py-12 shadow-card">
-          <p className="text-sm text-text-secondary">Carregando…</p>
-        </div>
-      ) : (
-        <IndividualAvaliacoesTable
-          rows={paginated}
-          onEdit={onEdit}
-          onRequestDelete={(row) => {
-            setDeleteRow(row)
-            setDeleteOpen(true)
-          }}
-          footer={
-            filtered.length > AVALIACOES_PAGE_SIZE ? (
-              <TablePagination
-                currentPage={page}
-                totalPages={totalPages}
-                totalItems={filtered.length}
-                itemsPerPage={AVALIACOES_PAGE_SIZE}
-                onPageChange={setPage}
-              />
-            ) : null
-          }
-        />
-      )}
+      <div className="overflow-hidden rounded-xl bg-surface-card shadow-card">
+        {!loading ? (
+          <TableToolbar
+            search={q}
+            onSearchChange={(v) => {
+              setQ(v)
+              setPage(1)
+            }}
+            searchPlaceholder="Buscar por data…"
+            totalLabel="Total de avaliações"
+            totalCount={filtered.length}
+            baseCount={rows.length}
+          />
+        ) : null}
+
+        {loading ? (
+          <div className="flex min-h-[12rem] items-center justify-center py-12">
+            <p className="text-sm text-text-secondary">Carregando…</p>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
+            Nenhuma avaliação cadastrada para este usuário.
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
+            Nenhum registro encontrado.
+          </div>
+        ) : (
+          <IndividualAvaliacoesTable
+            embedded
+            rows={paginated}
+            onEdit={onEdit}
+            onExportPdf={onExportPdf}
+            onRequestDelete={(row) => {
+              setDeleteRow(row)
+              setDeleteOpen(true)
+            }}
+            footer={
+              filtered.length > AVALIACOES_PAGE_SIZE ? (
+                <TablePagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={filtered.length}
+                  itemsPerPage={AVALIACOES_PAGE_SIZE}
+                  onPageChange={setPage}
+                />
+              ) : null
+            }
+          />
+        )}
+      </div>
 
       <ConfirmDialog
         open={deleteOpen}

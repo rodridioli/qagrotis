@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { MoreVertical, Pencil, Trash2 } from "lucide-react"
+import { FileDown, MoreVertical, Pencil, Trash2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -10,14 +10,21 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { AvaliacaoPeriodoBadge, AvaliacaoSituacaoBadge } from "@/components/qagrotis/StatusBadge"
 import type { IndividualPerformanceEvaluationListRow } from "@/lib/actions/individual-performance-evaluations"
-import { evaluationPeriodLabel, scorePercentToneClass } from "@/lib/individual-performance-evaluation"
+import {
+  evaluationPeriodLabel,
+  formatIndividualEvaluationCodigo,
+  scorePercentToneClass,
+} from "@/lib/individual-performance-evaluation"
 import { cn } from "@/lib/utils"
 
 export interface IndividualAvaliacoesTableProps {
   rows: IndividualPerformanceEvaluationListRow[]
   onEdit: (row: IndividualPerformanceEvaluationListRow) => void
   onRequestDelete: (row: IndividualPerformanceEvaluationListRow) => void
+  onExportPdf?: (row: IndividualPerformanceEvaluationListRow) => void
   footer?: ReactNode
+  /** Sem card externo (uso com `TableToolbar` no mesmo `rounded-xl`, como em /cenarios). */
+  embedded?: boolean
 }
 
 function formatDataPt(ymd: string): string {
@@ -30,9 +37,12 @@ export function IndividualAvaliacoesTable({
   rows,
   onEdit,
   onRequestDelete,
+  onExportPdf,
   footer,
+  embedded = false,
 }: IndividualAvaliacoesTableProps) {
   if (rows.length === 0) {
+    if (embedded) return null
     return (
       <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card">
         <p className="text-sm text-text-secondary">Nenhuma avaliação cadastrada para este usuário.</p>
@@ -40,12 +50,12 @@ export function IndividualAvaliacoesTable({
     )
   }
 
-  return (
-    <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
+  const tableBlock = (
+    <>
       <div className="overflow-x-auto">
         <table className="qagrotis-table-row-hover-muted w-full min-w-[320px] text-sm">
           <thead>
-            <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
+            <tr className="border-b border-border-default bg-neutral-grey-50">
               <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Código</th>
               <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Data</th>
               <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Período</th>
@@ -64,9 +74,9 @@ export function IndividualAvaliacoesTable({
                     type="button"
                     onClick={() => onEdit(r)}
                     className="cursor-pointer font-semibold text-brand-primary tabular-nums hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
-                    aria-label={`Abrir avaliação código ${r.codigo}`}
+                    aria-label={`Abrir avaliação ${formatIndividualEvaluationCodigo(r.codigo)}`}
                   >
-                    {r.codigo}
+                    {formatIndividualEvaluationCodigo(r.codigo)}
                   </button>
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 tabular-nums text-text-primary sm:px-4">
@@ -78,7 +88,7 @@ export function IndividualAvaliacoesTable({
                 <td className="whitespace-nowrap px-3 py-3 sm:px-4">
                   {r.pontuacaoPercent != null ? (
                     <span className={cn("text-sm font-semibold tabular-nums", scorePercentToneClass(r.pontuacaoPercent))}>
-                      {r.pontuacaoPercent.toFixed(0).replace(".", ",")}%
+                      {r.pontuacaoPercent.toFixed(1).replace(".", ",")}%
                     </span>
                   ) : (
                     <span className="text-sm text-muted-foreground">—</span>
@@ -105,6 +115,16 @@ export function IndividualAvaliacoesTable({
                         <Pencil className="size-4" />
                         {r.status === "CONCLUIDA" ? "Ver / editar" : "Editar"}
                       </DropdownMenuItem>
+                      {onExportPdf ? (
+                        <DropdownMenuItem
+                          onClick={() => {
+                            onExportPdf(r)
+                          }}
+                        >
+                          <FileDown className="size-4" />
+                          Exportar PDF
+                        </DropdownMenuItem>
+                      ) : null}
                       <DropdownMenuItem variant="destructive" onClick={() => onRequestDelete(r)}>
                         <Trash2 className="size-4" />
                         Remover
@@ -118,6 +138,16 @@ export function IndividualAvaliacoesTable({
         </table>
       </div>
       {footer}
+    </>
+  )
+
+  if (embedded) {
+    return tableBlock
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
+      {tableBlock}
     </div>
   )
 }

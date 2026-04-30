@@ -187,3 +187,9 @@ export function isEvaluationPeriodSlug(s: string): s is EvaluationPeriodSlug {
 }
 
 export const DEFAULT_EVALUATION_PERIOD: EvaluationPeriodSlug = "T1_TRIMESTRE"
+
+/** Código exibido na UI (ex.: AVA-007). O valor numérico continua a ser o armazenado na base. */
+export function formatIndividualEvaluationCodigo(codigo: number): string {
+  const n = Math.max(0, Math.floor(Number.isFinite(codigo) ? codigo : 0))
+  return `AVA-${String(n).padStart(3, "0")}`
+}
