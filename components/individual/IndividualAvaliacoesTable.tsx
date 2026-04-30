@@ -15,11 +15,39 @@ import { cn } from "@/lib/utils"
 
 export interface IndividualAvaliacoesTableProps {
   rows: IndividualPerformanceEvaluationListRow[]
+  /** Total de avaliações carregadas (antes do filtro de busca). */
+  listTotalCount?: number
+  /** Total após o filtro de busca (pode ser 0 com listTotalCount > 0). */
+  filteredTotalCount?: number
+  /** Administrador+MGR: cartão com total + caixa interior (padrão listas). */
+  useMgrListEmptyChrome?: boolean
   onEdit: (row: IndividualPerformanceEvaluationListRow) => void
   onRequestDelete: (row: IndividualPerformanceEvaluationListRow) => void
   /** Exportar (rótulo curto, sem “PDF” no menu). */
   onExport?: (row: IndividualPerformanceEvaluationListRow) => void
   footer?: ReactNode
+}
+
+function AvaliacoesListEmptyChrome({
+  totalLabelCount,
+  innerMessage,
+}: {
+  totalLabelCount: number
+  innerMessage: string
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
+      <div className="flex h-16 items-center border-b border-border-default px-5">
+        <span className="text-sm font-medium text-text-primary">
+          Total de avaliações:{" "}
+          <span className="font-bold">{totalLabelCount.toLocaleString("pt-BR")}</span>
+        </span>
+      </div>
+      <div className="mx-4 my-6 flex min-h-36 items-center justify-center rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary dark:bg-neutral-grey-900/30">
+        {innerMessage}
+      </div>
+    </div>
+  )
 }
 
 function formatDataPt(ymd: string): string {
@@ -30,15 +58,49 @@ function formatDataPt(ymd: string): string {
 
 export function IndividualAvaliacoesTable({
   rows,
+  listTotalCount: listTotalCountProp,
+  filteredTotalCount: filteredTotalCountProp,
+  useMgrListEmptyChrome = false,
   onEdit,
   onRequestDelete,
   onExport,
   footer,
 }: IndividualAvaliacoesTableProps) {
-  if (rows.length === 0) {
+  const listTotal = listTotalCountProp ?? rows.length
+  const filteredTotal = filteredTotalCountProp ?? rows.length
+
+  if (filteredTotal === 0) {
+    if (listTotal === 0 && useMgrListEmptyChrome) {
+      return (
+        <AvaliacoesListEmptyChrome totalLabelCount={0} innerMessage="Nenhum registro encontrado." />
+      )
+    }
+    if (listTotal === 0) {
+      return (
+        <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card">
+          <p className="text-sm text-text-secondary">Nenhuma avaliação cadastrada para este usuário.</p>
+        </div>
+      )
+    }
+    if (useMgrListEmptyChrome) {
+      return (
+        <AvaliacoesListEmptyChrome
+          totalLabelCount={listTotal}
+          innerMessage="Nenhum resultado para a busca."
+        />
+      )
+    }
     return (
       <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card">
-        <p className="text-sm text-text-secondary">Nenhuma avaliação cadastrada para este usuário.</p>
+        <p className="text-sm text-text-secondary">Nenhum resultado para a busca.</p>
+      </div>
+    )
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="flex min-h-36 items-center justify-center rounded-xl border border-border-default bg-surface-card px-4 py-10 text-sm text-text-secondary shadow-card">
+        Nenhum registro nesta página.
       </div>
     )
   }

@@ -60,6 +60,8 @@ export default async function IndividualSecaoPage({
 
   const showMgrUserFilter = canViewOthers && activeUsers.length > 0
   const querySuffix = showMgrUserFilter ? `?userId=${encodeURIComponent(targetUserId)}` : ""
+  const isAdministradorMgr =
+    session.user.type === "Administrador" && session.user.accessProfile === "MGR"
 
   const avatarUsers = serializeRscProps(
     activeUsers.map((u) => ({ id: u.id, name: u.name, photoPath: u.photoPath, email: u.email })),
@@ -70,7 +72,12 @@ export default async function IndividualSecaoPage({
       {!canViewOthers ? <IndividualSectionTabs querySuffix={querySuffix} /> : null}
 
       {showMgrUserFilter ? (
-        <IndividualSecaoDevelopmentPanel secao={secao} users={avatarUsers} selectedUserId={targetUserId} />
+        <IndividualSecaoDevelopmentPanel
+          secao={secao}
+          users={avatarUsers}
+          selectedUserId={targetUserId}
+          isAdministradorMgr={isAdministradorMgr}
+        />
       ) : (
         <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center justify-center py-16">
           <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>

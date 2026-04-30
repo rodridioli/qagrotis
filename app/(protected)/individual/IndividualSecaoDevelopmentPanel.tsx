@@ -7,12 +7,15 @@ interface Props {
   secao: string
   users: IndividualAvatarUser[]
   selectedUserId: string
+  /** Lista de avaliações (MGR): empty state alinhado às outras listas do produto. */
+  isAdministradorMgr?: boolean
 }
 
 export function IndividualSecaoDevelopmentPanel({
   secao,
   users,
   selectedUserId,
+  isAdministradorMgr = false,
 }: Props) {
   const showAvaliacoes = secao === "avaliacoes"
 
@@ -22,7 +25,10 @@ export function IndividualSecaoDevelopmentPanel({
         <IndividualActiveUserAvatarStrip secao={secao} users={users} selectedUserId={selectedUserId} />
       ) : null}
       {showAvaliacoes ? (
-        <IndividualAvaliacoesSection evaluatedUserId={selectedUserId} />
+        <IndividualAvaliacoesSection
+          evaluatedUserId={selectedUserId}
+          useMgrListEmptyChrome={isAdministradorMgr}
+        />
       ) : (
         <div className="flex w-full flex-1 flex-col items-center justify-center py-16">
           <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>

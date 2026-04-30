@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { IndividualAvaliacoesTable } from "@/components/individual/IndividualAvaliacoesTable"
 import {
+  createDraftIndividualPerformanceEvaluation,
   deleteIndividualPerformanceEvaluation,
   listIndividualPerformanceEvaluations,
   type IndividualPerformanceEvaluationListRow,
@@ -19,6 +20,8 @@ const AVALIACOES_PAGE_SIZE = 20
 
 export interface IndividualAvaliacoesSectionProps {
   evaluatedUserId: string
+  /** Administrador + MGR: empty state igual a outras listas (ex.: cenários). */
+  useMgrListEmptyChrome?: boolean
 }
 
 function matchesDateSearch(dataYmd: string, query: string): boolean {
@@ -37,9 +40,13 @@ function matchesDateSearch(dataYmd: string, query: string): boolean {
   )
 }
 
-export function IndividualAvaliacoesSection({ evaluatedUserId }: IndividualAvaliacoesSectionProps) {
+export function IndividualAvaliacoesSection({
+  evaluatedUserId,
+  useMgrListEmptyChrome = false,
+}: IndividualAvaliacoesSectionProps) {
   const router = useRouter()
   const [isNavigating, startTransition] = React.useTransition()
+  const [isCreating, setIsCreating] = React.useState(false)
   const [rows, setRows] = React.useState<IndividualPerformanceEvaluationListRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -88,10 +95,25 @@ export function IndividualAvaliacoesSection({ evaluatedUserId }: IndividualAvali
 
   const userQ = `?userId=${encodeURIComponent(evaluatedUserId)}`
 
-  function onAdd() {
-    startTransition(() => {
-      router.push(`/individual/avaliacoes/nova${userQ}`)
-    })
+  async function onAdd() {
+    const uid = evaluatedUserId.trim()
+    if (!uid) {
+      toast.error("Utilizador inválido para nova avaliação.")
+      return
+    }
+    setIsCreating(true)
+    try {
+      const res = await createDraftIndividualPerformanceEvaluation(uid)
+      if ("error" in res) {
+        toast.error(res.error)
+        return
+      }
+      router.push(`/individual/avaliacoes/${res.id}${userQ}`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível criar a avaliação.")
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   function onEdit(row: IndividualPerformanceEvaluationListRow) {
@@ -130,11 +152,11 @@ export function IndividualAvaliacoesSection({ evaluatedUserId }: IndividualAvali
         <Button
           type="button"
           className="w-full shrink-0 gap-2 sm:w-auto"
-          onClick={onAdd}
-          disabled={loading || isNavigating}
+          onClick={() => void onAdd()}
+          disabled={loading || isCreating || isNavigating}
         >
           <Plus className="size-4" aria-hidden />
-          {isNavigating ? "A abrir…" : "Adicionar Avaliação"}
+          {isCreating ? "A criar…" : "Adicionar Avaliação"}
         </Button>
       </div>
 
@@ -151,6 +173,9 @@ export function IndividualAvaliacoesSection({ evaluatedUserId }: IndividualAvali
       ) : (
         <IndividualAvaliacoesTable
           rows={paginated}
+          listTotalCount={rows.length}
+          filteredTotalCount={filtered.length}
+          useMgrListEmptyChrome={useMgrListEmptyChrome}
           onEdit={onEdit}
           onExport={(row) => {
             void (async () => {
