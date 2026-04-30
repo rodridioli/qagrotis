@@ -93,18 +93,23 @@ export function IndividualAvaliacoesSection({ evaluatedUserId, evaluatedUser }: 
   }, [filtered, page])
 
   async function onAdd() {
+    setModalOpen(true)
+    setModalEvalId(null)
     setCreating(true)
     try {
       const res = await createDraftIndividualPerformanceEvaluation(evaluatedUserId)
       if ("error" in res) {
         toast.error(res.error)
+        setModalOpen(false)
+        setModalEvalId(null)
         return
       }
       setModalEvalId(res.id)
-      setModalOpen(true)
     } catch (e) {
       console.error(e)
       toast.error("Não foi possível criar a avaliação.")
+      setModalOpen(false)
+      setModalEvalId(null)
     } finally {
       setCreating(false)
     }
@@ -194,6 +199,7 @@ export function IndividualAvaliacoesSection({ evaluatedUserId, evaluatedUser }: 
         open={modalOpen}
         onOpenChange={handleModalOpenChange}
         evaluationId={modalEvalId}
+        isCreatingEval={creating && modalOpen && modalEvalId === null}
         evaluatedUserId={evaluatedUserId}
         evaluatedUser={evaluatedUser}
         onSaved={() => void refetch()}

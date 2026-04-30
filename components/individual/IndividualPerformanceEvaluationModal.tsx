@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Image from "next/image"
 import {
   BookOpen,
   CheckCircle2,
@@ -57,6 +56,8 @@ export interface IndividualPerformanceEvaluationModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   evaluationId: string | null
+  /** True enquanto o rascunho está a ser criado no servidor (modal já visível). */
+  isCreatingEval?: boolean
   evaluatedUserId: string
   evaluatedUser: EvaluatedUserSummary
   onSaved: () => void
@@ -75,6 +76,7 @@ export function IndividualPerformanceEvaluationModal({
   open,
   onOpenChange,
   evaluationId,
+  isCreatingEval = false,
   evaluatedUserId,
   evaluatedUser,
   onSaved,
@@ -88,12 +90,19 @@ export function IndividualPerformanceEvaluationModal({
   const [busy, setBusy] = React.useState<"save" | "complete" | null>(null)
 
   React.useEffect(() => {
-    if (!open || !evaluationId) {
+    if (!open) {
       setDetail(null)
       setLoadError(null)
       setSelections({})
       setPeriodo(DEFAULT_EVALUATION_PERIOD)
       setTab("geral")
+      setLoading(false)
+      return
+    }
+    if (!evaluationId) {
+      setDetail(null)
+      setLoadError(null)
+      setLoading(false)
       return
     }
     let cancelled = false
@@ -171,7 +180,7 @@ export function IndividualPerformanceEvaluationModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        showCloseButton
+        showCloseButton={!isCreatingEval}
         className={cn(
           "flex max-h-[min(92dvh,48rem)] w-[calc(100%-1.5rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl",
         )}
@@ -215,7 +224,15 @@ export function IndividualPerformanceEvaluationModal({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5">
-            {loading ? (
+            {isCreatingEval ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-16">
+                <div
+                  className="size-10 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary"
+                  aria-hidden
+                />
+                <p className="text-sm text-muted-foreground">A criar avaliação…</p>
+              </div>
+            ) : loading ? (
               <p className="py-12 text-center text-sm text-muted-foreground">Carregando…</p>
             ) : loadError ? (
               <p className="py-12 text-center text-sm text-destructive">{loadError}</p>
@@ -223,18 +240,11 @@ export function IndividualPerformanceEvaluationModal({
               <div className="mx-auto flex max-w-lg flex-col gap-6">
                 <div className="flex flex-col gap-4 rounded-xl border border-border-default bg-surface-card p-4 shadow-card sm:flex-row sm:items-center">
                   <div className="flex shrink-0 justify-center sm:justify-start">
-                    {evaluatedUser.photoPath && !evaluatedUser.photoPath.startsWith("data:") ? (
-                      <Image
-                        src={evaluatedUser.photoPath}
-                        alt=""
-                        width={88}
-                        height={88}
-                        unoptimized
-                        className="size-[5.5rem] rounded-2xl border border-border-default object-cover"
-                      />
-                    ) : (
-                      <UserAvatar name={evaluatedUser.name} photoPath={evaluatedUser.photoPath} size={88} />
-                    )}
+                    <UserAvatar
+                      name={evaluatedUser.name || " "}
+                      photoPath={evaluatedUser.photoPath}
+                      size={88}
+                    />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1 text-center sm:text-left">
                     <p className="text-base font-semibold text-foreground">{evaluatedUser.name}</p>
@@ -325,7 +335,7 @@ export function IndividualPerformanceEvaluationModal({
           <Button
             type="button"
             variant="outline"
-            disabled={busy != null || loading}
+            disabled={busy != null || loading || isCreatingEval}
             onClick={() => onOpenChange(false)}
             className="gap-2"
           >
@@ -335,7 +345,7 @@ export function IndividualPerformanceEvaluationModal({
           <Button
             type="button"
             variant="secondary"
-            disabled={busy != null || loading || !detail}
+            disabled={busy != null || loading || !detail || isCreatingEval}
             onClick={() => void submit("save")}
             className="gap-2"
           >
@@ -344,7 +354,7 @@ export function IndividualPerformanceEvaluationModal({
           </Button>
           <Button
             type="button"
-            disabled={busy != null || loading || !detail}
+            disabled={busy != null || loading || !detail || isCreatingEval}
             onClick={() => void submit("complete")}
             className="gap-2"
           >

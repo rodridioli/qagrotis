@@ -161,14 +161,11 @@ export async function getIndividualPerformanceEvaluation(
 
 export async function createDraftIndividualPerformanceEvaluation(
   evaluatedUserId: string,
-  periodo?: string,
 ): Promise<{ id: string } | { error: string }> {
   try {
     const { session } = await requireMgrPerformanceAccess()
     await assertEvaluatedUserInScope(evaluatedUserId)
     await ensureIndividualPerformanceEvaluationTable()
-
-    const periodoOk = periodo && isEvaluationPeriodSlug(periodo) ? periodo : DEFAULT_EVALUATION_PERIOD
 
     const agg = await prisma.individualPerformanceEvaluation.aggregate({
       where: { evaluatedUserId },
@@ -184,7 +181,6 @@ export async function createDraftIndividualPerformanceEvaluation(
         status: "RASCUNHO",
         selections: {},
         pontuacaoPercent: null,
-        periodo: periodoOk,
       },
       select: { id: true },
     })
