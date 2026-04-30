@@ -109,7 +109,10 @@ export async function listIndividualPerformanceEvaluations(
       id: row.id,
       codigo: row.codigo,
       dataYmd: ymdFromDate(row.updatedAt),
-      pontuacaoPercent: row.pontuacaoPercent,
+      pontuacaoPercent:
+        row.pontuacaoPercent != null && !Number.isNaN(Number(row.pontuacaoPercent))
+          ? Number(row.pontuacaoPercent)
+          : null,
       status: row.status as IndividualPerformanceEvaluationStatusDto,
       periodo: row.periodo && isEvaluationPeriodSlug(row.periodo) ? row.periodo : DEFAULT_EVALUATION_PERIOD,
     }))
@@ -152,7 +155,10 @@ export async function getIndividualPerformanceEvaluation(
       codigo: row.codigo,
       status: row.status as IndividualPerformanceEvaluationStatusDto,
       selections: parseSelectionsJson(row.selections),
-      pontuacaoPercent: row.pontuacaoPercent,
+      pontuacaoPercent:
+        row.pontuacaoPercent != null && !Number.isNaN(Number(row.pontuacaoPercent))
+          ? Number(row.pontuacaoPercent)
+          : null,
       periodo: p && isEvaluationPeriodSlug(p) ? p : DEFAULT_EVALUATION_PERIOD,
       dataYmd: ymdFromDate(row.updatedAt),
     }
@@ -236,6 +242,9 @@ export async function updateIndividualPerformanceEvaluation(
     } else {
       status = "RASCUNHO"
       const score = computePerformanceScorePercent(selections)
+      if (score == null) {
+        return { error: "É preciso preencher todos os critérios de avaliação." }
+      }
       pontuacaoPercent = score
     }
 

@@ -22,6 +22,7 @@ import {
   computePerformanceScorePercent,
   DEFAULT_EVALUATION_PERIOD,
   EVALUATION_PERIOD_SLUGS,
+  evaluationDisplayCodigo,
   evaluationPeriodLabel,
   isEvaluationPeriodSlug,
   PERFORMANCE_EVALUATION_SECTIONS,
@@ -77,6 +78,11 @@ export function IndividualPerformanceEvaluationPageClient({
   const scoreLabel = performanceScoreQualitativeLabel(displayPercent)
 
   async function submit(mode: "save" | "complete") {
+    const score = computePerformanceScorePercent(selections as Record<string, number>)
+    if (score == null) {
+      toast.error("É preciso preencher todos os critérios de avaliação.")
+      return
+    }
     const payload: Record<string, number> = {}
     for (const [k, v] of Object.entries(selections)) {
       if (v !== undefined && v >= 0 && v <= 4) payload[k] = v
@@ -119,7 +125,7 @@ export function IndividualPerformanceEvaluationPageClient({
           items={[
             { label: "Individual", href: fichaHref },
             { label: "Avaliações", href: listHref },
-            { label: `Código ${detail.codigo}` },
+            { label: evaluationDisplayCodigo(detail.codigo) },
           ]}
         />
 
@@ -192,7 +198,7 @@ export function IndividualPerformanceEvaluationPageClient({
               }}
             >
               <SelectTrigger className="w-full bg-surface-card">
-                <SelectValue />
+                <SelectValue>{evaluationPeriodLabel(periodo)}</SelectValue>
               </SelectTrigger>
               <SelectPopup>
                 {EVALUATION_PERIOD_SLUGS.map((slug) => (
@@ -205,12 +211,6 @@ export function IndividualPerformanceEvaluationPageClient({
           </div>
         </div>
       </div>
-
-      {displayPercent == null ? (
-        <p className="text-center text-xs text-text-secondary">
-          Preencha todas as competências para calcular a pontuação (fórmula da planilha de indicadores).
-        </p>
-      ) : null}
 
       <PerformanceEvaluationSectionGrid
         section={conhecimentos}

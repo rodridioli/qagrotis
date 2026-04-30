@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
 import { getIndividualPerformanceEvaluation } from "@/lib/actions/individual-performance-evaluations"
-import { evaluationPeriodLabel } from "@/lib/individual-performance-evaluation"
+import { evaluationDisplayCodigo, evaluationPeriodLabel } from "@/lib/individual-performance-evaluation"
 import { jsPDF } from "jspdf"
 
 export const runtime = "nodejs"
@@ -37,7 +37,7 @@ export async function GET(
   doc.text("Avaliação de desempenho", 14, y)
   y += 10
   doc.setFontSize(10)
-  doc.text(`Código: ${ev.codigo}`, 14, y)
+  doc.text(`Código: ${evaluationDisplayCodigo(ev.codigo)}`, 14, y)
   y += 6
   doc.text(`Situação: ${ev.status === "CONCLUIDA" ? "Concluída" : "Rascunho"}`, 14, y)
   y += 6
@@ -54,7 +54,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="avaliacao-${ev.codigo}.pdf"`,
+      "Content-Disposition": `attachment; filename="avaliacao-${evaluationDisplayCodigo(ev.codigo)}.pdf"`,
       "Cache-Control": "private, no-store",
     },
   })

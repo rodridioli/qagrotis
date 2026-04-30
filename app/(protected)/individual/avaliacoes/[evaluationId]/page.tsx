@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
 import { getActiveQaUsers } from "@/lib/actions/usuarios"
 import { getIndividualPerformanceEvaluation } from "@/lib/actions/individual-performance-evaluations"
+import { evaluationDisplayCodigo } from "@/lib/individual-performance-evaluation"
 import { IndividualPerformanceEvaluationPageClient } from "@/components/individual/IndividualPerformanceEvaluationPageClient"
 
 export async function generateMetadata({
@@ -19,7 +20,7 @@ export async function generateMetadata({
   if (!can(role, "individual.viewOthers")) return { title: "Avaliação" }
   const d = await getIndividualPerformanceEvaluation(evaluationId)
   if (!d) return { title: "Avaliação" }
-  return { title: `Avaliação — Código ${d.codigo}` }
+  return { title: `Avaliação — ${evaluationDisplayCodigo(d.codigo)}` }
 }
 
 export default async function IndividualAvaliacaoDetailPage({

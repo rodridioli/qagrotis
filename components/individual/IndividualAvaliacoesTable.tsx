@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { FileDown, MoreVertical, Pencil, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronUp, FileDown, MoreVertical, Pencil, Trash2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -10,7 +10,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { AvaliacaoPeriodoBadge, AvaliacaoSituacaoBadge } from "@/components/qagrotis/StatusBadge"
 import type { IndividualPerformanceEvaluationListRow } from "@/lib/actions/individual-performance-evaluations"
-import { evaluationPeriodLabel, scorePercentToneClass } from "@/lib/individual-performance-evaluation"
+import {
+  avaliacaoListDisplayPercent,
+  evaluationDisplayCodigo,
+  evaluationPeriodLabel,
+  scorePercentToneClass,
+} from "@/lib/individual-performance-evaluation"
 import { cn } from "@/lib/utils"
 
 export interface IndividualAvaliacoesTableProps {
@@ -21,6 +26,8 @@ export interface IndividualAvaliacoesTableProps {
   filteredTotalCount?: number
   /** Administrador+MGR: cartão com total + caixa interior (padrão listas). */
   useMgrListEmptyChrome?: boolean
+  /** Administrador+MGR: tendência vs avaliação anterior (lista por código desc). */
+  scoreTrendByRowId?: Record<string, "up" | "down" | "same">
   onEdit: (row: IndividualPerformanceEvaluationListRow) => void
   onRequestDelete: (row: IndividualPerformanceEvaluationListRow) => void
   /** Exportar (rótulo curto, sem “PDF” no menu). */
@@ -61,6 +68,7 @@ export function IndividualAvaliacoesTable({
   listTotalCount: listTotalCountProp,
   filteredTotalCount: filteredTotalCountProp,
   useMgrListEmptyChrome = false,
+  scoreTrendByRowId,
   onEdit,
   onRequestDelete,
   onExport,
@@ -129,9 +137,9 @@ export function IndividualAvaliacoesTable({
                     type="button"
                     onClick={() => onEdit(r)}
                     className="cursor-pointer font-semibold text-brand-primary tabular-nums hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
-                    aria-label={`Abrir avaliação código ${r.codigo}`}
+                    aria-label={`Abrir avaliação ${evaluationDisplayCodigo(r.codigo)}`}
                   >
-                    {r.codigo}
+                    {evaluationDisplayCodigo(r.codigo)}
                   </button>
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 tabular-nums text-text-primary sm:px-4">
@@ -141,13 +149,31 @@ export function IndividualAvaliacoesTable({
                   <AvaliacaoPeriodoBadge label={evaluationPeriodLabel(r.periodo)} />
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 sm:px-4">
-                  {r.pontuacaoPercent != null ? (
-                    <span className={cn("text-sm font-semibold tabular-nums", scorePercentToneClass(r.pontuacaoPercent))}>
-                      {r.pontuacaoPercent.toFixed(0).replace(".", ",")}%
-                    </span>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">—</span>
-                  )}
+                  {(() => {
+                    const displayPct = avaliacaoListDisplayPercent(r.pontuacaoPercent)
+                    const trend = scoreTrendByRowId?.[r.id]
+                    return (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span
+                          className={cn("text-sm font-semibold tabular-nums", scorePercentToneClass(displayPct))}
+                        >
+                          {displayPct.toFixed(0).replace(".", ",")}%
+                        </span>
+                        {trend === "up" ? (
+                          <ChevronUp
+                            className="size-4 shrink-0 text-green-600 dark:text-green-400"
+                            aria-label="Pontuação superior à avaliação anterior"
+                          />
+                        ) : null}
+                        {trend === "down" ? (
+                          <ChevronDown
+                            className="size-4 shrink-0 text-red-600 dark:text-red-400"
+                            aria-label="Pontuação inferior à avaliação anterior"
+                          />
+                        ) : null}
+                      </span>
+                    )
+                  })()}
                 </td>
                 <td className="px-3 py-3 sm:px-4">
                   <AvaliacaoSituacaoBadge situacao={r.status === "CONCLUIDA" ? "Concluída" : "Rascunho"} />

@@ -5,6 +5,8 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import {
   columnHeaderToneClass,
   computeSectionColumnPercents,
+  evaluationColumnBodyCellClass,
+  evaluationColumnSelectedLabelClass,
   EVALUATION_LEVEL_LABELS,
   type PerformanceEvaluationSection,
 } from "@/lib/individual-performance-evaluation"
@@ -109,13 +111,16 @@ export function PerformanceEvaluationSectionGrid({
                   const selected = selections[c.id] === col
                   const name = `level-${section.id}-${c.id}`
                   return (
-                    <td key={col} className="p-1 text-center align-middle sm:p-1.5">
+                    <td
+                      key={col}
+                      className={cn("p-1 text-center align-middle sm:p-1.5", evaluationColumnBodyCellClass(col))}
+                    >
                       <label
                         className={cn(
                           "flex h-10 cursor-pointer items-center justify-center rounded-lg border text-xs font-medium transition-colors sm:h-11",
                           selected
-                            ? "border-brand-primary bg-primary/15 text-brand-primary ring-2 ring-brand-primary/30"
-                            : "border-transparent bg-muted/40 text-muted-foreground hover:border-border-default hover:bg-muted",
+                            ? evaluationColumnSelectedLabelClass(col)
+                            : "border-transparent bg-transparent text-text-secondary/80 hover:bg-neutral-grey-100/90 dark:hover:bg-neutral-grey-800/50",
                         )}
                       >
                         <input

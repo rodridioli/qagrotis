@@ -10,11 +10,11 @@ import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { IndividualAvaliacoesTable } from "@/components/individual/IndividualAvaliacoesTable"
 import {
-  createDraftIndividualPerformanceEvaluation,
   deleteIndividualPerformanceEvaluation,
   listIndividualPerformanceEvaluations,
   type IndividualPerformanceEvaluationListRow,
 } from "@/lib/actions/individual-performance-evaluations"
+import { avaliacaoListDisplayPercent, evaluationDisplayCodigo } from "@/lib/individual-performance-evaluation"
 
 const AVALIACOES_PAGE_SIZE = 20
 
@@ -46,7 +46,6 @@ export function IndividualAvaliacoesSection({
 }: IndividualAvaliacoesSectionProps) {
   const router = useRouter()
   const [isNavigating, startTransition] = React.useTransition()
-  const [isCreating, setIsCreating] = React.useState(false)
   const [rows, setRows] = React.useState<IndividualPerformanceEvaluationListRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -93,27 +92,26 @@ export function IndividualAvaliacoesSection({
     return filtered.slice(start, start + AVALIACOES_PAGE_SIZE)
   }, [filtered, page])
 
+  /** Tendência vs avaliação mais antiga imediatamente a seguir na lista (ordenada por código desc). */
+  const scoreTrendByRowId = React.useMemo(() => {
+    const m: Record<string, "up" | "down" | "same"> = {}
+    for (let i = 0; i < filtered.length; i++) {
+      const row = filtered[i]!
+      const older = filtered[i + 1]
+      if (!older) continue
+      const cur = avaliacaoListDisplayPercent(row.pontuacaoPercent)
+      const prev = avaliacaoListDisplayPercent(older.pontuacaoPercent)
+      m[row.id] = cur > prev ? "up" : cur < prev ? "down" : "same"
+    }
+    return m
+  }, [filtered])
+
   const userQ = `?userId=${encodeURIComponent(evaluatedUserId)}`
 
-  async function onAdd() {
-    const uid = evaluatedUserId.trim()
-    if (!uid) {
-      toast.error("Utilizador inválido para nova avaliação.")
-      return
-    }
-    setIsCreating(true)
-    try {
-      const res = await createDraftIndividualPerformanceEvaluation(uid)
-      if ("error" in res) {
-        toast.error(res.error)
-        return
-      }
-      router.push(`/individual/avaliacoes/${res.id}${userQ}`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível criar a avaliação.")
-    } finally {
-      setIsCreating(false)
-    }
+  function onAdd() {
+    startTransition(() => {
+      router.push(`/individual/avaliacoes/nova${userQ}`)
+    })
   }
 
   function onEdit(row: IndividualPerformanceEvaluationListRow) {
@@ -152,11 +150,11 @@ export function IndividualAvaliacoesSection({
         <Button
           type="button"
           className="w-full shrink-0 gap-2 sm:w-auto"
-          onClick={() => void onAdd()}
-          disabled={loading || isCreating || isNavigating}
+          onClick={onAdd}
+          disabled={loading || isNavigating}
         >
           <Plus className="size-4" aria-hidden />
-          {isCreating ? "A criar…" : "Adicionar Avaliação"}
+          Adicionar Avaliação
         </Button>
       </div>
 
@@ -176,30 +174,35 @@ export function IndividualAvaliacoesSection({
           listTotalCount={rows.length}
           filteredTotalCount={filtered.length}
           useMgrListEmptyChrome={useMgrListEmptyChrome}
+          scoreTrendByRowId={useMgrListEmptyChrome ? scoreTrendByRowId : undefined}
           onEdit={onEdit}
-          onExport={(row) => {
-            void (async () => {
-              try {
-                const res = await fetch(`/api/individual-performance-evaluations/${row.id}/pdf`)
-                if (!res.ok) {
-                  toast.error("Não foi possível exportar.")
-                  return
+          onExport={
+            useMgrListEmptyChrome
+              ? (row) => {
+                  void (async () => {
+                    try {
+                      const res = await fetch(`/api/individual-performance-evaluations/${row.id}/pdf`)
+                      if (!res.ok) {
+                        toast.error("Não foi possível exportar.")
+                        return
+                      }
+                      const blob = await res.blob()
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement("a")
+                      a.href = url
+                      a.download = `avaliacao-${evaluationDisplayCodigo(row.codigo)}.pdf`
+                      document.body.appendChild(a)
+                      a.click()
+                      a.remove()
+                      URL.revokeObjectURL(url)
+                      toast.success("Exportação concluída.")
+                    } catch {
+                      toast.error("Não foi possível exportar.")
+                    }
+                  })()
                 }
-                const blob = await res.blob()
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement("a")
-                a.href = url
-                a.download = `avaliacao-${row.codigo}.pdf`
-                document.body.appendChild(a)
-                a.click()
-                a.remove()
-                URL.revokeObjectURL(url)
-                toast.success("Exportação concluída.")
-              } catch {
-                toast.error("Não foi possível exportar.")
-              }
-            })()
-          }}
+              : undefined
+          }
           onRequestDelete={(row) => {
             setDeleteRow(row)
             setDeleteOpen(true)

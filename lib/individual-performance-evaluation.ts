@@ -153,16 +153,62 @@ export function performanceScoreQualitativeLabel(percent: number | null): string
   return "Não atende"
 }
 
+/** Fundo da coluna (cabeçalho e células do corpo) — mesma base visual. */
+const EVALUATION_COLUMN_BG: string[] = [
+  "bg-rose-50/90 dark:bg-rose-950/30",
+  "bg-orange-50/95 dark:bg-orange-950/25",
+  "bg-amber-50/95 dark:bg-amber-950/25",
+  "bg-sky-50/95 dark:bg-sky-950/25",
+  "bg-emerald-50/95 dark:bg-emerald-950/25",
+]
+
+const EVALUATION_COLUMN_HEADER_TEXT: string[] = [
+  "text-rose-700/80 dark:text-rose-200/90",
+  "text-orange-800/75 dark:text-orange-200/85",
+  "text-amber-800/75 dark:text-amber-100/90",
+  "text-sky-800/75 dark:text-sky-100/90",
+  "text-emerald-800/75 dark:text-emerald-100/90",
+]
+
+/** Célula de corpo: mesmo fundo do cabeçalho da coluna. */
+export function evaluationColumnBodyCellClass(colIndex: number): string {
+  return EVALUATION_COLUMN_BG[colIndex] ?? "bg-muted/40"
+}
+
+/** Célula selecionada (borda + texto do check alinhados à coluna). */
+export function evaluationColumnSelectedLabelClass(colIndex: number): string {
+  const selected = [
+    "border-rose-600 bg-rose-100/80 text-rose-700 ring-2 ring-rose-400/40 dark:border-rose-500 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-500/30",
+    "border-orange-600 bg-orange-100/80 text-orange-800 ring-2 ring-orange-400/40 dark:border-orange-500 dark:bg-orange-950/50 dark:text-orange-200 dark:ring-orange-500/30",
+    "border-amber-600 bg-amber-100/80 text-amber-900 ring-2 ring-amber-400/40 dark:border-amber-500 dark:bg-amber-950/50 dark:text-amber-100 dark:ring-amber-500/30",
+    "border-sky-600 bg-sky-100/80 text-sky-800 ring-2 ring-sky-400/40 dark:border-sky-500 dark:bg-sky-950/50 dark:text-sky-100 dark:ring-sky-500/30",
+    "border-emerald-600 bg-emerald-100/80 text-emerald-800 ring-2 ring-emerald-400/40 dark:border-emerald-500 dark:bg-emerald-950/50 dark:text-emerald-100 dark:ring-emerald-500/30",
+  ]
+  return selected[colIndex] ?? "border-brand-primary bg-primary/15 text-brand-primary ring-2 ring-brand-primary/30"
+}
+
 /** Cabeçalhos de coluna em tons pastéis (grelha de competências). */
 export function columnHeaderToneClass(colIndex: number): string {
-  const tones = [
-    "bg-rose-50/90 text-rose-700/80 dark:bg-rose-950/30 dark:text-rose-200/90",
-    "bg-orange-50/95 text-orange-800/75 dark:bg-orange-950/25 dark:text-orange-200/85",
-    "bg-amber-50/95 text-amber-800/75 dark:bg-amber-950/25 dark:text-amber-100/90",
-    "bg-sky-50/95 text-sky-800/75 dark:bg-sky-950/25 dark:text-sky-100/90",
-    "bg-emerald-50/95 text-emerald-800/75 dark:bg-emerald-950/25 dark:text-emerald-100/90",
-  ]
-  return tones[colIndex] ?? "bg-muted/60 text-muted-foreground"
+  const bg = EVALUATION_COLUMN_BG[colIndex]
+  const tx = EVALUATION_COLUMN_HEADER_TEXT[colIndex]
+  if (bg && tx) return `${bg} ${tx}`
+  return "bg-muted/60 text-muted-foreground"
+}
+
+/** Código legível na UI e em PDFs (ex.: AVA-001). */
+export function evaluationDisplayCodigo(codigo: number): string {
+  const n = Number.isFinite(codigo) && codigo >= 0 ? Math.floor(codigo) : 0
+  return `AVA-${String(n).padStart(3, "0")}`
+}
+
+/** Percentagem na lista quando ainda não há cálculo gravado (pedido MGR). */
+export const AVALIACAO_LIST_PERCENT_FALLBACK = 20
+
+export function avaliacaoListDisplayPercent(pontuacaoPercent: number | null | undefined): number {
+  if (pontuacaoPercent == null || Number.isNaN(Number(pontuacaoPercent))) {
+    return AVALIACAO_LIST_PERCENT_FALLBACK
+  }
+  return Number(pontuacaoPercent)
 }
 
 export const EVALUATION_PERIOD_SLUGS = [
