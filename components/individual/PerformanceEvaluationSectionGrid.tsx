@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { ChevronDown, ChevronUp } from "lucide-react"
 import {
   columnHeaderToneClass,
   computeSectionColumnPercents,
@@ -14,6 +15,9 @@ export interface PerformanceEvaluationSectionGridProps {
   selections: Record<string, number | undefined>
   onSelectLevel: (competencyId: string, level: number) => void
   icon: React.ReactNode
+  /** Seção expansível (cabeçalho clicável), padrão execução de cenário / mockup. */
+  collapsible?: boolean
+  defaultOpen?: boolean
 }
 
 export function PerformanceEvaluationSectionGrid({
@@ -21,23 +25,54 @@ export function PerformanceEvaluationSectionGrid({
   selections,
   onSelectLevel,
   icon,
+  collapsible = true,
+  defaultOpen = true,
 }: PerformanceEvaluationSectionGridProps) {
+  const [open, setOpen] = React.useState(defaultOpen)
   const colPercents = computeSectionColumnPercents(section, selections as Record<string, number>)
 
   return (
     <section
-      className="rounded-xl border border-border-default bg-surface-card shadow-card"
+      className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card"
       aria-labelledby={`sec-${section.id}`}
     >
-      <div className="flex items-center gap-3 border-b border-border-default px-4 py-3 sm:px-5">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-brand-primary">
-          {icon}
-        </span>
-        <h2 id={`sec-${section.id}`} className="text-base font-semibold text-text-primary sm:text-lg">
-          {section.label}
-        </h2>
-      </div>
-      <div className="overflow-x-auto">
+      {collapsible ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={`sec-${section.id}-panel`}
+          onClick={() => setOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-3 border-b border-border-default px-4 py-3 transition-colors hover:bg-neutral-grey-50 sm:px-5"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-brand-primary">
+              {icon}
+            </span>
+            <span
+              id={`sec-${section.id}`}
+              className="text-left text-base font-semibold text-text-primary sm:text-lg"
+            >
+              {section.label}
+            </span>
+          </span>
+          {open ? (
+            <ChevronUp className="size-4 shrink-0 text-text-secondary" aria-hidden />
+          ) : (
+            <ChevronDown className="size-4 shrink-0 text-text-secondary" aria-hidden />
+          )}
+        </button>
+      ) : (
+        <div className="flex items-center gap-3 border-b border-border-default px-4 py-3 sm:px-5">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-brand-primary">
+            {icon}
+          </span>
+          <h2 id={`sec-${section.id}`} className="text-base font-semibold text-text-primary sm:text-lg">
+            {section.label}
+          </h2>
+        </div>
+      )}
+      {open ? (
+      <div id={`sec-${section.id}-panel`} className="overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
             <tr>
@@ -123,6 +158,7 @@ export function PerformanceEvaluationSectionGrid({
           </tbody>
         </table>
       </div>
+      ) : null}
     </section>
   )
 }

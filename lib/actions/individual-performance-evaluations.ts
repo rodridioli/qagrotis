@@ -96,7 +96,6 @@ export async function listIndividualPerformanceEvaluations(
         pontuacaoPercent: true,
         status: true,
         periodo: true,
-        selections: true,
       },
     })) as {
       id: string
@@ -105,25 +104,15 @@ export async function listIndividualPerformanceEvaluations(
       pontuacaoPercent: number | null
       status: string
       periodo: string | null
-      selections: unknown
     }[]
-    return rows.map((row) => {
-      const raw = row.pontuacaoPercent
-      const storedNum =
-        raw == null ? null : typeof raw === "number" ? raw : Number(raw)
-      const storedOk = storedNum != null && Number.isFinite(storedNum) ? storedNum : null
-      const parsed = parseSelectionsJson(row.selections)
-      const fromSelections = computePerformanceScorePercent(parsed)
-      const pontuacaoPercent = fromSelections != null ? fromSelections : storedOk
-      return {
-        id: row.id,
-        codigo: row.codigo,
-        dataYmd: ymdFromDate(row.updatedAt),
-        pontuacaoPercent,
-        status: row.status as IndividualPerformanceEvaluationStatusDto,
-        periodo: row.periodo && isEvaluationPeriodSlug(row.periodo) ? row.periodo : DEFAULT_EVALUATION_PERIOD,
-      }
-    })
+    return rows.map((row) => ({
+      id: row.id,
+      codigo: row.codigo,
+      dataYmd: ymdFromDate(row.updatedAt),
+      pontuacaoPercent: row.pontuacaoPercent,
+      status: row.status as IndividualPerformanceEvaluationStatusDto,
+      periodo: row.periodo && isEvaluationPeriodSlug(row.periodo) ? row.periodo : DEFAULT_EVALUATION_PERIOD,
+    }))
   } catch (e) {
     console.error("[listIndividualPerformanceEvaluations]", e)
     throw new Error(evalPrismaMessage(e, "Não foi possível carregar as avaliações."))
@@ -138,6 +127,8 @@ export interface IndividualPerformanceEvaluationDetail {
   selections: Record<string, number>
   pontuacaoPercent: number | null
   periodo: string
+  /** Data de atualização da avaliação (ISO yyyy-mm-dd), exibida como “Data da avaliação”. */
+  dataYmd: string
 }
 
 export async function getIndividualPerformanceEvaluation(
@@ -163,6 +154,7 @@ export async function getIndividualPerformanceEvaluation(
       selections: parseSelectionsJson(row.selections),
       pontuacaoPercent: row.pontuacaoPercent,
       periodo: p && isEvaluationPeriodSlug(p) ? p : DEFAULT_EVALUATION_PERIOD,
+      dataYmd: ymdFromDate(row.updatedAt),
     }
   } catch (e) {
     console.error("[getIndividualPerformanceEvaluation]", e)

@@ -2,10 +2,9 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { BookOpen, CheckCircle2, ChevronDown, ChevronUp, HeartHandshake, Save, Sparkles } from "lucide-react"
+import { BookOpen, Calendar, Check, ChevronDown, ChevronUp, Gauge, HeartHandshake, Save, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
-import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/select"
 import { UserAvatar } from "@/components/equipe/EquipePerformanceCard"
 import { PerformanceEvaluationSectionGrid } from "@/components/individual/PerformanceEvaluationSectionGrid"
-import { AvaliacaoSituacaoBadge } from "@/components/qagrotis/StatusBadge"
 import type { EvaluatedUserSummary } from "@/components/individual/individualEvaluationTypes"
 import { updateIndividualPerformanceEvaluation, type IndividualPerformanceEvaluationDetail } from "@/lib/actions/individual-performance-evaluations"
 import {
@@ -27,55 +25,16 @@ import {
   evaluationPeriodLabel,
   isEvaluationPeriodSlug,
   PERFORMANCE_EVALUATION_SECTIONS,
+  performanceScoreQualitativeLabel,
   scorePercentToneClass,
-  formatIndividualEvaluationCodigo,
   type EvaluationPeriodSlug,
 } from "@/lib/individual-performance-evaluation"
 import { cn } from "@/lib/utils"
 
-function BlockCard({
-  title,
-  children,
-  defaultOpen = true,
-}: {
-  title: string
-  children: React.ReactNode
-  defaultOpen?: boolean
-}) {
-  const [open, setOpen] = React.useState(defaultOpen)
-
-  return (
-    <div className="overflow-hidden rounded-xl bg-surface-card shadow-card">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-5 py-4 transition-colors hover:bg-neutral-grey-50"
-      >
-        <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
-        {open ? (
-          <ChevronUp className="size-4 shrink-0 text-text-secondary" />
-        ) : (
-          <ChevronDown className="size-4 shrink-0 text-text-secondary" />
-        )}
-      </button>
-
-      {open ? (
-        <>
-          <div className="border-t border-border-default" />
-          <div className="space-y-4 p-5">{children}</div>
-        </>
-      ) : null}
-    </div>
-  )
-}
-
-function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
-  return (
-    <div className={cn("flex flex-col gap-1", className)}>
-      <span className="text-xs font-medium text-text-secondary">{label}</span>
-      {children}
-    </div>
-  )
+function formatDataPt(ymd: string): string {
+  const [y, m, d] = ymd.split("-")
+  if (!y || !m || !d) return ymd
+  return `${d}/${m}/${y}`
 }
 
 export interface IndividualPerformanceEvaluationPageClientProps {
@@ -114,9 +73,8 @@ export function IndividualPerformanceEvaluationPageClient({
     [selections],
   )
 
-  function goBackToList() {
-    router.push(listHref)
-  }
+  const displayPercent = previewScore ?? detail.pontuacaoPercent
+  const scoreLabel = performanceScoreQualitativeLabel(displayPercent)
 
   async function submit(mode: "save" | "complete") {
     const payload: Record<string, number> = {}
@@ -161,34 +119,33 @@ export function IndividualPerformanceEvaluationPageClient({
           items={[
             { label: "Individual", href: fichaHref },
             { label: "Avaliações", href: listHref },
-            { label: formatIndividualEvaluationCodigo(detail.codigo) },
+            { label: `Código ${detail.codigo}` },
           ]}
         />
 
         <div className="flex flex-wrap items-center gap-2">
-          <AvaliacaoSituacaoBadge situacao={detail.status === "CONCLUIDA" ? "Concluída" : "Rascunho"} />
-          <CancelActionButton type="button" disabled={busy != null} onClick={goBackToList} />
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             disabled={busy != null}
             onClick={() => void submit("save")}
-            className="gap-2"
+            className="gap-1.5"
           >
             <Save className="size-4 shrink-0" aria-hidden />
             {busy === "save" ? "Salvando…" : "Salvar como Rascunho"}
           </Button>
-          <Button type="button" disabled={busy != null} onClick={() => void submit("complete")} className="gap-2">
-            <CheckCircle2 className="size-4 shrink-0" aria-hidden />
+          <Button type="button" disabled={busy != null} onClick={() => void submit("complete")} className="gap-1.5">
+            <Check className="size-4 shrink-0" aria-hidden />
             {busy === "complete" ? "Concluindo…" : "Concluir"}
           </Button>
         </div>
       </div>
 
-      <BlockCard title="Dados gerais">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+      <h2 className="sr-only">Dados gerais</h2>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="flex flex-col gap-4 rounded-xl border border-border-default bg-surface-card p-4 shadow-card sm:flex-row sm:items-center">
           <div className="flex shrink-0 justify-center sm:justify-start">
-            <UserAvatar name={evaluatedUser.name || " "} photoPath={evaluatedUser.photoPath} size={88} />
+            <UserAvatar name={evaluatedUser.name || " "} photoPath={evaluatedUser.photoPath} size={72} />
           </div>
           <div className="min-w-0 flex-1 space-y-1 text-center sm:text-left">
             <p className="text-base font-semibold text-text-primary">{evaluatedUser.name}</p>
@@ -198,84 +155,83 @@ export function IndividualPerformanceEvaluationPageClient({
           </div>
         </div>
 
-        <Field label="Período">
-          <Select
-            value={periodo}
-            onValueChange={(v) => {
-              if (v && isEvaluationPeriodSlug(v)) setPeriodo(v)
-            }}
-          >
-            <SelectTrigger className="w-full max-w-md">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectPopup>
-              {EVALUATION_PERIOD_SLUGS.map((slug) => (
-                <SelectItem key={slug} value={slug}>
-                  {evaluationPeriodLabel(slug)}
-                </SelectItem>
-              ))}
-            </SelectPopup>
-          </Select>
-        </Field>
-
-        <div
-          className="rounded-2xl border border-brand-primary/25 bg-gradient-to-br from-primary/8 via-surface-card to-surface-card p-5 shadow-card ring-1 ring-border-default"
-          role="status"
-          aria-live="polite"
-        >
-          <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Pontuação final</p>
-          <p className="mt-1 text-xs text-text-secondary">
-            Média ponderada (Não Atende…Excelente), igual à planilha de indicadores.
-          </p>
-          <div className="mt-4 flex items-baseline gap-2">
-            {previewScore != null ? (
-              <>
-                <span
-                  className={cn(
-                    "text-4xl font-bold tabular-nums sm:text-5xl",
-                    scorePercentToneClass(previewScore),
-                  )}
-                >
-                  {previewScore.toFixed(1).replace(".", ",")}%
-                </span>
-                <span className="text-sm font-medium text-text-secondary">global</span>
-              </>
-            ) : (
-              <span className="text-2xl font-semibold text-text-secondary">—</span>
-            )}
+        <div className="flex flex-col rounded-xl border border-border-default bg-emerald-50/70 p-4 shadow-card dark:bg-emerald-950/25">
+          <div className="mb-3 flex items-start justify-between gap-2">
+            <span className="text-xs font-medium text-text-secondary">Pontuação</span>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+              <Gauge className="size-4" aria-hidden />
+            </span>
           </div>
-          {previewScore == null ? (
-            <p className="mt-2 text-xs text-text-secondary">Preencha todas as competências para calcular a pontuação.</p>
-          ) : null}
+          <div className="flex flex-1 flex-col justify-center">
+            {displayPercent != null ? (
+              <p className={cn("text-3xl font-bold tabular-nums sm:text-4xl", scorePercentToneClass(displayPercent))}>
+                {displayPercent.toFixed(0).replace(".", ",")}%
+              </p>
+            ) : (
+              <p className="text-3xl font-semibold text-text-secondary sm:text-4xl">—</p>
+            )}
+            <p className="mt-2 text-xs font-medium text-text-secondary">{scoreLabel}</p>
+          </div>
         </div>
-      </BlockCard>
 
-      <BlockCard title="Conhecimentos">
-        <PerformanceEvaluationSectionGrid
-          section={conhecimentos}
-          selections={selections}
-          onSelectLevel={setLevel}
-          icon={<BookOpen className="size-5" aria-hidden />}
-        />
-      </BlockCard>
+        <div className="flex flex-col rounded-xl border border-border-default bg-neutral-grey-50 p-4 shadow-card dark:bg-neutral-grey-900/30">
+          <div className="mb-3 flex items-start justify-between gap-2">
+            <span className="text-xs font-medium text-text-secondary">Data da avaliação</span>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-card text-brand-primary shadow-sm ring-1 ring-border-default">
+              <Calendar className="size-4" aria-hidden />
+            </span>
+          </div>
+          <p className="text-2xl font-bold tabular-nums text-text-primary sm:text-3xl">
+            {formatDataPt(detail.dataYmd)}
+          </p>
+          <div className="mt-4">
+            <Select
+              value={periodo}
+              onValueChange={(v) => {
+                if (v && isEvaluationPeriodSlug(v)) setPeriodo(v)
+              }}
+            >
+              <SelectTrigger className="w-full bg-surface-card">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectPopup>
+                {EVALUATION_PERIOD_SLUGS.map((slug) => (
+                  <SelectItem key={slug} value={slug}>
+                    {evaluationPeriodLabel(slug)}
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          </div>
+        </div>
+      </div>
 
-      <BlockCard title="Habilidades">
-        <PerformanceEvaluationSectionGrid
-          section={habilidades}
-          selections={selections}
-          onSelectLevel={setLevel}
-          icon={<Sparkles className="size-5" aria-hidden />}
-        />
-      </BlockCard>
+      {displayPercent == null ? (
+        <p className="text-center text-xs text-text-secondary">
+          Preencha todas as competências para calcular a pontuação (fórmula da planilha de indicadores).
+        </p>
+      ) : null}
 
-      <BlockCard title="Atitudes">
-        <PerformanceEvaluationSectionGrid
-          section={atitudes}
-          selections={selections}
-          onSelectLevel={setLevel}
-          icon={<HeartHandshake className="size-5" aria-hidden />}
-        />
-      </BlockCard>
+      <PerformanceEvaluationSectionGrid
+        section={conhecimentos}
+        selections={selections}
+        onSelectLevel={setLevel}
+        icon={<BookOpen className="size-5" aria-hidden />}
+      />
+
+      <PerformanceEvaluationSectionGrid
+        section={habilidades}
+        selections={selections}
+        onSelectLevel={setLevel}
+        icon={<Sparkles className="size-5" aria-hidden />}
+      />
+
+      <PerformanceEvaluationSectionGrid
+        section={atitudes}
+        selections={selections}
+        onSelectLevel={setLevel}
+        icon={<HeartHandshake className="size-5" aria-hidden />}
+      />
     </div>
   )
 }

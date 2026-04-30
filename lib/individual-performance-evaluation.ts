@@ -143,6 +143,16 @@ export function scorePercentToneClass(percent: number): string {
   return "text-green-600 dark:text-green-400"
 }
 
+/** Rótulo qualitativo da pontuação global (cartão de resumo, alinhado às faixas de cor). */
+export function performanceScoreQualitativeLabel(percent: number | null): string {
+  if (percent == null || Number.isNaN(percent)) return "—"
+  if (percent >= 90) return "Excelente"
+  if (percent >= 80) return "Esperado"
+  if (percent >= 70) return "Médio"
+  if (percent >= 60) return "Básico"
+  return "Não atende"
+}
+
 /** Cabeçalhos de coluna em tons pastéis (grelha de competências). */
 export function columnHeaderToneClass(colIndex: number): string {
   const tones = [
@@ -187,9 +197,3 @@ export function isEvaluationPeriodSlug(s: string): s is EvaluationPeriodSlug {
 }
 
 export const DEFAULT_EVALUATION_PERIOD: EvaluationPeriodSlug = "T1_TRIMESTRE"
-
-/** Código exibido na UI (ex.: AVA-007). O valor numérico continua a ser o armazenado na base. */
-export function formatIndividualEvaluationCodigo(codigo: number): string {
-  const n = Math.max(0, Math.floor(Number.isFinite(codigo) ? codigo : 0))
-  return `AVA-${String(n).padStart(3, "0")}`
-}
