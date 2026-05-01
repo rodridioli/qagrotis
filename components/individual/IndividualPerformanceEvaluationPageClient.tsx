@@ -212,7 +212,14 @@ export function IndividualPerformanceEvaluationPageClient({
               <Button
                 type="button"
                 disabled={busy != null}
-                onClick={() => setConfirmCompleteOpen(true)}
+                onClick={() => {
+                  const score = computePerformanceScorePercent(selections as Record<string, number>)
+                  if (score == null) {
+                    toast.error("É preciso preencher todos os critérios de avaliação.")
+                    return
+                  }
+                  setConfirmCompleteOpen(true)
+                }}
                 className="gap-1.5"
               >
                 <Check className="size-4 shrink-0" aria-hidden />
