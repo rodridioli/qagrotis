@@ -168,6 +168,7 @@ export async function getIndividualPerformanceEvaluation(
   }
 }
 
+/** @deprecated Use createAndSaveIndividualPerformanceEvaluation instead. */
 export async function createDraftIndividualPerformanceEvaluation(
   evaluatedUserId: string,
 ): Promise<{ id: string } | { error: string }> {
@@ -197,6 +198,75 @@ export async function createDraftIndividualPerformanceEvaluation(
     return { id: created.id }
   } catch (e) {
     console.error("[createDraftIndividualPerformanceEvaluation]", e)
+    return { error: evalPrismaMessage(e, "Não foi possível criar a avaliação.") }
+  }
+}
+
+const createAndSaveBodySchema = z.object({
+  evaluatedUserId: userIdSchema,
+  selections: z.record(z.string(), z.number().int().min(0).max(4)),
+  mode: z.enum(["save", "complete"]),
+  periodo: periodoSchema.optional(),
+})
+
+/**
+ * Cria e salva uma avaliação em uma única operação atômica.
+ * Nenhum registro é gravado no banco até que este action seja chamado.
+ * Retorna o ID do registro criado, ou um erro se os dados forem inválidos.
+ */
+export async function createAndSaveIndividualPerformanceEvaluation(
+  raw: z.infer<typeof createAndSaveBodySchema>,
+): Promise<{ id: string } | { error: string }> {
+  const parsed = createAndSaveBodySchema.safeParse(raw)
+  if (!parsed.success) return { error: "Dados inválidos." }
+
+  try {
+    const { session } = await requireMgrPerformanceAccess()
+    await assertEvaluatedUserInScope(parsed.data.evaluatedUserId)
+    await ensureIndividualPerformanceEvaluationTable()
+
+    // Sanitize: only known competency IDs, values 0-4
+    const selections: Record<string, number> = {}
+    for (const [k, v] of Object.entries(parsed.data.selections)) {
+      if (PERFORMANCE_COMPETENCY_IDS.includes(k)) selections[k] = v
+    }
+
+    // All 23 competencies must be filled for both save and complete modes
+    const complete = selectionsCompleteSchema.safeParse(selections)
+    if (!complete.success) {
+      return { error: "É preciso preencher todos os critérios de avaliação." }
+    }
+
+    const pontuacaoPercent = computePerformanceScorePercent(complete.data)
+    if (pontuacaoPercent == null) return { error: "Não foi possível calcular a pontuação." }
+
+    const periodoValue =
+      parsed.data.periodo && isEvaluationPeriodSlug(parsed.data.periodo)
+        ? parsed.data.periodo
+        : DEFAULT_EVALUATION_PERIOD
+
+    const agg = await prisma.individualPerformanceEvaluation.aggregate({
+      where: { evaluatedUserId: parsed.data.evaluatedUserId },
+      _max: { codigo: true },
+    })
+    const nextCodigo = (agg._max.codigo ?? 0) + 1
+
+    const created = await prisma.individualPerformanceEvaluation.create({
+      data: {
+        evaluatedUserId: parsed.data.evaluatedUserId,
+        evaluatorUserId: session.user.id,
+        codigo: nextCodigo,
+        status: parsed.data.mode === "complete" ? "CONCLUIDA" : "RASCUNHO",
+        selections: selections as object,
+        pontuacaoPercent,
+        periodo: periodoValue,
+      },
+      select: { id: true },
+    })
+    revalidatePath("/individual/avaliacoes")
+    return { id: created.id }
+  } catch (e) {
+    console.error("[createAndSaveIndividualPerformanceEvaluation]", e)
     return { error: evalPrismaMessage(e, "Não foi possível criar a avaliação.") }
   }
 }

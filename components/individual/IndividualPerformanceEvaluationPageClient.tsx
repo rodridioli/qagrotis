@@ -19,6 +19,7 @@ import { UserAvatar } from "@/components/equipe/EquipePerformanceCard"
 import { PerformanceEvaluationSectionGrid } from "@/components/individual/PerformanceEvaluationSectionGrid"
 import type { EvaluatedUserSummary } from "@/components/individual/individualEvaluationTypes"
 import {
+  createAndSaveIndividualPerformanceEvaluation,
   updateIndividualPerformanceEvaluation,
   type IndividualPerformanceEvaluationDetail,
   type IndividualPerformanceEvaluationStatusDto,
@@ -48,30 +49,42 @@ function formatDataPt(ymd: string): string {
 export interface IndividualPerformanceEvaluationPageClientProps {
   evaluatedUserId: string
   evaluatedUser: EvaluatedUserSummary
-  initialDetail: IndividualPerformanceEvaluationDetail
+  /** null = nova avaliação (ainda não existe no banco). */
+  initialDetail: IndividualPerformanceEvaluationDetail | null
+  /** ISO yyyy-mm-dd — obrigatório quando initialDetail é null. */
+  todayYmd?: string
 }
 
 export function IndividualPerformanceEvaluationPageClient({
   evaluatedUserId,
   evaluatedUser,
   initialDetail,
+  todayYmd,
 }: IndividualPerformanceEvaluationPageClientProps) {
   const router = useRouter()
-  const detail = initialDetail
+  const isNew = initialDetail === null
+
   const [selections, setSelections] = React.useState<Record<string, number | undefined>>(() => {
+    if (!initialDetail) return {}
     const m: Record<string, number | undefined> = {}
     for (const [k, v] of Object.entries(initialDetail.selections)) m[k] = v
     return m
   })
+
   const [periodo, setPeriodo] = React.useState<EvaluationPeriodSlug>(
-    isEvaluationPeriodSlug(initialDetail.periodo) ? initialDetail.periodo : DEFAULT_EVALUATION_PERIOD,
+    initialDetail && isEvaluationPeriodSlug(initialDetail.periodo)
+      ? initialDetail.periodo
+      : DEFAULT_EVALUATION_PERIOD,
   )
+
   const [busy, setBusy] = React.useState<"save" | "complete" | null>(null)
-  const [evalStatus, setEvalStatus] = React.useState<IndividualPerformanceEvaluationStatusDto>(initialDetail.status)
+  const [evalStatus, setEvalStatus] = React.useState<IndividualPerformanceEvaluationStatusDto>(
+    initialDetail?.status ?? "RASCUNHO",
+  )
 
   React.useEffect(() => {
-    setEvalStatus(initialDetail.status)
-  }, [initialDetail.status])
+    if (initialDetail) setEvalStatus(initialDetail.status)
+  }, [initialDetail])
 
   const userQuery = `?userId=${encodeURIComponent(evaluatedUserId)}`
   const listHref = `/individual/avaliacoes${userQuery}`
@@ -86,7 +99,7 @@ export function IndividualPerformanceEvaluationPageClient({
     [selections],
   )
 
-  const displayPercent = previewScore ?? detail.pontuacaoPercent
+  const displayPercent = previewScore ?? (initialDetail?.pontuacaoPercent ?? null)
   const scoreLabel = performanceScoreQualitativeLabel(displayPercent)
 
   async function submit(mode: "save" | "complete") {
@@ -101,25 +114,50 @@ export function IndividualPerformanceEvaluationPageClient({
     }
     setBusy(mode)
     try {
-      const res = await updateIndividualPerformanceEvaluation({
-        id: detail.id,
-        selections: payload,
-        mode,
-        periodo,
-      })
-      if (res.error) {
-        toast.error(res.error)
-        return
-      }
-      if (mode === "complete") {
-        toast.success(`Avaliação concluída e enviada para o ${evaluatedUser.name}.`)
-        router.push(listHref)
+      if (isNew) {
+        // Nova avaliação: cria e salva em uma operação atômica
+        const res = await createAndSaveIndividualPerformanceEvaluation({
+          evaluatedUserId,
+          selections: payload,
+          mode,
+          periodo,
+        })
+        if ("error" in res) {
+          toast.error(res.error)
+          return
+        }
+        if (mode === "complete") {
+          toast.success(`Avaliação concluída e enviada para o ${evaluatedUser.name}.`)
+          router.push(listHref)
+          router.refresh()
+          return
+        }
+        toast.success("Avaliação salva com sucesso.")
+        // Redireciona para a página de edição com o ID real
+        router.push(`/individual/avaliacoes/${res.id}${userQuery}`)
         router.refresh()
-        return
+      } else {
+        // Edição de avaliação existente
+        const res = await updateIndividualPerformanceEvaluation({
+          id: initialDetail.id,
+          selections: payload,
+          mode,
+          periodo,
+        })
+        if (res.error) {
+          toast.error(res.error)
+          return
+        }
+        if (mode === "complete") {
+          toast.success(`Avaliação concluída e enviada para o ${evaluatedUser.name}.`)
+          router.push(listHref)
+          router.refresh()
+          return
+        }
+        setEvalStatus("RASCUNHO")
+        toast.success("Avaliação salva com sucesso.")
+        router.refresh()
       }
-      setEvalStatus("RASCUNHO")
-      toast.success("Avaliação salva com sucesso.")
-      router.refresh()
     } catch (e) {
       console.error(e)
       toast.error("Não foi possível salvar.")
@@ -128,6 +166,7 @@ export function IndividualPerformanceEvaluationPageClient({
     }
   }
 
+  const dataYmd = isNew ? (todayYmd ?? "") : initialDetail.dataYmd
   const [conhecimentos, habilidades, atitudes] = PERFORMANCE_EVALUATION_SECTIONS
 
   return (
@@ -144,7 +183,7 @@ export function IndividualPerformanceEvaluationPageClient({
             items={[
               { label: "Individual", href: fichaHref },
               { label: "Avaliações", href: listHref },
-              { label: evaluationDisplayCodigo(detail.codigo) },
+              { label: isNew ? "Nova avaliação" : evaluationDisplayCodigo(initialDetail.codigo) },
             ]}
           />
         </div>
@@ -228,7 +267,7 @@ export function IndividualPerformanceEvaluationPageClient({
           <div className="flex min-h-0 flex-1 flex-col gap-4">
             <div>
               <p className="text-2xl font-bold tabular-nums text-text-primary sm:text-3xl">
-                {formatDataPt(detail.dataYmd)}
+                {formatDataPt(dataYmd)}
               </p>
             </div>
             <div className="min-w-0">

@@ -1,5 +1,8 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+import { Plus } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { IndividualActiveUserAvatarStrip, type IndividualAvatarUser } from "./IndividualActiveUserAvatarStrip"
 import { IndividualAvaliacoesSection } from "@/components/individual/IndividualAvaliacoesSection"
 
@@ -17,13 +20,33 @@ export function IndividualSecaoDevelopmentPanel({
   selectedUserId,
   isAdministradorMgr = false,
 }: Props) {
+  const router = useRouter()
   const showAvaliacoes = secao === "avaliacoes"
 
   return (
     <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-stretch gap-8">
       {users.length > 0 ? (
-        <IndividualActiveUserAvatarStrip secao={secao} users={users} selectedUserId={selectedUserId} />
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <IndividualActiveUserAvatarStrip secao={secao} users={users} selectedUserId={selectedUserId} />
+          </div>
+          {showAvaliacoes ? (
+            <Button
+              type="button"
+              className="shrink-0 gap-2"
+              onClick={() =>
+                router.push(
+                  `/individual/avaliacoes/nova?userId=${encodeURIComponent(selectedUserId)}`,
+                )
+              }
+            >
+              <Plus className="size-4" aria-hidden />
+              Adicionar Avaliação
+            </Button>
+          ) : null}
+        </div>
       ) : null}
+
       {showAvaliacoes ? (
         <IndividualAvaliacoesSection
           evaluatedUserId={selectedUserId}

@@ -2,16 +2,13 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Plus } from "lucide-react"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { IndividualAvaliacoesTable } from "@/components/individual/IndividualAvaliacoesTable"
 import {
-  createDraftIndividualPerformanceEvaluation,
   deleteIndividualPerformanceEvaluation,
   listIndividualPerformanceEvaluations,
   type IndividualPerformanceEvaluationListRow,
@@ -48,7 +45,6 @@ export function IndividualAvaliacoesSection({
 }: IndividualAvaliacoesSectionProps) {
   const router = useRouter()
   const [isNavigating, startTransition] = React.useTransition()
-  const [isCreating, setIsCreating] = React.useState(false)
   const [rows, setRows] = React.useState<IndividualPerformanceEvaluationListRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -111,27 +107,6 @@ export function IndividualAvaliacoesSection({
 
   const userQ = `?userId=${encodeURIComponent(evaluatedUserId)}`
 
-  async function onAdd() {
-    const uid = evaluatedUserId.trim()
-    if (!uid) {
-      toast.error("Utilizador inválido para nova avaliação.")
-      return
-    }
-    setIsCreating(true)
-    try {
-      const res = await createDraftIndividualPerformanceEvaluation(uid)
-      if ("error" in res) {
-        toast.error(res.error)
-        return
-      }
-      router.push(`/individual/avaliacoes/${res.id}${userQ}`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível criar a avaliação.")
-    } finally {
-      setIsCreating(false)
-    }
-  }
-
   function onEdit(row: IndividualPerformanceEvaluationListRow) {
     startTransition(() => {
       router.push(`/individual/avaliacoes/${row.id}${userQ}`)
@@ -151,23 +126,8 @@ export function IndividualAvaliacoesSection({
     void refetch()
   }
 
-  const addButton = (
-    <Button
-      type="button"
-      className="shrink-0 gap-2"
-      onClick={() => void onAdd()}
-      disabled={loading || isNavigating || isCreating}
-    >
-      <Plus className="size-4" aria-hidden />
-      Adicionar Avaliação
-    </Button>
-  )
-
   return (
     <div className="flex w-full flex-col gap-4">
-      <div className="flex justify-end">
-        {addButton}
-      </div>
       <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
         <TableToolbar
           search={q}
