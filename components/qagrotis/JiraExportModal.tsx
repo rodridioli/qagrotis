@@ -175,7 +175,7 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
         ? ` ${allFiles.length} ficheiro(s) enviado(s) ao Jira.`
         : ""
 
-      toast.success("Exportado para o Jira com sucesso!", {
+      toast.success("Exportado para o Jira com sucesso.", {
         description: `Issue ${issueKey} atualizada.${uploadMsg}`,
         action: { label: "Abrir no Jira", onClick: () => window.open((data as { url: string }).url, "_blank") },
       })

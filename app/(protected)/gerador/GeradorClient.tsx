@@ -382,7 +382,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   function handleCopyMarkdown() {
     const markdown = formatOutputAsMarkdown(output)
     navigator.clipboard.writeText(markdown)
-    toast.success("Markdown copiado! Cole diretamente no Jira.")
+    toast.success("Markdown copiado. Cole diretamente no Jira.")
   }
 
   function handleReset() {

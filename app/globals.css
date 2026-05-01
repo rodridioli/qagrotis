@@ -59,6 +59,15 @@
   /** Alerta / aviso (execução de teste — alinhado a #ffb900) */
   --color-alert: var(--alert);
   --color-alert-foreground: var(--alert-foreground);
+  /** Tokens semânticos para badges de status */
+  --color-badge-success: var(--badge-success);
+  --color-badge-success-text: var(--badge-success-text);
+  --color-badge-info: var(--badge-info);
+  --color-badge-info-text: var(--badge-info-text);
+  --color-badge-warning: var(--badge-warning);
+  --color-badge-warning-text: var(--badge-warning-text);
+  --color-badge-orange: var(--badge-orange);
+  --color-badge-orange-text: var(--badge-orange-text);
 
   /* ── QAgrotis Primary Scale (10 shades) ── */
   --color-primary-50: var(--qagrotis-primary-50);
@@ -121,6 +130,15 @@
   --border-default:  #e5e7eb;
   --alert:             #ffb900;
   --alert-foreground:  #1a202c;
+  /* Badge status tokens (light) */
+  --badge-success:      #16a34a;
+  --badge-success-text: #166534;
+  --badge-info:         #3b82f6;
+  --badge-info-text:    #1d4ed8;
+  --badge-warning:      #f59e0b;
+  --badge-warning-text: #d97706;
+  --badge-orange:       #f97316;
+  --badge-orange-text:  #c2410c;
 
   /* Raio base da UI (~8px em fonte 16px); escala com font-size — botões, inputs, cards, ícones, tabs */
   --radius-control: 0.5em;
@@ -215,6 +233,15 @@
   --border-default:  #252c3d;
   --alert:             #ffb900;
   --alert-foreground:  #0f1117;
+  /* Badge status tokens (dark) */
+  --badge-success:      #4ade80;
+  --badge-success-text: #4ade80;
+  --badge-info:         #60a5fa;
+  --badge-info-text:    #93c5fd;
+  --badge-warning:      #fbbf24;
+  --badge-warning-text: #fbbf24;
+  --badge-orange:       #fb923c;
+  --badge-orange-text:  #fdba74;
 
   /* ── Neutral-grey scale remap (all hover/bg/text uses adapt automatically)
      Light shades → very dark surface tints (for hover states)

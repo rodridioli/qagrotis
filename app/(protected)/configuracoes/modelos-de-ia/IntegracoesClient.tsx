@@ -3,8 +3,9 @@
 import React, { useEffect, useState, useMemo, useTransition, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertCircle, Check, ChevronDown, ChevronUp, Eye, EyeOff, Filter, Loader2, MoreVertical, Plus, Power, RotateCcw, ShieldCheck, X } from "lucide-react"
+import { AlertCircle, Check, ChevronDown, ChevronUp, Eye, EyeOff, Filter, Loader2, MoreVertical, Pencil, Plus, Power, RotateCcw, ShieldCheck, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 
 import { Button } from "@/components/ui/button"
@@ -333,9 +334,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
         />
 
         {pageItems.length === 0 ? (
-          <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-            Nenhuma modelo de IA cadastrada.
-          </div>
+          <EmptyState message="Nenhum modelo de IA cadastrado." />
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -432,12 +431,14 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" side="bottom">
                               <DropdownMenuItem onClick={() => openEditarIntegracao(item)}>
+                                <Pencil className="size-4" />
                                 Editar
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="destructive"
                                 onClick={() => handleInativarSingle(item.id)}
                               >
+                                <Power className="size-4" />
                                 Inativar
                               </DropdownMenuItem>
                             </DropdownMenuContent>

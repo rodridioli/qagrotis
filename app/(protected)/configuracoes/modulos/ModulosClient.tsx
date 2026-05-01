@@ -3,8 +3,9 @@
 import React, { useEffect, useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Plus, MoreVertical, RotateCcw, X, Filter, Power, Check } from "lucide-react"
+import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -294,9 +295,7 @@ export default function ModulosClient({ initialModulos: initialModulosParam, ini
         />
 
         {pageItems.length === 0 ? (
-          <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-            Nenhum registro encontrado.
-          </div>
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -397,12 +396,14 @@ export default function ModulosClient({ initialModulos: initialModulosParam, ini
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" side="bottom">
                               <DropdownMenuItem onClick={() => openEditarModulo(m)}>
+                                <Pencil className="size-4" />
                                 Editar
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="destructive"
                                 onClick={() => handleInativarSingle(m.id)}
                               >
+                                <Power className="size-4" />
                                 Inativar
                               </DropdownMenuItem>
                             </DropdownMenuContent>

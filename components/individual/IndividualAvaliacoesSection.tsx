@@ -2,12 +2,13 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Search } from "lucide-react"
+import { Plus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
+import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { IndividualAvaliacoesTable } from "@/components/individual/IndividualAvaliacoesTable"
 import {
   createDraftIndividualPerformanceEvaluation,
@@ -150,93 +151,96 @@ export function IndividualAvaliacoesSection({
     void refetch()
   }
 
+  const addButton = (
+    <Button
+      type="button"
+      className="shrink-0 gap-2"
+      onClick={() => void onAdd()}
+      disabled={loading || isNavigating || isCreating}
+    >
+      <Plus className="size-4" aria-hidden />
+      Adicionar Avaliação
+    </Button>
+  )
+
   return (
     <div className="flex w-full flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="relative min-w-0 flex-1 sm:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary" />
-          <Input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por data…"
-            className="pl-9"
-            aria-label="Buscar avaliações por data"
-          />
-        </div>
-        <Button
-          type="button"
-          className="w-full shrink-0 gap-2 sm:w-auto"
-          onClick={() => void onAdd()}
-          disabled={loading || isNavigating || isCreating}
-        >
-          <Plus className="size-4" aria-hidden />
-          Adicionar Avaliação
-        </Button>
-      </div>
-
-      {error ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      ) : null}
-
-      {loading ? (
-        <div className="flex min-h-[12rem] items-center justify-center rounded-xl border border-border-default bg-surface-card py-12 shadow-card">
-          <p className="text-sm text-text-secondary">Carregando…</p>
-        </div>
-      ) : (
-        <IndividualAvaliacoesTable
-          rows={paginated}
-          listTotalCount={rows.length}
-          filteredTotalCount={filtered.length}
-          useMgrListEmptyChrome={useMgrListEmptyChrome}
-          scoreTrendByRowId={useMgrListEmptyChrome ? scoreTrendByRowId : undefined}
-          onEdit={onEdit}
-          onExport={
-            useMgrListEmptyChrome
-              ? (row) => {
-                  void (async () => {
-                    try {
-                      const res = await fetch(`/api/individual-performance-evaluations/${row.id}/pdf`)
-                      if (!res.ok) {
-                        toast.error("Não foi possível exportar.")
-                        return
-                      }
-                      const blob = await res.blob()
-                      const url = URL.createObjectURL(blob)
-                      const a = document.createElement("a")
-                      a.href = url
-                      a.download = `avaliacao-${evaluationDisplayCodigo(row.codigo)}.pdf`
-                      document.body.appendChild(a)
-                      a.click()
-                      a.remove()
-                      URL.revokeObjectURL(url)
-                      toast.success("Exportação concluída.")
-                    } catch {
-                      toast.error("Não foi possível exportar.")
-                    }
-                  })()
-                }
-              : undefined
-          }
-          onRequestDelete={(row) => {
-            setDeleteRow(row)
-            setDeleteOpen(true)
-          }}
-          footer={
-            filtered.length > AVALIACOES_PAGE_SIZE ? (
-              <TablePagination
-                currentPage={page}
-                totalPages={totalPages}
-                totalItems={filtered.length}
-                itemsPerPage={AVALIACOES_PAGE_SIZE}
-                onPageChange={setPage}
-              />
-            ) : null
-          }
+      <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
+        <TableToolbar
+          search={q}
+          onSearchChange={(v) => { setQ(v); setPage(1) }}
+          searchPlaceholder="Buscar por data…"
+          totalLabel="Total de avaliações"
+          totalCount={loading ? 0 : filtered.length}
+          baseCount={loading ? 0 : rows.length}
+          extra={addButton}
         />
-      )}
+
+        {error ? (
+          <div className="mx-4 my-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            {error}
+          </div>
+        ) : null}
+
+        {loading ? (
+          <div className="flex min-h-[12rem] items-center justify-center py-12">
+            <p className="text-sm text-text-secondary">Carregando…</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            message={rows.length === 0 ? "Nenhum registro encontrado." : "Nenhum resultado para a busca."}
+          />
+        ) : (
+          <IndividualAvaliacoesTable
+            rows={paginated}
+            scoreTrendByRowId={useMgrListEmptyChrome ? scoreTrendByRowId : undefined}
+            onEdit={onEdit}
+            onExport={
+              useMgrListEmptyChrome
+                ? (row) => {
+                    void (async () => {
+                      try {
+                        const res = await fetch(`/api/individual-performance-evaluations/${row.id}/pdf`)
+                        if (!res.ok) {
+                          toast.error("Não foi possível exportar.")
+                          return
+                        }
+                        const blob = await res.blob()
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement("a")
+                        a.href = url
+                        a.download = `avaliacao-${evaluationDisplayCodigo(row.codigo)}.pdf`
+                        document.body.appendChild(a)
+                        a.click()
+                        a.remove()
+                        URL.revokeObjectURL(url)
+                        toast.success("Exportação concluída.")
+                      } catch {
+                        toast.error("Não foi possível exportar.")
+                      }
+                    })()
+                  }
+                : undefined
+            }
+            onRequestDelete={(row) => {
+              setDeleteRow(row)
+              setDeleteOpen(true)
+            }}
+            noWrapper
+            footer={
+              totalPages > 1 ? (
+                <TablePagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={filtered.length}
+                  itemsPerPage={AVALIACOES_PAGE_SIZE}
+                  onPageChange={setPage}
+                />
+              ) : null
+            }
+          />
+        )}
+      </div>
 
       <ConfirmDialog
         open={deleteOpen}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, Check, X, Paperclip, TriangleAlert } from "lucide-react"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { Button } from "@/components/ui/button"
 import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
 import {
@@ -311,7 +312,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     try {
       const { timestamp } = await registrarResultadoSuite(suite.id, cenario.id, resultado)
       await snapshotEvidenciasParaHistorico(timestamp)
-      toast.success("Teste registrado com sucesso!")
+      toast.success("Teste registrado com sucesso.")
       router.push(`/suites/${suite.id}?tab=cenarios`)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro ao registrar o resultado")
@@ -331,7 +332,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     try {
       const { timestamp } = await registrarResultadoSuite(suite.id, cenario.id, "Alerta", { alertaObs: obs })
       await snapshotEvidenciasParaHistorico(timestamp)
-      toast.success("Alerta registrado com sucesso!")
+      toast.success("Alerta registrado com sucesso.")
       setAlertModalOpen(false)
       setAlertaObs("")
       router.push(`/suites/${suite.id}?tab=historico`)
@@ -549,7 +550,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
               ))}
             </div>
           ) : (
-            <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">Nenhuma evidência anexada.</div>
+            <EmptyState message="Nenhuma evidência anexada." className="mx-0 my-0" />
           )}
         </div>
       </BlockCard>}
@@ -576,9 +577,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                 Passo a passo ({steps.length})
               </p>
               {steps.length === 0 ? (
-                <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
-                  Nenhum passo cadastrado.
-                </div>
+                <EmptyState message="Nenhum passo cadastrado." className="mx-0 my-0" />
               ) : (
                 <div className="overflow-x-auto rounded-lg border border-border-default">
                   <table className="qagrotis-table-row-hover w-full text-sm">
@@ -674,7 +673,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
                   ))}
                 </div>
               ) : (
-                <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">Nenhuma evidência anexada.</div>
+                <EmptyState message="Nenhuma evidência anexada." className="mx-0 my-0" />
               )}
             </div>
 

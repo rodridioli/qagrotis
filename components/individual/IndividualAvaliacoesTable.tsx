@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 import { AvaliacaoPeriodoBadge, AvaliacaoSituacaoBadge } from "@/components/qagrotis/StatusBadge"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import type { IndividualPerformanceEvaluationListRow } from "@/lib/actions/individual-performance-evaluations"
 import {
   avaliacaoListDisplayPercent,
@@ -33,6 +34,8 @@ export interface IndividualAvaliacoesTableProps {
   /** Exportar (rótulo curto, sem “PDF” no menu). */
   onExport?: (row: IndividualPerformanceEvaluationListRow) => void
   footer?: ReactNode
+  /** Quando true, não renderiza o card wrapper — o pai é responsável pelo container. */
+  noWrapper?: boolean
 }
 
 function AvaliacoesListEmptyChrome({
@@ -50,9 +53,7 @@ function AvaliacoesListEmptyChrome({
           <span className="font-bold">{totalLabelCount.toLocaleString("pt-BR")}</span>
         </span>
       </div>
-      <div className="mx-4 my-6 flex min-h-36 items-center justify-center rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary dark:bg-neutral-grey-900/30">
-        {innerMessage}
-      </div>
+      <EmptyState message={innerMessage} />
     </div>
   )
 }
@@ -73,48 +74,53 @@ export function IndividualAvaliacoesTable({
   onRequestDelete,
   onExport,
   footer,
+  noWrapper = false,
 }: IndividualAvaliacoesTableProps) {
   const listTotal = listTotalCountProp ?? rows.length
   const filteredTotal = filteredTotalCountProp ?? rows.length
 
-  if (filteredTotal === 0) {
-    if (listTotal === 0 && useMgrListEmptyChrome) {
-      return (
-        <AvaliacoesListEmptyChrome totalLabelCount={0} innerMessage="Nenhum registro encontrado." />
-      )
-    }
-    if (listTotal === 0) {
+  if (!noWrapper) {
+    if (filteredTotal === 0) {
+      if (listTotal === 0 && useMgrListEmptyChrome) {
+        return (
+          <AvaliacoesListEmptyChrome totalLabelCount={0} innerMessage="Nenhum registro encontrado." />
+        )
+      }
+      if (listTotal === 0) {
+        return (
+          <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card">
+            <p className="text-sm text-text-secondary">Nenhuma avaliação cadastrada para este usuário.</p>
+          </div>
+        )
+      }
+      if (useMgrListEmptyChrome) {
+        return (
+          <AvaliacoesListEmptyChrome
+            totalLabelCount={listTotal}
+            innerMessage="Nenhum resultado para a busca."
+          />
+        )
+      }
       return (
         <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card">
-          <p className="text-sm text-text-secondary">Nenhuma avaliação cadastrada para este usuário.</p>
+          <p className="text-sm text-text-secondary">Nenhum resultado para a busca.</p>
         </div>
       )
     }
-    if (useMgrListEmptyChrome) {
+
+    if (rows.length === 0) {
       return (
-        <AvaliacoesListEmptyChrome
-          totalLabelCount={listTotal}
-          innerMessage="Nenhum resultado para a busca."
-        />
+        <div className="flex min-h-36 items-center justify-center rounded-xl border border-border-default bg-surface-card px-4 py-10 text-sm text-text-secondary shadow-card">
+          Nenhum registro nesta página.
+        </div>
       )
     }
-    return (
-      <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card">
-        <p className="text-sm text-text-secondary">Nenhum resultado para a busca.</p>
-      </div>
-    )
   }
 
-  if (rows.length === 0) {
-    return (
-      <div className="flex min-h-36 items-center justify-center rounded-xl border border-border-default bg-surface-card px-4 py-10 text-sm text-text-secondary shadow-card">
-        Nenhum registro nesta página.
-      </div>
-    )
-  }
+  if (rows.length === 0) return null
 
-  return (
-    <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
+  const tableBody = (
+    <>
       <div className="overflow-x-auto">
         <table className="qagrotis-table-row-hover-muted w-full min-w-[320px] text-sm">
           <thead>
@@ -215,6 +221,14 @@ export function IndividualAvaliacoesTable({
         </table>
       </div>
       {footer}
+    </>
+  )
+
+  if (noWrapper) return tableBody
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
+      {tableBody}
     </div>
   )
 }

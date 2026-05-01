@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, MoreVertical, Plus, X, Check } from "lucide-react"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -177,13 +178,9 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
         />
 
         {filtered.length === 0 ? (
-          <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-            {items.length === 0 ? (
-              "Nenhum registro encontrado."
-            ) : (
-              "Nenhum resultado para a busca."
-            )}
-          </div>
+          <EmptyState
+            message={items.length === 0 ? "Nenhum registro encontrado." : "Nenhum resultado para a busca."}
+          />
         ) : (
           <>
             <div className="overflow-x-auto">

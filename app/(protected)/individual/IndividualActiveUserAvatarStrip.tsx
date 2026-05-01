@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { UserAvatar } from "@/components/equipe/EquipePerformanceCard"
 import {
@@ -27,21 +28,23 @@ const AVATAR_SIZE = 44
 
 export function IndividualActiveUserAvatarStrip({ secao, users, selectedUserId }: Props) {
   const router = useRouter()
+  const [optimisticId, setOptimisticId] = useState(selectedUserId)
 
   function select(id: string) {
-    if (id === selectedUserId) return
+    if (id === optimisticId) return
+    setOptimisticId(id)
     router.push(`/individual/${secao}?userId=${encodeURIComponent(id)}`)
   }
 
   return (
-    <TooltipProvider delay={80} closeDelay={0} timeout={120}>
+    <TooltipProvider delay={0} closeDelay={0}>
       <div
         className="flex w-full flex-wrap items-center justify-start gap-y-2 pl-2"
         role="toolbar"
         aria-label="Selecionar usuário para visualizar dados"
       >
         {users.map((u, idx) => {
-          const selected = u.id === selectedUserId
+          const selected = u.id === optimisticId
           return (
             <Tooltip key={u.id}>
               <TooltipTrigger

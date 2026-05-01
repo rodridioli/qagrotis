@@ -6,6 +6,7 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power, AlertCircle, RefreshCw } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -358,11 +359,13 @@ export default function UsuariosClient({
         />
 
         {pageItems.length === 0 ? (
-          <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-            {usersFetchFailed && !fetchRecovered && users.length === 0
-              ? "Lista indisponível. Use o botão Tentar novamente acima ou verifique o banco de dados (Vercel / Postgres)."
-              : "Nenhum registro encontrado."}
-          </div>
+          <EmptyState
+            message={
+              usersFetchFailed && !fetchRecovered && users.length === 0
+                ? "Lista indisponível. Use o botão Tentar novamente acima ou verifique o banco de dados (Vercel / Postgres)."
+                : "Nenhum registro encontrado."
+            }
+          />
         ) : (
           <>
             <div className="min-w-0 w-full overflow-x-auto sm:overflow-x-visible">
@@ -504,7 +507,8 @@ export default function UsuariosClient({
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" side="bottom">
                                 <DropdownMenuItem>
-                                  <Link href={`/configuracoes/usuarios/${u.id}/editar`} className="w-full">
+                                  <Link href={`/configuracoes/usuarios/${u.id}/editar`} className="flex w-full items-center gap-2">
+                                    <Pencil className="size-4" />
                                     Editar
                                   </Link>
                                 </DropdownMenuItem>
@@ -513,6 +517,7 @@ export default function UsuariosClient({
                                   disabled={isLastActiveAdmin(u)}
                                   onClick={() => handleInativarSingle(u.id)}
                                 >
+                                  <Power className="size-4" />
                                   Inativar
                                 </DropdownMenuItem>
                               </DropdownMenuContent>

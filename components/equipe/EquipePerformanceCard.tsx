@@ -11,12 +11,14 @@ export function UserAvatar({
   photoPath,
   size,
   inactive = false,
+  className,
 }: {
   name: string
   photoPath: string | null
   size: number
   /** Cadastro inativo: foto em escala de cinza (qualquer tipo/perfil). */
   inactive?: boolean
+  className?: string
 }) {
   const initials = name
     .split(" ")
@@ -27,6 +29,7 @@ export function UserAvatar({
   const cls = cn(
     "flex-shrink-0 rounded-full object-cover ring-2 ring-border-default",
     inactive && "grayscale",
+    className,
   )
   if (photoPath) {
     return (

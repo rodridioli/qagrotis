@@ -3,7 +3,9 @@
 import { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Filter, Plus, Power, RotateCcw, X, MoreVertical } from "lucide-react"
+import { ChevronDown, ChevronUp, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
+import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -62,9 +64,9 @@ function derivarSituacao(s: { encerrada: boolean; historicoCount: number }): Sui
 
 function AutomacaoBar({ pct }: { pct: number }) {
   const fillClass =
-    pct === 100 ? "bg-green-600 dark:bg-green-500" :
+    pct === 100 ? "bg-badge-success" :
     pct === 0   ? "" :
-                  "bg-orange-500"
+                  "bg-badge-warning"
 
   return (
     <div className="flex items-center gap-2">
@@ -242,23 +244,26 @@ const showBulkActions = !filters.apenasInativos
   return (
     <div className="space-y-4">
       <LoadingOverlay visible={isInativando} label="Inativando suítes..." />
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        {showBulkActions && (
-          <Button
-            variant="outline"
-            disabled={selectedIds.size === 0 || isPending}
-            onClick={handleInativarSelection}
-          >
-            <Power className="size-4" />
-            Inativar
-          </Button>
-        )}
-        <Link href="/suites/nova">
-          <Button>
-            <Plus className="size-4" />
-            Adicionar Suite
-          </Button>
-        </Link>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <PageBreadcrumb items={[{ label: "Suítes" }]} />
+        <div className="flex flex-wrap items-center gap-3">
+          {showBulkActions && (
+            <Button
+              variant="outline"
+              disabled={selectedIds.size === 0 || isPending}
+              onClick={handleInativarSelection}
+            >
+              <Power className="size-4" />
+              Inativar
+            </Button>
+          )}
+          <Link href="/suites/nova">
+            <Button>
+              <Plus className="size-4" />
+              Adicionar Suite
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
@@ -274,9 +279,7 @@ const showBulkActions = !filters.apenasInativos
         />
 
         {pageItems.length === 0 ? (
-          <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-            Nenhum registro encontrado.
-          </div>
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -392,9 +395,13 @@ const showBulkActions = !filters.apenasInativos
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" side="bottom">
                               <DropdownMenuItem>
-                                <Link href={`/suites/${s.id}`} className="w-full">Editar</Link>
+                                <Link href={`/suites/${s.id}`} className="flex w-full items-center gap-2">
+                                  <Pencil className="size-4" />
+                                  Editar
+                                </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem variant="destructive" onClick={() => handleInativarSingle(s.id)}>
+                                <Power className="size-4" />
                                 Inativar
                               </DropdownMenuItem>
                             </DropdownMenuContent>

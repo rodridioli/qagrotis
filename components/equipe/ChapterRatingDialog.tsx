@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { listChapterRatings, createChapterRating } from "@/lib/actions/equipe-chapters"
 import type { EquipeChapterRatingEntry } from "@/lib/equipe-chapters-shared"
 import { ChapterStarsSummary } from "@/components/equipe/ChapterStarsSummary"
@@ -170,7 +171,7 @@ export function ChapterRatingDialog({
                   Resumo
                 </p>
                 {loading && entries.length === 0 ? (
-                  <p className="text-sm text-text-secondary">A carregar…</p>
+                  <p className="text-sm text-text-secondary">Carregando…</p>
                 ) : (
                   <>
                     <span className="text-3xl font-bold tabular-nums text-text-primary">
@@ -205,7 +206,7 @@ export function ChapterRatingDialog({
                 Histórico
               </p>
               {entries.length === 0 ? (
-                <p className="text-sm text-text-secondary">Ainda não há avaliações.</p>
+                <EmptyState message="Ainda não há avaliações." className="mx-0 my-2" />
               ) : (
                 <ul className="max-h-56 space-y-3 overflow-y-auto pr-1">
                   {entries.map((e) => (

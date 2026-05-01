@@ -21,16 +21,16 @@ function CenarioTipoBadge({ tipo }: { tipo: CenarioTipo }) {
   const styles: Record<CenarioTipo, string> = {
     "Automatizado": "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
     "Manual":       "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
-    "Man./Auto.":   "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
+    "Man./Auto.":   "border-badge-warning/30 bg-badge-warning/10 text-badge-warning-text",
   }
   return badge(styles[tipo] ?? "border-border-default bg-neutral-grey-50 text-text-secondary", tipo)
 }
 
 function SuiteSituacaoBadge({ situacao }: { situacao: SuiteSituacao }) {
   const styles: Record<SuiteSituacao, string> = {
-    "Planejada":    "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:border-blue-400/30 dark:bg-blue-400/10 dark:text-blue-300",
-    "Em andamento": "border-orange-500/30 bg-orange-500/10 text-orange-600 dark:border-orange-400/30 dark:bg-orange-400/10 dark:text-orange-400",
-    "Concluída":    "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400",
+    "Planejada":    "border-badge-info/30 bg-badge-info/10 text-badge-info-text",
+    "Em andamento": "border-badge-orange/30 bg-badge-orange/10 text-badge-orange-text",
+    "Concluída":    "border-badge-success/30 bg-badge-success/10 text-badge-success-text",
   }
   return badge(styles[situacao], situacao)
 }
@@ -39,15 +39,15 @@ function SuiteTipoBadge({ tipo }: { tipo: SuiteTipo }) {
   const styles: Record<SuiteTipo, string> = {
     "Sprint": "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
     "Kanban": "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
-    "Outro":  "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
+    "Outro":  "border-badge-warning/30 bg-badge-warning/10 text-badge-warning-text",
   }
   return badge(styles[tipo] ?? "border-border-default bg-neutral-grey-50 text-text-secondary", tipo)
 }
 
 function AutomacaoBadge({ pct }: { pct: number }) {
   const colorClass =
-    pct === 100 ? "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400" :
-    pct > 0     ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400" :
+    pct === 100 ? "border-badge-success/30 bg-badge-success/10 text-badge-success-text" :
+    pct > 0     ? "border-badge-warning/30 bg-badge-warning/10 text-badge-warning-text" :
                   "border-border-default bg-neutral-grey-50 text-text-secondary"
   return badge(colorClass, `${pct}%`)
 }
@@ -63,8 +63,8 @@ function UserTipoBadge({ tipo }: { tipo: string }) {
 function PriorityBadge({ priority }: { priority: string }) {
   const colorClass =
     priority === "Crítica"
-      ? "border-red-500/30 bg-red-500/10 text-red-600 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-400"
-      : "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400"
+      ? "border-destructive/30 bg-destructive/10 text-destructive"
+      : "border-badge-success/30 bg-badge-success/10 text-badge-success-text"
   return badge(colorClass, priority)
 }
 
@@ -72,7 +72,7 @@ function ChangelogTagBadge({ tag }: { tag: string }) {
   const styles: Record<string, string> = {
     "Novidade": "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
     "Melhoria": "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
-    "Correção": "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400",
+    "Correção": "border-badge-warning/30 bg-badge-warning/10 text-badge-warning-text",
   }
   const colorClass = styles[tag] ?? "border-border-default bg-neutral-grey-50 text-text-secondary"
   return badge(colorClass, tag)
@@ -83,10 +83,8 @@ type AvaliacaoSituacaoUi = "Rascunho" | "Concluída"
 
 function AvaliacaoSituacaoBadge({ situacao }: { situacao: AvaliacaoSituacaoUi }) {
   const styles: Record<AvaliacaoSituacaoUi, string> = {
-    Rascunho:
-      "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:border-blue-400/30 dark:bg-blue-400/10 dark:text-blue-300",
-    Concluída:
-      "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400",
+    Rascunho:  "border-badge-info/30 bg-badge-info/10 text-badge-info-text",
+    Concluída: "border-badge-success/30 bg-badge-success/10 text-badge-success-text",
   }
   return badge(styles[situacao], situacao)
 }
@@ -107,10 +105,10 @@ type ResultadoTipo = "Sucesso" | "Erro" | "Pendente" | "Alerta"
 
 function ResultadoBadge({ resultado }: { resultado: ResultadoTipo | string }) {
   const styles: Record<string, string> = {
-    Sucesso:  "border-green-600/30 bg-green-600/10 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400",
-    Erro:     "border-red-500/30 bg-red-500/10 text-red-600 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-400",
-    Pendente: "border-orange-500/35 bg-orange-500/10 text-orange-800 dark:border-orange-400/35 dark:bg-orange-400/10 dark:text-orange-300",
-    Alerta:   "border-alert/55 bg-alert/20 text-alert-foreground dark:border-alert/60 dark:bg-alert/25",
+    Sucesso:  "border-badge-success/30 bg-badge-success/10 text-badge-success-text",
+    Erro:     "border-destructive/30 bg-destructive/10 text-destructive",
+    Pendente: "border-badge-orange/35 bg-badge-orange/10 text-badge-orange-text",
+    Alerta:   "border-alert/55 bg-alert/20 text-alert-foreground",
   }
   const s = styles[resultado] ?? "border-border-default bg-neutral-grey-100 text-text-secondary"
   return badge(s, resultado)

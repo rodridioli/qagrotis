@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronDown, ChevronUp, Filter, X } from "lucide-react"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { ChangelogTagBadge } from "@/components/qagrotis/StatusBadge"
 import {
@@ -127,9 +128,7 @@ export function AtualizacoesClient({ entries }: Props) {
         />
 
         {pageItems.length === 0 ? (
-          <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-            Nenhuma versão encontrada.
-          </div>
+          <EmptyState message="Nenhuma versão encontrada." />
         ) : (
           <>
             <div className="overflow-x-auto">

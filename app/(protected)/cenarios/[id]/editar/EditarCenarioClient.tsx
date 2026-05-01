@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowDown, ArrowUp, Check, Circle, ClipboardList, Eye, EyeOff, FileDown, GripVertical, Network, Plus, Trash2 } from "lucide-react"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -735,9 +736,7 @@ export default function EditarCenarioClient({
                   </Button>
                 </div>
                 {steps.length === 0 ? (
-                  <div className="rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-8 text-center text-sm text-text-secondary">
-                    Nenhum passo adicionado.
-                  </div>
+                  <EmptyState message="Nenhum passo adicionado." className="mx-0 my-0" />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="qagrotis-table-row-hover w-full border-collapse text-sm">
@@ -840,9 +839,7 @@ export default function EditarCenarioClient({
               </Button>
             </div>
             {deps.length === 0 ? (
-              <div className="mx-5 mb-5 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-                Nenhuma dependência adicionada.
-              </div>
+              <EmptyState message="Nenhuma dependência adicionada." className="mx-5 mb-5 mt-0" />
             ) : (
               <div className="min-w-0 overflow-x-auto">
                 <table className="qagrotis-table-row-hover w-full min-w-[44rem] table-fixed text-sm">

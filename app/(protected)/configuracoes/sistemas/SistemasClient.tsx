@@ -3,8 +3,9 @@
 import React, { useEffect, useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Plus, MoreVertical, RotateCcw, X, Filter, Power, Check } from "lucide-react"
+import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -277,9 +278,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
         />
 
         {pageItems.length === 0 ? (
-          <div className="mx-4 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-            Nenhum registro encontrado.
-          </div>
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -391,12 +390,14 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" side="bottom">
                                 <DropdownMenuItem onClick={() => openEditarSistema(s)}>
+                                  <Pencil className="size-4" />
                                   Editar
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   variant="destructive"
                                   onClick={() => handleInativarSingle(s.id)}
                                 >
+                                  <Power className="size-4" />
                                   Inativar
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
@@ -483,7 +484,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
           </DialogHeader>
           <div className="py-2 space-y-1 max-h-80 overflow-y-auto">
             {modulosModalSistema && initialModulos.filter((m) => m.sistemaId === modulosModalSistema.id && m.active).length === 0 ? (
-              <p className="text-sm text-text-secondary text-center py-4">Nenhum módulo cadastrado.</p>
+              <EmptyState message="Nenhum módulo cadastrado." className="mx-0 my-2" />
             ) : modulosModalSistema && initialModulos.filter((m) => m.sistemaId === modulosModalSistema.id && m.active).map((m) => (
               <div key={m.id} className="flex items-center justify-between rounded-lg border border-border-default px-3 py-2">
                 <div>

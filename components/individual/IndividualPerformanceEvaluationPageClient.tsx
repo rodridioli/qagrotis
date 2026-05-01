@@ -112,13 +112,13 @@ export function IndividualPerformanceEvaluationPageClient({
         return
       }
       if (mode === "complete") {
-        toast.success("Avaliação concluída com sucesso!")
+        toast.success(`Avaliação concluída e enviada para o ${evaluatedUser.name}.`)
         router.push(listHref)
         router.refresh()
         return
       }
       setEvalStatus("RASCUNHO")
-      toast.success("Salvo com sucesso.")
+      toast.success("Avaliação salva com sucesso.")
       router.refresh()
     } catch (e) {
       console.error(e)
@@ -173,7 +173,7 @@ export function IndividualPerformanceEvaluationPageClient({
           <p className="text-xs font-medium text-text-secondary">Colaborador</p>
           <div className="flex flex-1 flex-col items-center gap-4 sm:flex-row sm:items-center">
             <div className="flex shrink-0 justify-center sm:justify-start">
-              <UserAvatar name={evaluatedUser.name || " "} photoPath={evaluatedUser.photoPath} size={72} />
+              <UserAvatar name={evaluatedUser.name || " "} photoPath={evaluatedUser.photoPath} size={72} className="rounded-xl ring-0" />
             </div>
             <div className="min-w-0 flex-1 space-y-1 text-center sm:text-left">
               <p className="text-base font-semibold text-text-primary">{evaluatedUser.name}</p>
@@ -182,7 +182,6 @@ export function IndividualPerformanceEvaluationPageClient({
               ) : null}
               <div className="mt-3 border-t border-border-default pt-3">
                 <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                  <span className="text-sm font-semibold text-text-primary">Avaliação de desempenho</span>
                   <AvaliacaoSituacaoBadge situacao={evalStatus === "CONCLUIDA" ? "Concluída" : "Rascunho"} />
                 </div>
               </div>
@@ -228,13 +227,12 @@ export function IndividualPerformanceEvaluationPageClient({
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-4">
             <div>
-              <p className="text-xs font-medium text-text-secondary">Data da avaliação</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-text-primary sm:text-3xl">
+              <p className="text-2xl font-bold tabular-nums text-text-primary sm:text-3xl">
                 {formatDataPt(detail.dataYmd)}
               </p>
             </div>
             <div className="min-w-0">
-              <label htmlFor="avaliacao-periodo" className="text-xs font-medium text-text-secondary">
+              <label htmlFor="avaliacao-periodo" className="sr-only">
                 Período
               </label>
               <Select
@@ -245,7 +243,7 @@ export function IndividualPerformanceEvaluationPageClient({
               >
                 <SelectTrigger
                   id="avaliacao-periodo"
-                  className="mt-1.5 h-9 w-full max-w-[11rem] min-w-0 bg-surface-card sm:max-w-[13rem]"
+                  className="h-9 w-full max-w-[11rem] min-w-0 bg-surface-card sm:max-w-[13rem]"
                 >
                   <SelectValue>{evaluationPeriodLabel(periodo)}</SelectValue>
                 </SelectTrigger>

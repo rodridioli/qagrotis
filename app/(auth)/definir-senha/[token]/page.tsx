@@ -41,7 +41,7 @@ export default function DefinirSenhaPage({
         toast.error(result.reason)
         return
       }
-      toast.success("Senha definida com sucesso!")
+      toast.success("Senha definida com sucesso.")
       router.push("/login")
     })
   }

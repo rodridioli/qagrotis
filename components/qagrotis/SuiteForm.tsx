@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Check, Plus, MoreVertical, Trash2, ExternalLink, FileDown, Loader2, Play, Power, RefreshCw, FileText, FlaskConical, History } from "lucide-react"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -288,7 +289,7 @@ export function SuiteForm({
       const data = await res.json()
       if (!res.ok) throw new Error((data as string) || "Erro ao enviar para o Jira.")
       const evMsg = jiraEvidences.length > 0 ? ` ${jiraEvidences.length} evidência(s) anexada(s).` : ""
-      toast.success("Exportado para o Jira com sucesso!", {
+      toast.success("Exportado para o Jira com sucesso.", {
         description: `Issue ${issueKey} atualizada.${evMsg}`,
         action: { label: "Abrir no Jira", onClick: () => window.open((data as { url: string }).url, "_blank") },
       })
@@ -571,11 +572,11 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
 
       if (mode === "create") {
         const nova = await criarSuite(payload)
-        toast.success("Suíte criada com sucesso!")
+        toast.success("Suíte criada com sucesso.")
         router.replace(`/suites/${nova.id}`)
       } else if (suite?.id) {
         await atualizarSuite(suite.id, payload)
-        toast.success("Suíte atualizada!")
+        toast.success("Suíte atualizada.")
         // Preserve active tab after save by navigating with tab query param
         router.replace(`/suites/${suite.id}?tab=${activeTab}`)
         router.refresh()
@@ -883,9 +884,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
           </div>
 
           {cenarios.length === 0 ? (
-            <div className="mx-5 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-              Nenhum cenário adicionado à suíte.
-            </div>
+            <EmptyState message="Nenhum cenário adicionado à suíte." className="mx-5" />
           ) : (
             <div className="overflow-x-auto">
               <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
@@ -1070,9 +1069,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
           </div>
 
           {historico.length === 0 ? (
-            <div className="mx-5 my-6 rounded-lg border border-border-default bg-neutral-grey-50 px-6 py-10 text-center text-sm text-text-secondary">
-              Nenhuma execução registrada. O histórico será preenchido após a execução dos cenários.
-            </div>
+            <EmptyState message="Nenhuma execução registrada. O histórico será preenchido após a execução dos cenários." className="mx-5" />
           ) : (
             <div className="overflow-x-auto">
               <table className="qagrotis-table-row-hover w-full table-fixed text-sm">

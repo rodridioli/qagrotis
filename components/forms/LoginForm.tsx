@@ -172,7 +172,7 @@ function LoginView({ onForgotPassword, callbackUrl }: { onForgotPassword: () => 
         return
       }
 
-      toast.success("Acesso autorizado!", { description: "Redirecionando para o painel..." })
+      toast.success("Acesso autorizado.", { description: "Redirecionando para o painel..." })
       router.push(callbackUrl)
       router.refresh()
     } catch {
@@ -283,7 +283,7 @@ function ForgotPasswordView({ onBack }: { onBack: () => void }) {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { toast.error(data.error ?? "Erro ao enviar o e-mail."); return }
-      toast.success("E-mail enviado!", { description: `Verifique sua caixa de entrada em ${email}.` })
+      toast.success("E-mail enviado.", { description: `Verifique sua caixa de entrada em ${email}.` })
       onBack()
     } catch {
       toast.error("Sem conexão. Verifique sua internet e tente novamente.")
