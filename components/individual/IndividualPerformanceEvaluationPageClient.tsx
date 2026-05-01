@@ -6,7 +6,6 @@ import { BookOpen, Calendar, Check, Gauge, HeartHandshake, Save, Sparkles, User 
 import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
-import { AvaliacaoSituacaoBadge } from "@/components/qagrotis/StatusBadge"
 import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
 import { Button } from "@/components/ui/button"
 import {
@@ -248,11 +247,6 @@ export function IndividualPerformanceEvaluationPageClient({
               {evaluatedUser.email ? (
                 <p className="truncate text-sm text-text-secondary">{evaluatedUser.email}</p>
               ) : null}
-              {!isNew && (
-                <div className="pt-1">
-                  <AvaliacaoSituacaoBadge situacao={evalStatus === "CONCLUIDA" ? "Concluída" : "Rascunho"} />
-                </div>
-              )}
             </div>
           </div>
         </div>
