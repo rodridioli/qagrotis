@@ -241,9 +241,11 @@ export function IndividualPerformanceEvaluationPageClient({
               {evaluatedUser.email ? (
                 <p className="truncate text-sm text-text-secondary">{evaluatedUser.email}</p>
               ) : null}
-              <div className="pt-1">
-                <AvaliacaoSituacaoBadge situacao={evalStatus === "CONCLUIDA" ? "Concluída" : "Rascunho"} />
-              </div>
+              {!isNew && (
+                <div className="pt-1">
+                  <AvaliacaoSituacaoBadge situacao={evalStatus === "CONCLUIDA" ? "Concluída" : "Rascunho"} />
+                </div>
+              )}
             </div>
           </div>
         </div>
