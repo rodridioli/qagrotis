@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react"
 import {
   BarChart3, Users, Clock, Calendar,
-  SlidersHorizontal, X, Check,
+  SlidersHorizontal, X, Check, RotateCcw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -17,6 +17,7 @@ import { getLocalCalendarDayStartEndMs, localDayBoundsToIsoFilter } from "@/lib/
 import { EquipeAniversarioCard } from "@/components/equipe/EquipeAniversarioCard"
 import { EquipeHorariosTable } from "@/components/equipe/EquipeHorariosTable"
 import { EquipeChaptersSection } from "@/components/equipe/EquipeChaptersSection"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import {
   Select, SelectTrigger, SelectPopup, SelectItem,
 } from "@/components/ui/select"
@@ -214,6 +215,7 @@ function FilterModal({
 
         <DialogFooter showCloseButton={false}>
           <DialogClose render={<Button variant="ghost" onClick={onReset} />}>
+            <RotateCcw className="size-4 shrink-0" />
             Limpar filtros
           </DialogClose>
           <div className="flex gap-2">
@@ -442,7 +444,7 @@ const aniversariantesPorMes = useMemo(() => {
 
           {performanceLoading ? (
             <div className="flex items-center justify-center py-20">
-              <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
+              <p className="text-sm text-text-secondary">Carregando…</p>
             </div>
           ) : performanceError ? (
             <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
@@ -451,13 +453,7 @@ const aniversariantesPorMes = useMemo(() => {
           ) : (() => {
             const visibleUsers = users.filter((u) => (u.accessProfile ?? "QA") === selectedProfile)
             if (visibleUsers.length === 0) {
-              return (
-                <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card">
-                  <p className="text-sm text-text-secondary">
-                    Nenhum dado encontrado para os filtros selecionados.
-                  </p>
-                </div>
-              )
+              return <EmptyState message="Nenhum dado encontrado para os filtros selecionados." />
             }
             return (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -474,18 +470,14 @@ const aniversariantesPorMes = useMemo(() => {
         <div className="space-y-4">
           {cadastroLoading ? (
             <div className="flex items-center justify-center py-20">
-              <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
+              <p className="text-sm text-text-secondary">Carregando…</p>
             </div>
           ) : cadastroError ? (
             <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
               <p className="text-center text-sm text-destructive">{cadastroError}</p>
             </div>
           ) : aniversariantes.length === 0 ? (
-            <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card">
-              <p className="text-sm text-text-secondary">
-                Nenhum usuário ativo com data de nascimento cadastrada.
-              </p>
-            </div>
+            <EmptyState message="Nenhum usuário ativo com data de nascimento cadastrada." />
           ) : (
             <div className="space-y-8">
               {aniversariantesPorMes.map(({ month, titulo, users }) => (
@@ -525,7 +517,7 @@ const aniversariantesPorMes = useMemo(() => {
         <div className="space-y-4">
           {cadastroLoading ? (
             <div className="flex items-center justify-center py-20">
-              <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
+              <p className="text-sm text-text-secondary">Carregando…</p>
             </div>
           ) : cadastroError ? (
             <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">

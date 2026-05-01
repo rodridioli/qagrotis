@@ -27,7 +27,7 @@ export function PageBreadcrumb({ items, backHref, className }: PageBreadcrumbPro
         href={target}
         title="Voltar"
         aria-label="Voltar"
-        className="flex size-8 items-center justify-center rounded-xs text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+        className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
       >
         <ArrowLeft className="size-4" />
       </Link>

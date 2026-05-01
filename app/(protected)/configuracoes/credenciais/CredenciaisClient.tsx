@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, MoreVertical, Plus, X, Check } from "lucide-react"
+import { Eye, EyeOff, MoreVertical, Pencil, Plus, Power, X, Check } from "lucide-react"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { Button } from "@/components/ui/button"
@@ -226,12 +226,14 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEditar(c)}>
+                              <Pencil className="size-4" />
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="destructive"
                               onClick={() => { setInativarId(c.id); setInativarOpen(true) }}
                             >
+                              <Power className="size-4" />
                               Inativar
                             </DropdownMenuItem>
                           </DropdownMenuContent>

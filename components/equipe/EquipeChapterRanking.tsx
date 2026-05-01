@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Trophy } from "lucide-react"
 import type { EquipeChapterRankingPage } from "@/lib/equipe-chapters-shared"
 import { RankingPositionBadge } from "@/components/qagrotis/RankingPositionBadge"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { cn } from "@/lib/utils"
 
@@ -43,9 +44,7 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
 
       <div className={cn("relative min-w-0", loading && "pointer-events-none opacity-60")}>
         {!data || data.totalItems === 0 ? (
-          <p className="px-3 py-6 text-center text-[11px] text-text-secondary sm:px-4 sm:text-xs">
-            Nenhum ponto ainda.
-          </p>
+          <EmptyState message="Nenhum ponto ainda." className="mx-0 my-2 py-6" />
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -89,7 +88,7 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
                           ) : (
                             <div
                               className={cn(
-                                "flex size-6 shrink-0 items-center justify-center rounded-full bg-neutral-grey-100 text-[9px] font-semibold text-text-secondary sm:size-7 sm:text-[10px]",
+                                "flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-[9px] font-semibold text-brand-primary sm:size-7 sm:text-[10px]",
                                 !e.active && "opacity-75 grayscale",
                               )}
                               aria-hidden

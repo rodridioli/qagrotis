@@ -196,9 +196,9 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
   const intStatusIcon: Record<KeyStatus, React.ReactNode> = {
     idle:       null,
     validating: <Loader2 className="size-4 animate-spin text-text-secondary" />,
-    valid:      <Check className="size-4 text-green-600" />,
+    valid:      <Check className="size-4 text-badge-success-text" />,
     invalid:    <AlertCircle className="size-4 text-destructive" />,
-    uncertain:  <AlertCircle className="size-4 text-amber-500" />,
+    uncertain:  <AlertCircle className="size-4 text-badge-warning-text" />,
   }
 
   const systemModuleNames = useMemo(
@@ -746,8 +746,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             {loading && !output && (
               <div className="flex h-full items-center justify-center">
                 <div className="flex items-center gap-2 text-sm text-text-secondary">
-                  <span className="size-4 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
-                  Aguardando resposta do modelo de IA…
+                  Carregando…
                 </div>
               </div>
             )}
@@ -880,8 +879,8 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             return (
               <p className="-mt-1 text-sm text-text-secondary">
                 <span className="font-medium text-text-primary">{total}</span> cenário{total !== 1 ? "s" : ""} encontrado{total !== 1 ? "s" : ""} —{" "}
-                <span className="font-medium text-green-600">{newCount} novo{newCount !== 1 ? "s" : ""}</span>
-                {dupCount > 0 && <>, <span className="font-medium text-amber-600">{dupCount} duplicado{dupCount !== 1 ? "s" : ""}</span></>}
+                <span className="font-medium text-badge-success-text">{newCount} novo{newCount !== 1 ? "s" : ""}</span>
+                {dupCount > 0 && <>, <span className="font-medium text-badge-warning-text">{dupCount} duplicado{dupCount !== 1 ? "s" : ""}</span></>}
                 {errCount > 0 && <>, <span className="font-medium text-destructive">{errCount} com erro</span></>}
               </p>
             )
@@ -898,7 +897,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                     hasErr
                       ? "border-destructive/30 bg-destructive/5"
                       : isDup
-                      ? "border-amber-500/30 bg-amber-500/10"
+                      ? "border-badge-warning/30 bg-badge-warning/10"
                       : "border-border-default bg-surface-card"
                   }`}
                 >
@@ -915,10 +914,10 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate text-sm font-medium text-text-primary">{item.parsed.scenarioName}</span>
                       {!hasErr && !isDup && (
-                        <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-green-600/30 bg-green-600/10 px-3 py-1 text-xs font-medium text-green-700">Novo</span>
+                        <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-badge-success/30 bg-badge-success/10 px-3 py-1 text-xs font-medium text-badge-success-text">Novo</span>
                       )}
                       {!hasErr && isDup && !item.replace && (
-                        <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600">Já existe</span>
+                        <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-badge-warning/30 bg-badge-warning/10 px-3 py-1 text-xs font-medium text-badge-warning-text">Já existe</span>
                       )}
                       {!hasErr && isDup && item.replace && (
                         <span className="inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
@@ -926,7 +925,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                         </span>
                       )}
                       {hasErr && (
-                        <span className="inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-600 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-400">
+                        <span className="inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive">
                           <AlertCircle className="size-3" />Erro
                         </span>
                       )}
@@ -942,7 +941,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                     <button
                       type="button"
                       onClick={() => setCompareItem(item)}
-                      className="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-600 transition-colors hover:bg-amber-500/20"
+                      className="flex shrink-0 items-center gap-1.5 rounded-md border border-badge-warning/30 bg-badge-warning/10 px-2.5 py-1.5 text-xs font-medium text-badge-warning-text transition-colors hover:bg-badge-warning/20"
                     >
                       <ArrowRightLeft className="size-3.5" />
                       Comparar

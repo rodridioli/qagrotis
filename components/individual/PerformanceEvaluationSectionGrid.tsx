@@ -50,7 +50,7 @@ export function PerformanceEvaluationSectionGrid({
           className="flex w-full items-center justify-between gap-3 border-b border-border-default px-4 py-3 transition-colors hover:bg-neutral-grey-50 sm:px-5"
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-brand-primary">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
               {icon}
             </span>
             <span
@@ -68,7 +68,7 @@ export function PerformanceEvaluationSectionGrid({
         </button>
       ) : (
         <div className="flex items-center gap-3 border-b border-border-default px-4 py-3 sm:px-5">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-brand-primary">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
             {icon}
           </span>
           <h2 id={`sec-${section.id}`} className="text-base font-semibold text-text-primary sm:text-lg">

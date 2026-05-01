@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
+import { cn } from "@/lib/utils"
 import { Layers, FileText, ClipboardList, Cpu } from "lucide-react"
 import { useSistemaSelecionado } from "@/lib/modulo-context"
 import { DashboardCharts } from "./DashboardCharts"
@@ -124,14 +125,21 @@ function MetricCard({
   value,
   percentage,
   icon: Icon,
-  iconColor,
+  iconVariant,
 }: {
   label: string
   value: string
   percentage?: string
   icon: React.ElementType
-  iconColor: string
+  iconVariant: "brand" | "secondary" | "warning" | "info"
 }) {
+  const iconCls = cn(
+    "hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg",
+    iconVariant === "brand"     && "bg-brand-primary/10 text-brand-primary",
+    iconVariant === "secondary" && "bg-badge-info/10 text-badge-info-text",
+    iconVariant === "warning"   && "bg-badge-warning/10 text-badge-warning-text",
+    iconVariant === "info"      && "bg-badge-info/10 text-badge-info-text",
+  )
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-2">
@@ -142,11 +150,8 @@ function MetricCard({
             <p className="mt-1 text-xs text-text-secondary">{percentage}</p>
           )}
         </div>
-        <div
-          className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: iconColor + "1a" }}
-        >
-          <Icon className="size-5" style={{ color: iconColor }} aria-hidden />
+        <div className={iconCls}>
+          <Icon className="size-5" aria-hidden />
         </div>
       </div>
     </div>
@@ -472,10 +477,10 @@ export function DashboardClient({
   return (
     <div className="min-w-0 space-y-6">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricCard label="Módulos"           value={String(totalModulos)}                        icon={Layers}        iconColor="#00735D" />
-        <MetricCard label="Total de cenários" value={totalCenarios.toLocaleString("pt-BR")}      icon={FileText}      iconColor="#6366f1" />
-        <MetricCard label="Manuais"           value={totalManuais.toLocaleString("pt-BR")}       icon={ClipboardList} iconColor="#f59e0b" percentage={`${pctManuais}%`} />
-        <MetricCard label="Automatizados"     value={totalAutomatizados.toLocaleString("pt-BR")} icon={Cpu}           iconColor="#0ea5e9" percentage={`${pctAuto}%`} />
+        <MetricCard label="Módulos"           value={String(totalModulos)}                        icon={Layers}        iconVariant="brand" />
+        <MetricCard label="Total de cenários" value={totalCenarios.toLocaleString("pt-BR")}      icon={FileText}      iconVariant="secondary" />
+        <MetricCard label="Manuais"           value={totalManuais.toLocaleString("pt-BR")}       icon={ClipboardList} iconVariant="warning" percentage={`${pctManuais}%`} />
+        <MetricCard label="Automatizados"     value={totalAutomatizados.toLocaleString("pt-BR")} icon={Cpu}           iconVariant="info" percentage={`${pctAuto}%`} />
       </div>
 
       <DashboardCharts

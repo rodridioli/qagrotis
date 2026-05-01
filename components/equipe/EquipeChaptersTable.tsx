@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 import type { EquipeChapterListRow } from "@/lib/equipe-chapters-shared"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { ChapterStarsSummary } from "@/components/equipe/ChapterStarsSummary"
 
 export interface EquipeChaptersTableProps {
@@ -60,11 +61,7 @@ export function EquipeChaptersTable({
   footer,
 }: EquipeChaptersTableProps) {
   if (rows.length === 0) {
-    return (
-      <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card">
-        <p className="text-sm text-text-secondary">Nenhum chapter cadastrado.</p>
-      </div>
-    )
+    return <EmptyState message="Nenhum chapter cadastrado." />
   }
 
   return (
@@ -121,7 +118,7 @@ export function EquipeChaptersTable({
                             className="size-6 shrink-0 rounded-full object-cover"
                           />
                         ) : (
-                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-[10px] font-semibold text-brand-primary">
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-[10px] font-semibold text-brand-primary">
                             {getInitials(a.name)}
                           </span>
                         )}

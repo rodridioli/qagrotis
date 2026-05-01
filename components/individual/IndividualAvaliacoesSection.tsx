@@ -165,6 +165,9 @@ export function IndividualAvaliacoesSection({
 
   return (
     <div className="flex w-full flex-col gap-4">
+      <div className="flex justify-end">
+        {addButton}
+      </div>
       <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
         <TableToolbar
           search={q}
@@ -173,7 +176,6 @@ export function IndividualAvaliacoesSection({
           totalLabel="Total de avaliações"
           totalCount={loading ? 0 : filtered.length}
           baseCount={loading ? 0 : rows.length}
-          extra={addButton}
         />
 
         {error ? (

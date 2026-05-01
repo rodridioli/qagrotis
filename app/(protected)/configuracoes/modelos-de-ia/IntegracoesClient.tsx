@@ -168,9 +168,9 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
   const intStatusIcon: Record<KeyStatus, React.ReactNode> = {
     idle:       null,
     validating: <Loader2 className="size-4 animate-spin text-text-secondary" />,
-    valid:      <Check className="size-4 text-green-600" />,
+    valid:      <Check className="size-4 text-badge-success-text" />,
     invalid:    <AlertCircle className="size-4 text-destructive" />,
-    uncertain:  <AlertCircle className="size-4 text-amber-500" />,
+    uncertain:  <AlertCircle className="size-4 text-badge-warning-text" />,
   }
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -558,7 +558,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                   disabled={isIntegracaoModalPending}
                 />
                 {intProvider === "openrouter" && (
-                  <p className="text-[10px] text-text-secondary">
+                  <p className="text-xs text-text-secondary">
                     Com visão: <span className="font-medium">google/gemini-2.0-flash-exp:free</span> · meta-llama/llama-3.2-11b-vision-instruct:free
                   </p>
                 )}
@@ -604,9 +604,9 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                 </button>
               </div>
               <p className={`text-xs ${
-                intKeyStatus === "valid"     ? "text-green-600" :
+                intKeyStatus === "valid"     ? "text-badge-success-text" :
                 intKeyStatus === "invalid"   ? "text-destructive" :
-                intKeyStatus === "uncertain" ? "text-amber-600" :
+                intKeyStatus === "uncertain" ? "text-badge-warning-text" :
                 "text-text-secondary"
               }`}>
                 {intKeyStatus === "idle"       && "Clique no ícone de escudo para verificar a conexão."}

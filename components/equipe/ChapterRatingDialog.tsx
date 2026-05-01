@@ -158,7 +158,7 @@ export function ChapterRatingDialog({
                       <span className="w-3 shrink-0 tabular-nums text-text-secondary">{n}</span>
                       <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-neutral-grey-100">
                         <div
-                          className="h-full rounded-full bg-amber-400 transition-all"
+                          className="h-full rounded-full bg-badge-warning transition-all"
                           style={{ width: `${(dist[n] / maxBar) * 100}%` }}
                         />
                       </div>
@@ -226,7 +226,7 @@ export function ChapterRatingDialog({
                             key={i}
                             className={cn(
                               "size-3.5",
-                              i <= e.stars ? "fill-amber-400 text-amber-500" : "text-neutral-grey-300",
+                              i <= e.stars ? "fill-badge-warning text-badge-warning" : "text-neutral-grey-300",
                             )}
                             strokeWidth={1.4}
                           />
@@ -283,7 +283,7 @@ export function ChapterRatingDialog({
                   className={cn(
                     "min-w-10 rounded-md border px-2 py-1.5 text-sm font-medium transition-colors",
                     starsPick === n
-                      ? "border-brand-primary bg-primary-100 text-brand-primary"
+                      ? "border-brand-primary bg-brand-primary/10 text-brand-primary"
                       : "border-border-default bg-surface-card text-text-primary hover:bg-neutral-grey-50",
                   )}
                 >
@@ -297,7 +297,7 @@ export function ChapterRatingDialog({
                   key={i}
                   className={cn(
                     "size-5",
-                    i <= starsPick ? "fill-amber-400 text-amber-500" : "text-neutral-grey-300",
+                    i <= starsPick ? "fill-badge-warning text-badge-warning" : "text-neutral-grey-300",
                   )}
                   strokeWidth={1.4}
                 />
@@ -318,7 +318,7 @@ export function ChapterRatingDialog({
                 Voltar
               </Button>
               <Button type="submit" disabled={saving || isPreview} title={isPreview ? "Pré-visualização sem servidor." : undefined}>
-                {saving ? "A guardar…" : "Avaliar"}
+                {saving ? "Salvando…" : "Avaliar"}
               </Button>
             </DialogFooter>
           </form>

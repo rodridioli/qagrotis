@@ -31,7 +31,7 @@ export function TablePagination({
           type="button"
           disabled={currentPage === 1}
           onClick={() => onPageChange(currentPage - 1)}
-          className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border border-border-default px-2 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-neutral-grey-100 disabled:pointer-events-none disabled:opacity-40 sm:text-sm"
+          className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-custom border border-border-default px-2 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-neutral-grey-100 disabled:pointer-events-none disabled:opacity-40 sm:text-sm"
         >
           <ChevronLeft className="size-4 shrink-0" aria-hidden />
           <span>Anterior</span>
@@ -43,7 +43,7 @@ export function TablePagination({
           type="button"
           disabled={currentPage === totalPages}
           onClick={() => onPageChange(currentPage + 1)}
-          className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border border-border-default px-2 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-neutral-grey-100 disabled:pointer-events-none disabled:opacity-40 sm:text-sm"
+          className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-custom border border-border-default px-2 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-neutral-grey-100 disabled:pointer-events-none disabled:opacity-40 sm:text-sm"
         >
           <span>Próximo</span>
           <ChevronRight className="size-4 shrink-0" aria-hidden />
@@ -66,9 +66,10 @@ export function TablePagination({
             type="button"
             disabled={currentPage === 1}
             onClick={() => onPageChange(currentPage - 1)}
-            className="flex size-7 items-center justify-center rounded-md border border-border-default disabled:opacity-40 hover:bg-neutral-grey-100"
+            aria-label="Página anterior"
+            className="flex size-7 items-center justify-center rounded-custom border border-border-default disabled:opacity-40 hover:bg-neutral-grey-100"
           >
-            &lt;
+            <ChevronLeft className="size-4" aria-hidden />
           </button>
           <span className="px-2 text-xs sm:text-sm">
             {currentPage} / {totalPages}
@@ -77,9 +78,10 @@ export function TablePagination({
             type="button"
             disabled={currentPage === totalPages}
             onClick={() => onPageChange(currentPage + 1)}
-            className="flex size-7 items-center justify-center rounded-md border border-border-default disabled:opacity-40 hover:bg-neutral-grey-100"
+            aria-label="Próxima página"
+            className="flex size-7 items-center justify-center rounded-custom border border-border-default disabled:opacity-40 hover:bg-neutral-grey-100"
           >
-            &gt;
+            <ChevronRight className="size-4" aria-hidden />
           </button>
         </div>
       </div>

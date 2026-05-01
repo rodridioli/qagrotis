@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, Check, X, Paperclip, TriangleAlert } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
 import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { Button } from "@/components/ui/button"
@@ -456,13 +457,12 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
           <Field label="Risco">
             <div className="rounded-custom border border-border-default bg-neutral-grey-50 px-3 py-2 min-h-9.5 flex items-center cursor-not-allowed">
               {cenario.risco ? (
-                <span className="flex items-center gap-1.5 text-sm font-medium"
-                  style={{
-                    color: cenario.risco === "Alto" ? "#ef4444" : cenario.risco === "Médio" ? "#f59e0b" : "#3b82f6"
-                  }}
-                >
+                <span className={cn(
+                  "flex items-center gap-1.5 text-sm font-medium",
+                  cenario.risco === "Alto" ? "text-destructive" : cenario.risco === "Médio" ? "text-badge-warning-text" : "text-badge-info-text"
+                )}>
                   {cenario.risco === "Alto" && <ArrowUp className="size-3.5 shrink-0" />}
-                  {cenario.risco === "Médio" && <Circle className="size-3.5 shrink-0 fill-amber-400" />}
+                  {cenario.risco === "Médio" && <Circle className="size-3.5 shrink-0 fill-badge-warning" />}
                   {cenario.risco === "Baixo" && <ArrowDown className="size-3.5 shrink-0" />}
                   {cenario.risco}
                 </span>

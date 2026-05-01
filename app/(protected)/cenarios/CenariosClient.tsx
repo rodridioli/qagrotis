@@ -785,8 +785,8 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
             return (
               <p className="text-sm text-text-secondary -mt-1">
                 <span className="font-medium text-text-primary">{total}</span> cenário{total !== 1 ? "s" : ""} encontrado{total !== 1 ? "s" : ""} —{" "}
-                <span className="text-green-600 font-medium">{newCount} novo{newCount !== 1 ? "s" : ""}</span>
-                {dupCount > 0 && <>, <span className="text-amber-600 font-medium">{dupCount} duplicado{dupCount !== 1 ? "s" : ""}</span></>}
+                <span className="text-badge-success-text font-medium">{newCount} novo{newCount !== 1 ? "s" : ""}</span>
+                {dupCount > 0 && <>, <span className="text-badge-warning-text font-medium">{dupCount} duplicado{dupCount !== 1 ? "s" : ""}</span></>}
                 {errCount > 0 && <>, <span className="text-destructive font-medium">{errCount} com erro</span></>}
               </p>
             )
@@ -804,7 +804,7 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
                     hasErr
                       ? "border-destructive/30 bg-destructive/5"
                       : isDup
-                      ? "border-amber-500/30 bg-amber-500/10"
+                      ? "border-badge-warning/30 bg-badge-warning/10"
                       : "border-border-default bg-surface-card"
                   }`}
                 >
@@ -830,12 +830,12 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
                         {item.parsed.scenarioName}
                       </span>
                       {!hasErr && !isDup && (
-                        <span className="shrink-0 inline-flex items-center justify-center whitespace-nowrap rounded-full border border-green-600/30 bg-green-600/10 px-3 py-1 text-xs font-medium text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">
+                        <span className="shrink-0 inline-flex items-center justify-center whitespace-nowrap rounded-full border border-badge-success/30 bg-badge-success/10 px-3 py-1 text-xs font-medium text-badge-success-text">
                           Novo
                         </span>
                       )}
                       {!hasErr && isDup && !item.replace && (
-                        <span className="shrink-0 inline-flex items-center justify-center whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600">
+                        <span className="shrink-0 inline-flex items-center justify-center whitespace-nowrap rounded-full border border-badge-warning/30 bg-badge-warning/10 px-3 py-1 text-xs font-medium text-badge-warning-text">
                           Já existe
                         </span>
                       )}
@@ -846,7 +846,7 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
                         </span>
                       )}
                       {hasErr && (
-                        <span className="shrink-0 inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-600">
+                        <span className="shrink-0 inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive">
                           <AlertCircle className="size-3" />
                           Erro
                         </span>
@@ -867,7 +867,7 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
                     <button
                       type="button"
                       onClick={() => setCompareItem(item)}
-                      className="shrink-0 flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/20 transition-colors"
+                      className="shrink-0 flex items-center gap-1.5 rounded-md border border-badge-warning/30 bg-badge-warning/10 px-2.5 py-1.5 text-xs font-medium text-badge-warning-text hover:bg-badge-warning/20 transition-colors"
                     >
                       <ArrowRightLeft className="size-3.5" />
                       Comparar

@@ -318,9 +318,9 @@ export default function UsuariosClient({
       </div>
 
       {usersFetchFailed && !fetchRecovered && (
-        <div className="flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-text-primary sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-xl border border-badge-warning/40 bg-badge-warning/10 px-4 py-3 text-sm text-text-primary sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2">
-            <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden />
+            <AlertCircle className="mt-0.5 size-5 shrink-0 text-badge-warning-text" aria-hidden />
             <div className="space-y-1">
               <p className="font-medium">Não foi possível carregar a lista no servidor</p>
               <p className="text-text-secondary">
@@ -335,7 +335,7 @@ export default function UsuariosClient({
           <Button
             type="button"
             variant="outline"
-            className="shrink-0 border-amber-600/50"
+            className="shrink-0 border-badge-warning/50"
             disabled={reloadBusy}
             onClick={() => void handleReloadUsers()}
           >
@@ -453,7 +453,7 @@ export default function UsuariosClient({
                             ) : (
                               <div
                                 className={cn(
-                                  "flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-brand-primary",
+                                  "flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-xs font-semibold text-brand-primary",
                                   !u.active && "opacity-70 grayscale",
                                 )}
                               >

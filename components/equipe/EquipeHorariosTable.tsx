@@ -2,6 +2,7 @@
 
 import React from "react"
 import { UserAvatar, cargoLabel } from "@/components/equipe/EquipePerformanceCard"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
 import type { EquipeUsuarioCadastro } from "@/lib/actions/equipe"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -41,13 +42,7 @@ function FormatoCell({ u }: { u: EquipeUsuarioCadastro }) {
  */
 export function EquipeHorariosTable({ rows }: EquipeHorariosTableProps) {
   if (rows.length === 0) {
-    return (
-      <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card">
-        <p className="text-sm text-text-secondary">
-          Nenhum usuário com horário de entrada e saída preenchidos.
-        </p>
-      </div>
-    )
+    return <EmptyState message="Nenhum usuário com horário de entrada e saída preenchidos." />
   }
 
   return (

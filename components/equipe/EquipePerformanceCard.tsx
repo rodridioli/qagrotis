@@ -63,20 +63,20 @@ function RankLugarBadge({ rank }: { rank: number }) {
     rank === 1
       ? {
           wrap:
-            "border-2 border-amber-500/70 bg-amber-50 text-amber-950 shadow-sm dark:border-amber-400/60 dark:bg-amber-950/50 dark:text-amber-50",
-          dot: "bg-amber-500 dark:bg-amber-400",
+            "border-2 border-badge-warning/70 bg-badge-warning/10 text-badge-warning-text shadow-sm",
+          dot: "bg-badge-warning",
         }
       : rank === 2
         ? {
             wrap:
-              "border-secondary-300 bg-secondary-100 text-secondary-900 dark:border-secondary-600 dark:bg-secondary-800/60 dark:text-secondary-50",
-            dot: "bg-neutral-grey-500 dark:bg-neutral-grey-400",
+              "border-border-default bg-neutral-grey-100 text-text-secondary",
+            dot: "bg-neutral-grey-500",
           }
         : rank === 3
           ? {
               wrap:
-                "border-orange-400/45 bg-orange-100 text-orange-950 dark:border-orange-500/35 dark:bg-orange-950/45 dark:text-orange-50",
-              dot: "bg-orange-500 dark:bg-orange-400",
+                "border-badge-orange/45 bg-badge-orange/10 text-badge-orange-text",
+              dot: "bg-badge-orange",
             }
           : {
               wrap:
@@ -110,18 +110,18 @@ function StatBox({
     "flex w-full min-w-0 flex-col items-center justify-center rounded-lg px-1 py-2 sm:px-1.5 sm:py-2.5",
     variant === "cenarios" &&
       "bg-neutral-grey-100 dark:bg-neutral-grey-200",
-    variant === "testes" && "bg-secondary-100 dark:bg-secondary-800/50",
-    variant === "success" && "bg-primary-50 dark:bg-primary-950/45",
-    variant === "error" && "bg-red-100 dark:bg-red-950/40",
-    variant === "info" && "bg-blue-100 dark:bg-blue-950/45",
+    variant === "testes" && "bg-badge-info/10",
+    variant === "success" && "bg-badge-success/10",
+    variant === "error" && "bg-destructive/10",
+    variant === "info" && "bg-badge-info/10",
   )
   const numCls = cn(
     "text-base font-bold tabular-nums sm:text-lg",
     variant === "cenarios" && "text-text-primary",
-    variant === "testes" && "text-secondary-800 dark:text-secondary-100",
-    variant === "success" && "text-primary-800 dark:text-primary-200",
-    variant === "error" && "text-destructive dark:text-red-300",
-    variant === "info" && "text-blue-800 dark:text-blue-200",
+    variant === "testes" && "text-badge-info-text",
+    variant === "success" && "text-badge-success-text",
+    variant === "error" && "text-destructive",
+    variant === "info" && "text-badge-info-text",
   )
   return (
     <div className={surface}>
