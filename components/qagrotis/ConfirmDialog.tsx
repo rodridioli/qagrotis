@@ -15,6 +15,8 @@ interface ConfirmDialogProps {
   title: string
   description: string
   confirmLabel?: string
+  /** Ícone exibido à esquerda do label no botão de confirmação. */
+  confirmIcon?: React.ReactNode
   /** Variante do botão de confirmação. Padrão: "destructive". */
   buttonVariant?: "default" | "destructive"
   onConfirm: () => void
@@ -26,6 +28,7 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = "Confirmar",
+  confirmIcon,
   buttonVariant = "destructive",
   onConfirm,
 }: ConfirmDialogProps) {
@@ -41,7 +44,9 @@ export function ConfirmDialog({
           <Button
             variant={buttonVariant}
             onClick={onConfirm}
+            className="gap-1.5"
           >
+            {confirmIcon}
             {confirmLabel}
           </Button>
         </DialogFooter>

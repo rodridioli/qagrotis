@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import { Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { EmptyState } from "@/components/qagrotis/EmptyState"
@@ -210,6 +211,7 @@ export function IndividualAvaliacoesSection({
         title="Excluir avaliação?"
         description="Esta ação não pode ser desfeita."
         confirmLabel="Excluir"
+        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
         onConfirm={() => void confirmDelete()}
       />
     </div>

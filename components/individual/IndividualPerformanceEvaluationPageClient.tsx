@@ -351,6 +351,7 @@ export function IndividualPerformanceEvaluationPageClient({
         title="Concluir avaliação?"
         description={`A avaliação será enviada para ${evaluatedUser.name} e não poderá mais ser editada. Caso envie uma avaliação errada, será necessário excluí-la e criar uma nova.`}
         confirmLabel="Concluir avaliação"
+        confirmIcon={<Check className="size-4 shrink-0" aria-hidden />}
         buttonVariant="default"
         onConfirm={() => {
           setConfirmCompleteOpen(false)
