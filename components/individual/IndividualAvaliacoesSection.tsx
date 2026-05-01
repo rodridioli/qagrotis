@@ -207,9 +207,9 @@ export function IndividualAvaliacoesSection({
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Remover avaliação?"
+        title="Excluir avaliação?"
         description="Esta ação não pode ser desfeita."
-        confirmLabel="Remover"
+        confirmLabel="Excluir"
         onConfirm={() => void confirmDelete()}
       />
     </div>
