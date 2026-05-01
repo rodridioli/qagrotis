@@ -33,6 +33,7 @@ import {
   isEvaluationPeriodSlug,
   PERFORMANCE_EVALUATION_SECTIONS,
   performanceScoreQualitativeLabel,
+  PERFORMANCE_COMPETENCY_IDS,
   scorePercentGaugeIconClass,
   scorePercentToneClass,
   type EvaluationPeriodSlug,
@@ -64,7 +65,10 @@ export function IndividualPerformanceEvaluationPageClient({
   const isNew = initialDetail === null
 
   const [selections, setSelections] = React.useState<Record<string, number | undefined>>(() => {
-    if (!initialDetail) return {}
+    if (!initialDetail) {
+      // Nova avaliação: pré-seleciona "Esperado" (índice 3) em todas as competências
+      return Object.fromEntries(PERFORMANCE_COMPETENCY_IDS.map((id) => [id, 3]))
+    }
     const m: Record<string, number | undefined> = {}
     for (const [k, v] of Object.entries(initialDetail.selections)) m[k] = v
     return m
