@@ -20,6 +20,8 @@ export interface PerformanceEvaluationSectionGridProps {
   /** Seção expansível (cabeçalho clicável), padrão execução de cenário / mockup. */
   collapsible?: boolean
   defaultOpen?: boolean
+  /** Somente visualização — desativa interação com os radio buttons. */
+  disabled?: boolean
 }
 
 const competencyStickyColClass =
@@ -32,6 +34,7 @@ export function PerformanceEvaluationSectionGrid({
   icon,
   collapsible = true,
   defaultOpen = true,
+  disabled = false,
 }: PerformanceEvaluationSectionGridProps) {
   const [open, setOpen] = React.useState(defaultOpen)
   const colPercents = computeSectionColumnPercents(section, selections as Record<string, number>)
@@ -121,10 +124,14 @@ export function PerformanceEvaluationSectionGrid({
                     >
                       <label
                         className={cn(
-                          "flex h-10 cursor-pointer items-center justify-center rounded-lg border text-xs font-medium transition-colors sm:h-11",
+                          "flex h-10 items-center justify-center rounded-lg border text-xs font-medium transition-colors sm:h-11",
+                          disabled ? "cursor-default" : "cursor-pointer",
                           selected
                             ? evaluationColumnSelectedLabelClass(col)
-                            : "border-transparent bg-transparent text-text-secondary/80 hover:bg-neutral-grey-100/90 dark:hover:bg-neutral-grey-800/50",
+                            : cn(
+                                "border-transparent bg-transparent text-text-secondary/80",
+                                !disabled && "hover:bg-neutral-grey-100/90 dark:hover:bg-neutral-grey-800/50",
+                              ),
                         )}
                       >
                         <input
@@ -132,8 +139,9 @@ export function PerformanceEvaluationSectionGrid({
                           name={name}
                           value={col}
                           checked={selected}
+                          disabled={disabled}
                           className="sr-only"
-                          onChange={() => onSelectLevel(c.id, col)}
+                          onChange={disabled ? undefined : () => onSelectLevel(c.id, col)}
                         />
                         <span aria-hidden className="text-base font-bold">
                           {selected ? "✓" : ""}

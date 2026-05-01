@@ -15,6 +15,8 @@ interface ConfirmDialogProps {
   title: string
   description: string
   confirmLabel?: string
+  /** Variante do botão de confirmação. Padrão: "destructive". */
+  buttonVariant?: "default" | "destructive"
   onConfirm: () => void
 }
 
@@ -24,6 +26,7 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = "Confirmar",
+  buttonVariant = "destructive",
   onConfirm,
 }: ConfirmDialogProps) {
   return (
@@ -36,7 +39,7 @@ export function ConfirmDialog({
         <DialogFooter showCloseButton={false}>
           <CancelActionButton onClick={() => onOpenChange(false)} />
           <Button
-            variant="destructive"
+            variant={buttonVariant}
             onClick={onConfirm}
           >
             {confirmLabel}

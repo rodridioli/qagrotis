@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { ChevronDown, ChevronUp, FileDown, MoreVertical, Pencil, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronUp, Eye, FileDown, MoreVertical, Pencil, Trash2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -199,8 +199,12 @@ export function IndividualAvaliacoesTable({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" side="bottom">
                       <DropdownMenuItem onClick={() => onEdit(r)}>
-                        <Pencil className="size-4" />
-                        {r.status === "CONCLUIDA" ? "Ver / editar" : "Editar"}
+                        {r.status === "CONCLUIDA" ? (
+                          <Eye className="size-4" />
+                        ) : (
+                          <Pencil className="size-4" />
+                        )}
+                        {r.status === "CONCLUIDA" ? "Visualizar" : "Editar"}
                       </DropdownMenuItem>
                       {onExport ? (
                         <DropdownMenuItem onClick={() => onExport(r)}>
@@ -210,7 +214,7 @@ export function IndividualAvaliacoesTable({
                       ) : null}
                       <DropdownMenuItem variant="destructive" onClick={() => onRequestDelete(r)}>
                         <Trash2 className="size-4" />
-                        Remover
+                        Excluir
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
