@@ -91,7 +91,6 @@ export function IndividualPerformanceEvaluationPageClient({
 
   const userQuery = `?userId=${encodeURIComponent(evaluatedUserId)}`
   const listHref = `/individual/avaliacoes${userQuery}`
-  const fichaHref = `/individual/ficha${userQuery}`
 
   function setLevel(competencyId: string, level: number) {
     setSelections((prev) => ({ ...prev, [competencyId]: level }))
@@ -184,7 +183,6 @@ export function IndividualPerformanceEvaluationPageClient({
           <PageBreadcrumb
             backHref={listHref}
             items={[
-              { label: "Individual", href: fichaHref },
               { label: "Avaliações", href: listHref },
               { label: isNew ? "Nova avaliação" : evaluationDisplayCodigo(initialDetail.codigo) },
             ]}
