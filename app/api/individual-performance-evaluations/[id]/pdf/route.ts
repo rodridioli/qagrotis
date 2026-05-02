@@ -42,10 +42,29 @@ export async function GET(
     (typeof session.user.email === "string" && session.user.email) ||
     "—"
 
+  // Resolve photo as data URL (data:image/...;base64,...)
+  let evaluatedPhotoDataUrl: string | null = null
+  const photoPath = profile?.photoPath?.trim()
+  if (photoPath?.startsWith("data:image/")) {
+    evaluatedPhotoDataUrl = photoPath
+  } else if (photoPath && (photoPath.startsWith("http://") || photoPath.startsWith("https://"))) {
+    try {
+      const r = await fetch(photoPath)
+      if (r.ok) {
+        const buf2 = Buffer.from(await r.arrayBuffer())
+        const ct = r.headers.get("content-type") ?? "image/jpeg"
+        evaluatedPhotoDataUrl = `data:${ct};base64,${buf2.toString("base64")}`
+      }
+    } catch {
+      evaluatedPhotoDataUrl = null
+    }
+  }
+
   const buf = buildIndividualEvaluationPdfBuffer(ev, {
     evaluatedName: profile?.name?.trim() || "—",
     evaluatedEmail: profile?.email?.trim() ?? null,
     evaluatorName,
+    evaluatedPhotoDataUrl,
   })
 
   return new NextResponse(new Uint8Array(buf), {
