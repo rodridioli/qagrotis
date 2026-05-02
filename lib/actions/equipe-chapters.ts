@@ -148,6 +148,7 @@ export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
           userId: id,
           name: row?.name ?? id,
           photoPath: row?.photoPath ?? null,
+          active: row?.active ?? true,
         }
       })
       const autoresLabel = [...authors]

@@ -115,7 +115,7 @@ export function EquipeChaptersTable({
                             width={24}
                             height={24}
                             unoptimized
-                            className="size-6 shrink-0 rounded-full object-cover"
+                            className={`size-6 shrink-0 rounded-full object-cover${a.active ? "" : " grayscale"}`}
                           />
                         ) : (
                           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-[10px] font-semibold text-brand-primary">

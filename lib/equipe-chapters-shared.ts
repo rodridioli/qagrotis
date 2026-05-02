@@ -14,6 +14,8 @@ export interface EquipeChapterAuthorDisplay {
   userId: string
   name: string
   photoPath: string | null
+  /** `false` para inativos — UI exibe foto em preto e branco. */
+  active: boolean
 }
 
 export interface EquipeChapterListRow {

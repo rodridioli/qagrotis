@@ -57,7 +57,7 @@ export const AutorInativoResolvido: Story = {
         onChange={() => {}}
         disabled
         resolvedAuthors={[
-          { userId: "U-13", name: "Maria Inativa (exemplo)", photoPath: null },
+          { userId: "U-13", name: "Maria Inativa (exemplo)", photoPath: null, active: false },
         ] satisfies EquipeChapterAuthorDisplay[]}
       />
     </div>
