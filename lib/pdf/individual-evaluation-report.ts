@@ -101,6 +101,34 @@ function drawCard(doc: jsPDF, x: number, y: number, w: number, h: number, r = 3)
   doc.roundedRect(x, y, w, h, r, r, "FD")
 }
 
+/**
+ * Define um caminho de recorte retangular com cantos arredondados via operadores PDF brutos.
+ * Deve ser chamada entre saveGraphicsState() e restoreGraphicsState().
+ * Usa `W n` do PDF (Clip path operator — não preenche nem traça).
+ */
+function clipRoundedRect(doc: jsPDF, x: number, y: number, w: number, h: number, r: number): void {
+  const S = 2.8346 // mm → pt
+  const pH = doc.internal.pageSize.getHeight() // mm (unit="mm")
+  const x1 = x * S,        x2 = (x + w) * S
+  const y1 = (pH - y - h) * S, y2 = (pH - y) * S  // y1=fundo, y2=topo (PDF: y↑)
+  const rp = r * S
+  const k = 0.5523 // Bézier kappa para arco de 90°
+  const p = (n: number) => n.toFixed(3)
+  const path = [
+    `${p(x1+rp)} ${p(y2)} m`,
+    `${p(x2-rp)} ${p(y2)} l`,
+    `${p(x2-rp+k*rp)} ${p(y2)} ${p(x2)} ${p(y2-rp+k*rp)} ${p(x2)} ${p(y2-rp)} c`,
+    `${p(x2)} ${p(y1+rp)} l`,
+    `${p(x2)} ${p(y1+rp-k*rp)} ${p(x2-rp+k*rp)} ${p(y1)} ${p(x2-rp)} ${p(y1)} c`,
+    `${p(x1+rp)} ${p(y1)} l`,
+    `${p(x1+rp-k*rp)} ${p(y1)} ${p(x1)} ${p(y1+rp-k*rp)} ${p(x1)} ${p(y1+rp)} c`,
+    `${p(x1)} ${p(y2-rp)} l`,
+    `${p(x1)} ${p(y2-rp+k*rp)} ${p(x1+rp-k*rp)} ${p(y2)} ${p(x1+rp)} ${p(y2)} c`,
+    "h W n",
+  ].join(" ")
+  doc.internal.write(path)
+}
+
 /** Badge colorida (ex.: Concluída / Rascunho). */
 function drawBadge(
   doc: jsPDF,
@@ -189,38 +217,41 @@ export function buildIndividualEvaluationPdfBuffer(
   const c1x = PAGE.l
   drawCard(doc, c1x, y, cw, infoH, 3)
 
-  // Avatar círculo — foto real ou placeholder
-  const aR = 7          // raio
-  const aCx = c1x + 5 + aR
-  const aCy = y + infoH / 2 + 1  // centro vertical no card
+  // Foto — retângulo arredondado (rounded-xl do web)
+  const photoSize = 22           // mm — ~60 % da altura do card
+  const photoX    = c1x + 4
+  const photoY    = y + (infoH - photoSize) / 2  // centralizado verticalmente
+  const photoR    = 3            // raio dos cantos, aprox. rounded-xl
 
   if (meta.evaluatedPhotoDataUrl) {
-    // jsPDF não suporta clip circular nativo — foto inscrita no círculo com borda
-    const imgD = aR * 1.414 // lado do quadrado inscrito no círculo
-    doc.setFillColor(...C.card)
-    doc.circle(aCx, aCy, aR + 0.4, "F")
-    doc.setDrawColor(...C.border)
-    doc.setLineWidth(0.3)
-    doc.circle(aCx, aCy, aR + 0.4, "S")
-    const raw = meta.evaluatedPhotoDataUrl
+    const raw    = meta.evaluatedPhotoDataUrl
     const isJpeg = raw.startsWith("data:image/jpeg") || raw.startsWith("data:image/jpg")
-    const fmt = isJpeg ? "JPEG" : "PNG"
-    const b64 = raw.replace(/^data:[^;]+;base64,/, "")
-    doc.addImage(b64, fmt, aCx - imgD / 2, aCy - imgD / 2, imgD, imgD)
+    const fmt    = isJpeg ? "JPEG" : "PNG"
+    const b64    = raw.replace(/^data:[^;]+;base64,/, "")
+    // Clip para cantos arredondados via operadores PDF brutos, depois restaura
+    doc.saveGraphicsState()
+    clipRoundedRect(doc, photoX, photoY, photoSize, photoSize, photoR)
+    doc.addImage(b64, fmt, photoX, photoY, photoSize, photoSize)
+    doc.restoreGraphicsState()
+    // Borda fina sobre a foto (aparece depois do clip restaurado)
+    doc.setDrawColor(...C.border)
+    doc.setLineWidth(0.25)
+    doc.roundedRect(photoX, photoY, photoSize, photoSize, photoR, photoR, "S")
   } else {
-    // Placeholder: círculo verde + silhueta de pessoa
+    // Placeholder: quadrado arredondado verde + silhueta de pessoa
     doc.setFillColor(...C.brand)
-    doc.circle(aCx, aCy, aR, "F")
+    doc.roundedRect(photoX, photoY, photoSize, photoSize, photoR, photoR, "F")
+    const cx = photoX + photoSize / 2
+    const cy = photoY + photoSize / 2
     doc.setFillColor(255, 255, 255)
-    doc.circle(aCx, aCy - 2.2, 2.0, "F")
-    doc.setFillColor(255, 255, 255)
-    doc.ellipse(aCx, aCy + 3.2, 3.2, 2.0, "F")
+    doc.circle(cx, cy - 4.0, 3.5, "F")      // cabeça
+    doc.ellipse(cx, cy + 5.5, 5.0, 3.5, "F") // ombros
   }
 
-  // Label + nome + email — todos alinhados à direita do avatar
-  const infoX = aCx + aR + 3
-  const infoMaxW = cw - (aCx - c1x + aR + 6)
-  let infoY = y + 7
+  // Label + nome + email — à direita da foto
+  const infoX    = photoX + photoSize + 3
+  const infoMaxW = cw - (infoX - c1x) - 3
+  let infoY      = y + 9
 
   doc.setFont("helvetica", "normal")
   doc.setFontSize(6.5)
@@ -257,18 +288,18 @@ export function buildIndividualEvaluationPdfBuffer(
 
   if (scorePct != null) {
     doc.setFont("helvetica", "bold")
-    doc.setFontSize(24)
+    doc.setFontSize(30)
     doc.setTextColor(...scoreRgb(scorePct))
-    doc.text(`${scorePct.toFixed(0)}%`, c2x + cw / 2, y + 22, { align: "center" })
+    doc.text(`${scorePct.toFixed(0)}%`, c2x + cw / 2, y + 24, { align: "center" })
     doc.setFont("helvetica", "normal")
     doc.setFontSize(7)
     doc.setTextColor(...C.muted)
-    doc.text(scoreLabel, c2x + cw / 2, y + 31, { align: "center" })
+    doc.text(scoreLabel, c2x + cw / 2, y + 32, { align: "center" })
   } else {
     doc.setFont("helvetica", "bold")
-    doc.setFontSize(24)
+    doc.setFontSize(30)
     doc.setTextColor(...C.muted)
-    doc.text("—", c2x + cw / 2, y + 22, { align: "center" })
+    doc.text("—", c2x + cw / 2, y + 24, { align: "center" })
   }
 
   // Card 3 — Data e período
@@ -281,9 +312,9 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.text("Data e período", c3x + 5, y + 7)
 
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(14)
+  doc.setFontSize(16)
   doc.setTextColor(...C.text)
-  doc.text(formatYmdPt(ev.dataYmd), c3x + cw / 2, y + 20, { align: "center" })
+  doc.text(formatYmdPt(ev.dataYmd), c3x + cw / 2, y + 21, { align: "center" })
 
   doc.setFont("helvetica", "normal")
   doc.setFontSize(7.5)
