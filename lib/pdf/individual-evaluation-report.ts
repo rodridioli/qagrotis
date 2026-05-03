@@ -217,7 +217,7 @@ export function buildIndividualEvaluationPdfBuffer(
   infoY += 5
 
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(8)
+  doc.setFontSize(9.5)
   doc.setTextColor(...C.text)
   const nameLines = doc.splitTextToSize(meta.evaluatedName, infoMaxW) as string[]
   doc.text(nameLines, infoX, infoY)
@@ -245,7 +245,7 @@ export function buildIndividualEvaluationPdfBuffer(
 
   if (scorePct != null) {
     doc.setFont("helvetica", "bold")
-    doc.setFontSize(27)
+    doc.setFontSize(13)
     doc.setTextColor(...scoreRgb(scorePct))
     doc.text(`${scorePct.toFixed(0)}%`, c2x + cw / 2, y + 22, { align: "center" })
     doc.setFont("helvetica", "normal")
@@ -254,7 +254,7 @@ export function buildIndividualEvaluationPdfBuffer(
     doc.text(scoreLabel, c2x + cw / 2, y + 29, { align: "center" })
   } else {
     doc.setFont("helvetica", "bold")
-    doc.setFontSize(27)
+    doc.setFontSize(13)
     doc.setTextColor(...C.muted)
     doc.text("—", c2x + cw / 2, y + 22, { align: "center" })
   }
@@ -269,7 +269,7 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.text("Data e período", c3x + 5, y + 7)
 
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(16)
+  doc.setFontSize(10)
   doc.setTextColor(...C.text)
   doc.text(formatYmdPt(ev.dataYmd), c3x + cw / 2, y + 20, { align: "center" })
 
@@ -295,9 +295,9 @@ export function buildIndividualEvaluationPdfBuffer(
     doc.setLineWidth(0.15)
     doc.roundedRect(PAGE.l, y, innerW, 7, 2, 2, "FD")
     doc.setFont("helvetica", "bold")
-    doc.setFontSize(8.5)
+    doc.setFontSize(12)
     doc.setTextColor(...C.brandDark)
-    doc.text(section.label, PAGE.l + 5, y + 4.9)
+    doc.text(section.label, PAGE.l + 5, y + 5.2)
     y += 7 + 1
 
     // Linhas da tabela (corpo)
@@ -326,7 +326,7 @@ export function buildIndividualEvaluationPdfBuffer(
       showFoot: "lastPage",
       theme: "plain",
       styles: {
-        fontSize: 7,
+        fontSize: 8,
         cellPadding: 1.1,
         lineColor: C.border,
         lineWidth: 0.12,
@@ -338,7 +338,7 @@ export function buildIndividualEvaluationPdfBuffer(
         fillColor: C.tableBg,
         textColor: [55, 65, 81],
         fontStyle: "bold",
-        fontSize: 6.5,
+        fontSize: 7,
         halign: "center",
         cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 },
       },
@@ -385,14 +385,30 @@ export function buildIndividualEvaluationPdfBuffer(
             lighten(fillBase[2]),
           ] as [number, number, number]
           if (data.cell.raw === "✓") {
-            data.cell.styles.textColor = textBase
-            data.cell.styles.fontStyle = "bold"
-            data.cell.styles.fontSize = 8.5
+            // jsPDF Helvetica não suporta U+2713 — suprime o texto e deixa o
+            // didDrawCell desenhar o checkmark manualmente com doc.line()
+            data.cell.text = []
           }
         } else if (data.section === "foot") {
           data.cell.styles.fillColor = fillBase
           data.cell.styles.textColor = textBase
           data.cell.styles.fontStyle = "bold"
+        }
+      },
+      didDrawCell: (data) => {
+        const col = data.column.index
+        if (data.section === "body" && col >= 1 && data.cell.raw === "✓") {
+          const lvl = col - 1
+          const tc = LEVEL_TEXT_COLOR[lvl]!
+          const cx = data.cell.x + data.cell.width / 2
+          const cy = data.cell.y + data.cell.height / 2
+          const s = 1.3
+          doc.setDrawColor(...tc)
+          doc.setLineWidth(0.55)
+          // Traço esquerdo (curto, descendo): canto superior-esquerdo → fundo
+          doc.line(cx - s, cy, cx - s * 0.15, cy + s * 0.65)
+          // Traço direito (longo, subindo): fundo → canto superior-direito
+          doc.line(cx - s * 0.15, cy + s * 0.65, cx + s, cy - s * 0.55)
         }
       },
       tableLineWidth: 0.15,
