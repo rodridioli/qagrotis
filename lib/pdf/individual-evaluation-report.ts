@@ -82,11 +82,13 @@ function initials(name: string): string {
     .join("")
 }
 
+/** Cores por faixa de pontuação — idênticas ao web (scorePercentToneClass). */
 function scoreRgb(pct: number | null): [number, number, number] {
   if (pct == null) return C.muted
-  if (pct >= 70) return C.brand
-  if (pct >= 40) return [234, 88, 12]
-  return [220, 38, 38]
+  if (pct >= 90) return [22, 163, 74]   // green-600
+  if (pct >= 80) return [37, 99, 235]   // blue-600
+  if (pct >= 70) return [234, 88, 12]   // orange-600
+  return [220, 38, 38]                   // red-600
 }
 
 /** Cartão branco com sombra suave e borda. */
@@ -155,15 +157,25 @@ export function buildIndividualEvaluationPdfBuffer(
   // Título centrado verticalmente no header
   const midH = y + headerH / 2 + 1.5
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(9.5)
+  doc.setFontSize(11)
   doc.setTextColor(...C.text)
   doc.text("Avaliação periódica de desempenho", pageW / 2, midH, { align: "center" })
 
-  // Código à direita, mesma linha que o título
+  // Código à direita num box com borda verde (equivalente ao badge do web)
+  const codeStr = evaluationDisplayCodigo(ev.codigo)
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(11)
+  doc.setFontSize(10)
+  const codeTw = doc.getTextWidth(codeStr)
+  const codeBoxW = codeTw + 8          // padding 4mm em cada lado
+  const codeBoxH = 8
+  const codeBoxX = pageW - PAGE.r - codeBoxW - 2
+  const codeBoxY = y + (headerH - codeBoxH) / 2
+  doc.setFillColor(255, 255, 255)
+  doc.setDrawColor(...C.brand)
+  doc.setLineWidth(0.5)
+  doc.roundedRect(codeBoxX, codeBoxY, codeBoxW, codeBoxH, 2, 2, "FD")
   doc.setTextColor(...C.brand)
-  doc.text(evaluationDisplayCodigo(ev.codigo), pageW - PAGE.r - 5, midH, { align: "right" })
+  doc.text(codeStr, codeBoxX + codeBoxW / 2, codeBoxY + codeBoxH / 2 + 1.3, { align: "center" })
 
   y += headerH + 3
 
@@ -245,16 +257,16 @@ export function buildIndividualEvaluationPdfBuffer(
 
   if (scorePct != null) {
     doc.setFont("helvetica", "bold")
-    doc.setFontSize(13)
+    doc.setFontSize(24)
     doc.setTextColor(...scoreRgb(scorePct))
     doc.text(`${scorePct.toFixed(0)}%`, c2x + cw / 2, y + 22, { align: "center" })
     doc.setFont("helvetica", "normal")
     doc.setFontSize(7)
     doc.setTextColor(...C.muted)
-    doc.text(scoreLabel, c2x + cw / 2, y + 29, { align: "center" })
+    doc.text(scoreLabel, c2x + cw / 2, y + 31, { align: "center" })
   } else {
     doc.setFont("helvetica", "bold")
-    doc.setFontSize(13)
+    doc.setFontSize(24)
     doc.setTextColor(...C.muted)
     doc.text("—", c2x + cw / 2, y + 22, { align: "center" })
   }
@@ -269,7 +281,7 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.text("Data e período", c3x + 5, y + 7)
 
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(10)
+  doc.setFontSize(14)
   doc.setTextColor(...C.text)
   doc.text(formatYmdPt(ev.dataYmd), c3x + cw / 2, y + 20, { align: "center" })
 
@@ -289,16 +301,12 @@ export function buildIndividualEvaluationPdfBuffer(
     const section = PERFORMANCE_EVALUATION_SECTIONS[si]!
     const isLast = si === PERFORMANCE_EVALUATION_SECTIONS.length - 1
 
-    // Barra de cabeçalho da seção
-    doc.setFillColor(...C.brandSoft)
-    doc.setDrawColor(...C.border)
-    doc.setLineWidth(0.15)
-    doc.roundedRect(PAGE.l, y, innerW, 7, 2, 2, "FD")
+    // Cabeçalho de seção — texto bold verde sem fundo (igual ao web: text-lg font-semibold)
     doc.setFont("helvetica", "bold")
     doc.setFontSize(12)
-    doc.setTextColor(...C.brandDark)
-    doc.text(section.label, PAGE.l + 5, y + 5.2)
-    y += 7 + 1
+    doc.setTextColor(...C.brand)
+    doc.text(section.label, PAGE.l, y + 4.5)
+    y += 8
 
     // Linhas da tabela (corpo)
     const body: string[][] = section.competencies.map((c) => {
