@@ -152,41 +152,23 @@ export function buildIndividualEvaluationPdfBuffer(
   const logoY = y + (headerH - logoH) / 2
   doc.addImage(AGROTIS_LOGO_BASE64, "PNG", logoX, logoY, logoW, logoH)
 
-  // Título centrado
+  // Título centrado verticalmente no header
+  const midH = y + headerH / 2 + 1.5
   doc.setFont("helvetica", "bold")
   doc.setFontSize(9.5)
   doc.setTextColor(...C.text)
-  doc.text("Avaliação periódica de desempenho", pageW / 2, y + headerH / 2 - 1.2, {
-    align: "center",
-  })
-  doc.setFont("helvetica", "normal")
-  doc.setFontSize(6.8)
-  doc.setTextColor(...C.muted)
-  doc.text("Avaliação Individual", pageW / 2, y + headerH / 2 + 3.2, { align: "center" })
+  doc.text("Avaliação periódica de desempenho", pageW / 2, midH, { align: "center" })
 
-  // Código à direita
+  // Código à direita, mesma linha que o título
   doc.setFont("helvetica", "bold")
   doc.setFontSize(11)
   doc.setTextColor(...C.brand)
-  doc.text(evaluationDisplayCodigo(ev.codigo), pageW - PAGE.r - 5, y + headerH / 2 + 1.8, {
-    align: "right",
-  })
+  doc.text(evaluationDisplayCodigo(ev.codigo), pageW - PAGE.r - 5, midH, { align: "right" })
 
-  y += headerH + 2
-
-  // ── 2. LINHA DE META ──────────────────────────────────────────────────────
-  const nowStr = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
-  doc.setFont("helvetica", "normal")
-  doc.setFontSize(6.8)
-  doc.setTextColor(...C.muted)
-  doc.text(
-    `Gerado em ${nowStr}  ·  Avaliador: ${meta.evaluatorName}`,
-    PAGE.l,
-    y + 3.8,
-  )
-  y += 5 + 3 // y ≈ 35
+  y += headerH + 3
 
   // ── 3. CARDS DE INFORMAÇÃO ────────────────────────────────────────────────
+  const nowStr = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
   const infoH = 37
   const cardGap = 3
   const cw = (innerW - cardGap * 2) / 3 // 60 mm cada
@@ -195,26 +177,19 @@ export function buildIndividualEvaluationPdfBuffer(
   const c1x = PAGE.l
   drawCard(doc, c1x, y, cw, infoH, 3)
 
-  // Rótulo do card
-  doc.setFont("helvetica", "normal")
-  doc.setFontSize(6.5)
-  doc.setTextColor(...C.muted)
-  doc.text("Colaborador", c1x + 5, y + 5)
-
   // Avatar círculo — foto real ou placeholder
-  const aR = 9          // raio
+  const aR = 7          // raio
   const aCx = c1x + 5 + aR
-  const aCy = y + 6 + aR + 4  // centro vertical
+  const aCy = y + infoH / 2 + 1  // centro vertical no card
 
   if (meta.evaluatedPhotoDataUrl) {
     // jsPDF não suporta clip circular nativo — foto inscrita no círculo com borda
     const imgD = aR * 1.414 // lado do quadrado inscrito no círculo
     doc.setFillColor(...C.card)
-    doc.circle(aCx, aCy, aR + 0.5, "F")
+    doc.circle(aCx, aCy, aR + 0.4, "F")
     doc.setDrawColor(...C.border)
     doc.setLineWidth(0.3)
-    doc.circle(aCx, aCy, aR + 0.5, "S")
-    // Detect format: PNG starts 0x89, JPEG starts 0xFF
+    doc.circle(aCx, aCy, aR + 0.4, "S")
     const raw = meta.evaluatedPhotoDataUrl
     const isJpeg = raw.startsWith("data:image/jpeg") || raw.startsWith("data:image/jpg")
     const fmt = isJpeg ? "JPEG" : "PNG"
@@ -224,25 +199,29 @@ export function buildIndividualEvaluationPdfBuffer(
     // Placeholder: círculo verde + silhueta de pessoa
     doc.setFillColor(...C.brand)
     doc.circle(aCx, aCy, aR, "F")
-    // Cabeça
     doc.setFillColor(255, 255, 255)
-    doc.circle(aCx, aCy - 2.8, 2.6, "F")
-    // Corpo
+    doc.circle(aCx, aCy - 2.2, 2.0, "F")
     doc.setFillColor(255, 255, 255)
-    doc.ellipse(aCx, aCy + 4.2, 4.0, 2.6, "F")
+    doc.ellipse(aCx, aCy + 3.2, 3.2, 2.0, "F")
   }
 
-  // Info à direita do avatar
-  const infoX = c1x + 5 + aR * 2 + 5
-  const infoMaxW = cw - (aR * 2 + 12)
-  let infoY = y + 9
+  // Label + nome + email — todos alinhados à direita do avatar
+  const infoX = aCx + aR + 3
+  const infoMaxW = cw - (aCx - c1x + aR + 6)
+  let infoY = y + 7
+
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(6.5)
+  doc.setTextColor(...C.muted)
+  doc.text("Colaborador", infoX, infoY)
+  infoY += 5
 
   doc.setFont("helvetica", "bold")
   doc.setFontSize(8)
   doc.setTextColor(...C.text)
   const nameLines = doc.splitTextToSize(meta.evaluatedName, infoMaxW) as string[]
   doc.text(nameLines, infoX, infoY)
-  infoY += nameLines.length * 4.2
+  infoY += nameLines.length * 4.5
 
   if (meta.evaluatedEmail) {
     doc.setFont("helvetica", "normal")
@@ -250,17 +229,9 @@ export function buildIndividualEvaluationPdfBuffer(
     doc.setTextColor(...C.muted)
     const emailLines = doc.splitTextToSize(meta.evaluatedEmail, infoMaxW) as string[]
     doc.text(emailLines, infoX, infoY)
-    infoY += emailLines.length * 3.5
   }
 
-  infoY += 2
-  if (ev.status === "CONCLUIDA") {
-    drawBadge(doc, "Concluída", infoX, infoY, C.brandSoft, C.brandDark)
-  } else {
-    drawBadge(doc, "Rascunho", infoX, infoY, [243, 244, 246], C.muted)
-  }
-
-  // Card 2 — Pontuação
+  // Card 2 — Avaliação (pontuação)
   const score = computePerformanceScorePercent(ev.selections)
   const scorePct = score ?? ev.pontuacaoPercent
   const scoreLabel = performanceScoreQualitativeLabel(scorePct ?? null)
@@ -270,22 +241,22 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.setFont("helvetica", "normal")
   doc.setFontSize(6.5)
   doc.setTextColor(...C.muted)
-  doc.text("Pontuação", c2x + 5, y + 5)
+  doc.text("Avaliação", c2x + 5, y + 7)
 
   if (scorePct != null) {
     doc.setFont("helvetica", "bold")
     doc.setFontSize(27)
     doc.setTextColor(...scoreRgb(scorePct))
-    doc.text(`${scorePct.toFixed(0)}%`, c2x + cw / 2, y + 25, { align: "center" })
+    doc.text(`${scorePct.toFixed(0)}%`, c2x + cw / 2, y + 22, { align: "center" })
     doc.setFont("helvetica", "normal")
     doc.setFontSize(7)
     doc.setTextColor(...C.muted)
-    doc.text(scoreLabel, c2x + cw / 2, y + 31, { align: "center" })
+    doc.text(scoreLabel, c2x + cw / 2, y + 29, { align: "center" })
   } else {
     doc.setFont("helvetica", "bold")
     doc.setFontSize(27)
     doc.setTextColor(...C.muted)
-    doc.text("—", c2x + cw / 2, y + 25, { align: "center" })
+    doc.text("—", c2x + cw / 2, y + 22, { align: "center" })
   }
 
   // Card 3 — Data e período
@@ -295,7 +266,7 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.setFont("helvetica", "normal")
   doc.setFontSize(6.5)
   doc.setTextColor(...C.muted)
-  doc.text("Data e período", c3x + 5, y + 5)
+  doc.text("Data e período", c3x + 5, y + 7)
 
   doc.setFont("helvetica", "bold")
   doc.setFontSize(16)
@@ -305,7 +276,7 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.setFont("helvetica", "normal")
   doc.setFontSize(7.5)
   doc.setTextColor(...C.muted)
-  doc.text(evaluationPeriodLabel(ev.periodo), c3x + cw / 2, y + 27, { align: "center" })
+  doc.text(evaluationPeriodLabel(ev.periodo), c3x + cw / 2, y + 28, { align: "center" })
 
   y += infoH + 5 // y ≈ 80
 
@@ -438,7 +409,7 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.setFontSize(6.8)
   doc.setTextColor(...C.faint)
   doc.text(
-    `QAgrotis  ·  Gerado em ${nowStr}  ·  Avaliador: ${meta.evaluatorName}`,
+    `QAgrotis - Gerado em ${nowStr} - Avaliador: ${meta.evaluatorName}`,
     pageW / 2,
     pageH - PAGE.b + 4,
     { align: "center" },
