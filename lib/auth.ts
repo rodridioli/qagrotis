@@ -2,7 +2,7 @@ import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
 import { authConfig } from "@/lib/auth.config"
-import { verifyPassword, nextId } from "@/lib/db-utils"
+import { verifyPassword } from "@/lib/db-utils"
 import { resolveGoogleAccess, resolveGoogleInternalId } from "@/lib/auth-google"
 import { photoPathForJwtCookie } from "@/lib/jwt-photo-path"
 
@@ -85,29 +85,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!decision.allow) return decision.redirect
 
-        if (decision.autoRegister) {
-          if (existingCreated) {
-            // @agrotis.com with an existing INACTIVE record: reactivate in a single transaction.
-            // Cannot CREATE (email has @unique) — remove from InactiveUser and refresh name.
-            await prisma.$transaction([
-              prisma.inactiveUser.deleteMany({ where: { userId: existingCreated.id } }),
-              prisma.createdUser.update({
-                where: { id: existingCreated.id },
-                data: { name: user.name ?? email },
-              }),
-            ])
-          } else {
-            // @agrotis.com first-time login — no existing record, safe to create.
-            const allIds = await prisma.createdUser.findMany({ select: { id: true } })
-            const allExistingIds = allIds.map((u) => u.id)
-            const id = nextId(allExistingIds, "U")
-            await prisma.createdUser.create({
-              data: { id, email, name: user.name ?? email, type: "Padrão", password: "" },
-            })
-          }
-          // Note: /configuracoes/usuarios uses force-dynamic, so it always fetches fresh.
-          // No revalidatePath needed — it would cause a full layout reload and disable the menu.
-        }
+        // Auto-registration is disabled: only pre-registered users may sign in.
+        // decision.autoRegister is always false after the resolveGoogleAccess refactor.
       }
       return true
     },

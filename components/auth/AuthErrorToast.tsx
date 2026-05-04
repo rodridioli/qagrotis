@@ -11,7 +11,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   OAuthAccountNotLinked: "Este e-mail já está cadastrado com outro método de login.",
   AccessDenied: "Acesso negado.",
   Configuration: "Erro de configuração do servidor.",
-  UnauthorizedDomain: "Você não possui permissão para acessar, contate o administrador.",
+  UnauthorizedDomain: "Usuário não cadastrado no sistema. Entre em contato com o administrador.",
   GoogleInactive: "Usuário inativo. Entre em contato com o administrador do sistema.",
   Default: "Ocorreu um erro ao autenticar. Tente novamente.",
 }
