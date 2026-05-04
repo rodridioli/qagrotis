@@ -253,12 +253,6 @@ export function buildIndividualEvaluationPdfBuffer(
   const infoMaxW = cw - (infoX - c1x) - 3
   let infoY      = y + 9
 
-  doc.setFont("helvetica", "normal")
-  doc.setFontSize(6.5)
-  doc.setTextColor(...C.muted)
-  doc.text("Colaborador", infoX, infoY)
-  infoY += 5
-
   doc.setFont("helvetica", "bold")
   doc.setFontSize(9.5)
   doc.setTextColor(...C.text)
@@ -284,7 +278,7 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.setFont("helvetica", "normal")
   doc.setFontSize(6.5)
   doc.setTextColor(...C.muted)
-  doc.text("Avaliação", c2x + 5, y + 7)
+  doc.text("Avaliação", c2x + cw / 2, y + 7, { align: "center" })
 
   if (scorePct != null) {
     doc.setFont("helvetica", "bold")
@@ -309,7 +303,7 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.setFont("helvetica", "normal")
   doc.setFontSize(6.5)
   doc.setTextColor(...C.muted)
-  doc.text("Data e período", c3x + 5, y + 7)
+  doc.text("Data e período", c3x + cw / 2, y + 7, { align: "center" })
 
   doc.setFont("helvetica", "bold")
   doc.setFontSize(16)
