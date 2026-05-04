@@ -284,18 +284,18 @@ export function buildIndividualEvaluationPdfBuffer(
 
   if (scorePct != null) {
     doc.setFont("helvetica", "bold")
-    doc.setFontSize(30)
+    doc.setFontSize(16)
     doc.setTextColor(...scoreRgb(scorePct))
-    doc.text(`${scorePct.toFixed(0)}%`, c2x + cw / 2, y + 22, { align: "center" })
+    doc.text(`${scorePct.toFixed(0)}%`, c2x + cw / 2, y + 21, { align: "center" })
     doc.setFont("helvetica", "normal")
-    doc.setFontSize(7)
+    doc.setFontSize(7.5)
     doc.setTextColor(...C.muted)
     doc.text(scoreLabel, c2x + cw / 2, y + 27, { align: "center" })
   } else {
     doc.setFont("helvetica", "bold")
-    doc.setFontSize(30)
+    doc.setFontSize(16)
     doc.setTextColor(...C.muted)
-    doc.text("—", c2x + cw / 2, y + 22, { align: "center" })
+    doc.text("—", c2x + cw / 2, y + 21, { align: "center" })
   }
 
   // Card 3 — Data e período
@@ -398,8 +398,11 @@ export function buildIndividualEvaluationPdfBuffer(
         const col = data.column.index
         if (col === 0) {
           data.cell.styles.fillColor = C.tableBg
-          if (data.section === "foot") {
+          // "Competência" e "Pontuação (%)" sempre alinhados à esquerda
+          if (data.section === "head" || data.section === "foot") {
             data.cell.styles.halign = "left"
+          }
+          if (data.section === "foot") {
             data.cell.styles.textColor = C.muted
           }
           return
