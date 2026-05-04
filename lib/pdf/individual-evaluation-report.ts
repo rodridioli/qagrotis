@@ -196,7 +196,7 @@ export function buildIndividualEvaluationPdfBuffer(
   const codeTw = doc.getTextWidth(codeStr)
   const codeBoxW = codeTw + 8          // padding 4mm em cada lado
   const codeBoxH = 8
-  const codeBoxX = pageW - PAGE.r - codeBoxW - 2
+  const codeBoxX = pageW - PAGE.r - codeBoxW - 5
   const codeBoxY = y + (headerH - codeBoxH) / 2
   doc.setFillColor(255, 255, 255)
   doc.setDrawColor(...C.brand)
