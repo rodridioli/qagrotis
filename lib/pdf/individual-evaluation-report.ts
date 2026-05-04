@@ -218,7 +218,7 @@ export function buildIndividualEvaluationPdfBuffer(
   drawCard(doc, c1x, y, cw, infoH, 3)
 
   // Foto — retângulo arredondado (rounded-xl do web)
-  const photoSize = 22           // mm — ~60 % da altura do card
+  const photoSize = 18           // mm
   const photoX    = c1x + 4
   const photoY    = y + (infoH - photoSize) / 2  // centralizado verticalmente
   const photoR    = 3            // raio dos cantos, aprox. rounded-xl
@@ -248,10 +248,12 @@ export function buildIndividualEvaluationPdfBuffer(
     doc.ellipse(cx, cy + 5.5, 5.0, 3.5, "F") // ombros
   }
 
-  // Label + nome + email — à direita da foto
+  // Nome + email — à direita da foto, centrados verticalmente com a foto
   const infoX    = photoX + photoSize + 3
   const infoMaxW = cw - (infoX - c1x) - 3
-  let infoY      = y + 9
+  // baseline do nome posicionada no centro vertical da foto (−0.5 mm para
+  // compensar o e-mail abaixo, mantendo o bloco visualmente centrado)
+  let infoY      = photoY + photoSize / 2 - 0.5
 
   doc.setFont("helvetica", "bold")
   doc.setFontSize(9.5)
@@ -278,22 +280,22 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.setFont("helvetica", "normal")
   doc.setFontSize(6.5)
   doc.setTextColor(...C.muted)
-  doc.text("Avaliação", c2x + cw / 2, y + 7, { align: "center" })
+  doc.text("Avaliação", c2x + cw / 2, y + 13, { align: "center" })
 
   if (scorePct != null) {
     doc.setFont("helvetica", "bold")
     doc.setFontSize(30)
     doc.setTextColor(...scoreRgb(scorePct))
-    doc.text(`${scorePct.toFixed(0)}%`, c2x + cw / 2, y + 24, { align: "center" })
+    doc.text(`${scorePct.toFixed(0)}%`, c2x + cw / 2, y + 22, { align: "center" })
     doc.setFont("helvetica", "normal")
     doc.setFontSize(7)
     doc.setTextColor(...C.muted)
-    doc.text(scoreLabel, c2x + cw / 2, y + 32, { align: "center" })
+    doc.text(scoreLabel, c2x + cw / 2, y + 27, { align: "center" })
   } else {
     doc.setFont("helvetica", "bold")
     doc.setFontSize(30)
     doc.setTextColor(...C.muted)
-    doc.text("—", c2x + cw / 2, y + 24, { align: "center" })
+    doc.text("—", c2x + cw / 2, y + 22, { align: "center" })
   }
 
   // Card 3 — Data e período
@@ -303,7 +305,7 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.setFont("helvetica", "normal")
   doc.setFontSize(6.5)
   doc.setTextColor(...C.muted)
-  doc.text("Data e período", c3x + cw / 2, y + 7, { align: "center" })
+  doc.text("Data e período", c3x + cw / 2, y + 13, { align: "center" })
 
   doc.setFont("helvetica", "bold")
   doc.setFontSize(16)
@@ -313,7 +315,7 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.setFont("helvetica", "normal")
   doc.setFontSize(7.5)
   doc.setTextColor(...C.muted)
-  doc.text(evaluationPeriodLabel(ev.periodo), c3x + cw / 2, y + 28, { align: "center" })
+  doc.text(evaluationPeriodLabel(ev.periodo), c3x + cw / 2, y + 27, { align: "center" })
 
   y += infoH + 5 // y ≈ 80
 
