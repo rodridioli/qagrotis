@@ -332,7 +332,7 @@ export function buildIndividualEvaluationPdfBuffer(
     doc.setFont("helvetica", "bold")
     doc.setFontSize(12)
     doc.setTextColor(...C.brand)
-    doc.text(section.label, PAGE.l, y + 4.5)
+    doc.text(`${si + 1}. ${section.label}`, PAGE.l, y + 4.5)
     y += 8
 
     // Linhas da tabela (corpo)
