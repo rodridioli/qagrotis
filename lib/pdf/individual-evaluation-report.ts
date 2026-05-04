@@ -209,7 +209,7 @@ export function buildIndividualEvaluationPdfBuffer(
 
   // ── 3. CARDS DE INFORMAÇÃO ────────────────────────────────────────────────
   const nowStr = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
-  const infoH = 37
+  const infoH = 30
   const cardGap = 3
   const cw = (innerW - cardGap * 2) / 3 // 60 mm cada
 
