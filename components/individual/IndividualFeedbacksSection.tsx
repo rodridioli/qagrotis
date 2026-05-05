@@ -122,6 +122,31 @@ export function IndividualFeedbacksSection({
     void refetch()
   }
 
+  // Empty state chrome (igual ao padrão de avaliações): sem toolbar, só header + inner EmptyState
+  if (!loading && !error && rows.length === 0) {
+    return (
+      <div className="flex w-full flex-col gap-4">
+        <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
+          <div className="flex h-16 items-center border-b border-border-default px-5">
+            <span className="text-sm font-medium text-text-primary">
+              Total de feedbacks: <span className="font-bold">0</span>
+            </span>
+          </div>
+          <EmptyState message="Nenhum registro encontrado." />
+        </div>
+        <ConfirmDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title="Excluir feedback?"
+          description="Esta ação não pode ser desfeita."
+          confirmLabel="Excluir"
+          confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
+          onConfirm={() => void confirmDelete()}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
@@ -145,9 +170,7 @@ export function IndividualFeedbacksSection({
             <p className="text-sm text-text-secondary">Carregando…</p>
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState
-            message={rows.length === 0 ? "Nenhum registro encontrado." : "Nenhum resultado para a busca."}
-          />
+          <EmptyState message="Nenhum resultado para a busca." />
         ) : (
           <IndividualFeedbacksTable
             rows={paginated}
