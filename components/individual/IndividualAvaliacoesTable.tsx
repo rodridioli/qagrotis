@@ -36,6 +36,8 @@ export interface IndividualAvaliacoesTableProps {
   footer?: ReactNode
   /** Quando true, não renderiza o card wrapper — o pai é responsável pelo container. */
   noWrapper?: boolean
+  /** Quando true, oculta a opção “Excluir” do dropdown (usuário avaliado visualizando as próprias avaliações). */
+  readOnly?: boolean
 }
 
 function AvaliacoesListEmptyChrome({
@@ -75,6 +77,7 @@ export function IndividualAvaliacoesTable({
   onExport,
   footer,
   noWrapper = false,
+  readOnly = false,
 }: IndividualAvaliacoesTableProps) {
   const listTotal = listTotalCountProp ?? rows.length
   const filteredTotal = filteredTotalCountProp ?? rows.length
@@ -212,10 +215,12 @@ export function IndividualAvaliacoesTable({
                           Exportar
                         </DropdownMenuItem>
                       ) : null}
-                      <DropdownMenuItem variant="destructive" onClick={() => onRequestDelete(r)}>
-                        <Trash2 className="size-4" />
-                        Excluir
-                      </DropdownMenuItem>
+                      {!readOnly ? (
+                        <DropdownMenuItem variant="destructive" onClick={() => onRequestDelete(r)}>
+                          <Trash2 className="size-4" />
+                          Excluir
+                        </DropdownMenuItem>
+                      ) : null}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </td>

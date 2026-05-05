@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
-import { getIndividualPerformanceEvaluation } from "@/lib/actions/individual-performance-evaluations"
+import {
+  getIndividualPerformanceEvaluation,
+  getMyCompletedEvaluation,
+} from "@/lib/actions/individual-performance-evaluations"
 import { getQaUserProfile } from "@/lib/actions/usuarios"
 import { evaluationDisplayCodigo } from "@/lib/individual-performance-evaluation"
 import { buildIndividualEvaluationPdfBuffer } from "@/lib/pdf/individual-evaluation-report"
@@ -17,21 +20,24 @@ export async function GET(
     return new NextResponse(null, { status: 401 })
   }
 
-  const role = buildRole(session.user.type, session.user.accessProfile)
-  if (!can(role, "individual.viewOthers")) {
-    return new NextResponse(null, { status: 403 })
-  }
-
-  if (session.user.type !== "Administrador" || session.user.accessProfile !== "MGR") {
-    return new NextResponse(null, { status: 403 })
-  }
-
   const { id } = await params
   if (!id || id.length > 128) {
     return new NextResponse(null, { status: 400 })
   }
 
-  const ev = await getIndividualPerformanceEvaluation(id)
+  const role = buildRole(session.user.type, session.user.accessProfile)
+  const isMgr = can(role, "individual.viewOthers") &&
+    session.user.type === "Administrador" &&
+    session.user.accessProfile === "MGR"
+
+  // MGR usa getIndividualPerformanceEvaluation; o próprio avaliado usa getMyCompletedEvaluation.
+  let ev
+  if (isMgr) {
+    ev = await getIndividualPerformanceEvaluation(id)
+  } else {
+    ev = await getMyCompletedEvaluation(id)
+  }
+
   if (!ev) {
     return new NextResponse(null, { status: 404 })
   }

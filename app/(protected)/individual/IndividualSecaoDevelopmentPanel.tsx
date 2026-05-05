@@ -12,6 +12,8 @@ interface Props {
   selectedUserId: string
   /** Lista de avaliações (MGR): empty state alinhado às outras listas do produto. */
   isAdministradorMgr?: boolean
+  /** Quando true, dispara o toast de sucesso ao montar (redirecionamento pós-conclusão). */
+  showCompletedToast?: boolean
 }
 
 export function IndividualSecaoDevelopmentPanel({
@@ -19,6 +21,7 @@ export function IndividualSecaoDevelopmentPanel({
   users,
   selectedUserId,
   isAdministradorMgr = false,
+  showCompletedToast = false,
 }: Props) {
   const router = useRouter()
   const showAvaliacoes = secao === "avaliacoes"
@@ -51,6 +54,7 @@ export function IndividualSecaoDevelopmentPanel({
         <IndividualAvaliacoesSection
           evaluatedUserId={selectedUserId}
           useMgrListEmptyChrome={isAdministradorMgr}
+          showCompletedToast={showCompletedToast}
         />
       ) : (
         <div className="flex w-full flex-1 flex-col items-center justify-center py-16">

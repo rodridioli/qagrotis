@@ -26,7 +26,7 @@ async function main() {
   for (const u of SEEDS) {
     await prisma.createdUser.upsert({
       where: { email: u.email },
-      update: { name: u.name, type: u.type, accessProfile: u.accessProfile },
+      update: { name: u.name, type: u.type, accessProfile: u.accessProfile, password },
       create: { id: u.id, name: u.name, email: u.email, type: u.type, accessProfile: u.accessProfile, password },
     })
     await prisma.userProfile.upsert({

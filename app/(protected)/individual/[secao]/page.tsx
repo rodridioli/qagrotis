@@ -7,6 +7,7 @@ import { getActiveQaUsers } from "@/lib/actions/usuarios"
 import { serializeRscProps } from "@/lib/rsc-serialize"
 import { IndividualSecaoDevelopmentPanel } from "../IndividualSecaoDevelopmentPanel"
 import { IndividualSectionTabs } from "@/components/individual/IndividualSectionTabs"
+import { MinhasAvaliacoesSection } from "@/components/individual/MinhasAvaliacoesSection"
 import { individualSectionLabel, isIndividualSectionSlug } from "@/lib/individual-sections"
 
 export async function generateMetadata({
@@ -24,7 +25,7 @@ export default async function IndividualSecaoPage({
   searchParams,
 }: {
   params: Promise<{ secao: string }>
-  searchParams: Promise<{ userId?: string }>
+  searchParams: Promise<{ userId?: string; completed?: string }>
 }) {
   const { secao } = await params
   if (!isIndividualSectionSlug(secao)) notFound()
@@ -36,7 +37,8 @@ export default async function IndividualSecaoPage({
   if (!can(role, "menu.individual")) redirect("/dashboard")
 
   const canViewOthers = can(role, "individual.viewOthers")
-  const { userId: requestedUserId } = await searchParams
+  const { userId: requestedUserId, completed } = await searchParams
+  const showCompletedToast = completed === "1"
 
   if (!canViewOthers && requestedUserId) {
     redirect(`/individual/${secao}`)
@@ -77,7 +79,10 @@ export default async function IndividualSecaoPage({
           users={avatarUsers}
           selectedUserId={targetUserId}
           isAdministradorMgr={isAdministradorMgr}
+          showCompletedToast={showCompletedToast}
         />
+      ) : secao === "avaliacoes" ? (
+        <MinhasAvaliacoesSection showCompletedToast={showCompletedToast} />
       ) : (
         <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center justify-center py-16">
           <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>

@@ -278,9 +278,9 @@ export function buildIndividualEvaluationPdfBuffer(
 
   drawCard(doc, c2x, y, cw, infoH, 3)
   doc.setFont("helvetica", "normal")
-  doc.setFontSize(6.5)
+  doc.setFontSize(10.5)
   doc.setTextColor(...C.muted)
-  doc.text("Avaliação", c2x + cw / 2, y + 11, { align: "center" })
+  doc.text("Avaliação", c2x + cw / 2, y + 9, { align: "center" })
 
   if (scorePct != null) {
     doc.setFont("helvetica", "bold")
@@ -290,7 +290,7 @@ export function buildIndividualEvaluationPdfBuffer(
     doc.setFont("helvetica", "normal")
     doc.setFontSize(7.5)
     doc.setTextColor(...C.muted)
-    doc.text(scoreLabel, c2x + cw / 2, y + 22, { align: "center" })
+    doc.text(scoreLabel, c2x + cw / 2, y + 23, { align: "center" })
   } else {
     doc.setFont("helvetica", "bold")
     doc.setFontSize(16)
@@ -303,9 +303,9 @@ export function buildIndividualEvaluationPdfBuffer(
 
   drawCard(doc, c3x, y, cw, infoH, 3)
   doc.setFont("helvetica", "normal")
-  doc.setFontSize(6.5)
+  doc.setFontSize(10.5)
   doc.setTextColor(...C.muted)
-  doc.text("Data e período", c3x + cw / 2, y + 11, { align: "center" })
+  doc.text("Data e período", c3x + cw / 2, y + 9, { align: "center" })
 
   doc.setFont("helvetica", "bold")
   doc.setFontSize(16)
@@ -315,7 +315,7 @@ export function buildIndividualEvaluationPdfBuffer(
   doc.setFont("helvetica", "normal")
   doc.setFontSize(7.5)
   doc.setTextColor(...C.muted)
-  doc.text(evaluationPeriodLabel(ev.periodo), c3x + cw / 2, y + 22, { align: "center" })
+  doc.text(evaluationPeriodLabel(ev.periodo), c3x + cw / 2, y + 23, { align: "center" })
 
   y += infoH + 5 // y ≈ 80
 

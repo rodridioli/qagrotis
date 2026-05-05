@@ -53,6 +53,8 @@ export interface IndividualPerformanceEvaluationPageClientProps {
   initialDetail: IndividualPerformanceEvaluationDetail | null
   /** ISO yyyy-mm-dd — obrigatório quando initialDetail é null. */
   todayYmd?: string
+  /** Sobrescreve o href do botão "Voltar" no breadcrumb (usado pela view do avaliado). */
+  backHref?: string
 }
 
 export function IndividualPerformanceEvaluationPageClient({
@@ -60,6 +62,7 @@ export function IndividualPerformanceEvaluationPageClient({
   evaluatedUser,
   initialDetail,
   todayYmd,
+  backHref,
 }: IndividualPerformanceEvaluationPageClientProps) {
   const router = useRouter()
   const isNew = initialDetail === null
@@ -81,6 +84,8 @@ export function IndividualPerformanceEvaluationPageClient({
   )
 
   const [busy, setBusy] = React.useState<"save" | "complete" | null>(null)
+  /** Impede que o finally limpe o loading quando estamos a navegar para outra página. */
+  const navigatingAway = React.useRef(false)
   const [evalStatus, setEvalStatus] = React.useState<IndividualPerformanceEvaluationStatusDto>(
     initialDetail?.status ?? "RASCUNHO",
   )
@@ -94,7 +99,7 @@ export function IndividualPerformanceEvaluationPageClient({
   }, [initialDetail])
 
   const userQuery = `?userId=${encodeURIComponent(evaluatedUserId)}`
-  const listHref = `/individual/avaliacoes${userQuery}`
+  const listHref = backHref ?? `/individual/avaliacoes${userQuery}`
 
   function setLevel(competencyId: string, level: number) {
     setSelections((prev) => ({ ...prev, [competencyId]: level }))
@@ -133,8 +138,9 @@ export function IndividualPerformanceEvaluationPageClient({
           return
         }
         if (mode === "complete") {
-          toast.success(`Avaliação concluída e enviada para o ${evaluatedUser.name}.`)
-          router.push(listHref)
+          const sep = listHref.includes("?") ? "&" : "?"
+          navigatingAway.current = true
+          router.push(`${listHref}${sep}completed=1`)
           router.refresh()
           return
         }
@@ -155,8 +161,9 @@ export function IndividualPerformanceEvaluationPageClient({
           return
         }
         if (mode === "complete") {
-          toast.success(`Avaliação concluída e enviada para o ${evaluatedUser.name}.`)
-          router.push(listHref)
+          const sep = listHref.includes("?") ? "&" : "?"
+          navigatingAway.current = true
+          router.push(`${listHref}${sep}completed=1`)
           router.refresh()
           return
         }
@@ -168,7 +175,9 @@ export function IndividualPerformanceEvaluationPageClient({
       console.error(e)
       toast.error("Não foi possível salvar.")
     } finally {
-      setBusy(null)
+      // Não limpa o loading se estamos a navegar para outra página —
+      // o overlay fica visível até o componente desmontar na navegação.
+      if (!navigatingAway.current) setBusy(null)
     }
   }
 

@@ -335,6 +335,91 @@ export async function updateIndividualPerformanceEvaluation(
   }
 }
 
+// ── Self-service: evaluated user views their own CONCLUIDA evaluations ────────
+
+/**
+ * Lista as avaliações CONCLUIDAS do próprio usuário autenticado (avaliado).
+ * Não requer `individual.viewOthers` — restrito ao próprio userId da sessão.
+ */
+export async function listMyCompletedEvaluations(): Promise<IndividualPerformanceEvaluationListRow[]> {
+  const session = await requireSession()
+  await ensureIndividualPerformanceEvaluationTable()
+
+  try {
+    const rows = (await prisma.individualPerformanceEvaluation.findMany({
+      where: { evaluatedUserId: session.user.id, status: "CONCLUIDA" },
+      orderBy: [{ codigo: "desc" }],
+      select: {
+        id: true,
+        codigo: true,
+        updatedAt: true,
+        pontuacaoPercent: true,
+        status: true,
+        periodo: true,
+      },
+    })) as {
+      id: string
+      codigo: number
+      updatedAt: Date
+      pontuacaoPercent: number | null
+      status: string
+      periodo: string | null
+    }[]
+    return rows.map((row) => ({
+      id: row.id,
+      codigo: row.codigo,
+      dataYmd: ymdFromDate(row.updatedAt),
+      pontuacaoPercent:
+        row.pontuacaoPercent != null && !Number.isNaN(Number(row.pontuacaoPercent))
+          ? Number(row.pontuacaoPercent)
+          : null,
+      status: row.status as IndividualPerformanceEvaluationStatusDto,
+      periodo: row.periodo && isEvaluationPeriodSlug(row.periodo) ? row.periodo : DEFAULT_EVALUATION_PERIOD,
+    }))
+  } catch (e) {
+    console.error("[listMyCompletedEvaluations]", e)
+    throw new Error(evalPrismaMessage(e, "Não foi possível carregar as avaliações."))
+  }
+}
+
+/**
+ * Retorna o detalhe de uma avaliação CONCLUIDA do próprio usuário autenticado.
+ * Retorna null se não encontrar, não for CONCLUIDA, ou não pertencer ao usuário.
+ */
+export async function getMyCompletedEvaluation(
+  id: string,
+): Promise<IndividualPerformanceEvaluationDetail | null> {
+  const session = await requireSession()
+  const r = idSchema.safeParse(id)
+  if (!r.success) return null
+  await ensureIndividualPerformanceEvaluationTable()
+
+  try {
+    const row = await prisma.individualPerformanceEvaluation.findUnique({ where: { id } })
+    if (!row) return null
+    if (row.evaluatedUserId !== session.user.id) return null
+    if (row.status !== "CONCLUIDA") return null
+
+    const p = (row as { periodo?: string | null }).periodo
+    return {
+      id: row.id,
+      evaluatedUserId: row.evaluatedUserId,
+      codigo: row.codigo,
+      status: "CONCLUIDA",
+      selections: parseSelectionsJson(row.selections),
+      pontuacaoPercent:
+        row.pontuacaoPercent != null && !Number.isNaN(Number(row.pontuacaoPercent))
+          ? Number(row.pontuacaoPercent)
+          : null,
+      periodo: p && isEvaluationPeriodSlug(p) ? p : DEFAULT_EVALUATION_PERIOD,
+      dataYmd: ymdFromDate(row.updatedAt),
+    }
+  } catch (e) {
+    console.error("[getMyCompletedEvaluation]", e)
+    return null
+  }
+}
+
 export async function deleteIndividualPerformanceEvaluation(id: string): Promise<{ error?: string }> {
   const r = idSchema.safeParse(id)
   if (!r.success) return { error: "ID inválido." }

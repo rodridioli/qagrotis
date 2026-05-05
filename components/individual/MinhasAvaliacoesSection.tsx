@@ -2,29 +2,18 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { IndividualAvaliacoesTable } from "@/components/individual/IndividualAvaliacoesTable"
 import {
-  deleteIndividualPerformanceEvaluation,
-  listIndividualPerformanceEvaluations,
+  listMyCompletedEvaluations,
   type IndividualPerformanceEvaluationListRow,
 } from "@/lib/actions/individual-performance-evaluations"
 import { avaliacaoListDisplayPercent, evaluationDisplayCodigo } from "@/lib/individual-performance-evaluation"
 
 const AVALIACOES_PAGE_SIZE = 20
-
-export interface IndividualAvaliacoesSectionProps {
-  evaluatedUserId: string
-  /** Administrador + MGR: empty state igual a outras listas (ex.: cenários). */
-  useMgrListEmptyChrome?: boolean
-  /** Quando true, exibe o toast de "avaliação concluída" ao montar e limpa o param da URL. */
-  showCompletedToast?: boolean
-}
 
 function matchesDateSearch(dataYmd: string, query: string): boolean {
   const t = query.trim().toLowerCase()
@@ -42,58 +31,52 @@ function matchesDateSearch(dataYmd: string, query: string): boolean {
   )
 }
 
-export function IndividualAvaliacoesSection({
-  evaluatedUserId,
-  useMgrListEmptyChrome = false,
-  showCompletedToast = false,
-}: IndividualAvaliacoesSectionProps) {
+export function MinhasAvaliacoesSection({ showCompletedToast = false }: { showCompletedToast?: boolean }) {
   const router = useRouter()
-  const [isNavigating, startTransition] = React.useTransition()
+  const [, startTransition] = React.useTransition()
+  const [rows, setRows] = React.useState<IndividualPerformanceEvaluationListRow[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const [q, setQ] = React.useState("")
+  const [page, setPage] = React.useState(1)
 
   React.useEffect(() => {
     if (!showCompletedToast) return
     toast.success("Avaliação concluída.")
-    // Remove o param ?completed=1 da URL sem causar navegação
     const url = new URL(window.location.href)
     url.searchParams.delete("completed")
     window.history.replaceState({}, "", url.toString())
   }, [showCompletedToast])
-  const [rows, setRows] = React.useState<IndividualPerformanceEvaluationListRow[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
-  const [deleteOpen, setDeleteOpen] = React.useState(false)
-  const [deleteRow, setDeleteRow] = React.useState<IndividualPerformanceEvaluationListRow | null>(null)
-  const [q, setQ] = React.useState("")
-  const [page, setPage] = React.useState(1)
 
   const refetch = React.useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const list = await listIndividualPerformanceEvaluations(evaluatedUserId)
+      const list = await listMyCompletedEvaluations()
       setRows(list)
     } catch (e) {
-      console.error("[IndividualAvaliacoesSection]", e)
+      console.error("[MinhasAvaliacoesSection]", e)
       setRows([])
       setError(e instanceof Error ? e.message : "Não foi possível carregar as avaliações.")
     } finally {
       setLoading(false)
     }
-  }, [evaluatedUserId])
+  }, [])
 
   React.useEffect(() => {
     void refetch()
   }, [refetch])
 
-  const filtered = React.useMemo(() => {
-    return rows.filter((r) => matchesDateSearch(r.dataYmd, q))
-  }, [rows, q])
+  const filtered = React.useMemo(
+    () => rows.filter((r) => matchesDateSearch(r.dataYmd, q)),
+    [rows, q],
+  )
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / AVALIACOES_PAGE_SIZE))
 
   React.useEffect(() => {
     setPage(1)
-  }, [q, evaluatedUserId])
+  }, [q])
 
   React.useEffect(() => {
     setPage((p) => Math.min(p, totalPages))
@@ -104,7 +87,6 @@ export function IndividualAvaliacoesSection({
     return filtered.slice(start, start + AVALIACOES_PAGE_SIZE)
   }, [filtered, page])
 
-  /** Tendência vs avaliação mais antiga imediatamente a seguir na lista (ordenada por código desc). */
   const scoreTrendByRowId = React.useMemo(() => {
     const m: Record<string, "up" | "down" | "same"> = {}
     for (let i = 0; i < filtered.length; i++) {
@@ -118,25 +100,32 @@ export function IndividualAvaliacoesSection({
     return m
   }, [filtered])
 
-  const userQ = `?userId=${encodeURIComponent(evaluatedUserId)}`
-
-  function onEdit(row: IndividualPerformanceEvaluationListRow) {
+  function onView(row: IndividualPerformanceEvaluationListRow) {
     startTransition(() => {
-      router.push(`/individual/avaliacoes/${row.id}${userQ}`)
+      router.push(`/individual/minhas-avaliacoes/${row.id}`)
     })
   }
 
-  async function confirmDelete() {
-    if (!deleteRow) return
-    const res = await deleteIndividualPerformanceEvaluation(deleteRow.id)
-    if (res.error) {
-      toast.error(res.error)
-      return
+  async function onExport(row: IndividualPerformanceEvaluationListRow) {
+    try {
+      const res = await fetch(`/api/individual-performance-evaluations/${row.id}/pdf`)
+      if (!res.ok) {
+        toast.error("Não foi possível exportar o relatório.")
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `avaliacao-${evaluationDisplayCodigo(row.codigo)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast.success("Exportação concluída.")
+    } catch {
+      toast.error("Não foi possível exportar o relatório.")
     }
-    toast.success("Avaliação removida.")
-    setDeleteOpen(false)
-    setDeleteRow(null)
-    void refetch()
   }
 
   return (
@@ -163,44 +152,20 @@ export function IndividualAvaliacoesSection({
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState
-            message={rows.length === 0 ? "Nenhum registro encontrado." : "Nenhum resultado para a busca."}
+            message={
+              rows.length === 0
+                ? "Nenhuma avaliação concluída disponível."
+                : "Nenhum resultado para a busca."
+            }
           />
         ) : (
           <IndividualAvaliacoesTable
             rows={paginated}
-            scoreTrendByRowId={useMgrListEmptyChrome ? scoreTrendByRowId : undefined}
-            onEdit={onEdit}
-            onExport={
-              useMgrListEmptyChrome
-                ? (row) => {
-                    void (async () => {
-                      try {
-                        const res = await fetch(`/api/individual-performance-evaluations/${row.id}/pdf`)
-                        if (!res.ok) {
-                          toast.error("Não foi possível exportar.")
-                          return
-                        }
-                        const blob = await res.blob()
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement("a")
-                        a.href = url
-                        a.download = `avaliacao-${evaluationDisplayCodigo(row.codigo)}.pdf`
-                        document.body.appendChild(a)
-                        a.click()
-                        a.remove()
-                        URL.revokeObjectURL(url)
-                        toast.success("Exportação concluída.")
-                      } catch {
-                        toast.error("Não foi possível exportar.")
-                      }
-                    })()
-                  }
-                : undefined
-            }
-            onRequestDelete={(row) => {
-              setDeleteRow(row)
-              setDeleteOpen(true)
-            }}
+            scoreTrendByRowId={scoreTrendByRowId}
+            onEdit={onView}
+            onExport={onExport}
+            onRequestDelete={() => {}}
+            readOnly
             noWrapper
             footer={
               totalPages > 1 ? (
@@ -216,16 +181,6 @@ export function IndividualAvaliacoesSection({
           />
         )}
       </div>
-
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Excluir avaliação?"
-        description="Esta ação não pode ser desfeita."
-        confirmLabel="Excluir"
-        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
-        onConfirm={() => void confirmDelete()}
-      />
     </div>
   )
 }
