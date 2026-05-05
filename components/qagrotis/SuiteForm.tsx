@@ -957,9 +957,9 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                           {refLabel}
                         </span>
                       </td>
-                      <td className="px-4 py-3 truncate text-text-primary">
-                        <span className="flex items-center gap-2">
-                          {c.name}
+                      <td className="overflow-hidden px-4 py-3 text-text-primary">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="truncate">{c.name}</span>
                           {!isCenarioAtivo && (
                             <span className="shrink-0 rounded-full bg-neutral-grey-200 px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
                               Inativo

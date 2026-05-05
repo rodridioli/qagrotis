@@ -127,7 +127,7 @@ export function IndividualAvaliacoesTable({
       <div className="overflow-x-auto">
         <table className="qagrotis-table-row-hover-muted w-full min-w-[320px] text-sm">
           <thead>
-            <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
+            <tr className="border-b border-border-default bg-neutral-grey-50">
               <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Código</th>
               <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Data</th>
               <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Período</th>

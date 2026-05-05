@@ -92,7 +92,7 @@ function AvaliacaoSituacaoBadge({ situacao }: { situacao: AvaliacaoSituacaoUi })
 /** Período (trimestre/semestre) — pill neutra, alinhada às suítes (sem `rounded-4xl` do Badge UI). */
 function AvaliacaoPeriodoBadge({ label }: { label: string }) {
   return badge(
-    "border-border-default bg-neutral-grey-50 text-text-secondary dark:border-neutral-grey-700 dark:bg-neutral-grey-900/50 dark:text-neutral-grey-200",
+    "border-border-default bg-neutral-grey-50 text-text-secondary",
     label,
   )
 }

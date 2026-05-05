@@ -25,7 +25,7 @@ export interface PerformanceEvaluationSectionGridProps {
 }
 
 const competencyStickyColClass =
-  "sticky left-0 z-20 min-w-[12rem] border-r border-border-default bg-neutral-grey-50 px-3 text-left sm:min-w-[14rem] sm:px-4 dark:bg-neutral-grey-900/40"
+  "sticky left-0 z-20 min-w-[12rem] border-r border-border-default bg-neutral-grey-50 px-3 text-left sm:min-w-[14rem] sm:px-4"
 
 export function PerformanceEvaluationSectionGrid({
   section,

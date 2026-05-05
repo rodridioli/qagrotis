@@ -50,7 +50,7 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
             <div className="overflow-x-auto">
               <table className="qagrotis-table-row-hover-muted w-full min-w-[240px] table-fixed text-left">
                 <thead>
-                  <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
+                  <tr className="border-b border-border-default bg-neutral-grey-50">
                     <th className="w-11 px-2 py-2 text-left text-[10px] font-semibold text-text-secondary sm:w-12 sm:px-3 sm:py-2.5 sm:text-[11px]">
                       Pos.
                     </th>
