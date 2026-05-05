@@ -13,6 +13,7 @@ import {
 } from "@/lib/prisma-schema-ensure"
 import { USER_PROFILE_READ_SELECT } from "@/lib/prisma-user-selects"
 import { resolveHistoricoRunnerEmailKey } from "@/lib/historico-runner-attribution"
+import { requireSession } from "@/lib/session"
 export interface UserPerformanceData {
   userId: string
   name: string
@@ -37,6 +38,7 @@ export async function getPerformanceData(filters: {
   dataInicio?: string
   dataFim?: string
 }): Promise<UserPerformanceData[]> {
+  await requireSession()
   try {
     await ensureUserDataNascimentoColumns()
 

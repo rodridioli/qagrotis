@@ -61,7 +61,7 @@ export async function criarCliente(data: {
   razaoSocial: string | null
   cpfCnpj: string | null
 }): Promise<ClienteRecord> {
-  await requireSession()
+  await requireAdmin()
   const parsed = clienteInputSchema.parse({
     nomeFantasia: data.nomeFantasia.trim(),
     razaoSocial: data.razaoSocial?.trim() || null,

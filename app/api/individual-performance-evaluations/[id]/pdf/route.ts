@@ -49,17 +49,35 @@ export async function GET(
     "—"
 
   // Resolve photo as data URL (data:image/...;base64,...)
+  // External URLs: enforce 2 s timeout + 5 MB max to prevent DoS via malicious image URLs.
+  const PHOTO_MAX_BYTES = 5 * 1024 * 1024
   let evaluatedPhotoDataUrl: string | null = null
   const photoPath = profile?.photoPath?.trim()
   if (photoPath?.startsWith("data:image/")) {
     evaluatedPhotoDataUrl = photoPath
   } else if (photoPath && (photoPath.startsWith("http://") || photoPath.startsWith("https://"))) {
     try {
-      const r = await fetch(photoPath)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 2_000)
+      const r = await fetch(photoPath, {
+        signal: controller.signal,
+        headers: { Accept: "image/jpeg,image/png,image/webp,image/gif" },
+      })
+      clearTimeout(timeoutId)
       if (r.ok) {
-        const buf2 = Buffer.from(await r.arrayBuffer())
-        const ct = r.headers.get("content-type") ?? "image/jpeg"
-        evaluatedPhotoDataUrl = `data:${ct};base64,${buf2.toString("base64")}`
+        const contentLength = Number(r.headers.get("content-length") ?? "0")
+        if (contentLength > PHOTO_MAX_BYTES) {
+          // Photo too large — skip silently
+        } else {
+          const buf2 = Buffer.from(await r.arrayBuffer())
+          if (buf2.length <= PHOTO_MAX_BYTES) {
+            const ct = r.headers.get("content-type") ?? "image/jpeg"
+            // Only accept image content types
+            if (/^image\/(jpeg|png|webp|gif)/i.test(ct)) {
+              evaluatedPhotoDataUrl = `data:${ct};base64,${buf2.toString("base64")}`
+            }
+          }
+        }
       }
     } catch {
       evaluatedPhotoDataUrl = null

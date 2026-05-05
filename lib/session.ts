@@ -1,35 +1,6 @@
 "use server"
 
 import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-
-async function getUserType(email: string): Promise<string | null> {
-  const normalized = email.toLowerCase()
-
-  // Check UserProfile overrides (keyed by userId, but email field enables lookup by email)
-  const profile = await prisma.userProfile.findFirst({
-    where: { email: { equals: normalized, mode: "insensitive" } },
-    select: { type: true },
-  })
-  if (profile?.type) return profile.type
-
-  // Check dynamically created users
-  const created = await prisma.createdUser.findFirst({
-    where: { email: { equals: normalized, mode: "insensitive" } },
-    select: { type: true },
-  })
-  if (created) return created.type
-
-  // Check NextAuth User table (Google OAuth users from external domains)
-  // These users are always "Padrão" unless explicitly promoted via UserProfile
-  const oauthUser = await prisma.user.findFirst({
-    where: { email: { equals: normalized, mode: "insensitive" } },
-    select: { id: true },
-  })
-  if (oauthUser) return "Padrão"
-
-  return null
-}
 
 /**
  * Asserts the request has a valid session. Throws if not authenticated.
@@ -43,13 +14,12 @@ export async function requireSession() {
 
 /**
  * Asserts the request has a valid admin session. Throws if not authenticated or not admin.
+ * Uses the type stored in the JWT (set at login and refreshed on each request) to avoid
+ * an extra DB round-trip on every admin-guarded action.
  */
 export async function requireAdmin() {
   const session = await requireSession()
-  const email = session.user?.email
-  if (!email) throw new Error("Não autorizado.")
-  const type = await getUserType(email)
-  if (type !== "Administrador") throw new Error("Acesso restrito a administradores.")
+  if (session.user.type !== "Administrador") throw new Error("Acesso restrito a administradores.")
   return session
 }
 
@@ -60,10 +30,7 @@ export async function requireAdmin() {
 export async function checkIsAdmin(): Promise<boolean> {
   try {
     const session = await auth()
-    const email = session?.user?.email
-    if (!email) return false
-    const type = await getUserType(email)
-    return type === "Administrador"
+    return session?.user?.type === "Administrador"
   } catch {
     return false
   }

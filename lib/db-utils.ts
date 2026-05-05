@@ -61,7 +61,7 @@ export function decryptField(value: string): string {
   }
   try {
     const parts = value.slice(ENC_PREFIX.length).split(":")
-    if (parts.length !== 3) return value
+    if (parts.length !== 3) throw new Error("Formato de ciphertext inválido.")
     const [ivHex, tagHex, dataHex] = parts
     const iv      = Buffer.from(ivHex,   "hex")
     const tag     = Buffer.from(tagHex,  "hex")
@@ -69,8 +69,8 @@ export function decryptField(value: string): string {
     const decipher = createDecipheriv(ENC_ALGORITHM, key, iv)
     decipher.setAuthTag(tag)
     return decipher.update(data).toString("utf8") + decipher.final("utf8")
-  } catch {
-    return value // decryption failure — return ciphertext intact
+  } catch (err) {
+    throw new Error(`Falha ao descriptografar campo sensível: ${err instanceof Error ? err.message : "erro desconhecido"}`)
   }
 }
 

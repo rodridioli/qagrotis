@@ -95,14 +95,11 @@ export async function PUT(
     return NextResponse.json({ error: "ID inválido." }, { status: 400 })
   }
 
-  // Only admins can upload for other users; regular users can only update their own avatar
+  // Only admins can upload for other users; regular users can only update their own avatar.
+  // Use session.user.id (set in JWT at login) rather than email — IDs are stable and unambiguous.
   const isAdmin = await checkIsAdmin()
-  if (!isAdmin) {
-    const targetProfile = await getQaUserProfile(id)
-    const sessionEmail = session.user.email?.toLowerCase() ?? ""
-    if (!targetProfile || targetProfile.email.toLowerCase() !== sessionEmail) {
-      return NextResponse.json({ error: "Não autorizado para esta ação." }, { status: 403 })
-    }
+  if (!isAdmin && session.user.id !== id) {
+    return NextResponse.json({ error: "Não autorizado para esta ação." }, { status: 403 })
   }
 
   let formData: FormData
