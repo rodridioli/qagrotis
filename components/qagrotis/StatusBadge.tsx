@@ -89,6 +89,19 @@ function AvaliacaoSituacaoBadge({ situacao }: { situacao: AvaliacaoSituacaoUi })
   return badge(styles[situacao], situacao)
 }
 
+/** Tipo de feedback — cor por categoria semântica. */
+function FeedbackTipoBadge({ tipo, label }: { tipo: string; label: string }) {
+  const styles: Record<string, string> = {
+    POSITIVO:           "border-badge-success/30 bg-badge-success/10 text-badge-success-text",
+    DESENVOLVIMENTO:    "border-badge-info/30 bg-badge-info/10 text-badge-info-text",
+    CORRETIVO:          "border-destructive/30 bg-destructive/10 text-destructive",
+    FORMAL_CICLO:       "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
+    TREZENTOS_SESSENTA: "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
+  }
+  const colorClass = styles[tipo] ?? "border-border-default bg-neutral-grey-50 text-text-secondary"
+  return badge(colorClass, label)
+}
+
 /** Período (trimestre/semestre) — pill neutra, alinhada às suítes (sem `rounded-4xl` do Badge UI). */
 function AvaliacaoPeriodoBadge({ label }: { label: string }) {
   return badge(
@@ -126,5 +139,6 @@ export {
   ChangelogTagBadge,
   AvaliacaoSituacaoBadge,
   AvaliacaoPeriodoBadge,
+  FeedbackTipoBadge,
 }
 export type { CenarioTipo, SuiteTipo, SuiteSituacao, ChangelogTag, ResultadoTipo, AvaliacaoSituacaoUi }

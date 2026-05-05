@@ -395,3 +395,31 @@ model Integracao {
   createdAt DateTime @default(now())
   @@index([createdAt])
 }
+
+// ── Individual / Feedback (MGR) ──────────────────────────────────────────────
+
+enum IndividualFeedbackStatus {
+  RASCUNHO
+  CONCLUIDA
+}
+
+/**
+ * Feedback individual por usuário avaliado; tipo determina os campos obrigatórios.
+ * Tipos: POSITIVO | DESENVOLVIMENTO | CORRETIVO | FORMAL_CICLO | TREZENTOS_SESSENTA
+ */
+model IndividualFeedback {
+  id                String                   @id @default(cuid())
+  evaluatedUserId   String
+  evaluatorUserId   String
+  /** Sequência por usuário avaliado (ex.: 1, 2, 3…). */
+  codigo            Int
+  tipo              String
+  status            IndividualFeedbackStatus @default(RASCUNHO)
+  /** Campos dinâmicos por tipo: { contexto, feedback, impacto, … } */
+  campos            Json                     @default("{}")
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  @@unique([evaluatedUserId, codigo])
+  @@index([evaluatedUserId])
+}

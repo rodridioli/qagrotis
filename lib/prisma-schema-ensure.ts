@@ -7,6 +7,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredEquipeChapters?: boolean
   __qagrotisEnsuredExtendedProfile?: boolean
   __qagrotisEnsuredIndividualPerformanceEval?: boolean
+  __qagrotisEnsuredIndividualFeedback?: boolean
 }
 
 /**
@@ -216,5 +217,45 @@ CREATE TABLE IF NOT EXISTS "IndividualPerformanceEvaluation" (
     g.__qagrotisEnsuredIndividualPerformanceEval = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualPerformanceEvaluation", e)
+  }
+}
+
+/**
+ * Garante tabela e enum de feedbacks individuais (Individual / MGR).
+ * DDL idempotente — cria a tabela se não existir no banco (Vercel / Neon sem migrate deploy).
+ */
+export async function ensureIndividualFeedbackTable(): Promise<void> {
+  if (g.__qagrotisEnsuredIndividualFeedback) return
+  try {
+    await prisma.$executeRawUnsafe(`
+DO $$ BEGIN
+    CREATE TYPE "IndividualFeedbackStatus" AS ENUM ('RASCUNHO', 'CONCLUIDA');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+`)
+    await prisma.$executeRawUnsafe(`
+CREATE TABLE IF NOT EXISTS "IndividualFeedback" (
+    "id" TEXT NOT NULL,
+    "evaluatedUserId" TEXT NOT NULL,
+    "evaluatorUserId" TEXT NOT NULL,
+    "codigo" INTEGER NOT NULL,
+    "tipo" TEXT NOT NULL,
+    "status" "IndividualFeedbackStatus" NOT NULL DEFAULT 'RASCUNHO',
+    "campos" JSONB NOT NULL DEFAULT '{}',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "IndividualFeedback_pkey" PRIMARY KEY ("id")
+);
+`)
+    await prisma.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IndividualFeedback_evaluatedUserId_codigo_key" ON "IndividualFeedback"("evaluatedUserId", "codigo")`,
+    )
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "IndividualFeedback_evaluatedUserId_idx" ON "IndividualFeedback"("evaluatedUserId")`,
+    )
+    g.__qagrotisEnsuredIndividualFeedback = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] IndividualFeedback", e)
   }
 }

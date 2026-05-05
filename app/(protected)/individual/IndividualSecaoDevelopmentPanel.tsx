@@ -5,6 +5,7 @@ import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { IndividualActiveUserAvatarStrip, type IndividualAvatarUser } from "./IndividualActiveUserAvatarStrip"
 import { IndividualAvaliacoesSection } from "@/components/individual/IndividualAvaliacoesSection"
+import { IndividualFeedbacksSection } from "@/components/individual/IndividualFeedbacksSection"
 
 interface Props {
   secao: string
@@ -25,6 +26,7 @@ export function IndividualSecaoDevelopmentPanel({
 }: Props) {
   const router = useRouter()
   const showAvaliacoes = secao === "avaliacoes"
+  const showFeedbacks = secao === "feedbacks"
 
   return (
     <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-stretch gap-8">
@@ -47,6 +49,20 @@ export function IndividualSecaoDevelopmentPanel({
               Adicionar Avaliação
             </Button>
           ) : null}
+          {showFeedbacks ? (
+            <Button
+              type="button"
+              className="shrink-0 gap-2"
+              onClick={() =>
+                router.push(
+                  `/individual/feedbacks/nova?userId=${encodeURIComponent(selectedUserId)}`,
+                )
+              }
+            >
+              <Plus className="size-4" aria-hidden />
+              Adicionar Feedback
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -54,6 +70,11 @@ export function IndividualSecaoDevelopmentPanel({
         <IndividualAvaliacoesSection
           evaluatedUserId={selectedUserId}
           useMgrListEmptyChrome={isAdministradorMgr}
+          showCompletedToast={showCompletedToast}
+        />
+      ) : showFeedbacks ? (
+        <IndividualFeedbacksSection
+          evaluatedUserId={selectedUserId}
           showCompletedToast={showCompletedToast}
         />
       ) : (
