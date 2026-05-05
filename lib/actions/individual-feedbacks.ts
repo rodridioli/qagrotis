@@ -7,105 +7,17 @@ import { ensureIndividualFeedbackTable } from "@/lib/prisma-schema-ensure"
 import { requireSession } from "@/lib/session"
 import { buildRole, can } from "@/lib/rbac/policy"
 import { getActiveQaUsers } from "@/lib/actions/usuarios"
+import {
+  isFeedbackTipoSlug,
+  FEEDBACK_TIPO_SLUGS,
+  type FeedbackTipoSlug,
+  type FeedbackCampos,
+  type IndividualFeedbackListRow,
+  type IndividualFeedbackDetail,
+  type IndividualFeedbackStatusDto,
+} from "@/lib/individual-feedback"
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
-export const FEEDBACK_TIPO_SLUGS = [
-  "POSITIVO",
-  "DESENVOLVIMENTO",
-  "CORRETIVO",
-  "FORMAL_CICLO",
-  "TREZENTOS_SESSENTA",
-] as const
-
-export type FeedbackTipoSlug = (typeof FEEDBACK_TIPO_SLUGS)[number]
-
-export const FEEDBACK_TIPO_LABELS: Record<FeedbackTipoSlug, string> = {
-  POSITIVO: "Positivo",
-  DESENVOLVIMENTO: "Desenvolvimento",
-  CORRETIVO: "Corretivo",
-  FORMAL_CICLO: "Formal (ciclo)",
-  TREZENTOS_SESSENTA: "360°",
-}
-
-export function isFeedbackTipoSlug(v: string): v is FeedbackTipoSlug {
-  return (FEEDBACK_TIPO_SLUGS as readonly string[]).includes(v)
-}
-
-export function feedbackTipoLabel(tipo: string): string {
-  return isFeedbackTipoSlug(tipo) ? FEEDBACK_TIPO_LABELS[tipo] : tipo
-}
-
-export function feedbackDisplayCodigo(codigo: number): string {
-  return `FED-${String(codigo).padStart(3, "0")}`
-}
-
-/** Campos dinâmicos por tipo de feedback. */
-export interface FeedbackCamposPositivo {
-  contexto: string
-  feedback: string
-  impacto: string
-}
-
-export interface FeedbackCamposDesenvolvimento {
-  contexto: string
-  feedback: string
-  impacto: string
-  sugestao: string
-}
-
-export interface FeedbackCamposCorretivo {
-  contexto: string
-  feedback: string
-  impacto: string
-  acaoEsperada: string
-}
-
-export interface FeedbackCamposFormalCiclo {
-  pontosPositivos: string
-  pontosMelhoria: string
-  avaliacaoGeral: string
-  proximosPassos: string
-}
-
-export interface FeedbackCamposTrezentosSessionta {
-  contexto: string
-  percepcaoPares: string
-  percepcaoLider: string
-  resumo: string
-}
-
-export type FeedbackCampos =
-  | FeedbackCamposPositivo
-  | FeedbackCamposDesenvolvimento
-  | FeedbackCamposCorretivo
-  | FeedbackCamposFormalCiclo
-  | FeedbackCamposTrezentosSessionta
-
-// ── DTOs ─────────────────────────────────────────────────────────────────────
-
-export type IndividualFeedbackStatusDto = "RASCUNHO" | "CONCLUIDA"
-
-export interface IndividualFeedbackListRow {
-  id: string
-  codigo: number
-  /** ISO yyyy-mm-dd (data de atualização). */
-  dataYmd: string
-  tipo: FeedbackTipoSlug
-  status: IndividualFeedbackStatusDto
-}
-
-export interface IndividualFeedbackDetail {
-  id: string
-  evaluatedUserId: string
-  codigo: number
-  tipo: FeedbackTipoSlug
-  status: IndividualFeedbackStatusDto
-  campos: FeedbackCampos
-  dataYmd: string
-}
-
-// ── Validation schemas ────────────────────────────────────────────────────────
+// ── Validation schemas (private) ──────────────────────────────────────────────
 
 const userIdSchema = z.string().min(1).max(128)
 const idSchema = z.string().min(1).max(128)
@@ -144,7 +56,6 @@ const camposTrezentosSessentaSchema = z.object({
   resumo: z.string().min(1, "Resumo é obrigatório").max(5000),
 })
 
-/** Partial schemas for saving drafts (all fields optional). */
 const camposPositivoDraftSchema = camposPositivoSchema.partial()
 const camposDesenvolvimentoDraftSchema = camposDesenvolvimentoSchema.partial()
 const camposCorretivoDraftSchema = camposCorretivoSchema.partial()
@@ -158,34 +69,23 @@ function parseCamposForTipo(
 ): FeedbackCampos {
   if (mode === "complete") {
     switch (tipo) {
-      case "POSITIVO":
-        return camposPositivoSchema.parse(campos)
-      case "DESENVOLVIMENTO":
-        return camposDesenvolvimentoSchema.parse(campos)
-      case "CORRETIVO":
-        return camposCorretivoSchema.parse(campos)
-      case "FORMAL_CICLO":
-        return camposFormalCicloSchema.parse(campos)
-      case "TREZENTOS_SESSENTA":
-        return camposTrezentosSessentaSchema.parse(campos)
+      case "POSITIVO":         return camposPositivoSchema.parse(campos)
+      case "DESENVOLVIMENTO":  return camposDesenvolvimentoSchema.parse(campos)
+      case "CORRETIVO":        return camposCorretivoSchema.parse(campos)
+      case "FORMAL_CICLO":     return camposFormalCicloSchema.parse(campos)
+      case "TREZENTOS_SESSENTA": return camposTrezentosSessentaSchema.parse(campos)
     }
   }
-  // draft — partial validation
   switch (tipo) {
-    case "POSITIVO":
-      return camposPositivoDraftSchema.parse(campos) as FeedbackCampos
-    case "DESENVOLVIMENTO":
-      return camposDesenvolvimentoDraftSchema.parse(campos) as FeedbackCampos
-    case "CORRETIVO":
-      return camposCorretivoDraftSchema.parse(campos) as FeedbackCampos
-    case "FORMAL_CICLO":
-      return camposFormalCicloDraftSchema.parse(campos) as FeedbackCampos
-    case "TREZENTOS_SESSENTA":
-      return camposTrezentosSessentaDraftSchema.parse(campos) as FeedbackCampos
+    case "POSITIVO":         return camposPositivoDraftSchema.parse(campos) as FeedbackCampos
+    case "DESENVOLVIMENTO":  return camposDesenvolvimentoDraftSchema.parse(campos) as FeedbackCampos
+    case "CORRETIVO":        return camposCorretivoDraftSchema.parse(campos) as FeedbackCampos
+    case "FORMAL_CICLO":     return camposFormalCicloDraftSchema.parse(campos) as FeedbackCampos
+    case "TREZENTOS_SESSENTA": return camposTrezentosSessentaDraftSchema.parse(campos) as FeedbackCampos
   }
 }
 
-// ── Auth helpers ──────────────────────────────────────────────────────────────
+// ── Auth helpers (private async) ──────────────────────────────────────────────
 
 async function requireMgrFeedbackAccess() {
   const session = await requireSession()
@@ -241,7 +141,7 @@ function rowToDetail(row: {
   }
 }
 
-// ── Public actions ────────────────────────────────────────────────────────────
+// ── Public async server actions ───────────────────────────────────────────────
 
 export async function listIndividualFeedbacks(
   evaluatedUserId: string,
@@ -321,7 +221,6 @@ export async function createAndSaveIndividualFeedback(input: {
 
     await ensureIndividualFeedbackTable()
 
-    // Compute next codigo for this user
     const existing = (await prisma.individualFeedback.findMany({
       where: { evaluatedUserId: input.evaluatedUserId },
       select: { codigo: true },

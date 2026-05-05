@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { IndividualFeedbacksTable } from "@/components/individual/IndividualFeedbacksTable"
-import type { IndividualFeedbackListRow } from "@/lib/actions/individual-feedbacks"
+import type { IndividualFeedbackListRow } from "@/lib/individual-feedback"
 
 const sampleRows: IndividualFeedbackListRow[] = [
   {

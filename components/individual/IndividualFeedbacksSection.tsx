@@ -12,8 +12,8 @@ import { IndividualFeedbacksTable } from "@/components/individual/IndividualFeed
 import {
   deleteIndividualFeedback,
   listIndividualFeedbacks,
-  type IndividualFeedbackListRow,
 } from "@/lib/actions/individual-feedbacks"
+import type { IndividualFeedbackListRow } from "@/lib/individual-feedback"
 
 const FEEDBACKS_PAGE_SIZE = 20
 

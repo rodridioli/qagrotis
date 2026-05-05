@@ -5,8 +5,8 @@ import { auth } from "@/lib/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
 import { getActiveQaUsers } from "@/lib/actions/usuarios"
 import { getIndividualFeedback } from "@/lib/actions/individual-feedbacks"
+import { feedbackDisplayCodigo } from "@/lib/individual-feedback"
 import { IndividualFeedbackPageClient } from "@/components/individual/IndividualFeedbackPageClient"
-import { feedbackDisplayCodigo } from "@/lib/actions/individual-feedbacks"
 
 export async function generateMetadata({
   params,

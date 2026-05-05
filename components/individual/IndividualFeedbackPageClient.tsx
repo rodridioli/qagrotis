@@ -20,6 +20,8 @@ import type { EvaluatedUserSummary } from "@/components/individual/individualEva
 import {
   createAndSaveIndividualFeedback,
   updateIndividualFeedback,
+} from "@/lib/actions/individual-feedbacks"
+import {
   feedbackDisplayCodigo,
   feedbackTipoLabel,
   isFeedbackTipoSlug,
@@ -28,7 +30,7 @@ import {
   type IndividualFeedbackDetail,
   type IndividualFeedbackStatusDto,
   type FeedbackTipoSlug,
-} from "@/lib/actions/individual-feedbacks"
+} from "@/lib/individual-feedback"
 
 function formatDataPt(ymd: string): string {
   const [y, m, d] = ymd.split("-")

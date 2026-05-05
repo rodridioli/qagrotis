@@ -14,7 +14,7 @@ import {
   feedbackDisplayCodigo,
   feedbackTipoLabel,
   type IndividualFeedbackListRow,
-} from "@/lib/actions/individual-feedbacks"
+} from "@/lib/individual-feedback"
 
 export interface IndividualFeedbacksTableProps {
   rows: IndividualFeedbackListRow[]
