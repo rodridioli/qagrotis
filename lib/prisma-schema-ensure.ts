@@ -257,5 +257,6 @@ CREATE TABLE IF NOT EXISTS "IndividualFeedback" (
     g.__qagrotisEnsuredIndividualFeedback = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualFeedback", e)
+    throw e
   }
 }

@@ -109,14 +109,25 @@ function ymdFromDate(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
+/** Garante que o modelo Prisma foi gerado (client pode ficar em cache antigo no dev). */
+function assertFeedbackModelReady(): void {
+  const model = (prisma as unknown as Record<string, unknown>)["individualFeedback"]
+  if (!model) {
+    throw new Error(
+      "Prisma client desatualizado — execute 'npx prisma generate' e reinicie o servidor de desenvolvimento.",
+    )
+  }
+}
+
 function evalPrismaMessage(e: unknown, fallback: string): string {
   const msg =
     typeof e === "object" && e !== null && "message" in e
       ? String((e as { message: string }).message)
-      : ""
-  if (/does not exist|não existe|relation/i.test(msg)) {
+      : String(e)
+  if (/does not exist|não existe|relation|P2021/i.test(msg)) {
     return "Tabela de feedbacks ainda não existe. Recarregue a página ou rode as migrações Prisma."
   }
+  if (/desatualizado|prisma generate/i.test(msg)) return msg
   return fallback
 }
 
@@ -149,6 +160,7 @@ export async function listIndividualFeedbacks(
   await requireMgrFeedbackAccess()
   await assertEvaluatedUserInScope(evaluatedUserId)
   await ensureIndividualFeedbackTable()
+  assertFeedbackModelReady()
 
   try {
     const rows = (await prisma.individualFeedback.findMany({
@@ -177,6 +189,7 @@ export async function getIndividualFeedback(
   const r = idSchema.safeParse(id)
   if (!r.success) return null
   await ensureIndividualFeedbackTable()
+  assertFeedbackModelReady()
 
   try {
     const row = (await prisma.individualFeedback.findUnique({ where: { id } })) as {
