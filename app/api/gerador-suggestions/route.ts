@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
+import { validateOrigin } from "@/lib/security"
 
 export const dynamic = "force-dynamic"
 
@@ -173,12 +174,15 @@ REGRAS:
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const csrfError = validateOrigin(req)
+  if (csrfError) return csrfError
+
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const userId = session.user.id ?? session.user.email ?? "session"
+  const userId = session.user.id ?? session.user.email ?? "anon"
 
   if (!checkRateLimit(userId)) {
     return NextResponse.json({ error: "Limite de sugestões atingido" }, { status: 429 })

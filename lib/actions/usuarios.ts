@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { Prisma } from "@prisma/client"
 import { sendInviteEmail } from "@/lib/email"
 import { gerarConvite } from "@/lib/actions/invite-tokens"
 import { nextId, verifyPassword, hashPassword } from "@/lib/db-utils"
@@ -321,7 +322,7 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
   const isSelf = session?.user?.id === id
   const isAdminMgr =
     session?.user?.type === "Administrador" &&
-    (session?.user as any)?.accessProfile === "MGR"
+    session?.user?.accessProfile === "MGR"
 
   const canSeeRestricted = isSelf || isAdminMgr
 
@@ -339,11 +340,11 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
       emergencyContact: savedProfile?.emergencyContact ?? createdUser?.emergencyContact ?? null,
       instagram:        savedProfile?.instagram        ?? createdUser?.instagram        ?? null,
       linkedin:         savedProfile?.linkedin         ?? createdUser?.linkedin         ?? null,
-      education:        (savedProfile?.education       ?? createdUser?.education        ?? []) as any[],
-      courses:          (savedProfile?.courses         ?? createdUser?.courses          ?? []) as any[],
-      languages:        (savedProfile?.languages       ?? createdUser?.languages        ?? []) as any[],
-      certifications:   (savedProfile?.certifications  ?? createdUser?.certifications   ?? []) as any[],
-      careerHistory:    (savedProfile?.careerHistory   ?? createdUser?.careerHistory    ?? []) as any[],
+      education:        (savedProfile?.education       ?? createdUser?.education        ?? []) as unknown[],
+      courses:          (savedProfile?.courses         ?? createdUser?.courses          ?? []) as unknown[],
+      languages:        (savedProfile?.languages       ?? createdUser?.languages        ?? []) as unknown[],
+      certifications:   (savedProfile?.certifications  ?? createdUser?.certifications   ?? []) as unknown[],
+      careerHistory:    (savedProfile?.careerHistory   ?? createdUser?.careerHistory    ?? []) as unknown[],
     }
   }
 
@@ -564,7 +565,7 @@ export async function criarQaUser(data: {
             horarioEntrada,
             horarioSaida,
             formatoTrabalho,
-            diasTrabalhoHibrido,
+            diasTrabalhoHibrido: diasTrabalhoHibrido ?? Prisma.DbNull,
             ...extendedData,
           },
         }),
@@ -589,7 +590,7 @@ export async function criarQaUser(data: {
           horarioEntrada,
           horarioSaida,
           formatoTrabalho,
-          diasTrabalhoHibrido,
+          diasTrabalhoHibrido: diasTrabalhoHibrido ?? Prisma.DbNull,
           ...extendedData,
         },
       })
@@ -724,7 +725,7 @@ export async function atualizarQaUser(
 
     const sessionUserId = session.user?.id
     const isSelf = sessionUserId === id
-    const isAdminMgr = isAdmin && (session.user as any)?.accessProfile === "MGR"
+    const isAdminMgr = isAdmin && session.user?.accessProfile === "MGR"
     const canEditSensitive = isSelf || isAdminMgr
 
     const sensitiveData: Record<string, any> = {}
@@ -813,7 +814,7 @@ export async function atualizarQaUser(
       horarioEntrada?: string | null
       horarioSaida?: string | null
       formatoTrabalho?: string | null
-      diasTrabalhoHibrido?: string[] | null
+      diasTrabalhoHibrido?: string[] | typeof Prisma.DbNull
       // Novos campos
       cep?: string | null
       address?: string | null
@@ -826,11 +827,11 @@ export async function atualizarQaUser(
       emergencyContact?: string | null
       instagram?: string | null
       linkedin?: string | null
-      education?: any[] | null
-      courses?: any[] | null
-      languages?: any[] | null
-      certifications?: any[] | null
-      careerHistory?: any[] | null
+      education?: Prisma.InputJsonValue[]
+      courses?: Prisma.InputJsonValue[]
+      languages?: Prisma.InputJsonValue[]
+      certifications?: Prisma.InputJsonValue[]
+      careerHistory?: Prisma.InputJsonValue[]
     } = {
       name:  parsed.name,
       email: parsed.email,
@@ -845,7 +846,7 @@ export async function atualizarQaUser(
     if (horarioEntrada !== undefined) profileData.horarioEntrada = horarioEntrada
     if (horarioSaida !== undefined) profileData.horarioSaida = horarioSaida
     if (formatoTrabalho !== undefined) profileData.formatoTrabalho = formatoTrabalho
-    if (diasTrabalhoHibridoDb !== undefined) profileData.diasTrabalhoHibrido = diasTrabalhoHibridoDb
+    if (diasTrabalhoHibridoDb !== undefined) profileData.diasTrabalhoHibrido = diasTrabalhoHibridoDb ?? Prisma.DbNull
 
     // Atribuição de campos sensíveis se o usuário tiver permissão
     Object.assign(profileData, sensitiveData)
@@ -864,7 +865,9 @@ export async function atualizarQaUser(
         horarioEntrada: horarioEntrada ?? null,
         horarioSaida: horarioSaida ?? null,
         formatoTrabalho: formatoTrabalho ?? null,
-        diasTrabalhoHibrido: diasTrabalhoHibridoDb !== undefined ? diasTrabalhoHibridoDb : null,
+        diasTrabalhoHibrido: diasTrabalhoHibridoDb !== undefined
+          ? (diasTrabalhoHibridoDb ?? Prisma.DbNull)
+          : Prisma.DbNull,
         ...sensitiveData,
       },
       update: profileData,
@@ -891,7 +894,7 @@ export async function atualizarQaUser(
           ...(horarioEntrada !== undefined ? { horarioEntrada } : {}),
           ...(horarioSaida !== undefined ? { horarioSaida } : {}),
           ...(formatoTrabalho !== undefined ? { formatoTrabalho } : {}),
-          ...(diasTrabalhoHibridoDb !== undefined ? { diasTrabalhoHibrido: diasTrabalhoHibridoDb } : {}),
+          ...(diasTrabalhoHibridoDb !== undefined ? { diasTrabalhoHibrido: diasTrabalhoHibridoDb ?? Prisma.DbNull } : {}),
           ...(safePhotoPath !== undefined ? { photoPath: safePhotoPath } : {}),
           ...(newPw ? { password: hashPassword(newPw) } : {}),
           ...sensitiveData,

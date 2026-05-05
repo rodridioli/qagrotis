@@ -239,7 +239,7 @@ export async function registrarResultadoSuite(
   revalidatePath("/suites")
   revalidatePath(`/suites/${suiteId}`)
   revalidatePath("/dashboard")
-  return { timestamp: historicoItem.timestamp }
+  return { timestamp: historicoItem.timestamp ?? now.getTime() }
 }
 
 // ── Dashboard-specific: minimal record with full historico ──────────────────

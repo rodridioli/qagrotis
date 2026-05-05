@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { checkIsAdmin } from "@/lib/session"
 import { getQaUserProfile } from "@/lib/actions/usuarios"
 import { revalidatePath } from "next/cache"
+import { validateOrigin } from "@/lib/security"
 
 const MAX_AVATAR_BYTES = 6 * 1024 * 1024
 
@@ -83,6 +84,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrfError = validateOrigin(request)
+  if (csrfError) return csrfError
+
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 })

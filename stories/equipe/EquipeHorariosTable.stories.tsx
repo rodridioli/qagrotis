@@ -41,17 +41,19 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const ComDados: Story = {
-  render: () => (
+  args: { rows: mockRows },
+  render: ({ rows }) => (
     <TooltipProvider>
-      <EquipeHorariosTable rows={mockRows} />
+      <EquipeHorariosTable rows={rows} />
     </TooltipProvider>
   ),
 }
 
 export const Vazia: Story = {
-  render: () => (
+  args: { rows: [] },
+  render: ({ rows }) => (
     <TooltipProvider>
-      <EquipeHorariosTable rows={[]} />
+      <EquipeHorariosTable rows={rows} />
     </TooltipProvider>
   ),
 }

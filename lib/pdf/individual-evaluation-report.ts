@@ -126,7 +126,8 @@ function clipRoundedRect(doc: jsPDF, x: number, y: number, w: number, h: number,
     `${p(x1)} ${p(y2-rp+k*rp)} ${p(x1+rp-k*rp)} ${p(y2)} ${p(x1+rp)} ${p(y2)} c`,
     "h W n",
   ].join(" ")
-  doc.internal.write(path)
+  // doc.internal.write exists at runtime but is not in jsPDF's public type declarations
+  ;(doc.internal as unknown as { write: (data: string) => void }).write(path)
 }
 
 /** Badge colorida (ex.: Concluída / Rascunho). */

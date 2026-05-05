@@ -3,6 +3,7 @@ import { NextRequest } from "next/server"
 import { getIntegracao } from "@/lib/actions/integracoes"
 import { normalizeProvider } from "@/lib/ai/provider"
 import { prisma } from "@/lib/prisma"
+import { validateOrigin } from "@/lib/security"
 
 // Rate limit: max 30 AI generations per user per hour
 const geradorRateMap = new Map<string, { count: number; resetAt: number }>()
@@ -701,6 +702,9 @@ function providerFallbackRank(provider: string): number {
 }
 
 export async function POST(req: NextRequest) {
+  const csrfError = validateOrigin(req)
+  if (csrfError) return csrfError
+
   const session = await auth()
   if (!session?.user) {
     return new Response("Unauthorized", { status: 401 })
