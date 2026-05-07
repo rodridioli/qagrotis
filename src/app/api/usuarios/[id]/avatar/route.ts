@@ -53,7 +53,18 @@ export async function GET(
   }
 
   if (photo.startsWith("https://") || photo.startsWith("http://")) {
-    return NextResponse.redirect(photo)
+    const ALLOWED_AVATAR_HOSTS = [
+      "lh3.googleusercontent.com",
+      "avatars.githubusercontent.com",
+      "cdn.discordapp.com",
+    ]
+    try {
+      const url = new URL(photo)
+      if (ALLOWED_AVATAR_HOSTS.includes(url.hostname)) {
+        return NextResponse.redirect(photo)
+      }
+    } catch { /* URL inválida — cai no 404 abaixo */ }
+    return new NextResponse(null, { status: 404 })
   }
 
   const parsed = parseDataImageResponse(photo)
@@ -110,7 +121,7 @@ export async function PUT(
   try {
     formData = await request.formData()
   } catch (e) {
-    console.error("[avatar upload] Erro ao processar formData:", e)
+    if (process.env.NODE_ENV !== "production") console.error("[avatar upload] Erro ao processar formData:", e)
     return NextResponse.json({ error: "Erro ao processar o arquivo enviado." }, { status: 400 })
   }
 
@@ -141,7 +152,7 @@ export async function PUT(
 
     return NextResponse.json({ photoPath })
   } catch (e) {
-    console.error("[avatar upload] Erro ao processar imagem:", e)
+    if (process.env.NODE_ENV !== "production") console.error("[avatar upload] Erro ao processar imagem:", e)
     return NextResponse.json({ error: "Erro interno ao salvar o arquivo." }, { status: 500 })
   }
 }

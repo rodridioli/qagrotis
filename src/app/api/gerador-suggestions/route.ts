@@ -247,13 +247,13 @@ export async function POST(req: NextRequest) {
     try {
       parsedAi = JSON.parse(jsonText)
     } catch {
-      console.error("[gerador-suggestions] AI returned non-JSON:", raw.slice(0, 200))
+      if (process.env.NODE_ENV !== "production") console.error("[gerador-suggestions] AI returned non-JSON:", raw.slice(0, 200))
       return NextResponse.json<GeradorSuggestionsResponse>({ moduloDetectado: null, edgeCases: [], cenariosSimilares: [] })
     }
 
     const validated = aiResponseSchema.safeParse(parsedAi)
     if (!validated.success) {
-      console.error("[gerador-suggestions] schema fail:", validated.error.flatten())
+      if (process.env.NODE_ENV !== "production") console.error("[gerador-suggestions] schema fail:", validated.error.flatten())
       return NextResponse.json<GeradorSuggestionsResponse>({ moduloDetectado: null, edgeCases: [], cenariosSimilares: [] })
     }
 
@@ -280,7 +280,7 @@ export async function POST(req: NextRequest) {
     if ((err as Error).name === "AbortError") {
       return NextResponse.json({ error: "Timeout" }, { status: 504 })
     }
-    console.error("[gerador-suggestions] AI call error:", err)
+    if (process.env.NODE_ENV !== "production") console.error("[gerador-suggestions] AI call error:", err)
     return NextResponse.json<GeradorSuggestionsResponse>({ moduloDetectado: null, edgeCases: [], cenariosSimilares: [] })
   }
 }

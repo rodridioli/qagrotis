@@ -3,8 +3,8 @@ import { NextRequest } from "next/server"
 import * as jose from "jose"
 import { validateOrigin } from "@/core/security"
 
-const GITBOOK_ORG_ID = process.env.GITBOOK_ORG_ID ?? "YJL6kpwzoMMhtvwRrmNt"
-const GITBOOK_SITE_ID = process.env.GITBOOK_SITE_ID ?? "site_YbjJD"
+const GITBOOK_ORG_ID = process.env.GITBOOK_ORG_ID ?? ""
+const GITBOOK_SITE_ID = process.env.GITBOOK_SITE_ID ?? ""
 const GITBOOK_API_TOKEN = process.env.GITBOOK_API_TOKEN ?? ""
 const GITBOOK_PRIVATE_KEY = process.env.GITBOOK_PRIVATE_KEY ?? ""
 

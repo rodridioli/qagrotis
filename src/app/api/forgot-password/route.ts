@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error("[forgot-password] DB error:", err)
+    if (process.env.NODE_ENV !== "production") console.error("[forgot-password] DB error:", err)
     return NextResponse.json({ error: "Erro interno do servidor." }, { status: 500 })
   }
 }
