@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { headers } from "next/headers"
-import { stripe } from "@/lib/stripe"
-import { env } from "@/lib/env"
-import { db } from "@/lib/db"
+import { stripe } from "@/features/billing/lib/stripe"
+import { env } from "@/core/env"
+import { db } from "@/core/db"
 import type Stripe from "stripe"
 
 export async function POST(req: Request) {

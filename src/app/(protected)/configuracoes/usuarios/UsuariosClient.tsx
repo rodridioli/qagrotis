@@ -5,9 +5,9 @@ import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power, AlertCircle, RefreshCw } from "lucide-react"
-import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
-import { EmptyState } from "@/components/qagrotis/EmptyState"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -31,13 +31,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { UserTipoBadge } from "@/components/qagrotis/StatusBadge"
-import { TableToolbar } from "@/components/qagrotis/TableToolbar"
-import { TablePagination } from "@/components/qagrotis/TablePagination"
-import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { inativarQaUsers, ativarQaUser, getQaUsers, type QaUserRecord } from "@/actions/usuarios"
+import { UserTipoBadge } from "@/components/shared/StatusBadge"
+import { TableToolbar } from "@/components/shared/TableToolbar"
+import { TablePagination } from "@/components/shared/TablePagination"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { inativarQaUsers, ativarQaUser, getQaUsers, type QaUserRecord } from "@/features/usuarios/actions/usuarios"
 import type { AccessProfile } from "@/lib/rbac/policy"
-import { cn } from "@/lib/utils"
+import { cn } from "@/core/utils"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 20

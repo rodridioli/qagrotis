@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import ClientesClient from "./ClientesClient"
-import type { ClienteRecord } from "@/actions/clientes"
-import type { CenarioRecord } from "@/actions/cenarios"
+import type { ClienteRecord } from "@/features/qa/actions/clientes"
+import type { CenarioRecord } from "@/features/qa/actions/cenarios"
 
 const clientes: ClienteRecord[] = [
   { id: "C-01", nomeFantasia: "Acme Corp", razaoSocial: "Acme Comércio Ltda", cpfCnpj: "11.222.333/0001-81", active: true, createdAt: Date.now() - 86400000 },

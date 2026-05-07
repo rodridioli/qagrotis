@@ -1,9 +1,9 @@
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Clientes" }
 
-import { getClientes } from "@/actions/clientes"
-import { getCenarios } from "@/actions/cenarios"
-import { checkIsAdmin } from "@/lib/session"
+import { getClientes } from "@/features/qa/actions/clientes"
+import { getCenarios } from "@/features/qa/actions/cenarios"
+import { checkIsAdmin } from "@/core/session"
 import ClientesClient from "./ClientesClient"
 
 export default async function ClientesPage() {

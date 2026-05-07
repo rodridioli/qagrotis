@@ -4,9 +4,9 @@ import React, { useEffect, useState, useMemo, useTransition, useCallback } from 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AlertCircle, Check, ChevronDown, ChevronUp, Eye, EyeOff, Filter, Loader2, MoreVertical, Pencil, Plus, Power, RotateCcw, ShieldCheck, X } from "lucide-react"
-import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
-import { EmptyState } from "@/components/qagrotis/EmptyState"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -32,12 +32,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { TableToolbar } from "@/components/qagrotis/TableToolbar"
-import { TablePagination } from "@/components/qagrotis/TablePagination"
-import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { inativarIntegracoes, ativarIntegracao, criarIntegracao, atualizarIntegracao, type IntegracaoRecord } from "@/actions/integracoes"
+import { TableToolbar } from "@/components/shared/TableToolbar"
+import { TablePagination } from "@/components/shared/TablePagination"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { inativarIntegracoes, ativarIntegracao, criarIntegracao, atualizarIntegracao, type IntegracaoRecord } from "@/features/integracoes/actions/integracoes"
 import { normalizeProvider } from "@/lib/ai/provider"
-import { cn } from "@/lib/utils"
+import { cn } from "@/core/utils"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 20

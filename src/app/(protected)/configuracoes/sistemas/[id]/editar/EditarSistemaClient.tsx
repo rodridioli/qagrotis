@@ -3,10 +3,10 @@
 import React, { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Check } from "lucide-react"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { atualizarSistema, type SistemaRecord } from "@/actions/sistemas"
+import { atualizarSistema, type SistemaRecord } from "@/features/qa/actions/sistemas"
 import { toast } from "sonner"
 
 interface Props {

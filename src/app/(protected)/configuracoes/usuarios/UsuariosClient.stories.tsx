@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import UsuariosClient from "./UsuariosClient"
-import type { QaUserRecord } from "@/actions/usuarios"
+import type { QaUserRecord } from "@/features/usuarios/actions/usuarios"
 
 const base: QaUserRecord[] = [
   { id: "U-01", name: "Ana Silva", email: "ana@empresa.com", type: "Administrador", active: true, photoPath: null, createdAt: Date.now() - 86400000 },

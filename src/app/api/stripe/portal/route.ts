@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
-import { db } from "@/lib/db"
-import { createPortalSession } from "@/lib/stripe"
+import { auth } from "@/core/auth"
+import { db } from "@/core/db"
+import { createPortalSession } from "@/features/billing/lib/stripe"
 import { z } from "zod"
-import { isSameOriginUrl, validateOrigin } from "@/lib/security"
+import { isSameOriginUrl, validateOrigin } from "@/core/security"
 
 const schema = z.object({
   returnUrl: z.string().url(),

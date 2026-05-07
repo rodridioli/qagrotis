@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth"
+import { auth } from "@/core/auth"
 import { NextRequest } from "next/server"
 import { cookies } from "next/headers"
 import {
@@ -6,8 +6,8 @@ import {
   getUserJiraCredentials,
   readLegacyJiraCookies,
   upsertUserJiraCredentials,
-} from "@/lib/jira-credentials-db"
-import { validateOrigin } from "@/lib/security"
+} from "@/features/qa/lib/jira-credentials-db"
+import { validateOrigin } from "@/core/security"
 
 const LEGACY_JIRA_COOKIES = ["jira_url", "jira_email", "jira_token"] as const
 

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
-import { checkIsAdmin } from "@/lib/session"
-import { getQaUserProfile } from "@/actions/usuarios"
+import { auth } from "@/core/auth"
+import { checkIsAdmin } from "@/core/session"
+import { getQaUserProfile } from "@/features/usuarios/actions/usuarios"
 import { revalidatePath } from "next/cache"
-import { validateOrigin } from "@/lib/security"
+import { validateOrigin } from "@/core/security"
 
 const MAX_AVATAR_BYTES = 6 * 1024 * 1024
 

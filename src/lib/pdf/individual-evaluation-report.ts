@@ -6,7 +6,7 @@
 
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
-import type { IndividualPerformanceEvaluationDetail } from "@/actions/individual-performance-evaluations"
+import type { IndividualPerformanceEvaluationDetail } from "@/features/individual/actions/individual-performance-evaluations"
 import {
   computePerformanceScorePercent,
   EVALUATION_LEVEL_LABELS,
@@ -14,7 +14,7 @@ import {
   evaluationPeriodLabel,
   PERFORMANCE_EVALUATION_SECTIONS,
   performanceScoreQualitativeLabel,
-} from "@/lib/individual-performance-evaluation"
+} from "@/features/individual/lib/individual-performance-evaluation"
 
 export interface IndividualEvaluationPdfMeta {
   evaluatedName: string

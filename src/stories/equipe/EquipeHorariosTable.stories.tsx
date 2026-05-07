@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
-import { EquipeHorariosTable } from "@/components/equipe/EquipeHorariosTable"
+import { EquipeHorariosTable } from "@/features/equipe/components/EquipeHorariosTable"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import type { EquipeUsuarioCadastro } from "@/actions/equipe"
+import type { EquipeUsuarioCadastro } from "@/features/equipe/actions/equipe"
 
 const mockRows: EquipeUsuarioCadastro[] = [
   {

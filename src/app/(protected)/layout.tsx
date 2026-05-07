@@ -1,5 +1,5 @@
-import { getLayoutMenuData } from "@/lib/layout-cache"
-import { checkIsAdmin } from "@/lib/session"
+import { getLayoutMenuData } from "@/core/layout-cache"
+import { checkIsAdmin } from "@/core/session"
 import LayoutClient from "./LayoutClient"
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {

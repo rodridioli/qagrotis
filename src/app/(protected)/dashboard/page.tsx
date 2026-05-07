@@ -1,18 +1,18 @@
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Painel" }
 
-import { getModulos } from "@/actions/modulos"
-import { getCenarios } from "@/actions/cenarios"
-import { getQaUsers } from "@/actions/usuarios"
-import { getSuitesParaDashboard } from "@/actions/suites"
-import { loadParallelOrFallback } from "@/lib/safe-server-data"
-import { serializeRscProps } from "@/lib/rsc-serialize"
-import { auth } from "@/lib/auth"
+import { getModulos } from "@/features/qa/actions/modulos"
+import { getCenarios } from "@/features/qa/actions/cenarios"
+import { getQaUsers } from "@/features/usuarios/actions/usuarios"
+import { getSuitesParaDashboard } from "@/features/qa/actions/suites"
+import { loadParallelOrFallback } from "@/core/safe-server-data"
+import { serializeRscProps } from "@/core/rsc-serialize"
+import { auth } from "@/core/auth"
 import { DashboardClient } from "./DashboardClient"
-import type { ModuloRecord } from "@/actions/modulos"
-import type { CenarioRecord } from "@/actions/cenarios"
-import type { QaUserRecord } from "@/actions/usuarios"
-import type { SuiteDashboardRecord } from "@/actions/suites"
+import type { ModuloRecord } from "@/features/qa/actions/modulos"
+import type { CenarioRecord } from "@/features/qa/actions/cenarios"
+import type { QaUserRecord } from "@/features/usuarios/actions/usuarios"
+import type { SuiteDashboardRecord } from "@/features/qa/actions/suites"
 
 export default async function DashboardPage() {
   const session = await auth()

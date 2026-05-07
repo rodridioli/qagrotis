@@ -5,11 +5,11 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Circle, Eye, EyeOff, Check, X, Paperclip, TriangleAlert } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
-import { EmptyState } from "@/components/qagrotis/EmptyState"
+import { cn } from "@/core/utils"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
+import { EmptyState } from "@/components/shared/EmptyState"
 import { Button } from "@/components/ui/button"
-import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
+import { CancelActionButton } from "@/components/shared/CancelActionButton"
 import {
   Dialog,
   DialogContent,
@@ -18,21 +18,21 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import type { CenarioRecord } from "@/actions/cenarios"
-import type { SuiteRecord } from "@/actions/suites"
-import { registrarResultadoSuite } from "@/actions/suites"
-import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
-import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
-import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
-import { EVIDENCE_FILE_ACCEPT, filterAllowedEvidenceFiles } from "@/lib/evidence-file-types"
+import type { CenarioRecord } from "@/features/qa/actions/cenarios"
+import type { SuiteRecord } from "@/features/qa/actions/suites"
+import { registrarResultadoSuite } from "@/features/qa/actions/suites"
+import { CenarioTipoBadge } from "@/components/shared/StatusBadge"
+import type { CenarioTipo } from "@/components/shared/StatusBadge"
+import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
+import { EVIDENCE_FILE_ACCEPT, filterAllowedEvidenceFiles } from "@/features/qa/lib/evidence-file-types"
 import {
   type EvFile,
   persistEvidenceFile,
   deleteEvidenceFile,
   prepareEvidenceForSessionSnapshot,
   formatEvidenceError,
-} from "@/lib/evidence-storage"
-import { evHistoricoStorageKey, evScenarioStorageKey, trySetSessionStorageJson } from "@/lib/evidence-session-keys"
+} from "@/features/qa/lib/evidence-storage"
+import { evHistoricoStorageKey, evScenarioStorageKey, trySetSessionStorageJson } from "@/features/qa/lib/evidence-session-keys"
 
 export type { EvFile }
 

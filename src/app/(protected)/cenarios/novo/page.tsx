@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Novo cenário" }
 
-import { getModulos } from "@/actions/modulos"
-import { getSistemas } from "@/actions/sistemas"
-import { getClientes } from "@/actions/clientes"
-import { getCenarios } from "@/actions/cenarios"
-import { getCredenciais } from "@/actions/credenciais"
+import { getModulos } from "@/features/qa/actions/modulos"
+import { getSistemas } from "@/features/qa/actions/sistemas"
+import { getClientes } from "@/features/qa/actions/clientes"
+import { getCenarios } from "@/features/qa/actions/cenarios"
+import { getCredenciais } from "@/features/qa/actions/credenciais"
 import NovoCenarioClient from "./NovoCenarioClient"
 
 export default async function NovoCenarioPage() {

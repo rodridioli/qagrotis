@@ -2,9 +2,9 @@ export const dynamic = "force-dynamic"
 export const metadata = { title: "Individual" }
 
 import { redirect } from "next/navigation"
-import { auth } from "@/lib/auth"
+import { auth } from "@/core/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
-import { getActiveQaUsers } from "@/actions/usuarios"
+import { getActiveQaUsers } from "@/features/usuarios/actions/usuarios"
 
 export default async function IndividualPage({
   searchParams,

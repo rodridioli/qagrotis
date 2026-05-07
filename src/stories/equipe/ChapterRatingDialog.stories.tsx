@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import * as React from "react"
-import { ChapterRatingDialog } from "@/components/equipe/ChapterRatingDialog"
-import type { EquipeChapterRatingEntry } from "@/lib/equipe-chapters-shared"
+import { ChapterRatingDialog } from "@/features/equipe/components/ChapterRatingDialog"
+import type { EquipeChapterRatingEntry } from "@/features/equipe/lib/equipe-chapters-shared"
 
 const previewEntries: EquipeChapterRatingEntry[] = [
   { id: "r1", stars: 5, comment: "Muito claro e aplicável ao dia a dia.", createdAt: "2026-04-22T14:30:00.000Z" },

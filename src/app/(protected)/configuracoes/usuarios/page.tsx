@@ -1,7 +1,7 @@
-import { auth } from "@/lib/auth"
-import { getQaUsers } from "@/actions/usuarios"
-import { checkIsAdmin } from "@/lib/session"
-import { serializeRscProps } from "@/lib/rsc-serialize"
+import { auth } from "@/core/auth"
+import { getQaUsers } from "@/features/usuarios/actions/usuarios"
+import { checkIsAdmin } from "@/core/session"
+import { serializeRscProps } from "@/core/rsc-serialize"
 import { type AccessProfile } from "@/lib/rbac/policy"
 import UsuariosClient from "./UsuariosClient"
 

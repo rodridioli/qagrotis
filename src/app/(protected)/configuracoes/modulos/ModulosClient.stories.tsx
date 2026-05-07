@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import ModulosClient from "./ModulosClient"
-import type { ModuloRecord } from "@/actions/modulos"
-import type { CenarioRecord } from "@/actions/cenarios"
-import type { SistemaRecord } from "@/actions/sistemas"
+import type { ModuloRecord } from "@/features/qa/actions/modulos"
+import type { CenarioRecord } from "@/features/qa/actions/cenarios"
+import type { SistemaRecord } from "@/features/qa/actions/sistemas"
 
 const modulos: ModuloRecord[] = [
   { id: "M-01", name: "Folha de Pagamento", sistemaId: "S-01", sistemaName: "Financeiro", description: "Processamento da folha", active: true, createdAt: Date.now() - 86400000 },

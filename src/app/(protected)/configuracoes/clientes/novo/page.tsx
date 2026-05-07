@@ -1,7 +1,7 @@
 export const metadata = { title: "Novo cliente" }
 
 import { redirect } from "next/navigation"
-import { checkIsAdmin } from "@/lib/session"
+import { checkIsAdmin } from "@/core/session"
 import NovoClienteForm from "./NovoClienteForm"
 
 export default async function NovoClientePage() {

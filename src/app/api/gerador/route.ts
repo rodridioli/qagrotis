@@ -1,9 +1,9 @@
-import { auth } from "@/lib/auth"
+import { auth } from "@/core/auth"
 import { NextRequest } from "next/server"
-import { getIntegracao } from "@/actions/integracoes"
+import { getIntegracao } from "@/features/integracoes/actions/integracoes"
 import { normalizeProvider } from "@/lib/ai/provider"
-import { prisma } from "@/lib/prisma"
-import { validateOrigin } from "@/lib/security"
+import { prisma } from "@/core/prisma"
+import { validateOrigin } from "@/core/security"
 
 // Rate limit: max 30 AI generations per user per hour
 const geradorRateMap = new Map<string, { count: number; resetAt: number }>()

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { CheckIcon, ChevronDownIcon, SearchIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/core/utils"
 
 // ── Root ──────────────────────────────────────────────────────
 function Select({ ...props }: SelectPrimitive.Root.Props<string>) {

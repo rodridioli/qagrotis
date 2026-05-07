@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   // All users use token-based reset (never send passwords in plain text)
   // Case: created user — generate reset link
   try {
-    const { prisma } = await import("@/lib/prisma")
+    const { prisma } = await import("@/core/prisma")
     const user = await prisma.createdUser.findFirst({
       where: { email: email.toLowerCase() },
       select: { id: true, email: true },

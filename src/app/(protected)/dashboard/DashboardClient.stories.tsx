@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { DashboardClient } from "./DashboardClient"
-import { SistemaSelecionadoProvider } from "@/lib/modulo-context"
-import type { CenarioRecord } from "@/actions/cenarios"
-import type { SuiteDashboardRecord } from "@/actions/suites"
+import { SistemaSelecionadoProvider } from "@/core/modulo-context"
+import type { CenarioRecord } from "@/features/qa/actions/cenarios"
+import type { SuiteDashboardRecord } from "@/features/qa/actions/suites"
 
 const MOCK_SCENARIOS: CenarioRecord[] = Array.from({ length: 50 }, (_, i) => ({
   id: `CT-${String(i).padStart(3, "0")}`,

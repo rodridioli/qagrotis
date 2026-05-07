@@ -3,10 +3,10 @@
 import React, { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Check } from "lucide-react"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { criarSistema } from "@/actions/sistemas"
+import { criarSistema } from "@/features/qa/actions/sistemas"
 import { toast } from "sonner"
 
 export default function NovoSistemaForm() {

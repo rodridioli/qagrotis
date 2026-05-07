@@ -1,10 +1,10 @@
 export const dynamic = "force-dynamic"
 
 import { redirect } from "next/navigation"
-import { auth } from "@/lib/auth"
+import { auth } from "@/core/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
-import { getActiveQaUsers } from "@/actions/usuarios"
-import { IndividualPerformanceEvaluationPageClient } from "@/components/individual/IndividualPerformanceEvaluationPageClient"
+import { getActiveQaUsers } from "@/features/usuarios/actions/usuarios"
+import { IndividualPerformanceEvaluationPageClient } from "@/features/individual/components/IndividualPerformanceEvaluationPageClient"
 
 export const metadata = { title: "Nova avaliação" }
 

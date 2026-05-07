@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import * as React from "react"
 import { BookOpen } from "lucide-react"
-import { PerformanceEvaluationSectionGrid } from "@/components/individual/PerformanceEvaluationSectionGrid"
-import { PERFORMANCE_EVALUATION_SECTIONS } from "@/lib/individual-performance-evaluation"
+import { PerformanceEvaluationSectionGrid } from "@/features/individual/components/PerformanceEvaluationSectionGrid"
+import { PERFORMANCE_EVALUATION_SECTIONS } from "@/features/individual/lib/individual-performance-evaluation"
 
 const section = PERFORMANCE_EVALUATION_SECTIONS[0]!
 

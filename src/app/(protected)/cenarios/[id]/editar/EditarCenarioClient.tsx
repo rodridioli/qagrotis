@@ -4,9 +4,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowDown, ArrowUp, Check, Circle, ClipboardList, Eye, EyeOff, FileDown, GripVertical, Network, Plus, Trash2 } from "lucide-react"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
-import { EmptyState } from "@/components/qagrotis/EmptyState"
-import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { AutoResizeTextarea } from "@/components/shared/AutoResizeTextarea"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -17,8 +17,8 @@ import {
   SelectPopup,
   SelectItem,
 } from "@/components/ui/select"
-import { ClienteCombobox } from "@/components/qagrotis/ClienteCombobox"
-import { CredencialCombobox } from "@/components/qagrotis/CredencialCombobox"
+import { ClienteCombobox } from "@/components/shared/ClienteCombobox"
+import { CredencialCombobox } from "@/components/shared/CredencialCombobox"
 import {
   Dialog,
   DialogContent,
@@ -27,17 +27,17 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
-import { criarModulo, type ModuloRecord } from "@/actions/modulos"
-import { criarCliente, type ClienteRecord } from "@/actions/clientes"
-import { criarCredencial, type CredencialRecord } from "@/actions/credenciais"
-import type { SistemaRecord } from "@/actions/sistemas"
-import { atualizarCenario, type CenarioRecord } from "@/actions/cenarios"
-import { useSistemaSelecionado } from "@/lib/modulo-context"
-import { formatCpfCnpj } from "@/lib/utils"
-import { CenarioTipoBadge } from "@/components/qagrotis/StatusBadge"
-import type { CenarioTipo } from "@/components/qagrotis/StatusBadge"
-import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
-import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
+import { criarModulo, type ModuloRecord } from "@/features/qa/actions/modulos"
+import { criarCliente, type ClienteRecord } from "@/features/qa/actions/clientes"
+import { criarCredencial, type CredencialRecord } from "@/features/qa/actions/credenciais"
+import type { SistemaRecord } from "@/features/qa/actions/sistemas"
+import { atualizarCenario, type CenarioRecord } from "@/features/qa/actions/cenarios"
+import { useSistemaSelecionado } from "@/core/modulo-context"
+import { formatCpfCnpj } from "@/core/utils"
+import { CenarioTipoBadge } from "@/components/shared/StatusBadge"
+import type { CenarioTipo } from "@/components/shared/StatusBadge"
+import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
+import { CancelActionButton } from "@/components/shared/CancelActionButton"
 
 const RISCO_OPTIONS = [
   { value: "Alto",  label: "Alto",  icon: <ArrowUp   className="size-3.5 shrink-0" />,               color: "#ef4444" },

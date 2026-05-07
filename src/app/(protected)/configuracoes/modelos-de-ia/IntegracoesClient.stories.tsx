@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import IntegracoesClient from "./IntegracoesClient"
-import type { IntegracaoRecord } from "@/actions/integracoes"
+import type { IntegracaoRecord } from "@/features/integracoes/actions/integracoes"
 
 const integracoes: IntegracaoRecord[] = [
   { id: "I-01", descricao: "", provider: "openrouter", model: "google/gemini-2.0-flash-exp:free", apiKey: "sk-or-xxxx", active: true, createdAt: Date.now() - 86400000 },

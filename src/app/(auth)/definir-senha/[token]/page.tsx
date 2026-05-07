@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { QAgrotisLogo } from "@/components/qagrotis/QAgrotisLogo"
-import { definirSenha } from "@/actions/invite-tokens"
+import { QAgrotisLogo } from "@/components/shared/QAgrotisLogo"
+import { definirSenha } from "@/features/usuarios/actions/invite-tokens"
 import { toast } from "sonner"
 
 export default function DefinirSenhaPage({

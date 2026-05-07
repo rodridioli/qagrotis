@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
-import { IndividualAvaliacoesTable } from "@/components/individual/IndividualAvaliacoesTable"
-import type { IndividualPerformanceEvaluationListRow } from "@/actions/individual-performance-evaluations"
+import { IndividualAvaliacoesTable } from "@/features/individual/components/IndividualAvaliacoesTable"
+import type { IndividualPerformanceEvaluationListRow } from "@/features/individual/actions/individual-performance-evaluations"
 
 const sampleRows: IndividualPerformanceEvaluationListRow[] = [
   {

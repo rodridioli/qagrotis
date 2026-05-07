@@ -1,7 +1,7 @@
 export const metadata = { title: "Novo modelo de IA" }
 
 import { redirect } from "next/navigation"
-import { checkIsAdmin } from "@/lib/session"
+import { checkIsAdmin } from "@/core/session"
 import NovaIntegracaoForm from "./NovaIntegracaoForm"
 
 export default async function NovaIntegracaoPage() {

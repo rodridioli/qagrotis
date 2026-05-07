@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { LoginForm } from "@/components/forms/LoginForm"
-import { QAgrotisLogo } from "@/components/qagrotis/QAgrotisLogo"
+import { QAgrotisLogo } from "@/components/shared/QAgrotisLogo"
 
 const meta: Meta<typeof LoginForm> = {
   title: "QAgrotis/LoginForm",

@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth"
+import { auth } from "@/core/auth"
 
 // Rate limit: max 10 validation requests per user per minute
 const validateRateMap = new Map<string, { count: number; resetAt: number }>()

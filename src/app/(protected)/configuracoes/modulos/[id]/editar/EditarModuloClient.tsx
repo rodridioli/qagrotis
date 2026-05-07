@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Check } from "lucide-react"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -13,8 +13,8 @@ import {
   SelectPopup,
   SelectItem,
 } from "@/components/ui/select"
-import { atualizarModulo, type ModuloRecord } from "@/actions/modulos"
-import { type SistemaRecord } from "@/actions/sistemas"
+import { atualizarModulo, type ModuloRecord } from "@/features/qa/actions/modulos"
+import { type SistemaRecord } from "@/features/qa/actions/sistemas"
 import { toast } from "sonner"
 
 interface Props {

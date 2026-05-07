@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import * as React from "react"
-import { EquipeChaptersTable } from "@/components/equipe/EquipeChaptersTable"
-import { TablePagination } from "@/components/qagrotis/TablePagination"
+import { EquipeChaptersTable } from "@/features/equipe/components/EquipeChaptersTable"
+import { TablePagination } from "@/components/shared/TablePagination"
 import {
   EQUIPE_CHAPTERS_TABLE_PAGE_SIZE,
   type EquipeChapterListRow,
-} from "@/lib/equipe-chapters-shared"
+} from "@/features/equipe/lib/equipe-chapters-shared"
 
 const sampleRows: EquipeChapterListRow[] = [
   {

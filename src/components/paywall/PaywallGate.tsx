@@ -1,7 +1,7 @@
 "use client"
 
 import type { User } from "@prisma/client"
-import { hasAccess } from "@/lib/subscription"
+import { hasAccess } from "@/features/billing/lib/subscription"
 import type { ReactNode } from "react"
 
 interface PaywallGateProps {

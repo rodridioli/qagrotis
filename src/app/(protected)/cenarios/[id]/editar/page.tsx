@@ -1,11 +1,11 @@
 export const metadata = { title: "Editar cenário" }
 
 import { notFound } from "next/navigation"
-import { getCenario, getCenarios } from "@/actions/cenarios"
-import { getModulos } from "@/actions/modulos"
-import { getSistemas } from "@/actions/sistemas"
-import { getClientes } from "@/actions/clientes"
-import { getCredenciais } from "@/actions/credenciais"
+import { getCenario, getCenarios } from "@/features/qa/actions/cenarios"
+import { getModulos } from "@/features/qa/actions/modulos"
+import { getSistemas } from "@/features/qa/actions/sistemas"
+import { getClientes } from "@/features/qa/actions/clientes"
+import { getCredenciais } from "@/features/qa/actions/credenciais"
 import EditarCenarioClient from "./EditarCenarioClient"
 
 interface Props {

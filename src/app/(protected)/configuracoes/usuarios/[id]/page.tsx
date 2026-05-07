@@ -3,9 +3,9 @@ export const metadata = { title: "Usuário" }
 import React from "react"
 import Image from "next/image"
 import { notFound } from "next/navigation"
-import { getQaUsers } from "@/actions/usuarios"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
-import { cn } from "@/lib/utils"
+import { getQaUsers } from "@/features/usuarios/actions/usuarios"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
+import { cn } from "@/core/utils"
 
 function getInitials(name: string): string {
   return name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()

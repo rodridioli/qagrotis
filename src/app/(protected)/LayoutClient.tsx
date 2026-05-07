@@ -23,15 +23,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
-import { IndividualSidebarNavGroup } from "@/components/individual/IndividualSidebarNavGroup"
-import { individualSectionLabel } from "@/lib/individual-sections"
-import { QAgrotisLogo } from "@/components/qagrotis/QAgrotisLogo"
-import { QAgrotisIcon } from "@/components/qagrotis/QAgrotisIcon"
+import { cn } from "@/core/utils"
+import { IndividualSidebarNavGroup } from "@/features/individual/components/IndividualSidebarNavGroup"
+import { individualSectionLabel } from "@/features/individual/lib/individual-sections"
+import { QAgrotisLogo } from "@/components/shared/QAgrotisLogo"
+import { QAgrotisIcon } from "@/components/shared/QAgrotisIcon"
 import { signOut, useSession } from "next-auth/react"
-import { SistemaContext } from "@/lib/modulo-context"
-import { AssistenteDrawer } from "@/components/qagrotis/AssistenteDrawer"
-import type { IntegracaoSafeRecord } from "@/actions/integracoes"
+import { SistemaContext } from "@/core/modulo-context"
+import { AssistenteDrawer } from "@/components/shared/AssistenteDrawer"
+import type { IntegracaoSafeRecord } from "@/features/integracoes/actions/integracoes"
 
 const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"

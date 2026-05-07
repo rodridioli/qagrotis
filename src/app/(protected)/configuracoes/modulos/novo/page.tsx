@@ -1,8 +1,8 @@
 export const metadata = { title: "Novo módulo" }
 
 import { redirect } from "next/navigation"
-import { getSistemas } from "@/actions/sistemas"
-import { checkIsAdmin } from "@/lib/session"
+import { getSistemas } from "@/features/qa/actions/sistemas"
+import { checkIsAdmin } from "@/core/session"
 import NovoModuloClient from "./NovoModuloClient"
 
 export default async function NovoModuloPage() {

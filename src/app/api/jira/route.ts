@@ -1,8 +1,8 @@
-import { auth } from "@/lib/auth"
+import { auth } from "@/core/auth"
 import { NextRequest } from "next/server"
-import { resolveJiraCredentialsForRequest, isSameJiraHost } from "@/lib/jira-credentials-db"
-import { normalizeJiraIssueKey } from "@/lib/jira-issue-key"
-import { validateOrigin } from "@/lib/security"
+import { resolveJiraCredentialsForRequest, isSameJiraHost } from "@/features/qa/lib/jira-credentials-db"
+import { normalizeJiraIssueKey } from "@/features/qa/lib/jira-issue-key"
+import { validateOrigin } from "@/core/security"
 
 // GET is no longer supported - all Jira calls use POST with action field
 // This handler prevents 404 errors from cached old code

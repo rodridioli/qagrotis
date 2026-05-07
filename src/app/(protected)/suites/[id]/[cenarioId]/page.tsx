@@ -2,8 +2,8 @@ export const dynamic = "force-dynamic"
 export const metadata = { title: "Execução" }
 
 import { notFound } from "next/navigation"
-import { getCenario, getCenarios } from "@/actions/cenarios"
-import { getSuiteById } from "@/actions/suites"
+import { getCenario, getCenarios } from "@/features/qa/actions/cenarios"
+import { getSuiteById } from "@/features/qa/actions/suites"
 import CenarioDetailClient from "@/app/(protected)/cenarios/[id]/CenarioDetailClient"
 
 export default async function SuiteCenarioDetailPage({

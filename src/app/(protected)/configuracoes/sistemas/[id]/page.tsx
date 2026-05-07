@@ -4,8 +4,8 @@ import React from "react"
 import Link from "next/link"
 import { Pencil } from "lucide-react"
 import { notFound } from "next/navigation"
-import { getSistema } from "@/actions/sistemas"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { getSistema } from "@/features/qa/actions/sistemas"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 
 export default async function SistemaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

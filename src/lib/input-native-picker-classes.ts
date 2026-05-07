@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils"
+import { cn } from "@/core/utils"
 
 /** Ícone nativo de `date` / `time` alinhado à direita (Chromium/WebKit). */
 export function inputNativePickerRightClassName(extra?: string) {

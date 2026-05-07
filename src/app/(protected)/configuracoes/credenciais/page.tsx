@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Credenciais" }
 
-import { getCredenciais } from "@/actions/credenciais"
+import { getCredenciais } from "@/features/qa/actions/credenciais"
 import { CredenciaisClient } from "./CredenciaisClient"
 
 export default async function CredenciaisPage() {

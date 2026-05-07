@@ -5,20 +5,20 @@ import {
   BarChart3, Users, Clock, Calendar,
   SlidersHorizontal, X, Check, RotateCcw,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/core/utils"
 import {
   getPerformanceData,
   getEquipeListagemCadastro,
   type UserPerformanceData,
   type EquipeUsuarioCadastro,
-} from "@/actions/equipe"
-import { EquipePerformanceCard } from "@/components/equipe/EquipePerformanceCard"
+} from "@/features/equipe/actions/equipe"
+import { EquipePerformanceCard } from "@/features/equipe/components/EquipePerformanceCard"
 import { getLocalCalendarDayStartEndMs, localDayBoundsToIsoFilter } from "@/lib/local-calendar-range"
-import { EquipeAniversarioCard } from "@/components/equipe/EquipeAniversarioCard"
-import { EquipeHorariosTable } from "@/components/equipe/EquipeHorariosTable"
-import { EquipeChaptersSection } from "@/components/equipe/EquipeChaptersSection"
-import { EmptyState } from "@/components/qagrotis/EmptyState"
-import { SectionSpinner } from "@/components/qagrotis/SectionSpinner"
+import { EquipeAniversarioCard } from "@/features/equipe/components/EquipeAniversarioCard"
+import { EquipeHorariosTable } from "@/features/equipe/components/EquipeHorariosTable"
+import { EquipeChaptersSection } from "@/features/equipe/components/EquipeChaptersSection"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import {
   Select, SelectTrigger, SelectPopup, SelectItem,
 } from "@/components/ui/select"

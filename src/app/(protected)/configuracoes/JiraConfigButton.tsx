@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Check, Loader2, PanelsTopLeft } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { CancelActionButton } from "@/components/qagrotis/CancelActionButton"
+import { CancelActionButton } from "@/components/shared/CancelActionButton"
 import { Input } from "@/components/ui/input"
 import {
   Dialog,

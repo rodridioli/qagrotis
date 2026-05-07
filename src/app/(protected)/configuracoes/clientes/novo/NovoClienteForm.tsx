@@ -3,11 +3,11 @@
 import React, { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Check } from "lucide-react"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { criarCliente } from "@/actions/clientes"
-import { formatCpfCnpj, validateCpfCnpj } from "@/lib/utils"
+import { criarCliente } from "@/features/qa/actions/clientes"
+import { formatCpfCnpj, validateCpfCnpj } from "@/core/utils"
 import { toast } from "sonner"
 
 export default function NovoClienteForm() {

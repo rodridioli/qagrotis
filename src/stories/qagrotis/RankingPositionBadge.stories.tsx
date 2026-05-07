@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
-import { RankingPositionBadge } from "@/components/qagrotis/RankingPositionBadge"
+import { RankingPositionBadge } from "@/components/shared/RankingPositionBadge"
 
 const meta: Meta<typeof RankingPositionBadge> = {
   title: "QAgrotis/RankingPositionBadge",

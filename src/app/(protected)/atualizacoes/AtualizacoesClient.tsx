@@ -3,10 +3,10 @@
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronDown, ChevronUp, Filter, X } from "lucide-react"
-import { TableToolbar } from "@/components/qagrotis/TableToolbar"
-import { EmptyState } from "@/components/qagrotis/EmptyState"
-import { TablePagination } from "@/components/qagrotis/TablePagination"
-import { ChangelogTagBadge } from "@/components/qagrotis/StatusBadge"
+import { TableToolbar } from "@/components/shared/TableToolbar"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { TablePagination } from "@/components/shared/TablePagination"
+import { ChangelogTagBadge } from "@/components/shared/StatusBadge"
 import {
   Dialog,
   DialogClose,
@@ -16,7 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import type { ChangelogEntry } from "@/actions/changelog"
+import type { ChangelogEntry } from "@/features/changelog/actions/changelog"
 
 const ITEMS_PER_PAGE = 10
 

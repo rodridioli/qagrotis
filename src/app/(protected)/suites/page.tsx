@@ -1,13 +1,13 @@
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Suítes" }
 
-import { getModulos } from "@/actions/modulos"
-import { getSuites } from "@/actions/suites"
-import { loadParallelOrFallback } from "@/lib/safe-server-data"
-import { serializeRscProps } from "@/lib/rsc-serialize"
+import { getModulos } from "@/features/qa/actions/modulos"
+import { getSuites } from "@/features/qa/actions/suites"
+import { loadParallelOrFallback } from "@/core/safe-server-data"
+import { serializeRscProps } from "@/core/rsc-serialize"
 import SuitesClient from "./SuitesClient"
-import type { ModuloRecord } from "@/actions/modulos"
-import type { SuiteListRecord } from "@/actions/suites"
+import type { ModuloRecord } from "@/features/qa/actions/modulos"
+import type { SuiteListRecord } from "@/features/qa/actions/suites"
 
 export default async function SuitesPage() {
   const { modulos, suites } = await loadParallelOrFallback<{

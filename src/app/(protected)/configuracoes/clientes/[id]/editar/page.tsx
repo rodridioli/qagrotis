@@ -1,7 +1,7 @@
 export const metadata = { title: "Editar cliente" }
 
 import { notFound } from "next/navigation"
-import { getCliente } from "@/actions/clientes"
+import { getCliente } from "@/features/qa/actions/clientes"
 import EditarClienteClient from "./EditarClienteClient"
 
 export default async function EditarClientePage({ params }: { params: Promise<{ id: string }> }) {

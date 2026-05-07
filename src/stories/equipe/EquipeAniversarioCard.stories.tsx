@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
-import { EquipeAniversarioCard } from "@/components/equipe/EquipeAniversarioCard"
+import { EquipeAniversarioCard } from "@/features/equipe/components/EquipeAniversarioCard"
 
 const meta = {
   title: "Equipe/EquipeAniversarioCard",

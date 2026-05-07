@@ -8,7 +8,7 @@ import {
   PieChart, Pie, Cell, Legend,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
-import { RankingPositionBadge } from "@/components/qagrotis/RankingPositionBadge"
+import { RankingPositionBadge } from "@/components/shared/RankingPositionBadge"
 import {
   Select,
   SelectTrigger,

@@ -1,9 +1,9 @@
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Sistemas" }
 
-import { getSistemas } from "@/actions/sistemas"
-import { getModulos } from "@/actions/modulos"
-import { checkIsAdmin } from "@/lib/session"
+import { getSistemas } from "@/features/qa/actions/sistemas"
+import { getModulos } from "@/features/qa/actions/modulos"
+import { checkIsAdmin } from "@/core/session"
 import SistemasClient from "./SistemasClient"
 
 export default async function SistemasPage() {

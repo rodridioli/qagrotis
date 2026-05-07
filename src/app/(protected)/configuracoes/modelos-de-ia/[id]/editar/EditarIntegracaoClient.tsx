@@ -3,7 +3,7 @@
 import React, { useState, useTransition, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { AlertCircle, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -13,7 +13,7 @@ import {
   SelectPopup,
   SelectItem,
 } from "@/components/ui/select"
-import { atualizarIntegracao, type IntegracaoRecord } from "@/actions/integracoes"
+import { atualizarIntegracao, type IntegracaoRecord } from "@/features/integracoes/actions/integracoes"
 import { normalizeProvider } from "@/lib/ai/provider"
 import { toast } from "sonner"
 

@@ -1,15 +1,15 @@
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Cenários" }
 
-import { getCenarios } from "@/actions/cenarios"
-import { getModulos } from "@/actions/modulos"
-import { getClientes } from "@/actions/clientes"
-import { loadParallelOrFallback } from "@/lib/safe-server-data"
-import { serializeRscProps } from "@/lib/rsc-serialize"
+import { getCenarios } from "@/features/qa/actions/cenarios"
+import { getModulos } from "@/features/qa/actions/modulos"
+import { getClientes } from "@/features/qa/actions/clientes"
+import { loadParallelOrFallback } from "@/core/safe-server-data"
+import { serializeRscProps } from "@/core/rsc-serialize"
 import CenariosClient from "./CenariosClient"
-import type { CenarioRecord } from "@/actions/cenarios"
-import type { ModuloRecord } from "@/actions/modulos"
-import type { ClienteRecord } from "@/actions/clientes"
+import type { CenarioRecord } from "@/features/qa/actions/cenarios"
+import type { ModuloRecord } from "@/features/qa/actions/modulos"
+import type { ClienteRecord } from "@/features/qa/actions/clientes"
 
 export default async function CenariosPage() {
   const { cenarios, modulos, clientes } = await loadParallelOrFallback<{

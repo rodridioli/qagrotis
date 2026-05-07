@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/core/utils"
 
 export interface TextareaProps extends React.ComponentProps<"textarea"> {
   /** Zod / form error message displayed below the textarea */

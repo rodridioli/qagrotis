@@ -13,8 +13,13 @@ Documentação: Todo componente novo deve ser criado no Storybook.
 Segurança e QA: Não gere código antes de definir os cenários BDD e os critérios de aceite.
 
 # SOLICITAÇÃO:
-Na tela https://claude-agro.vercel.app/equipe,aba Chapter, altere o nome da coluna Autor(res) para Autor(es). Além disso, adicione uma nova coluna depois dessa chamada Avaliação. Nesta coluna coloque um sistema de avaliação star rating, ou seja, vai mostrar as estrelas preenchidas de acordo com a média de avaliação de todos os usuários. Ao clicar nas avaliações, abrir uma modal que possibilita ao usuário avaliar de 0 estrelas até 5 estrelas e fazer um comentário. Nesta mesma modal exibir a data e hora da avaliação de todos os usuários, deixar o autor do comentário como Anônimo e exibir o comentário.
+Na tela http://localhost:3000/individual/feedbacks/cmotkleqh0009uodpewv2kdcx?userId=T-PQA, quando eu preencho os campos obrigatórios e clico em salvar como rascunho ou concluir, os dados não estão persistindo no banco de dados, eles somem após após salvar. corrija isso
 
+Na tela http://localhost:3000/individual/conquistas?userId=T-PQA, se eu sou usuário administrador com perfil mgr, eu posso visualizar as conquistas de todos os usuários. Basta eu selecionar a foto do usuário e visualizar as conquistas. Igual temos na tela de http://localhost:3000/individual/avaliacoes?userId=T-PQA, eu tenho um seletor onde eu clico na foto do usuário.
+
+Na tela http://localhost:3000/individual/conquistas?userId=T-PQA, seja do administrador mgr ou do usuário avaliado, mostrar os grupos de badges em containers igual ao da imagem anexa, só que onde diz Total de feedbacks, colocar Tempo de Empresa, por exemplo e no lugar de "Nenhum registro encontrado", mostrar os badges correspondentes. Além disso, deixe os badges com os cantos levemente arredondados. Troque a palavra pós-graduação por somente "Pós".
+
+Na animação dos badges de conquista, eu espero uma animação mais atrativa, igual a do link https://lottiefiles.com/free-animation/winner-9kYX1oxwyH.
 
 Requisitos Específicos:
 Responsividade mobile-first

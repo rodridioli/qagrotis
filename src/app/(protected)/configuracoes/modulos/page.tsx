@@ -1,10 +1,10 @@
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Módulos" }
 
-import { getModulos } from "@/actions/modulos"
-import { getCenarios } from "@/actions/cenarios"
-import { getSistemas } from "@/actions/sistemas"
-import { checkIsAdmin } from "@/lib/session"
+import { getModulos } from "@/features/qa/actions/modulos"
+import { getCenarios } from "@/features/qa/actions/cenarios"
+import { getSistemas } from "@/features/qa/actions/sistemas"
+import { checkIsAdmin } from "@/core/session"
 import ModulosClient from "./ModulosClient"
 
 export default async function ModulosPage() {

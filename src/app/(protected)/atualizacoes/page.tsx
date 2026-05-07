@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Atualizações" }
 
-import { getChangelog } from "@/actions/changelog"
+import { getChangelog } from "@/features/changelog/actions/changelog"
 import { AtualizacoesClient } from "./AtualizacoesClient"
 
 export default async function AtualizacoesPage() {

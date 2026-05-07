@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { IndividualActiveUserAvatarStrip, type IndividualAvatarUser } from "./IndividualActiveUserAvatarStrip"
-import { IndividualAvaliacoesSection } from "@/components/individual/IndividualAvaliacoesSection"
-import { IndividualFeedbacksSection } from "@/components/individual/IndividualFeedbacksSection"
-import { ConquistasSection } from "@/components/individual/ConquistasSection"
-import { ProgressaoSection, type ProgressaoSectionHandle } from "@/components/individual/ProgressaoSection"
+import { IndividualAvaliacoesSection } from "@/features/individual/components/IndividualAvaliacoesSection"
+import { IndividualFeedbacksSection } from "@/features/individual/components/IndividualFeedbacksSection"
+import { ConquistasSection } from "@/features/individual/components/ConquistasSection"
+import { ProgressaoSection, type ProgressaoSectionHandle } from "@/features/individual/components/ProgressaoSection"
 
 interface Props {
   secao: string

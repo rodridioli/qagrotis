@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { AlertTriangle, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getAppErrorUserMessage, logClientSegmentError } from "@/lib/app-error-message"
+import { getAppErrorUserMessage, logClientSegmentError } from "@/core/app-error-message"
 
 export default function ProtectedError({
   error,

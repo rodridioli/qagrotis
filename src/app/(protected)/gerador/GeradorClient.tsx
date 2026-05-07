@@ -33,17 +33,17 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
-import { normalizeJiraIssueKey } from "@/lib/jira-issue-key"
-import { criarCenario, atualizarCenario, type CenarioRecord } from "@/actions/cenarios"
-import { encontrarOuCriarCredencialPorImportacao } from "@/actions/credenciais"
-import { parseMarkdownCenarios, buildImportItems, type ImportItem, COMPARE_FIELDS } from "@/lib/parse-cenarios"
-import { criarIntegracao, type IntegracaoRecord } from "@/actions/integracoes"
+import { normalizeJiraIssueKey } from "@/features/qa/lib/jira-issue-key"
+import { criarCenario, atualizarCenario, type CenarioRecord } from "@/features/qa/actions/cenarios"
+import { encontrarOuCriarCredencialPorImportacao } from "@/features/qa/actions/credenciais"
+import { parseMarkdownCenarios, buildImportItems, type ImportItem, COMPARE_FIELDS } from "@/features/qa/lib/parse-cenarios"
+import { criarIntegracao, type IntegracaoRecord } from "@/features/integracoes/actions/integracoes"
 import { useSession } from "next-auth/react"
-import { useSistemaSelecionado } from "@/lib/modulo-context"
-import type { ModuloRecord } from "@/actions/modulos"
-import { AutoResizeTextarea } from "@/components/qagrotis/AutoResizeTextarea"
-import { FileUploadButton, type UploadFile } from "@/components/qagrotis/FileUploadButton"
-import { GeradorSuggestions } from "@/components/qagrotis/GeradorSuggestions"
+import { useSistemaSelecionado } from "@/core/modulo-context"
+import type { ModuloRecord } from "@/features/qa/actions/modulos"
+import { AutoResizeTextarea } from "@/components/shared/AutoResizeTextarea"
+import { FileUploadButton, type UploadFile } from "@/components/shared/FileUploadButton"
+import { GeradorSuggestions } from "@/components/shared/GeradorSuggestions"
 
 
 // ── Component ────────────────────────────────────────────────────────────────

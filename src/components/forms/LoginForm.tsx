@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation"
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react"
 import { signIn } from "next-auth/react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/core/utils"
 import { Captcha, type CaptchaHandle } from "@/components/ui/captcha"
-import { validateLogin } from "@/actions/usuarios"
+import { validateLogin } from "@/features/usuarios/actions/usuarios"
 
 // Separate inactive check before attempting signIn
 async function checkInactive(email: string, password: string) {

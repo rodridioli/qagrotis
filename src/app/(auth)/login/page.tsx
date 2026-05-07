@@ -1,5 +1,5 @@
 import { LoginForm } from "@/components/forms/LoginForm"
-import { QAgrotisLogo } from "@/components/qagrotis/QAgrotisLogo"
+import { QAgrotisLogo } from "@/components/shared/QAgrotisLogo"
 import { AuthErrorToast } from "@/components/auth/AuthErrorToast"
 import { Suspense } from "react"
 import type { Metadata } from "next"

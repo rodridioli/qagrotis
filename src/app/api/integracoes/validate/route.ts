@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth"
+import { auth } from "@/core/auth"
 import { normalizeProvider } from "@/lib/ai/provider"
 import { NextRequest } from "next/server"
 

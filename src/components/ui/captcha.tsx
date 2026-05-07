@@ -10,7 +10,7 @@ import {
   useId,
 } from "react"
 import { RefreshCw } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/core/utils"
 
 const CHARS = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
 

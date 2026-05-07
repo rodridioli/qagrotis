@@ -1,5 +1,5 @@
 import { Resend } from "resend"
-import { env } from "@/lib/env"
+import { env } from "@/core/env"
 
 // ── Resend client (lazy — only used if RESEND_API_KEY is set) ──────────────────
 

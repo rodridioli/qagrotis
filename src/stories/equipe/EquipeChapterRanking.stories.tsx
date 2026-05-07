@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import * as React from "react"
-import { EquipeChapterRanking } from "@/components/equipe/EquipeChapterRanking"
+import { EquipeChapterRanking } from "@/features/equipe/components/EquipeChapterRanking"
 import {
   EQUIPE_CHAPTER_RANKING_PAGE_SIZE,
   type EquipeChapterRankingPage,
   type EquipeChapterRankingRow,
-} from "@/lib/equipe-chapters-shared"
+} from "@/features/equipe/lib/equipe-chapters-shared"
 
 const demoPhoto =
   "data:image/svg+xml," +

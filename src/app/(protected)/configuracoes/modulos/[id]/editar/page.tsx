@@ -1,9 +1,9 @@
 export const metadata = { title: "Editar módulo" }
 
 import { notFound, redirect } from "next/navigation"
-import { getModulo } from "@/actions/modulos"
-import { getSistemas } from "@/actions/sistemas"
-import { checkIsAdmin } from "@/lib/session"
+import { getModulo } from "@/features/qa/actions/modulos"
+import { getSistemas } from "@/features/qa/actions/sistemas"
+import { checkIsAdmin } from "@/core/session"
 import EditarModuloClient from "./EditarModuloClient"
 
 export default async function EditarModuloPage({ params }: { params: Promise<{ id: string }> }) {

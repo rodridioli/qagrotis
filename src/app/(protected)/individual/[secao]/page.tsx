@@ -1,17 +1,17 @@
 export const dynamic = "force-dynamic"
 
 import { notFound, redirect } from "next/navigation"
-import { auth } from "@/lib/auth"
+import { auth } from "@/core/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
-import { getActiveQaUsers } from "@/actions/usuarios"
-import { serializeRscProps } from "@/lib/rsc-serialize"
+import { getActiveQaUsers } from "@/features/usuarios/actions/usuarios"
+import { serializeRscProps } from "@/core/rsc-serialize"
 import { IndividualSecaoDevelopmentPanel } from "../IndividualSecaoDevelopmentPanel"
-import { IndividualSectionTabs } from "@/components/individual/IndividualSectionTabs"
-import { MinhasAvaliacoesSection } from "@/components/individual/MinhasAvaliacoesSection"
-import { MinhasFeedbacksSection } from "@/components/individual/MinhasFeedbacksSection"
-import { ConquistasSection } from "@/components/individual/ConquistasSection"
-import { MinhasProgressoesSection } from "@/components/individual/MinhasProgressoesSection"
-import { individualSectionLabel, isIndividualSectionSlug } from "@/lib/individual-sections"
+import { IndividualSectionTabs } from "@/features/individual/components/IndividualSectionTabs"
+import { MinhasAvaliacoesSection } from "@/features/individual/components/MinhasAvaliacoesSection"
+import { MinhasFeedbacksSection } from "@/features/individual/components/MinhasFeedbacksSection"
+import { ConquistasSection } from "@/features/individual/components/ConquistasSection"
+import { MinhasProgressoesSection } from "@/features/individual/components/MinhasProgressoesSection"
+import { individualSectionLabel, isIndividualSectionSlug } from "@/features/individual/lib/individual-sections"
 
 export async function generateMetadata({
   params,

@@ -4,8 +4,8 @@ import { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, MoreVertical, Pencil, Plus, Power, X, Check } from "lucide-react"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
-import { EmptyState } from "@/components/qagrotis/EmptyState"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
+import { EmptyState } from "@/components/shared/EmptyState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -22,11 +22,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { TableToolbar } from "@/components/qagrotis/TableToolbar"
-import { TablePagination } from "@/components/qagrotis/TablePagination"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { TableToolbar } from "@/components/shared/TableToolbar"
+import { TablePagination } from "@/components/shared/TablePagination"
 import { toast } from "sonner"
-import { criarCredencial, atualizarCredencial, inativarCredencial, type CredencialRecord } from "@/actions/credenciais"
+import { criarCredencial, atualizarCredencial, inativarCredencial, type CredencialRecord } from "@/features/qa/actions/credenciais"
 
 const ITEMS_PER_PAGE = 20
 

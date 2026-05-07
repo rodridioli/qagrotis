@@ -13,10 +13,10 @@ function SuitePageSkeleton() {
     </div>
   )
 }
-import { getActiveSistemaNames } from "@/actions/sistemas"
-import { getModulos } from "@/actions/modulos"
-import { getCenarios } from "@/actions/cenarios"
-import { SuiteForm } from "@/components/qagrotis/SuiteForm"
+import { getActiveSistemaNames } from "@/features/qa/actions/sistemas"
+import { getModulos } from "@/features/qa/actions/modulos"
+import { getCenarios } from "@/features/qa/actions/cenarios"
+import { SuiteForm } from "@/components/shared/SuiteForm"
 
 async function NovaSuiteContent({ cenarioIds }: { cenarioIds: string[] }) {
   const [systemList, allModulos, allCenarios] = await Promise.all([

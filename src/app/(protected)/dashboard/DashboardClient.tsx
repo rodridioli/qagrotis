@@ -1,14 +1,14 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/core/utils"
 import { Layers, FileText, ClipboardList, Cpu } from "lucide-react"
-import { useSistemaSelecionado } from "@/lib/modulo-context"
+import { useSistemaSelecionado } from "@/core/modulo-context"
 import { DashboardCharts } from "./DashboardCharts"
-import type { CenarioRecord } from "@/actions/cenarios"
-import type { ModuloRecord } from "@/actions/modulos"
-import type { QaUserRecord } from "@/actions/usuarios"
-import type { SuiteDashboardRecord } from "@/actions/suites"
+import type { CenarioRecord } from "@/features/qa/actions/cenarios"
+import type { ModuloRecord } from "@/features/qa/actions/modulos"
+import type { QaUserRecord } from "@/features/usuarios/actions/usuarios"
+import type { SuiteDashboardRecord } from "@/features/qa/actions/suites"
 import { getLocalCalendarDayStartEndMs } from "@/lib/local-calendar-range"
 
 // ── Types ─────────────────────────────────────────────────────────────────────

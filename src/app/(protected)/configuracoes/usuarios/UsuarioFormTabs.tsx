@@ -3,7 +3,7 @@
 import React, { useState, useTransition, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Check, Eye, EyeOff, RefreshCw, Plus, Trash2, ExternalLink, MessageSquare, MapIcon as Map, BookOpen, User as UserIcon } from "lucide-react"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -13,17 +13,17 @@ import {
   SelectPopup,
   SelectItem,
 } from "@/components/ui/select"
-import { PhotoUpload } from "@/components/qagrotis/PhotoUpload"
-import { criarQaUser, atualizarQaUser, type QaUserProfile } from "@/actions/usuarios"
+import { PhotoUpload } from "@/components/shared/PhotoUpload"
+import { criarQaUser, atualizarQaUser, type QaUserProfile } from "@/features/usuarios/actions/usuarios"
 import { generateSecurePassword } from "@/lib/generate-secure-password"
 import { inputNativePickerRightClassName } from "@/lib/input-native-picker-classes"
-import { HybridWorkWeekdaysField } from "@/components/qagrotis/HybridWorkWeekdaysField"
+import { HybridWorkWeekdaysField } from "@/components/shared/HybridWorkWeekdaysField"
 import {
   FORMATOS_TRABALHO,
   normalizeDiasTrabalhoHibrido,
   sanitizeFormatoTrabalho,
   type DiaSemanaHibridoId,
-} from "@/lib/usuario-trabalho"
+} from "@/features/usuarios/lib/usuario-trabalho"
 import { toast } from "sonner"
 import { useSession } from "next-auth/react"
 import { ACCESS_PROFILES, type AccessProfile } from "@/lib/rbac/policy"

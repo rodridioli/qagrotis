@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Equipe" }
 
-import { getSistemasEModulos } from "@/actions/equipe"
-import { ensureEquipeChapterTables } from "@/lib/prisma-schema-ensure"
-import { serializeRscProps } from "@/lib/rsc-serialize"
-import { checkIsAdmin } from "@/lib/session"
-import { auth } from "@/lib/auth"
+import { getSistemasEModulos } from "@/features/equipe/actions/equipe"
+import { ensureEquipeChapterTables } from "@/core/prisma-schema-ensure"
+import { serializeRscProps } from "@/core/rsc-serialize"
+import { checkIsAdmin } from "@/core/session"
+import { auth } from "@/core/auth"
 import { buildRole, can, type AccessProfile } from "@/lib/rbac/policy"
 import EquipeClient from "./EquipeClient"
 

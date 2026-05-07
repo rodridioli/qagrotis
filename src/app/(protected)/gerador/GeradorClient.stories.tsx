@@ -1,7 +1,7 @@
 
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { GeradorClient } from "./GeradorClient"
-import { SistemaSelecionadoProvider } from "@/lib/modulo-context"
+import { SistemaSelecionadoProvider } from "@/core/modulo-context"
 
 const meta: Meta<typeof GeradorClient> = {
   title: "Pages/Gerador",

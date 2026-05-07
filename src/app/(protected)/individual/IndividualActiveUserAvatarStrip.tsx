@@ -2,14 +2,14 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { UserAvatar } from "@/components/equipe/EquipePerformanceCard"
+import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
+import { cn } from "@/core/utils"
 
 export interface IndividualAvatarUser {
   id: string

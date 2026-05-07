@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { Trophy, MonitorPlay, ThumbsUp, GraduationCap } from "lucide-react"
-import { BadgeAchievement } from "@/components/individual/BadgeAchievement"
+import { BadgeAchievement } from "@/features/individual/components/BadgeAchievement"
 
 const meta = {
   title: "Individual/BadgeAchievement",

@@ -14,11 +14,11 @@ function SuitePageSkeleton() {
   )
 }
 import { notFound } from "next/navigation"
-import { getSuiteById } from "@/actions/suites"
-import { getActiveSistemaNames } from "@/actions/sistemas"
-import { getModulos } from "@/actions/modulos"
-import { getCenarios } from "@/actions/cenarios"
-import { SuiteForm } from "@/components/qagrotis/SuiteForm"
+import { getSuiteById } from "@/features/qa/actions/suites"
+import { getActiveSistemaNames } from "@/features/qa/actions/sistemas"
+import { getModulos } from "@/features/qa/actions/modulos"
+import { getCenarios } from "@/features/qa/actions/cenarios"
+import { SuiteForm } from "@/components/shared/SuiteForm"
 
 async function SuiteDetailContent({ id }: { id: string }) {
   const [suite, systemList, allModulos, allCenarios] = await Promise.all([

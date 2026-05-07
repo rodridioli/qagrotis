@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { auth } from "@/core/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
 import {
   getIndividualPerformanceEvaluation,
   getMyCompletedEvaluation,
-} from "@/actions/individual-performance-evaluations"
-import { getQaUserProfile } from "@/actions/usuarios"
-import { evaluationDisplayCodigo } from "@/lib/individual-performance-evaluation"
+} from "@/features/individual/actions/individual-performance-evaluations"
+import { getQaUserProfile } from "@/features/usuarios/actions/usuarios"
+import { evaluationDisplayCodigo } from "@/features/individual/lib/individual-performance-evaluation"
 import { buildIndividualEvaluationPdfBuffer } from "@/lib/pdf/individual-evaluation-report"
 
 export const runtime = "nodejs"

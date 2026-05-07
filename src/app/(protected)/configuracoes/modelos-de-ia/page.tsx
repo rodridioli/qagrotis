@@ -1,8 +1,8 @@
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Modelos de IA" }
 
-import { getIntegracoes } from "@/actions/integracoes"
-import { checkIsAdmin } from "@/lib/session"
+import { getIntegracoes } from "@/features/integracoes/actions/integracoes"
+import { checkIsAdmin } from "@/core/session"
 import IntegracoesClient from "./IntegracoesClient"
 
 export default async function IntegracoesPage() {

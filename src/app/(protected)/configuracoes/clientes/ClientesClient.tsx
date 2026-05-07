@@ -4,9 +4,9 @@ import React, { useState, useMemo, useDeferredValue, useTransition } from "react
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
-import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
-import { EmptyState } from "@/components/qagrotis/EmptyState"
-import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -24,13 +24,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { TableToolbar } from "@/components/qagrotis/TableToolbar"
-import { TablePagination } from "@/components/qagrotis/TablePagination"
-import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
-import { inativarClientes, ativarCliente, criarCliente, atualizarCliente, type ClienteRecord } from "@/actions/clientes"
-import { type CenarioRecord } from "@/actions/cenarios"
-import { cn, formatCpfCnpj, validateCpfCnpj } from "@/lib/utils"
-import { StatusBadge } from "@/components/qagrotis/StatusBadge"
+import { TableToolbar } from "@/components/shared/TableToolbar"
+import { TablePagination } from "@/components/shared/TablePagination"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { inativarClientes, ativarCliente, criarCliente, atualizarCliente, type ClienteRecord } from "@/features/qa/actions/clientes"
+import { type CenarioRecord } from "@/features/qa/actions/cenarios"
+import { cn, formatCpfCnpj, validateCpfCnpj } from "@/core/utils"
+import { StatusBadge } from "@/components/shared/StatusBadge"
 import { toast } from "sonner"
 
 const ITEMS_PER_PAGE = 20

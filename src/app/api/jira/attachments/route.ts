@@ -1,7 +1,7 @@
-import { auth } from "@/lib/auth"
+import { auth } from "@/core/auth"
 import { NextRequest } from "next/server"
-import { resolveJiraCredentialsForRequest } from "@/lib/jira-credentials-db"
-import { normalizeJiraIssueKey } from "@/lib/jira-issue-key"
+import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credentials-db"
+import { normalizeJiraIssueKey } from "@/features/qa/lib/jira-issue-key"
 
 export async function POST(req: NextRequest) {
   const session = await auth()

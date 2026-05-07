@@ -1,8 +1,8 @@
-import { auth } from "@/lib/auth"
+import { auth } from "@/core/auth"
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/core/prisma"
 import { z } from "zod"
-import { validateOrigin } from "@/lib/security"
+import { validateOrigin } from "@/core/security"
 
 export const dynamic = "force-dynamic"
 

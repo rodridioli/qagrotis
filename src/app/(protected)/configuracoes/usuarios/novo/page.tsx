@@ -1,8 +1,8 @@
 export const metadata = { title: "Novo usuário" }
 
 import { redirect } from "next/navigation"
-import { checkIsAdmin } from "@/lib/session"
-import { auth } from "@/lib/auth"
+import { checkIsAdmin } from "@/core/session"
+import { auth } from "@/core/auth"
 import { buildRole, manageableProfiles } from "@/lib/rbac/policy"
 import UsuarioFormTabs from "../UsuarioFormTabs"
 

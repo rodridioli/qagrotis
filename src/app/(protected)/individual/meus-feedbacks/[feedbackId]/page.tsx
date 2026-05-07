@@ -1,12 +1,12 @@
 export const dynamic = "force-dynamic"
 
 import { notFound, redirect } from "next/navigation"
-import { auth } from "@/lib/auth"
+import { auth } from "@/core/auth"
 import { buildRole, can } from "@/lib/rbac/policy"
-import { getMyCompletedFeedback } from "@/actions/individual-feedbacks"
-import { getQaUserProfile } from "@/actions/usuarios"
-import { feedbackDisplayCodigo } from "@/lib/individual-feedback"
-import { IndividualFeedbackPageClient } from "@/components/individual/IndividualFeedbackPageClient"
+import { getMyCompletedFeedback } from "@/features/individual/actions/individual-feedbacks"
+import { getQaUserProfile } from "@/features/usuarios/actions/usuarios"
+import { feedbackDisplayCodigo } from "@/features/individual/lib/individual-feedback"
+import { IndividualFeedbackPageClient } from "@/features/individual/components/IndividualFeedbackPageClient"
 
 export async function generateMetadata({
   params,

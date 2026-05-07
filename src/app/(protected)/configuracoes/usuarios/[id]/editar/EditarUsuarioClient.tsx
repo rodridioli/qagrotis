@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useSession } from "next-auth/react"
-import { type QaUserProfile } from "@/actions/usuarios"
+import { type QaUserProfile } from "@/features/usuarios/actions/usuarios"
 import { type AccessProfile } from "@/lib/rbac/policy"
 import UsuarioFormTabs from "../../UsuarioFormTabs"
 

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
-import { EquipePerformanceCard } from "@/components/equipe/EquipePerformanceCard"
-import type { UserPerformanceData } from "@/actions/equipe"
+import { EquipePerformanceCard } from "@/features/equipe/components/EquipePerformanceCard"
+import type { UserPerformanceData } from "@/features/equipe/actions/equipe"
 
 const mockRodrigo: UserPerformanceData = {
   userId: "demo-1",

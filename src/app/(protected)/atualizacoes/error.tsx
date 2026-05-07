@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { AlertCircle } from 'lucide-react'
-import { getAppErrorUserMessage, logClientSegmentError } from '@/lib/app-error-message'
+import { getAppErrorUserMessage, logClientSegmentError } from '@/core/app-error-message'
 
 export default function Error({
   error,

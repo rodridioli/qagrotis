@@ -1,8 +1,8 @@
 export const metadata = { title: "Editar modelo de IA" }
 
 import { notFound, redirect } from "next/navigation"
-import { getIntegracao } from "@/actions/integracoes"
-import { checkIsAdmin } from "@/lib/session"
+import { getIntegracao } from "@/features/integracoes/actions/integracoes"
+import { checkIsAdmin } from "@/core/session"
 import EditarIntegracaoClient from "./EditarIntegracaoClient"
 
 export default async function EditarIntegracaoPage({

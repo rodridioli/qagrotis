@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
-import { db } from "@/lib/db"
-import { createCheckoutSession } from "@/lib/stripe"
-import { checkoutSchema } from "@/lib/validations"
-import { isSameOriginUrl, validateOrigin } from "@/lib/security"
+import { auth } from "@/core/auth"
+import { db } from "@/core/db"
+import { createCheckoutSession } from "@/features/billing/lib/stripe"
+import { checkoutSchema } from "@/core/validations"
+import { isSameOriginUrl, validateOrigin } from "@/core/security"
 
 export async function POST(req: Request) {
   // CSRF: reject cross-origin requests

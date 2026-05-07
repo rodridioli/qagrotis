@@ -1,0 +1,123 @@
+"use server"
+
+import { revalidatePath, updateTag } from "next/cache"
+import { LAYOUT_CACHE_TAG } from "@/core/layout-cache"
+import { normalizeProvider } from "@/lib/ai/provider"
+import { z } from "zod"
+import { nextId } from "@/core/db-utils"
+import { requireAdmin } from "@/core/session"
+import { prisma } from "@/core/prisma"
+
+export interface IntegracaoRecord {
+  id: string
+  descricao: string
+  provider: string
+  model: string
+  apiKey: string
+  active: boolean
+  createdAt: number
+}
+
+// Versão sem apiKey, segura para enviar a contextos cliente
+export type IntegracaoSafeRecord = Omit<IntegracaoRecord, "apiKey">
+
+const integracaoSchema = z.object({
+  descricao: z.string().max(200, "Máximo de 200 caracteres").optional().default(""),
+  provider:  z.string().min(1, "Provedor é obrigatório"),
+  model:     z.string().min(1, "Modelo é obrigatório"),
+  apiKey:    z.string().min(1, "API Key é obrigatória"),
+})
+
+const idSchema = z.string().regex(/^INT-\d+$/, "ID inválido")
+const idsArraySchema = z.array(idSchema).max(1000)
+
+// ── Public actions ──────────────────────────────────────────────────────────
+
+export async function getIntegracoes(): Promise<IntegracaoRecord[]> {
+  const rows = await prisma.integracao.findMany({ orderBy: { createdAt: "asc" }, take: 100 })
+  return rows.map((r) => ({
+    ...r,
+    provider: r.provider,
+    createdAt: r.createdAt != null ? r.createdAt.getTime() : Date.now(),
+  }))
+}
+
+// Não retorna apiKey — usar em contextos que serializam props para o cliente
+export async function getIntegracoesSafe(): Promise<IntegracaoSafeRecord[]> {
+  const rows = await prisma.integracao.findMany({
+    orderBy: { createdAt: "asc" },
+    take: 100,
+    select: { id: true, descricao: true, provider: true, model: true, active: true, createdAt: true },
+  })
+  return rows.map((r) => ({
+    ...r,
+    createdAt: r.createdAt != null ? r.createdAt.getTime() : Date.now(),
+  }))
+}
+
+export async function getIntegracao(id: string): Promise<IntegracaoRecord | null> {
+  const result = idSchema.safeParse(id)
+  if (!result.success) return null
+  const row = await prisma.integracao.findUnique({ where: { id } })
+  if (!row) return null
+  return {
+    ...row,
+    provider: row.provider,
+    createdAt: row.createdAt != null ? row.createdAt.getTime() : Date.now(),
+  }
+}
+
+export async function criarIntegracao(data: unknown): Promise<void> {
+  await requireAdmin()
+  const parsed = integracaoSchema.parse(data)
+  const provider = normalizeProvider(parsed.provider)
+  if (!provider) {
+    throw new Error("Provedor não suportado. Use Google (Gemini), OpenRouter, OpenAI, Anthropic ou Groq.")
+  }
+  const existing = await prisma.integracao.findMany({ select: { id: true } })
+  const id = nextId(existing.map((i) => i.id), "INT")
+
+  await prisma.integracao.create({ data: { id, ...parsed, provider, active: true } })
+  revalidatePath("/configuracoes/modelos-de-ia")
+  revalidatePath("/gerador")
+  updateTag(LAYOUT_CACHE_TAG)
+}
+
+export async function atualizarIntegracao(id: string, data: unknown): Promise<void> {
+  await requireAdmin()
+  idSchema.parse(id)
+  const parsed = integracaoSchema.parse(data)
+  const provider = normalizeProvider(parsed.provider)
+  if (!provider) {
+    throw new Error("Provedor não suportado. Use Google (Gemini), OpenRouter, OpenAI, Anthropic ou Groq.")
+  }
+
+  const existing = await prisma.integracao.findUnique({ where: { id }, select: { id: true } })
+  if (!existing) throw new Error("Integração não encontrada")
+
+  await prisma.integracao.update({ where: { id }, data: { ...parsed, provider } })
+  revalidatePath("/configuracoes/modelos-de-ia")
+  revalidatePath(`/configuracoes/modelos-de-ia/${id}/editar`)
+  revalidatePath("/gerador")
+  updateTag(LAYOUT_CACHE_TAG)
+}
+
+export async function inativarIntegracoes(ids: string[]): Promise<void> {
+  await requireAdmin()
+  if (ids.length === 0) return
+  idsArraySchema.parse(ids)
+
+  await prisma.integracao.updateMany({ where: { id: { in: ids } }, data: { active: false } })
+  revalidatePath("/configuracoes/modelos-de-ia")
+  revalidatePath("/gerador")
+  updateTag(LAYOUT_CACHE_TAG)
+}
+
+export async function ativarIntegracao(id: string): Promise<void> {
+  await requireAdmin()
+  idSchema.parse(id)
+  await prisma.integracao.update({ where: { id }, data: { active: true } })
+  revalidatePath("/configuracoes/modelos-de-ia")
+  revalidatePath("/gerador")
+  updateTag(LAYOUT_CACHE_TAG)
+}
