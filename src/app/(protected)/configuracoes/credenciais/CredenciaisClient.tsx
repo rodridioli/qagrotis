@@ -48,6 +48,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
   const [senha, setSenha] = useState("")
   const [showSenha, setShowSenha] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [addFieldErrors, setAddFieldErrors] = useState<{ nome?: boolean; usuario?: boolean; senha?: boolean }>({})
 
   // Edit modal
   const [editOpen, setEditOpen] = useState(false)
@@ -58,6 +59,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
   const [editSenha, setEditSenha] = useState("")
   const [showEditSenha, setShowEditSenha] = useState(false)
   const [isEditPending, startEditTransition] = useTransition()
+  const [editFieldErrors, setEditFieldErrors] = useState<{ nome?: boolean; usuario?: boolean }>({})
 
   // Inativar
   const [inativarId, setInativarId] = useState<string | null>(null)
@@ -77,6 +79,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
     setUsuario("")
     setSenha("")
     setShowSenha(false)
+    setAddFieldErrors({})
   }
 
   function openEditar(c: CredencialRecord) {
@@ -86,13 +89,23 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
     setEditUsuario(c.usuario)
     setEditSenha("")
     setShowEditSenha(false)
+    setEditFieldErrors({})
     setEditOpen(true)
   }
 
   function handleSalvar() {
-    if (!nome.trim()) { toast.error("Credencial é obrigatório."); return }
-    if (!usuario.trim()) { toast.error("Usuário é obrigatório."); return }
-    if (!senha) { toast.error("Senha é obrigatória."); return }
+    const errs: { nome?: boolean; usuario?: boolean; senha?: boolean } = {}
+    if (!nome.trim()) errs.nome = true
+    if (!usuario.trim()) errs.usuario = true
+    if (!senha) errs.senha = true
+    if (Object.keys(errs).length > 0) {
+      setAddFieldErrors(errs)
+      if (errs.nome) toast.error("Credencial é obrigatório.")
+      else if (errs.usuario) toast.error("Usuário é obrigatório.")
+      else toast.error("Senha é obrigatória.")
+      return
+    }
+    setAddFieldErrors({})
     startTransition(async () => {
       try {
         const created = await criarCredencial({
@@ -114,8 +127,16 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
 
   function handleEditar() {
     if (!editItem) return
-    if (!editNome.trim()) { toast.error("Credencial é obrigatório."); return }
-    if (!editUsuario.trim()) { toast.error("Usuário é obrigatório."); return }
+    const errs: { nome?: boolean; usuario?: boolean } = {}
+    if (!editNome.trim()) errs.nome = true
+    if (!editUsuario.trim()) errs.usuario = true
+    if (Object.keys(errs).length > 0) {
+      setEditFieldErrors(errs)
+      if (errs.nome) toast.error("Credencial é obrigatório.")
+      else toast.error("Usuário é obrigatório.")
+      return
+    }
+    setEditFieldErrors({})
     startEditTransition(async () => {
       try {
         const updated = await atualizarCredencial(editItem.id, {
@@ -270,9 +291,10 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
               </label>
               <Input
                 value={nome}
-                onChange={(e) => setNome(e.target.value)}
+                onChange={(e) => { setNome(e.target.value); setAddFieldErrors((p) => ({ ...p, nome: false })) }}
                 placeholder="Ex.: Staging, Produção..."
                 disabled={isPending}
+                aria-invalid={!!addFieldErrors.nome}
               />
             </div>
             <div className="space-y-1.5">
@@ -291,9 +313,10 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
               </label>
               <Input
                 value={usuario}
-                onChange={(e) => setUsuario(e.target.value)}
+                onChange={(e) => { setUsuario(e.target.value); setAddFieldErrors((p) => ({ ...p, usuario: false })) }}
                 placeholder="usuario@exemplo.com"
                 disabled={isPending}
+                aria-invalid={!!addFieldErrors.usuario}
               />
             </div>
             <div className="space-y-1.5">
@@ -304,10 +327,11 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                 <Input
                   type={showSenha ? "text" : "password"}
                   value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
+                  onChange={(e) => { setSenha(e.target.value); setAddFieldErrors((p) => ({ ...p, senha: false })) }}
                   placeholder="••••••••"
                   className="pr-10"
                   disabled={isPending}
+                  aria-invalid={!!addFieldErrors.senha}
                 />
                 <button
                   type="button"
@@ -346,9 +370,10 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
               </label>
               <Input
                 value={editNome}
-                onChange={(e) => setEditNome(e.target.value)}
+                onChange={(e) => { setEditNome(e.target.value); setEditFieldErrors((p) => ({ ...p, nome: false })) }}
                 placeholder="Ex.: Staging, Produção..."
                 disabled={isEditPending}
+                aria-invalid={!!editFieldErrors.nome}
               />
             </div>
             <div className="space-y-1.5">
@@ -367,9 +392,10 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
               </label>
               <Input
                 value={editUsuario}
-                onChange={(e) => setEditUsuario(e.target.value)}
+                onChange={(e) => { setEditUsuario(e.target.value); setEditFieldErrors((p) => ({ ...p, usuario: false })) }}
                 placeholder="usuario@exemplo.com"
                 disabled={isEditPending}
+                aria-invalid={!!editFieldErrors.usuario}
               />
             </div>
             <div className="space-y-1.5">

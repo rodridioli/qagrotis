@@ -20,12 +20,15 @@ export default function EditarClienteClient({ cliente }: Props) {
   const [nomeFantasia, setNomeFantasia] = useState(cliente.nomeFantasia)
   const [razaoSocial, setRazaoSocial] = useState(cliente.razaoSocial ?? "")
   const [cpfCnpj, setCpfCnpj] = useState(cliente.cpfCnpj ?? "")
+  const [fieldErrors, setFieldErrors] = useState<{ nomeFantasia?: boolean }>({})
 
   function handleSave() {
     if (!nomeFantasia.trim()) {
+      setFieldErrors({ nomeFantasia: true })
       toast.error("O Nome Fantasia é obrigatório.")
       return
     }
+    setFieldErrors({})
     if (cpfCnpj.trim() && !validateCpfCnpj(cpfCnpj)) {
       toast.error("CPF ou CNPJ inválido.")
       return
@@ -64,9 +67,10 @@ export default function EditarClienteClient({ cliente }: Props) {
           </label>
           <Input
             value={nomeFantasia}
-            onChange={(e) => setNomeFantasia(e.target.value)}
+            onChange={(e) => { setNomeFantasia(e.target.value); setFieldErrors((p) => ({ ...p, nomeFantasia: false })) }}
             placeholder="Nome Fantasia"
             disabled={isPending}
+            aria-invalid={!!fieldErrors.nomeFantasia}
           />
         </div>
 

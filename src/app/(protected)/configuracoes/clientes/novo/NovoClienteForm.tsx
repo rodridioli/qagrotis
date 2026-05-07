@@ -16,12 +16,15 @@ export default function NovoClienteForm() {
   const [nomeFantasia, setNomeFantasia] = useState("")
   const [razaoSocial, setRazaoSocial] = useState("")
   const [cpfCnpj, setCpfCnpj] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<{ nomeFantasia?: boolean }>({})
 
   function handleSave() {
     if (!nomeFantasia.trim()) {
+      setFieldErrors({ nomeFantasia: true })
       toast.error("O Nome Fantasia é obrigatório.")
       return
     }
+    setFieldErrors({})
     if (cpfCnpj.trim() && !validateCpfCnpj(cpfCnpj)) {
       toast.error("CPF ou CNPJ inválido.")
       return
@@ -60,9 +63,10 @@ export default function NovoClienteForm() {
           </label>
           <Input
             value={nomeFantasia}
-            onChange={(e) => setNomeFantasia(e.target.value)}
+            onChange={(e) => { setNomeFantasia(e.target.value); setFieldErrors((p) => ({ ...p, nomeFantasia: false })) }}
             placeholder="Nome Fantasia"
             disabled={isPending}
+            aria-invalid={!!fieldErrors.nomeFantasia}
           />
         </div>
 

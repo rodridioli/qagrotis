@@ -27,6 +27,7 @@ export default function NovoModuloClient({ sistemas }: Props) {
   const [nome, setNome] = useState("")
   const [descricao, setDescricao] = useState("")
   const [sistemaNome, setSistemaNome] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<{ nome?: boolean; sistema?: boolean }>({})
 
   useEffect(() => {
     if (sistemas.length === 0)
@@ -34,14 +35,16 @@ export default function NovoModuloClient({ sistemas }: Props) {
   }, [sistemas.length])
 
   function handleSave() {
-    if (!nome.trim()) {
-      toast.error("O nome do módulo é obrigatório.")
+    const errs: { nome?: boolean; sistema?: boolean } = {}
+    if (!nome.trim()) errs.nome = true
+    if (!sistemaNome) errs.sistema = true
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs)
+      if (errs.nome) toast.error("O nome do módulo é obrigatório.")
+      else toast.error("Selecione um sistema.")
       return
     }
-    if (!sistemaNome) {
-      toast.error("Selecione um sistema.")
-      return
-    }
+    setFieldErrors({})
     const sistema = sistemas.find((s) => s.name === sistemaNome)!
     startTransition(async () => {
       await criarModulo({
@@ -78,9 +81,10 @@ export default function NovoModuloClient({ sistemas }: Props) {
           </label>
           <Input
             value={nome}
-            onChange={(e) => setNome(e.target.value)}
+            onChange={(e) => { setNome(e.target.value); setFieldErrors((p) => ({ ...p, nome: false })) }}
             placeholder="Nome do módulo"
             disabled={isPending}
+            aria-invalid={!!fieldErrors.nome}
           />
         </div>
 
@@ -88,8 +92,8 @@ export default function NovoModuloClient({ sistemas }: Props) {
           <label className="text-sm font-medium text-text-primary">
             Sistema <span className="text-destructive">*</span>
           </label>
-          <Select value={sistemaNome} onValueChange={(v) => setSistemaNome(v ?? "")} disabled={sistemas.length === 0 || isPending}>
-            <SelectTrigger><SelectValue placeholder={sistemas.length === 0 ? "Nenhum sistema cadastrado" : "Selecionar sistema"} /></SelectTrigger>
+          <Select value={sistemaNome} onValueChange={(v) => { setSistemaNome(v ?? ""); setFieldErrors((p) => ({ ...p, sistema: false })) }} disabled={sistemas.length === 0 || isPending}>
+            <SelectTrigger className={fieldErrors.sistema ? "border-destructive ring-2 ring-destructive/20" : ""}><SelectValue placeholder={sistemas.length === 0 ? "Nenhum sistema cadastrado" : "Selecionar sistema"} /></SelectTrigger>
             <SelectPopup>
               {sistemas.map((s) => (
                 <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>

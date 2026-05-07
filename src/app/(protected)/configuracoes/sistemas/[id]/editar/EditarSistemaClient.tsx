@@ -18,12 +18,15 @@ export default function EditarSistemaClient({ sistema }: Props) {
   const [isPending, startTransition] = useTransition()
   const [nome, setNome] = useState(sistema.name)
   const [descricao, setDescricao] = useState(sistema.description ?? "")
+  const [fieldErrors, setFieldErrors] = useState<{ nome?: boolean }>({})
 
   function handleSave() {
     if (!nome.trim()) {
+      setFieldErrors({ nome: true })
       toast.error("O nome é obrigatório.")
       return
     }
+    setFieldErrors({})
     startTransition(async () => {
       await atualizarSistema(sistema.id, { name: nome, description: descricao || null })
       toast.success("Sistema atualizado com sucesso.")
@@ -54,9 +57,10 @@ export default function EditarSistemaClient({ sistema }: Props) {
           </label>
           <Input
             value={nome}
-            onChange={(e) => setNome(e.target.value)}
+            onChange={(e) => { setNome(e.target.value); setFieldErrors((p) => ({ ...p, nome: false })) }}
             placeholder="Nome do sistema"
             disabled={isPending}
+            aria-invalid={!!fieldErrors.nome}
           />
         </div>
 

@@ -313,11 +313,11 @@ export default function UsuarioFormTabs({
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-text-primary">Nome <span className="text-destructive">*</span></label>
-                    <Input value={nome} onChange={(e) => { setNome(e.target.value); setErrors(p => ({ ...p, nome: "" })) }} placeholder="Nome completo" error={errors.nome} />
+                    <Input value={nome} onChange={(e) => { setNome(e.target.value); setErrors(p => ({ ...p, nome: "" })) }} placeholder="Nome completo" aria-invalid={!!errors.nome} />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-text-primary">E-mail <span className="text-destructive">*</span></label>
-                    <Input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErrors(p => ({ ...p, email: "" })) }} placeholder="email@exemplo.com" error={errors.email} />
+                    <Input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErrors(p => ({ ...p, email: "" })) }} placeholder="email@exemplo.com" aria-invalid={!!errors.email} />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
@@ -411,7 +411,7 @@ export default function UsuarioFormTabs({
                         value={password}
                         onChange={(e) => { setPassword(e.target.value); setErrors(p => ({ ...p, password: "" })) }}
                         placeholder="Nova senha"
-                        error={errors.password}
+                        aria-invalid={!!errors.password}
                       />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-text-secondary">
                         {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -423,7 +423,7 @@ export default function UsuarioFormTabs({
                         value={confirmPassword}
                         onChange={(e) => { setConfirmPassword(e.target.value); setErrors(p => ({ ...p, confirmPassword: "" })) }}
                         placeholder="Confirmar senha"
-                        error={errors.confirmPassword}
+                        aria-invalid={!!errors.confirmPassword}
                       />
                       <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-2.5 text-text-secondary">
                         {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}

@@ -14,12 +14,15 @@ export default function NovoSistemaForm() {
   const [isPending, startTransition] = useTransition()
   const [nome, setNome] = useState("")
   const [descricao, setDescricao] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<{ nome?: boolean }>({})
 
   function handleSave() {
     if (!nome.trim()) {
+      setFieldErrors({ nome: true })
       toast.error("O nome é obrigatório.")
       return
     }
+    setFieldErrors({})
     startTransition(async () => {
       await criarSistema({ name: nome, description: descricao || null })
       toast.success("Sistema criado com sucesso.")
@@ -50,9 +53,10 @@ export default function NovoSistemaForm() {
           </label>
           <Input
             value={nome}
-            onChange={(e) => setNome(e.target.value)}
+            onChange={(e) => { setNome(e.target.value); setFieldErrors((p) => ({ ...p, nome: false })) }}
             placeholder="Nome do sistema"
             disabled={isPending}
+            aria-invalid={!!fieldErrors.nome}
           />
         </div>
 

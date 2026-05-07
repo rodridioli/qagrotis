@@ -62,6 +62,7 @@ export function ChapterScheduleDialog({
   const [authorIds, setAuthorIds] = React.useState<string[]>([])
   const [dataYmd, setDataYmd] = React.useState("")
   const [hyperlink, setHyperlink] = React.useState("")
+  const [fieldErrors, setFieldErrors] = React.useState<{ tema?: boolean; data?: boolean }>({})
 
   const authorOptionsReady = authorOptions.length > 0
   const lockAuthorsField = React.useMemo(() => {
@@ -71,7 +72,7 @@ export function ChapterScheduleDialog({
   const authorsFieldDisabledUntilOptions = mode === "edit" && !authorOptionsReady
 
   React.useEffect(() => {
-    if (!open) return
+    if (!open) { setFieldErrors({}); return }
     if (mode === "edit" && initial) {
       setTema(initial.tema)
       setAuthorIds([...initial.authorIds])
@@ -90,20 +91,22 @@ export function ChapterScheduleDialog({
   }
 
   function handleSubmit() {
-    if (!tema.trim()) {
-      toast.error("O tema é obrigatório.")
-      return
-    }
+    const errs: { tema?: boolean; data?: boolean } = {}
+    if (!tema.trim()) errs.tema = true
+    const dateErr = validateDateForSubmit(dataYmd)
+    if (dateErr) errs.data = true
     if (authorIds.length === 0) {
+      setFieldErrors(errs)
       toast.error("Selecione pelo menos um autor.")
       return
     }
-
-    const dateErr = validateDateForSubmit(dataYmd)
-    if (dateErr) {
-      toast.error(dateErr)
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs)
+      if (errs.tema) toast.error("O tema é obrigatório.")
+      else if (errs.data) toast.error(dateErr!)
       return
     }
+    setFieldErrors({})
 
     const ymd = dataYmd.trim()
 
@@ -168,10 +171,11 @@ export function ChapterScheduleDialog({
             <Input
               id="chapter-tema"
               value={tema}
-              onChange={(e) => setTema(e.target.value)}
+              onChange={(e) => { setTema(e.target.value); setFieldErrors((p) => ({ ...p, tema: false })) }}
               maxLength={240}
               disabled={isPending}
               placeholder="Ex.: Boas práticas de API"
+              aria-invalid={!!fieldErrors.tema}
             />
             <p className="text-xs text-text-secondary">{tema.length}/240</p>
           </div>
@@ -199,9 +203,10 @@ export function ChapterScheduleDialog({
               id="chapter-data"
               type="date"
               value={dataYmd}
-              onChange={onDateInputChange}
+              onChange={(e) => { onDateInputChange(e); setFieldErrors((p) => ({ ...p, data: false })) }}
               disabled={isPending}
               className={inputNativePickerRightClassName()}
+              aria-invalid={!!fieldErrors.data}
             />
             <p className="text-xs text-text-secondary">
               Use o calendário ou digite a data (formato AAAA-MM-DD).
