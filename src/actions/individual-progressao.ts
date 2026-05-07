@@ -114,7 +114,7 @@ export async function createProgressao(
 
     // Sync cargo → UserProfile.classificacao (and CreatedUser fallback)
     await prisma.$executeRaw`
-      UPDATE "UserProfile" SET "classificacao" = ${cargo}, "updatedAt" = NOW()
+      UPDATE "UserProfile" SET "classificacao" = ${cargo}
       WHERE "userId" = ${evaluatedUserId}
     `
     await prisma.$executeRaw`
@@ -166,7 +166,7 @@ export async function updateProgressao(
         await ensureUserClassificacaoColumns()
 
         await prisma.$executeRaw`
-          UPDATE "UserProfile" SET "classificacao" = ${cargo}, "updatedAt" = NOW()
+          UPDATE "UserProfile" SET "classificacao" = ${cargo}
           WHERE "userId" = ${updatedRow.evaluatedUserId}
         `
         await prisma.$executeRaw`
