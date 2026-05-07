@@ -83,11 +83,11 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
   function handleSalvarCliente() {
     if (!editingCliente) return
     if (!editNomeFantasia.trim()) {
-      toast.error("O Nome Fantasia é obrigatório.")
+      toast.error("O Nome Fantasia Ã© obrigatÃ³rio.")
       return
     }
     if (editCpfCnpj.trim() && !validateCpfCnpj(editCpfCnpj)) {
-      toast.error("CPF ou CNPJ inválido.")
+      toast.error("CPF ou CNPJ invÃ¡lido.")
       return
     }
     startEditTransition(async () => {
@@ -121,11 +121,11 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
 
   function handleAdicionarCliente() {
     if (!addNomeFantasia.trim()) {
-      toast.error("O Nome Fantasia é obrigatório.")
+      toast.error("O Nome Fantasia Ã© obrigatÃ³rio.")
       return
     }
     if (addCpfCnpj.trim() && !validateCpfCnpj(addCpfCnpj)) {
-      toast.error("CPF ou CNPJ inválido.")
+      toast.error("CPF ou CNPJ invÃ¡lido.")
       return
     }
     startAddTransition(async () => {
@@ -264,8 +264,8 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
 
   const confirmDescription =
     inativarIds.length === 1
-      ? `O cliente ${inativarIds[0]} será inativado. Esta ação não pode ser desfeita.`
-      : `${inativarIds.length} clientes serão inativados. Esta ação não pode ser desfeita.`
+      ? `O cliente ${inativarIds[0]} serÃ¡ inativado. Esta aÃ§Ã£o nÃ£o pode ser desfeita.`
+      : `${inativarIds.length} clientes serÃ£o inativados. Esta aÃ§Ã£o nÃ£o pode ser desfeita.`
 
   return (
     <div className="space-y-4">
@@ -274,7 +274,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <PageBreadcrumb
           items={[
-            { label: "Configurações", href: "/configuracoes" },
+            { label: "ConfiguraÃ§Ãµes", href: "/configuracoes" },
             { label: "Clientes" },
           ]}
         />
@@ -346,12 +346,12 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                         onClick={() => setSortOrder((prev) => prev === "desc" ? "asc" : "desc")}
                         className="flex items-center gap-1 text-text-secondary transition-colors hover:text-text-primary"
                       >
-                        Código
+                        CÃ³digo
                         {sortOrder === "desc" ? <ChevronDown className="size-3" /> : <ChevronUp className="size-3" />}
                       </button>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Nome Fantasia</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Razão Social</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">RazÃ£o Social</th>
                     <th className="w-48 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">CPF / CNPJ</th>
                     <th className="w-40 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistemas</th>
                     <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
@@ -385,14 +385,14 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                         </td>
                         <td className="bg-surface-card px-4 py-3 font-medium text-text-primary truncate" title={c.nomeFantasia}>{c.nomeFantasia}</td>
                         <td className="bg-surface-card px-4 py-3 text-text-secondary truncate" title={c.razaoSocial ?? undefined}>
-                          {c.razaoSocial ?? <span className="italic text-text-secondary/60">—</span>}
+                          {c.razaoSocial ?? <span className="italic text-text-secondary/60">Â—</span>}
                         </td>
                         <td className="bg-surface-card px-4 py-3 text-text-secondary truncate" title={c.cpfCnpj ?? undefined}>
-                          {c.cpfCnpj ?? <span className="italic text-text-secondary/60">—</span>}
+                          {c.cpfCnpj ?? <span className="italic text-text-secondary/60">Â—</span>}
                         </td>
                         <td className="bg-surface-card px-4 py-3">
                           {sistemas.length === 0 ? (
-                            <span className="italic text-text-secondary/60 text-sm">—</span>
+                            <span className="italic text-text-secondary/60 text-sm">Â—</span>
                           ) : (
                             <div className="flex flex-wrap gap-1">
                               {sistemas.map((s) => (
@@ -417,7 +417,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                                 render={
                                   <button
                                     type="button"
-                                    aria-label="Mais ações"
+                                    aria-label="Mais aÃ§Ãµes"
                                     className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                   />
                                 }
@@ -501,7 +501,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
         open={ativarOpen}
         onOpenChange={setAtivarOpen}
         title="Deseja ativar?"
-        description="Este cadastro voltará a aparecer na listagem de ativos."
+        description="Este cadastro voltarÃ¡ a aparecer na listagem de ativos."
         confirmLabel="Ativar"
         onConfirm={handleAtivar}
       />
@@ -525,11 +525,11 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Razão Social</label>
+              <label className="text-sm font-medium text-text-primary">RazÃ£o Social</label>
               <Input
                 value={editRazaoSocial}
                 onChange={(e) => setEditRazaoSocial(e.target.value)}
-                placeholder="Razão Social"
+                placeholder="RazÃ£o Social"
                 disabled={isEditPending}
               />
             </div>
@@ -550,7 +550,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
             </DialogClose>
             <Button onClick={handleSalvarCliente} disabled={isEditPending}>
               <Check className="size-4" />
-              {isEditPending ? "Salvando…" : "Salvar"}
+              {isEditPending ? "SalvandoÂ…" : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -575,11 +575,11 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Razão Social</label>
+              <label className="text-sm font-medium text-text-primary">RazÃ£o Social</label>
               <Input
                 value={addRazaoSocial}
                 onChange={(e) => setAddRazaoSocial(e.target.value)}
-                placeholder="Razão Social"
+                placeholder="RazÃ£o Social"
                 disabled={isAddPending}
               />
             </div>
@@ -600,7 +600,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
             </DialogClose>
             <Button onClick={handleAdicionarCliente} disabled={isAddPending}>
               <Check className="size-4" />
-              {isAddPending ? "Salvando…" : "Salvar"}
+              {isAddPending ? "SalvandoÂ…" : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>

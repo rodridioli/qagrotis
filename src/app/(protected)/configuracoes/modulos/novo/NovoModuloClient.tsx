@@ -30,12 +30,12 @@ export default function NovoModuloClient({ sistemas }: Props) {
 
   useEffect(() => {
     if (sistemas.length === 0)
-      toast.warning("É preciso cadastrar um sistema antes de criar módulos.")
+      toast.warning("Ã‰ preciso cadastrar um sistema antes de criar mÃ³dulos.")
   }, [sistemas.length])
 
   function handleSave() {
     if (!nome.trim()) {
-      toast.error("O nome do módulo é obrigatório.")
+      toast.error("O nome do mÃ³dulo Ã© obrigatÃ³rio.")
       return
     }
     if (!sistemaNome) {
@@ -50,7 +50,7 @@ export default function NovoModuloClient({ sistemas }: Props) {
         sistemaId: sistema.id,
         sistemaName: sistema.name,
       })
-      toast.success("Módulo criado com sucesso.")
+      toast.success("MÃ³dulo criado com sucesso.")
       router.push("/configuracoes/modulos")
     })
   }
@@ -60,14 +60,14 @@ export default function NovoModuloClient({ sistemas }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <PageBreadcrumb
           items={[
-            { label: "Configurações", href: "/configuracoes" },
-            { label: "Módulos", href: "/configuracoes/modulos" },
-            { label: "Novo Módulo" },
+            { label: "ConfiguraÃ§Ãµes", href: "/configuracoes" },
+            { label: "MÃ³dulos", href: "/configuracoes/modulos" },
+            { label: "Novo MÃ³dulo" },
           ]}
         />
         <Button onClick={handleSave} disabled={isPending}>
           <Check className="size-4" />
-          {isPending ? "Salvando…" : "Salvar"}
+          {isPending ? "SalvandoÂ…" : "Salvar"}
         </Button>
       </div>
 
@@ -79,7 +79,7 @@ export default function NovoModuloClient({ sistemas }: Props) {
           <Input
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            placeholder="Nome do módulo"
+            placeholder="Nome do mÃ³dulo"
             disabled={isPending}
           />
         </div>
@@ -99,13 +99,13 @@ export default function NovoModuloClient({ sistemas }: Props) {
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="descricao" className="text-sm font-medium text-text-primary">Descrição</label>
+          <label htmlFor="descricao" className="text-sm font-medium text-text-primary">DescriÃ§Ã£o</label>
           <textarea
             id="descricao"
             rows={4}
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
-            placeholder="Descreva o módulo..."
+            placeholder="Descreva o mÃ³dulo..."
             disabled={isPending}
             className="w-full rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 resize-none disabled:opacity-50 disabled:pointer-events-none"
           />
