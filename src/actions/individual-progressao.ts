@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import {
   ensureIndividualProgressaoTable,
   ensureIndividualProgressaoCargoColumn,
+  ensureUserClassificacaoColumns,
 } from "@/lib/prisma-schema-ensure"
 import { requireSession } from "@/lib/session"
 import { buildRole, can } from "@/lib/rbac/policy"
@@ -107,8 +108,7 @@ export async function createProgressao(
   `
 
   // Ensure classificacao columns exist
-  await prisma.$executeRawUnsafe(`ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "classificacao" TEXT`)
-  await prisma.$executeRawUnsafe(`ALTER TABLE "CreatedUser" ADD COLUMN IF NOT EXISTS "classificacao" TEXT`)
+  await ensureUserClassificacaoColumns()
 
   // Sync cargo → UserProfile.classificacao (and CreatedUser fallback)
   await prisma.$executeRaw`
@@ -156,8 +156,7 @@ export async function updateProgressao(
     `
     if (mostRecent?.id === id) {
       // Ensure classificacao columns exist
-      await prisma.$executeRawUnsafe(`ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "classificacao" TEXT`)
-      await prisma.$executeRawUnsafe(`ALTER TABLE "CreatedUser" ADD COLUMN IF NOT EXISTS "classificacao" TEXT`)
+      await ensureUserClassificacaoColumns()
 
       await prisma.$executeRaw`
         UPDATE "UserProfile" SET "classificacao" = ${cargo}, "updatedAt" = NOW()

@@ -11,6 +11,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredIndividualFeedbackPeriodo?: boolean
   __qagrotisEnsuredIndividualProgressao?: boolean
   __qagrotisEnsuredIndividualProgressaoCargo?: boolean
+  __qagrotisEnsuredClassificacao?: boolean
 }
 
 /**
@@ -32,6 +33,24 @@ export async function ensureUserDataNascimentoColumns(): Promise<void> {
     g.__qagrotisEnsuredDataNascimento = true
   } catch (e) {
     console.error("[prisma-schema-ensure] dataNascimento columns", e)
+  }
+}
+
+/**
+ * Garante a coluna `classificacao` em `CreatedUser` e `UserProfile`.
+ */
+export async function ensureUserClassificacaoColumns(): Promise<void> {
+  if (g.__qagrotisEnsuredClassificacao) return
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "CreatedUser" ADD COLUMN IF NOT EXISTS "classificacao" TEXT`,
+    )
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "classificacao" TEXT`,
+    )
+    g.__qagrotisEnsuredClassificacao = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] classificacao columns", e)
   }
 }
 

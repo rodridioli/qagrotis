@@ -14,6 +14,7 @@ import {
 } from "@/lib/prisma-user-selects"
 import {
   ensureUserDataNascimentoColumns,
+  ensureUserClassificacaoColumns,
   ensureUserHybridWorkDaysColumns,
   ensureUserWorkScheduleColumns,
   ensureUserExtendedProfileColumns,
@@ -168,6 +169,7 @@ function validatePhotoPath(photoPath: string | null | undefined): string | null 
 
 export async function getQaUsers(): Promise<QaUserRecord[]> {
   await ensureUserDataNascimentoColumns()
+  await ensureUserClassificacaoColumns()
   await ensureUserWorkScheduleColumns()
   await ensureUserHybridWorkDaysColumns()
   await ensureUserExtendedProfileColumns()
@@ -266,6 +268,7 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
   if (!result.success) return null
 
   await ensureUserDataNascimentoColumns()
+  await ensureUserClassificacaoColumns()
   await ensureUserWorkScheduleColumns()
   await ensureUserHybridWorkDaysColumns()
   await ensureUserExtendedProfileColumns()
