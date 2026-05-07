@@ -1,0 +1,541 @@
+"use client"
+
+import React, { useEffect, useState, useMemo, useTransition } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
+import { LoadingOverlay } from "@/components/qagrotis/LoadingOverlay"
+import { EmptyState } from "@/components/qagrotis/EmptyState"
+import { PageBreadcrumb } from "@/components/qagrotis/PageBreadcrumb"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
+import { TableToolbar } from "@/components/qagrotis/TableToolbar"
+import { TablePagination } from "@/components/qagrotis/TablePagination"
+import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
+import { inativarModulos, ativarModulo, criarModulo, atualizarModulo, type ModuloRecord } from "@/actions/modulos"
+import { type SistemaRecord } from "@/actions/sistemas"
+import { type CenarioRecord } from "@/actions/cenarios"
+import { cn } from "@/lib/utils"
+import { toast } from "sonner"
+
+const ITEMS_PER_PAGE = 20
+
+function numericId(id: string): number {
+  const m = id.match(/\d+$/)
+  return m ? parseInt(m[0], 10) : 0
+}
+
+interface Props {
+  initialModulos: ModuloRecord[]
+  initialCenarios: CenarioRecord[]
+  initialSistemas: SistemaRecord[]
+  isAdmin: boolean
+}
+
+export default function ModulosClient({ initialModulos: initialModulosParam, initialCenarios, initialSistemas, isAdmin }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [localModulos, setLocalModulos] = useState(initialModulosParam)
+  useEffect(() => { setLocalModulos(initialModulosParam) }, [initialModulosParam])
+  const [isInativando, setIsInativando] = useState(false)
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
+
+  const [search, setSearch] = useState("")
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [currentPage, setCurrentPage] = useState(1)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [inativarOpen, setInativarOpen] = useState(false)
+  const [inativarIds, setInativarIds] = useState<string[]>([])
+  const [ativarId, setAtivarId] = useState<string | null>(null)
+  const [ativarOpen, setAtivarOpen] = useState(false)
+  const [apenasInativos, setApenasInativos] = useState(false)
+  const [pendingInativos, setPendingInativos] = useState(false)
+
+  // ── Módulo modal (criar / editar) ──────────────────────────────────────────
+  const [moduloModalOpen, setModuloModalOpen] = useState(false)
+  const [moduloEditando, setModuloEditando] = useState<ModuloRecord | null>(null)
+  const [moduloModalNome, setModuloModalNome] = useState("")
+  const [moduloModalSistemaNome, setModuloModalSistemaNome] = useState("")
+  const [moduloModalDescricao, setModuloModalDescricao] = useState("")
+  const [isModuloModalPending, startModuloModalTransition] = useTransition()
+
+  const sistemasAtivos = useMemo(() => initialSistemas.filter((s) => s.active), [initialSistemas])
+
+  function openAdicionarModulo() {
+    setModuloEditando(null)
+    setModuloModalNome("")
+    setModuloModalSistemaNome("")
+    setModuloModalDescricao("")
+    setModuloModalOpen(true)
+  }
+
+  function openEditarModulo(m: ModuloRecord) {
+    setModuloEditando(m)
+    setModuloModalNome(m.name)
+    setModuloModalSistemaNome(m.sistemaName)
+    setModuloModalDescricao(m.description ?? "")
+    setModuloModalOpen(true)
+  }
+
+  function handleSalvarModulo() {
+    if (!moduloModalNome.trim()) { toast.error("O nome do módulo é obrigatório."); return }
+    if (!moduloModalSistemaNome) { toast.error("Selecione um sistema."); return }
+    const sistema = sistemasAtivos.find((s) => s.name === moduloModalSistemaNome)
+    startModuloModalTransition(async () => {
+      try {
+        if (moduloEditando) {
+          await atualizarModulo(moduloEditando.id, {
+            name: moduloModalNome,
+            description: moduloModalDescricao || null,
+            sistemaId: sistema?.id ?? moduloEditando.sistemaId,
+            sistemaName: moduloModalSistemaNome,
+          })
+          toast.success("Módulo atualizado com sucesso.")
+        } else {
+          if (!sistema) { toast.error("Sistema não encontrado."); return }
+          await criarModulo({
+            name: moduloModalNome,
+            description: moduloModalDescricao || null,
+            sistemaId: sistema.id,
+            sistemaName: sistema.name,
+          })
+          toast.success("Módulo criado com sucesso.")
+        }
+        setModuloModalOpen(false)
+        setModuloEditando(null)
+        setModuloModalNome("")
+        setModuloModalSistemaNome("")
+        setModuloModalDescricao("")
+        router.refresh()
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Erro ao salvar. Tente novamente.")
+      }
+    })
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
+  const filtered = useMemo(() => {
+    const result = localModulos.filter((m) => {
+      const matchSearch =
+        !search ||
+        m.id.toLowerCase().includes(search.toLowerCase()) ||
+        m.name.toLowerCase().includes(search.toLowerCase()) ||
+        m.sistemaName.toLowerCase().includes(search.toLowerCase()) ||
+        (m.description ?? "").toLowerCase().includes(search.toLowerCase())
+      const matchAtivo = apenasInativos ? !m.active : m.active
+      return matchSearch && matchAtivo
+    })
+    return [...result].sort((a, b) => {
+      const diff = numericId(a.id) - numericId(b.id)
+      return sortOrder === "desc" ? -diff : diff
+    })
+  }, [search, apenasInativos, localModulos, sortOrder])
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const pageItems = filtered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+
+  const activeFilterCount = apenasInativos ? 1 : 0
+  const hasActiveModulos = localModulos.some((m) => m.active)
+  const showBulkActions = isAdmin && !apenasInativos && hasActiveModulos
+  const selectableIds = pageItems.map((m) => m.id)
+
+  function toggleRow(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    if (selectedIds.size === selectableIds.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(selectableIds))
+  }
+
+  function handleInativarSelection() {
+    if (selectedIds.size === 0) return
+    setInativarIds([...selectedIds])
+    setInativarOpen(true)
+  }
+
+  function handleInativarSingle(id: string) {
+    setInativarIds([id])
+    setInativarOpen(true)
+  }
+
+  async function handleAtivar() {
+    if (!ativarId) return
+    try {
+      await ativarModulo(ativarId)
+      setLocalModulos((prev) => prev.filter((m) => m.id !== ativarId))
+      toast.success("Cadastro ativado com sucesso.")
+      router.refresh()
+    } catch {
+      toast.error("Erro ao ativar. Tente novamente.")
+    } finally {
+      setAtivarOpen(false)
+      setAtivarId(null)
+    }
+  }
+
+  function confirmInativar() {
+    const ids = [...inativarIds]
+    const count = ids.length
+    setInativarOpen(false)
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      ids.forEach((id) => next.delete(id))
+      return next
+    })
+    setInativarIds([])
+    setIsInativando(true)
+    startTransition(async () => {
+      try {
+        await inativarModulos(ids)
+        const idSet = new Set(ids)
+        setLocalModulos((prev) => prev.map((m) => idSet.has(m.id) ? { ...m, active: false } : m))
+        setIsInativando(false)
+        router.refresh()
+        toast.success(count === 1 ? "Módulo inativado com sucesso." : `${count} módulos inativados com sucesso.`)
+      } catch {
+        setIsInativando(false)
+        router.refresh()
+        toast.error("Erro ao inativar. Tente novamente.")
+      }
+    })
+  }
+
+  function applyFilters() {
+    setApenasInativos(pendingInativos)
+    setFilterOpen(false)
+    setCurrentPage(1)
+  }
+
+  function clearFilters() {
+    setPendingInativos(false)
+    setApenasInativos(false)
+    setFilterOpen(false)
+    setCurrentPage(1)
+  }
+
+  const confirmDescription =
+    inativarIds.length === 1
+      ? `O módulo ${inativarIds[0]} será inativado. Esta ação não pode ser desfeita.`
+      : `${inativarIds.length} módulos serão inativados. Esta ação não pode ser desfeita.`
+
+  return (
+    <div className="space-y-4">
+      <LoadingOverlay visible={isInativando} label="Inativando módulos..." />
+      {/* ── Header ── */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <PageBreadcrumb
+          items={[
+            { label: "Configurações", href: "/configuracoes" },
+            { label: "Módulos" },
+          ]}
+        />
+
+        {isAdmin && (
+          <div className="flex items-center gap-3">
+            {showBulkActions && (
+              <Button
+                variant="outline"
+                disabled={selectedIds.size === 0 || isPending}
+                onClick={handleInativarSelection}
+              >
+                <Power className="size-4" />
+                Inativar
+              </Button>
+            )}
+            <Button onClick={openAdicionarModulo}>
+              <Plus className="size-4" />
+              Adicionar Módulo
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Table card ── */}
+      <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
+        <TableToolbar
+          search={search}
+          onSearchChange={(v) => { setSearch(v); setCurrentPage(1) }}
+          searchPlaceholder="Buscar módulo..."
+          activeFilterCount={activeFilterCount}
+          onFilterOpen={() => { setPendingInativos(apenasInativos); setFilterOpen(true) }}
+          totalLabel="Total de módulos"
+          totalCount={filtered.length}
+          baseCount={localModulos.length}
+        />
+
+        {pageItems.length === 0 ? (
+          <EmptyState message="Nenhum registro encontrado." />
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="qagrotis-table-row-hover w-full min-w-180 table-fixed text-sm">
+                <colgroup>
+                  {showBulkActions && <col className="w-10" />}
+                  <col className="w-20" />
+                  <col className="w-48" />
+                  <col className="w-44" />
+                  <col />
+                  <col className="w-20" />
+                  <col className="w-16" />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border-default bg-neutral-grey-50">
+                    {showBulkActions && (
+                      <th className="sticky left-0 z-20 bg-neutral-grey-50 px-4 py-3 text-left">
+                        <Checkbox
+                          checked={selectableIds.length > 0 && selectedIds.size === selectableIds.length}
+                          onChange={toggleAll}
+                        />
+                      </th>
+                    )}
+                    <th className={cn(
+                      "sticky z-20 bg-neutral-grey-50 px-4 py-3 text-left text-xs font-semibold",
+                      showBulkActions ? "left-10" : "left-0"
+                    )}>
+                      <button
+                        type="button"
+                        onClick={() => setSortOrder((prev) => prev === "desc" ? "asc" : "desc")}
+                        className="flex items-center gap-1 text-text-secondary transition-colors hover:text-text-primary"
+                      >
+                        Código
+                        {sortOrder === "desc" ? <ChevronDown className="size-3" /> : <ChevronUp className="size-3" />}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Nome</th>
+                    <th className="w-40 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Sistema</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
+                    <th className="w-24 whitespace-nowrap px-4 py-3 text-center text-xs font-semibold text-text-secondary">Cenários</th>
+                    <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageItems.map((m) => (
+                    <tr
+                      key={m.id}
+                      className="border-b border-border-default last:border-0 transition-colors"
+                    >
+                      {showBulkActions && (
+                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-3">
+                          <Checkbox
+                            checked={selectedIds.has(m.id)}
+                            onChange={() => toggleRow(m.id)}
+                          />
+                        </td>
+                      )}
+                      <td className={cn(
+                        "sticky z-10 bg-surface-card px-4 py-3 font-medium whitespace-nowrap",
+                        showBulkActions ? "left-10" : "left-0"
+                      )}>
+                        {m.active && isAdmin ? (
+                          <button type="button" onClick={() => openEditarModulo(m)} className="text-brand-primary hover:underline">{m.id}</button>
+                        ) : (
+                          <span>{m.id}</span>
+                        )}
+                      </td>
+                      <td className="bg-surface-card px-4 py-3 font-medium text-text-primary truncate" title={m.name}>{m.name}</td>
+                      <td className="bg-surface-card px-4 py-3 text-text-secondary truncate" title={m.sistemaName}>{m.sistemaName}</td>
+                      <td className="bg-surface-card px-4 py-3 text-text-secondary truncate" title={m.description ?? undefined}>
+                        {m.description ?? <span className="italic text-text-secondary/60">—</span>}
+                      </td>
+                      <td className="bg-surface-card px-4 py-3 text-center tabular-nums text-text-secondary text-sm">
+                        {initialCenarios.filter((c) => c.module === m.name && c.active).length || <span className="italic text-text-secondary/60">0</span>}
+                      </td>
+                      <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
+                        {apenasInativos ? (
+                          <button
+                            type="button"
+                            aria-label="Ativar"
+                            onClick={() => { setAtivarId(m.id); setAtivarOpen(true) }}
+                            className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                          >
+                            <RotateCcw className="size-4" />
+                          </button>
+                        ) : showBulkActions && m.active ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  aria-label="Mais ações"
+                                  className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                />
+                              }
+                            >
+                              <MoreVertical className="size-4" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" side="bottom">
+                              <DropdownMenuItem onClick={() => openEditarModulo(m)}>
+                                <Pencil className="size-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => handleInativarSingle(m.id)}
+                              >
+                                <Power className="size-4" />
+                                Inativar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              onPageChange={setCurrentPage}
+            />
+          </>
+        )}
+      </div>
+
+      {/* ── Filter dialog ── */}
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Filtros</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <Checkbox
+              label="Exibir somente inativos"
+              checked={pendingInativos}
+              onChange={(e) => setPendingInativos((e.target as HTMLInputElement).checked)}
+            />
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <DialogClose render={<Button variant="ghost" onClick={clearFilters} />}>
+              Limpar filtros
+            </DialogClose>
+            <div className="flex gap-2">
+              <DialogClose render={<Button variant="outline" />}>
+                <X className="size-4" />
+                Cancelar
+              </DialogClose>
+              <Button onClick={applyFilters}>
+                <Filter className="size-4" />
+                Filtrar
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={inativarOpen}
+        onOpenChange={setInativarOpen}
+        title="Deseja inativar?"
+        description={confirmDescription}
+        confirmLabel="Inativar"
+        onConfirm={confirmInativar}
+      />
+
+      <ConfirmDialog
+        open={ativarOpen}
+        onOpenChange={setAtivarOpen}
+        title="Deseja ativar?"
+        description="Este cadastro voltará a aparecer na listagem de ativos."
+        confirmLabel="Ativar"
+        onConfirm={handleAtivar}
+      />
+
+      {/* ── Modal criar / editar módulo ── */}
+      <Dialog open={moduloModalOpen} onOpenChange={(open) => { if (!open) { setModuloModalOpen(false); setModuloEditando(null) } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{moduloEditando ? `Editar — ${moduloEditando.id}` : "Adicionar Módulo"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Nome <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={moduloModalNome}
+                onChange={(e) => setModuloModalNome(e.target.value)}
+                placeholder="Nome do módulo"
+                disabled={isModuloModalPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Sistema <span className="text-destructive">*</span>
+              </label>
+              <Select
+                value={moduloModalSistemaNome}
+                onValueChange={(v) => setModuloModalSistemaNome(v ?? "")}
+                disabled={sistemasAtivos.length === 0 || isModuloModalPending}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={sistemasAtivos.length === 0 ? "Nenhum sistema cadastrado" : "Selecionar sistema"} />
+                </SelectTrigger>
+                <SelectPopup>
+                  {sistemasAtivos.map((s) => (
+                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Descrição</label>
+              <textarea
+                rows={4}
+                value={moduloModalDescricao}
+                onChange={(e) => setModuloModalDescricao(e.target.value)}
+                placeholder="Descreva o módulo..."
+                disabled={isModuloModalPending}
+                className="w-full resize-none rounded-custom border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 disabled:pointer-events-none"
+              />
+            </div>
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <DialogClose render={<Button variant="outline" disabled={isModuloModalPending} />}>
+              <X className="size-4" />
+              Cancelar
+            </DialogClose>
+            <Button onClick={handleSalvarModulo} disabled={isModuloModalPending}>
+              <Check className="size-4" />
+              {isModuloModalPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

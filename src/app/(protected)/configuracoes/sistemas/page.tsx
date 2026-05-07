@@ -1,0 +1,12 @@
+export const dynamic = "force-dynamic"
+export const metadata = { title: "Sistemas" }
+
+import { getSistemas } from "@/actions/sistemas"
+import { getModulos } from "@/actions/modulos"
+import { checkIsAdmin } from "@/lib/session"
+import SistemasClient from "./SistemasClient"
+
+export default async function SistemasPage() {
+  const [sistemas, modulos, isAdmin] = await Promise.all([getSistemas(), getModulos(), checkIsAdmin()])
+  return <SistemasClient initialSistemas={sistemas} initialModulos={modulos} isAdmin={isAdmin} />
+}

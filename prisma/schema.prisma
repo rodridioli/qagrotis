@@ -417,8 +417,32 @@ model IndividualFeedback {
   status            IndividualFeedbackStatus @default(RASCUNHO)
   /** Campos dinâmicos por tipo: { contexto, feedback, impacto, … } */
   campos            Json                     @default("{}")
+  /** Período de referência (trimestre ou semestre) */
+  periodo           String                   @default("T1_TRIMESTRE")
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
+
+  @@unique([evaluatedUserId, codigo])
+  @@index([evaluatedUserId])
+}
+
+model IndividualProgressao {
+  id               String   @id @default(cuid())
+  evaluatedUserId  String
+  createdByUserId  String
+  /** Sequência por usuário avaliado (ex.: 1, 2, 3…) — exibido como PGS-001. */
+  codigo           Int
+  data             DateTime
+  /** ADMISSAO | DISSIDIO | PROMOCAO | MERITO */
+  tipo             String
+  /** CLT | PJ | COOPERADO */
+  regime           String
+  /** Cargo/função no momento da progressão. */
+  cargo            String?
+  /** Valor em centavos (ex.: 200000 = R$ 2.000,00). */
+  valor            Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@unique([evaluatedUserId, codigo])
   @@index([evaluatedUserId])
