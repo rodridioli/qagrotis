@@ -130,14 +130,19 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
       cargo: form.cargo.trim(),
       valor: displayToCents(form.valorDisplay),
     }
-    const res = editRow
-      ? await updateProgressao({ ...payload, id: editRow.id })
-      : await createProgressao(payload)
-    setSaving(false)
-    if (res.error) { toast.error(res.error); return }
-    toast.success(editRow ? "Progressão atualizada." : "Progressão adicionada.")
-    onOpenChange(false)
-    onSuccess()
+    try {
+      const res = editRow
+        ? await updateProgressao({ ...payload, id: editRow.id })
+        : await createProgressao(payload)
+      setSaving(false)
+      if (res.error) { toast.error(res.error); return }
+      toast.success(editRow ? "Progressão atualizada." : "Progressão adicionada.")
+      onOpenChange(false)
+      onSuccess()
+    } catch (e) {
+      setSaving(false)
+      toast.error(e instanceof Error ? e.message : "Erro interno ao processar progressão.")
+    }
   }
 
   return (

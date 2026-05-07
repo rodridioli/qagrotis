@@ -106,6 +106,10 @@ export async function createProgressao(
       (${id}, ${evaluatedUserId}, ${session.user.id}, ${codigo}, ${dataTs}, ${tipo}, ${regime}, ${cargo}, ${valor}, NOW(), NOW())
   `
 
+  // Ensure classificacao columns exist
+  await prisma.$executeRawUnsafe(`ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "classificacao" TEXT`)
+  await prisma.$executeRawUnsafe(`ALTER TABLE "CreatedUser" ADD COLUMN IF NOT EXISTS "classificacao" TEXT`)
+
   // Sync cargo → UserProfile.classificacao (and CreatedUser fallback)
   await prisma.$executeRaw`
     UPDATE "UserProfile" SET "classificacao" = ${cargo}, "updatedAt" = NOW()
@@ -151,6 +155,10 @@ export async function updateProgressao(
       LIMIT 1
     `
     if (mostRecent?.id === id) {
+      // Ensure classificacao columns exist
+      await prisma.$executeRawUnsafe(`ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "classificacao" TEXT`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE "CreatedUser" ADD COLUMN IF NOT EXISTS "classificacao" TEXT`)
+
       await prisma.$executeRaw`
         UPDATE "UserProfile" SET "classificacao" = ${cargo}, "updatedAt" = NOW()
         WHERE "userId" = ${updatedRow.evaluatedUserId}
