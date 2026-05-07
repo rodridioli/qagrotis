@@ -13,11 +13,7 @@ import {
   USER_PROFILE_READ_SELECT,
 } from "@/lib/prisma-user-selects"
 import {
-  ensureUserDataNascimentoColumns,
-  ensureUserClassificacaoColumns,
-  ensureUserHybridWorkDaysColumns,
-  ensureUserWorkScheduleColumns,
-  ensureUserExtendedProfileColumns,
+  ensureAllUserProfileColumns,
 } from "@/lib/prisma-schema-ensure"
 import {
   diasTrabalhoHibridoForStorage,
@@ -168,11 +164,7 @@ function validatePhotoPath(photoPath: string | null | undefined): string | null 
 // ── Public actions ─────────────────────────────────────────────────────────
 
 export async function getQaUsers(): Promise<QaUserRecord[]> {
-  await ensureUserDataNascimentoColumns()
-  await ensureUserClassificacaoColumns()
-  await ensureUserWorkScheduleColumns()
-  await ensureUserHybridWorkDaysColumns()
-  await ensureUserExtendedProfileColumns()
+  await ensureAllUserProfileColumns()
   const [inactiveRecords, profiles, createdUsers, oauthUsers] = await Promise.all([
     prisma.inactiveUser.findMany({ select: { userId: true } }),
     prisma.userProfile.findMany({ select: USER_PROFILE_READ_SELECT }),
@@ -267,11 +259,7 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
   const result = userIdSchema.safeParse(id)
   if (!result.success) return null
 
-  await ensureUserDataNascimentoColumns()
-  await ensureUserClassificacaoColumns()
-  await ensureUserWorkScheduleColumns()
-  await ensureUserHybridWorkDaysColumns()
-  await ensureUserExtendedProfileColumns()
+  await ensureAllUserProfileColumns()
 
   const [savedProfile, createdUser, oauthUser, progressaoRows] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId: id }, select: USER_PROFILE_READ_SELECT }),

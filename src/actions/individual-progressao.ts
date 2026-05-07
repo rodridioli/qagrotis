@@ -1,5 +1,6 @@
 "use server"
 
+import { randomUUID } from "crypto"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import {
@@ -82,45 +83,50 @@ const progressaoSchema = z.object({
 export async function createProgressao(
   input: z.infer<typeof progressaoSchema>,
 ): Promise<{ error?: string }> {
-  const session = await requireMgr()
-  await ensureIndividualProgressaoTable()
-  await ensureIndividualProgressaoCargoColumn()
-  const parsed = progressaoSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  try {
+    const session = await requireMgr()
+    await ensureIndividualProgressaoTable()
+    await ensureIndividualProgressaoCargoColumn()
+    const parsed = progressaoSchema.safeParse(input)
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
-  const { evaluatedUserId, data, tipo, regime, cargo, valor } = parsed.data
+    const { evaluatedUserId, data, tipo, regime, cargo, valor } = parsed.data
 
-  const [last] = await prisma.$queryRaw<{ codigo: number }[]>`
-    SELECT codigo FROM "IndividualProgressao"
-    WHERE "evaluatedUserId" = ${evaluatedUserId}
-    ORDER BY codigo DESC
-    LIMIT 1
-  `
-  const codigo = (last?.codigo ?? 0) + 1
-  const id = crypto.randomUUID()
-  const dataTs = new Date(`${data}T12:00:00.000Z`)
+    const [last] = await prisma.$queryRaw<{ codigo: number }[]>`
+      SELECT codigo FROM "IndividualProgressao"
+      WHERE "evaluatedUserId" = ${evaluatedUserId}
+      ORDER BY codigo DESC
+      LIMIT 1
+    `
+    const codigo = (last?.codigo ?? 0) + 1
+    const id = randomUUID()
+    const dataTs = new Date(`${data}T12:00:00.000Z`)
 
-  await prisma.$executeRaw`
-    INSERT INTO "IndividualProgressao"
-      (id, "evaluatedUserId", "createdByUserId", codigo, data, tipo, regime, cargo, valor, "createdAt", "updatedAt")
-    VALUES
-      (${id}, ${evaluatedUserId}, ${session.user.id}, ${codigo}, ${dataTs}, ${tipo}, ${regime}, ${cargo}, ${valor}, NOW(), NOW())
-  `
+    await prisma.$executeRaw`
+      INSERT INTO "IndividualProgressao"
+        (id, "evaluatedUserId", "createdByUserId", codigo, data, tipo, regime, cargo, valor, "createdAt", "updatedAt")
+      VALUES
+        (${id}, ${evaluatedUserId}, ${session.user.id}, ${codigo}, ${dataTs}, ${tipo}, ${regime}, ${cargo}, ${valor}, NOW(), NOW())
+    `
 
-  // Ensure classificacao columns exist
-  await ensureUserClassificacaoColumns()
+    // Ensure classificacao columns exist
+    await ensureUserClassificacaoColumns()
 
-  // Sync cargo → UserProfile.classificacao (and CreatedUser fallback)
-  await prisma.$executeRaw`
-    UPDATE "UserProfile" SET "classificacao" = ${cargo}, "updatedAt" = NOW()
-    WHERE "userId" = ${evaluatedUserId}
-  `
-  await prisma.$executeRaw`
-    UPDATE "CreatedUser" SET "classificacao" = ${cargo}
-    WHERE "id" = ${evaluatedUserId}
-  `
+    // Sync cargo → UserProfile.classificacao (and CreatedUser fallback)
+    await prisma.$executeRaw`
+      UPDATE "UserProfile" SET "classificacao" = ${cargo}, "updatedAt" = NOW()
+      WHERE "userId" = ${evaluatedUserId}
+    `
+    await prisma.$executeRaw`
+      UPDATE "CreatedUser" SET "classificacao" = ${cargo}
+      WHERE "id" = ${evaluatedUserId}
+    `
 
-  return {}
+    return {}
+  } catch (err) {
+    console.error("[createProgressao] Error:", err)
+    return { error: err instanceof Error ? err.message : "Erro interno ao criar progressão." }
+  }
 }
 
 const updateSchema = progressaoSchema.extend({ id: z.string().min(1).max(128) })
@@ -128,58 +134,68 @@ const updateSchema = progressaoSchema.extend({ id: z.string().min(1).max(128) })
 export async function updateProgressao(
   input: z.infer<typeof updateSchema>,
 ): Promise<{ error?: string }> {
-  await requireMgr()
-  await ensureIndividualProgressaoTable()
-  await ensureIndividualProgressaoCargoColumn()
-  const parsed = updateSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  try {
+    await requireMgr()
+    await ensureIndividualProgressaoTable()
+    await ensureIndividualProgressaoCargoColumn()
+    const parsed = updateSchema.safeParse(input)
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
-  const { id, data, tipo, regime, cargo, valor } = parsed.data
-  const dataTs = new Date(`${data}T12:00:00.000Z`)
+    const { id, data, tipo, regime, cargo, valor } = parsed.data
+    const dataTs = new Date(`${data}T12:00:00.000Z`)
 
-  await prisma.$executeRaw`
-    UPDATE "IndividualProgressao"
-    SET data = ${dataTs}, tipo = ${tipo}, regime = ${regime}, cargo = ${cargo}, valor = ${valor}, "updatedAt" = NOW()
-    WHERE id = ${id}
-  `
-
-  // Sync cargo → classificacao only when this is the most recent progression for the evaluated user
-  const [updatedRow] = await prisma.$queryRaw<{ evaluatedUserId: string }[]>`
-    SELECT "evaluatedUserId" FROM "IndividualProgressao" WHERE id = ${id} LIMIT 1
-  `
-  if (updatedRow?.evaluatedUserId) {
-    const [mostRecent] = await prisma.$queryRaw<{ id: string }[]>`
-      SELECT id FROM "IndividualProgressao"
-      WHERE "evaluatedUserId" = ${updatedRow.evaluatedUserId}
-      ORDER BY data DESC
-      LIMIT 1
+    await prisma.$executeRaw`
+      UPDATE "IndividualProgressao"
+      SET data = ${dataTs}, tipo = ${tipo}, regime = ${regime}, cargo = ${cargo}, valor = ${valor}, "updatedAt" = NOW()
+      WHERE id = ${id}
     `
-    if (mostRecent?.id === id) {
-      // Ensure classificacao columns exist
-      await ensureUserClassificacaoColumns()
 
-      await prisma.$executeRaw`
-        UPDATE "UserProfile" SET "classificacao" = ${cargo}, "updatedAt" = NOW()
-        WHERE "userId" = ${updatedRow.evaluatedUserId}
+    // Sync cargo → classificacao only when this is the most recent progression for the evaluated user
+    const [updatedRow] = await prisma.$queryRaw<{ evaluatedUserId: string }[]>`
+      SELECT "evaluatedUserId" FROM "IndividualProgressao" WHERE id = ${id} LIMIT 1
+    `
+    if (updatedRow?.evaluatedUserId) {
+      const [mostRecent] = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "IndividualProgressao"
+        WHERE "evaluatedUserId" = ${updatedRow.evaluatedUserId}
+        ORDER BY data DESC
+        LIMIT 1
       `
-      await prisma.$executeRaw`
-        UPDATE "CreatedUser" SET "classificacao" = ${cargo}
-        WHERE "id" = ${updatedRow.evaluatedUserId}
-      `
+      if (mostRecent?.id === id) {
+        // Ensure classificacao columns exist
+        await ensureUserClassificacaoColumns()
+
+        await prisma.$executeRaw`
+          UPDATE "UserProfile" SET "classificacao" = ${cargo}, "updatedAt" = NOW()
+          WHERE "userId" = ${updatedRow.evaluatedUserId}
+        `
+        await prisma.$executeRaw`
+          UPDATE "CreatedUser" SET "classificacao" = ${cargo}
+          WHERE "id" = ${updatedRow.evaluatedUserId}
+        `
+      }
     }
-  }
 
-  return {}
+    return {}
+  } catch (err) {
+    console.error("[updateProgressao] Error:", err)
+    return { error: err instanceof Error ? err.message : "Erro interno ao atualizar progressão." }
+  }
 }
 
 export async function deleteProgressao(id: string): Promise<{ error?: string }> {
-  await requireMgr()
-  await ensureIndividualProgressaoTable()
-  await ensureIndividualProgressaoCargoColumn()
-  const parsed = z.string().min(1).max(128).safeParse(id)
-  if (!parsed.success) return { error: "ID inválido." }
-  await prisma.$executeRaw`
-    DELETE FROM "IndividualProgressao" WHERE id = ${parsed.data}
-  `
-  return {}
+  try {
+    await requireMgr()
+    await ensureIndividualProgressaoTable()
+    await ensureIndividualProgressaoCargoColumn()
+    const parsed = z.string().min(1).max(128).safeParse(id)
+    if (!parsed.success) return { error: "ID inválido." }
+    await prisma.$executeRaw`
+      DELETE FROM "IndividualProgressao" WHERE id = ${parsed.data}
+    `
+    return {}
+  } catch (err) {
+    console.error("[deleteProgressao] Error:", err)
+    return { error: err instanceof Error ? err.message : "Erro interno ao deletar progressão." }
+  }
 }

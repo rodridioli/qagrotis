@@ -30,9 +30,15 @@ export async function ensureUserDataNascimentoColumns(): Promise<void> {
     await prisma.$executeRawUnsafe(
       `ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "dataNascimento" TIMESTAMP(3)`,
     )
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "CreatedUser" ADD COLUMN IF NOT EXISTS "photoPath" TEXT`,
+    )
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "photoPath" TEXT`,
+    )
     g.__qagrotisEnsuredDataNascimento = true
   } catch (e) {
-    console.error("[prisma-schema-ensure] dataNascimento columns", e)
+    console.error("[prisma-schema-ensure] dataNascimento/photoPath columns", e)
   }
 }
 
@@ -347,5 +353,33 @@ export async function ensureIndividualProgressaoCargoColumn(): Promise<void> {
     g.__qagrotisEnsuredIndividualProgressaoCargo = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualProgressao.cargo", e)
+  }
+}
+
+/**
+ * Garante que todas as colunas necessárias para a leitura de perfil existam no Neon.
+ * Sincronizado com `lib/prisma-user-selects.ts`.
+ */
+export async function ensureAllUserProfileColumns(): Promise<void> {
+  // Chamamos os ensures existentes que já têm lógica de flag individual
+  await ensureUserDataNascimentoColumns()
+  await ensureUserClassificacaoColumns()
+  await ensureUserWorkScheduleColumns()
+  await ensureUserHybridWorkDaysColumns()
+  await ensureUserExtendedProfileColumns()
+
+  // accessProfile é um ENUM, precisa de tratamento especial no Neon se não existir.
+  try {
+    await prisma.$executeRawUnsafe(`
+DO $$ BEGIN
+    CREATE TYPE "AccessProfile" AS ENUM ('QA', 'UX', 'TW', 'MGR');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "CreatedUser" ADD COLUMN IF NOT EXISTS "accessProfile" "AccessProfile"`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "accessProfile" "AccessProfile"`)
+  } catch (e) {
+    console.error("[prisma-schema-ensure] accessProfile enum/column", e)
   }
 }
