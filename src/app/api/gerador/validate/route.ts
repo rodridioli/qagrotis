@@ -1,4 +1,10 @@
 import { auth } from "@/core/auth"
+import { z } from "zod"
+
+const bodySchema = z.object({
+  provider: z.string().min(1).max(64),
+  apiKey: z.string().min(1).max(512),
+})
 
 // Rate limit: max 10 validation requests per user per minute
 const validateRateMap = new Map<string, { count: number; resetAt: number }>()
@@ -28,14 +34,15 @@ export async function POST(req: NextRequest) {
     return new Response("Muitas tentativas. Aguarde um momento.", { status: 429 })
   }
 
-  const body = await req.json() as { provider?: string; apiKey?: string }
-  const { provider, apiKey } = body
-
-  if (!provider || !apiKey?.trim()) {
+  let provider: string, key: string
+  try {
+    const body = bodySchema.parse(await req.json())
+    provider = body.provider
+    key = body.apiKey.trim()
+    if (!key) throw new Error()
+  } catch {
     return new Response("provider e apiKey são obrigatórios.", { status: 400 })
   }
-
-  const key = apiKey.trim()
 
   try {
     switch (provider) {

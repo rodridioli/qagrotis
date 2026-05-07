@@ -63,12 +63,12 @@ export interface QaUserProfile {
   instagram?: string | null
   linkedin?: string | null
 
-  // Novos campos (Listas)
-  education?: any[] | null
-  courses?: any[] | null
-  languages?: any[] | null
-  certifications?: any[] | null
-  careerHistory?: any[] | null
+  // Novos campos (Listas) — Json? no Prisma; unknown[] evita acesso acidental sem type guard
+  education?: unknown[] | null
+  courses?: unknown[] | null
+  languages?: unknown[] | null
+  certifications?: unknown[] | null
+  careerHistory?: unknown[] | null
 }
 
 // ── Validation schemas ──────────────────────────────────────────────────────
