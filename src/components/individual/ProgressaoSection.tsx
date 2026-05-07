@@ -177,7 +177,9 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
                 onValueChange={(v) => setForm((f) => ({ ...f, tipo: v as ProgressaoTipo }))}
               >
                 <SelectTrigger id="prog-tipo" aria-label="Tipo de progressão">
-                  <SelectValue placeholder="Selecione o tipo" />
+                  <SelectValue placeholder="Selecione o tipo">
+                    {PROGRESSAO_TIPO_OPTIONS.find((o) => o.value === form.tipo)?.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectPopup>
                   {PROGRESSAO_TIPO_OPTIONS.map((o) => (
@@ -198,8 +200,10 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
                 value={form.regime}
                 onValueChange={(v) => setForm((f) => ({ ...f, regime: v as ProgressaoRegime }))}
               >
-                <SelectTrigger id="prog-regime" aria-label="Regime de contratação">
-                  <SelectValue placeholder="Selecione o regime" />
+                <SelectTrigger id="prog-regime" aria-label="Regime de trabalho">
+                  <SelectValue placeholder="Selecione o regime">
+                    {PROGRESSAO_REGIME_OPTIONS.find((o) => o.value === form.regime)?.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectPopup>
                   {PROGRESSAO_REGIME_OPTIONS.map((o) => (
