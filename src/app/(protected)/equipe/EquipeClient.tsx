@@ -18,6 +18,7 @@ import { EquipeAniversarioCard } from "@/components/equipe/EquipeAniversarioCard
 import { EquipeHorariosTable } from "@/components/equipe/EquipeHorariosTable"
 import { EquipeChaptersSection } from "@/components/equipe/EquipeChaptersSection"
 import { EmptyState } from "@/components/qagrotis/EmptyState"
+import { SectionSpinner } from "@/components/qagrotis/SectionSpinner"
 import {
   Select, SelectTrigger, SelectPopup, SelectItem,
 } from "@/components/ui/select"
@@ -443,9 +444,7 @@ const aniversariantesPorMes = useMemo(() => {
           />
 
           {performanceLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <p className="text-sm text-text-secondary">Carregando…</p>
-            </div>
+            <SectionSpinner minHeight="min-h-[16rem]" />
           ) : performanceError ? (
             <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
               <p className="text-center text-sm text-destructive">{performanceError}</p>
@@ -469,9 +468,7 @@ const aniversariantesPorMes = useMemo(() => {
       {activeTab === "aniversarios" && (
         <div className="space-y-4">
           {cadastroLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <p className="text-sm text-text-secondary">Carregando…</p>
-            </div>
+            <SectionSpinner minHeight="min-h-[16rem]" />
           ) : cadastroError ? (
             <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
               <p className="text-center text-sm text-destructive">{cadastroError}</p>
@@ -516,9 +513,7 @@ const aniversariantesPorMes = useMemo(() => {
       {activeTab === "horarios" && (
         <div className="space-y-4">
           {cadastroLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <p className="text-sm text-text-secondary">Carregando…</p>
-            </div>
+            <SectionSpinner minHeight="min-h-[16rem]" />
           ) : cadastroError ? (
             <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
               <p className="text-center text-sm text-destructive">{cadastroError}</p>

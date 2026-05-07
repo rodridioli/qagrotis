@@ -26,6 +26,7 @@ import {
   type EquipeChapterRankingPage,
 } from "@/lib/equipe-chapters-shared"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
+import { SectionSpinner } from "@/components/qagrotis/SectionSpinner"
 
 export interface EquipeChaptersSectionProps {
   isAdmin: boolean
@@ -202,9 +203,7 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
-        </div>
+        <SectionSpinner minHeight="min-h-[16rem]" />
       ) : error ? (
         <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
           <p className="text-center text-sm text-destructive">{error}</p>

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
+import { SectionSpinner } from "@/components/qagrotis/SectionSpinner"
 import { IndividualProgressaoTable } from "@/components/individual/IndividualProgressaoTable"
 import { listMinhasProgressoes } from "@/actions/individual-progressao"
 import type { ProgressaoListRow } from "@/lib/individual-progressao"
@@ -66,9 +67,7 @@ export function MinhasProgressoesSection() {
         ) : null}
 
         {loading ? (
-          <div className="flex min-h-[12rem] items-center justify-center py-12">
-            <p className="text-sm text-text-secondary">Carregando…</p>
-          </div>
+          <SectionSpinner />
         ) : rows.length === 0 ? (
           <EmptyState message="Nenhuma progressão registrada." />
         ) : (

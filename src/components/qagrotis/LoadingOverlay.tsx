@@ -27,7 +27,7 @@ export function LoadingOverlay({ visible, label = "Processando...", className }:
       )}
     >
       <div className="flex size-14 items-center justify-center rounded-2xl bg-surface-card shadow-card">
-        <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary border-t-transparent" />
+        <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary/20 border-t-brand-primary" />
       </div>
       <p className="text-sm font-medium text-text-primary">{label}</p>
     </div>

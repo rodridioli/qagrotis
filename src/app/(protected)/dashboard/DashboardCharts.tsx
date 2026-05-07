@@ -299,7 +299,7 @@ export function DashboardCharts({
         <div className="relative flex min-w-0 flex-col rounded-xl bg-surface-card p-5 shadow-card min-h-75">
           {loading.ranking && (
             <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-surface-card/60 backdrop-blur-[1px]">
-              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary border-t-transparent" />
+              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary/20 border-t-brand-primary" />
             </div>
           )}
           <div className="mb-4 flex items-center justify-between gap-2">
@@ -393,7 +393,7 @@ export function DashboardCharts({
         <div className="relative col-span-1 min-w-0 rounded-xl bg-surface-card p-5 shadow-card lg:col-span-3">
           {loading.testes && (
             <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-surface-card/60 backdrop-blur-[1px]">
-              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary border-t-transparent" />
+              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary/20 border-t-brand-primary" />
             </div>
           )}
           <div className="mb-4 flex items-center justify-between gap-2">
@@ -477,7 +477,7 @@ export function DashboardCharts({
         <div className="relative min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
           {loading.erros && (
             <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-surface-card/60 backdrop-blur-[1px]">
-              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary border-t-transparent" />
+              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary/20 border-t-brand-primary" />
             </div>
           )}
           <div className="mb-4 flex items-center justify-between gap-2">
@@ -515,7 +515,7 @@ export function DashboardCharts({
         <div className="relative min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
           {loading.alertas && (
             <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-surface-card/60 backdrop-blur-[1px]">
-              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary border-t-transparent" />
+              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary/20 border-t-brand-primary" />
             </div>
           )}
           <div className="mb-4 flex items-center justify-between gap-2">
@@ -554,7 +554,7 @@ export function DashboardCharts({
         <div className="relative min-w-0 rounded-xl bg-surface-card p-5 shadow-card">
           {loading.sucesso && (
             <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-surface-card/60 backdrop-blur-[1px]">
-              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary border-t-transparent" />
+              <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary/20 border-t-brand-primary" />
             </div>
           )}
           <div className="mb-4 flex items-center justify-between gap-2">

@@ -9,6 +9,7 @@ import { TableToolbar } from "@/components/qagrotis/TableToolbar"
 import { IndividualFeedbacksTable } from "@/components/individual/IndividualFeedbacksTable"
 import { listMyCompletedFeedbacks } from "@/actions/individual-feedbacks"
 import type { IndividualFeedbackListRow } from "@/lib/individual-feedback"
+import { SectionSpinner } from "@/components/qagrotis/SectionSpinner"
 
 const FEEDBACKS_PAGE_SIZE = 20
 
@@ -109,9 +110,7 @@ export function MinhasFeedbacksSection({ showCompletedToast = false }: { showCom
         ) : null}
 
         {loading ? (
-          <div className="flex min-h-[12rem] items-center justify-center py-12">
-            <p className="text-sm text-text-secondary">Carregando…</p>
-          </div>
+          <SectionSpinner />
         ) : filtered.length === 0 ? (
           <EmptyState
             message={

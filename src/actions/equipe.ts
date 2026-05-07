@@ -56,7 +56,7 @@ export async function getPerformanceData(filters: {
       if (dateFilter.lte) cenarioCreatedAtWhere.lte = dateFilter.lte
     }
 
-    const [inactiveRecords, profiles, createdUsers, oauthUsers, cenarios, cenariosAuthorLookup, activeSuites] =
+    const [inactiveRecords, profiles, createdUsers, oauthUsers, cenarios, cenariosAuthorLookup, activeSuites, latestProgressaoCargos] =
       await Promise.all([
       prisma.inactiveUser.findMany({ select: { userId: true } }),
       prisma.userProfile.findMany({ select: USER_PROFILE_READ_SELECT }),
@@ -99,11 +99,21 @@ export async function getPerformanceData(filters: {
         },
         select: { historico: true },
       }),
+      // Cargo mais recente por usuário (progressão de carreira)
+      prisma.$queryRaw<{ evaluatedUserId: string; cargo: string | null }[]>`
+        SELECT DISTINCT ON ("evaluatedUserId") "evaluatedUserId", cargo
+        FROM "IndividualProgressao"
+        ORDER BY "evaluatedUserId", data DESC
+      `.catch(() => [] as { evaluatedUserId: string; cargo: string | null }[]),
     ])
 
     const normalize = (v: string | null | undefined) => (v ?? "").trim().toLowerCase()
     const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
     const profileMap = new Map(profiles.map((p) => [p.userId, p]))
+    // Mapa: userId → cargo mais recente de IndividualProgressao
+    const latestCargoByUserId = new Map<string, string | null>(
+      latestProgressaoCargos.map((r) => [r.evaluatedUserId, r.cargo ?? null])
+    )
 
     type UserInfo = { id: string; name: string; email: string; accessProfile: "QA" | "UX" | "TW" | "MGR" | null; classificacao: string | null; photoPath: string | null; active: boolean }
     const usersByEmail = new Map<string, UserInfo>()
@@ -124,7 +134,7 @@ export async function getPerformanceData(filters: {
         name: p?.name ?? base.name,
         email,
         accessProfile: ((p?.accessProfile ?? base.accessProfile) ?? null) as "QA" | "UX" | "TW" | "MGR" | null,
-        classificacao: p?.classificacao ?? base.classificacao ?? null,
+        classificacao: latestCargoByUserId.get(base.id) ?? (p?.classificacao ?? base.classificacao ?? null),
         photoPath: p?.photoPath ?? base.photoPath ?? null,
         active: base.active && !inactiveIds.has(base.id),
       })

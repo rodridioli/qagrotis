@@ -61,7 +61,7 @@ export default function UsuarioFormTabs({
     if (!lockedAccessProfile) return
     setAccessProfile(lockedAccessProfile)
   }, [lockedAccessProfile])
-  const [cargo, setCargo] = useState(initialData?.classificacao ?? "")
+
   const [dataNascimento, setDataNascimento] = useState(initialData?.dataNascimento ?? "")
   const [horarioEntrada, setHorarioEntrada] = useState(initialData?.horarioEntrada ?? "")
   const [horarioSaida, setHorarioSaida] = useState(initialData?.horarioSaida ?? "")
@@ -146,7 +146,6 @@ export default function UsuarioFormTabs({
         email,
         type: tipo,
         accessProfile,
-        classificacao: cargo.trim() || null,
         dataNascimento: dataNascimento.trim() || null,
         horarioEntrada: horarioEntrada.trim() || null,
         horarioSaida: horarioSaida.trim() || null,
@@ -307,7 +306,7 @@ export default function UsuarioFormTabs({
                   <label className="text-sm font-medium">E-mail <span className="text-destructive">*</span></label>
                   <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="email@empresa.com" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">Tipo</label>
                     <Select
@@ -346,12 +345,6 @@ export default function UsuarioFormTabs({
                         ))}
                       </SelectPopup>
                     </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Cargo</label>
-                    <Input value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Ex.: Analista de QA" />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">Data de Nascimento</label>

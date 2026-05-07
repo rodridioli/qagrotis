@@ -41,7 +41,7 @@ export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }
   const [email, setEmail] = useState("")
   const [tipo, setTipo] = useState<string>("Padrão")
   const [accessProfile, setAccessProfile] = useState<AccessProfile>(manageableProfiles[0] ?? "QA")
-  const [cargo, setCargo] = useState("")
+
   const [dataNascimento, setDataNascimento] = useState("")
   const [horarioEntrada, setHorarioEntrada] = useState("")
   const [horarioSaida, setHorarioSaida] = useState("")
@@ -100,7 +100,6 @@ export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }
         email,
         type: tipo,
         accessProfile,
-        classificacao: cargo.trim() || null,
         dataNascimento: dataNascimento.trim() || null,
         horarioEntrada: horarioEntrada.trim() || null,
         horarioSaida: horarioSaida.trim() || null,
@@ -133,7 +132,6 @@ export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }
             email,
             type: tipo,
             accessProfile,
-            classificacao: cargo.trim() || null,
             dataNascimento: dataNascimento.trim() || null,
             horarioEntrada: horarioEntrada.trim() || null,
             horarioSaida: horarioSaida.trim() || null,
@@ -201,7 +199,7 @@ export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
               <label htmlFor="tipo" className="text-sm font-medium text-text-primary">
                 Tipo <span className="text-destructive">*</span>
@@ -255,25 +253,7 @@ export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }
                 </SelectPopup>
               </Select>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
-            <div className="min-w-0 space-y-1.5">
-              <label htmlFor="cargo" className="text-sm font-medium text-text-primary">
-                Cargo
-              </label>
-              <Input
-                id="cargo"
-                value={cargo}
-                onChange={(e) => setCargo(e.target.value)}
-                placeholder="Ex.: Analista de QA"
-                maxLength={120}
-                disabled={isPending}
-                className="w-full"
-              />
-            </div>
-
-            <div className="min-w-0 space-y-1.5">
+            <div className="space-y-1.5">
               <label htmlFor="dataNascimento" className="text-sm font-medium text-text-primary">
                 Data de Nascimento
               </label>

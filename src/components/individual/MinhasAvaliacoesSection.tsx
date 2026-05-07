@@ -12,6 +12,7 @@ import {
   type IndividualPerformanceEvaluationListRow,
 } from "@/actions/individual-performance-evaluations"
 import { avaliacaoListDisplayPercent, evaluationDisplayCodigo } from "@/lib/individual-performance-evaluation"
+import { SectionSpinner } from "@/components/qagrotis/SectionSpinner"
 
 const AVALIACOES_PAGE_SIZE = 20
 
@@ -147,9 +148,7 @@ export function MinhasAvaliacoesSection({ showCompletedToast = false }: { showCo
         ) : null}
 
         {loading ? (
-          <div className="flex min-h-[12rem] items-center justify-center py-12">
-            <p className="text-sm text-text-secondary">Carregando…</p>
-          </div>
+          <SectionSpinner />
         ) : filtered.length === 0 ? (
           <EmptyState
             message={

@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/qagrotis/ConfirmDialog"
 import { EmptyState } from "@/components/qagrotis/EmptyState"
 import { TablePagination } from "@/components/qagrotis/TablePagination"
 import { TableToolbar } from "@/components/qagrotis/TableToolbar"
+import { SectionSpinner } from "@/components/qagrotis/SectionSpinner"
 import { IndividualFeedbacksTable } from "@/components/individual/IndividualFeedbacksTable"
 import {
   deleteIndividualFeedback,
@@ -141,9 +142,7 @@ export function IndividualFeedbacksSection({
         ) : null}
 
         {loading ? (
-          <div className="flex min-h-[12rem] items-center justify-center py-12">
-            <p className="text-sm text-text-secondary">Carregando…</p>
-          </div>
+          <SectionSpinner />
         ) : filtered.length === 0 ? (
           <EmptyState message={rows.length === 0 ? "Nenhum registro encontrado." : "Nenhum resultado para a busca."} />
         ) : (

@@ -138,6 +138,30 @@ export async function updateProgressao(
     SET data = ${dataTs}, tipo = ${tipo}, regime = ${regime}, cargo = ${cargo}, valor = ${valor}, "updatedAt" = NOW()
     WHERE id = ${id}
   `
+
+  // Sync cargo → classificacao only when this is the most recent progression for the evaluated user
+  const [updatedRow] = await prisma.$queryRaw<{ evaluatedUserId: string }[]>`
+    SELECT "evaluatedUserId" FROM "IndividualProgressao" WHERE id = ${id} LIMIT 1
+  `
+  if (updatedRow?.evaluatedUserId) {
+    const [mostRecent] = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "IndividualProgressao"
+      WHERE "evaluatedUserId" = ${updatedRow.evaluatedUserId}
+      ORDER BY data DESC
+      LIMIT 1
+    `
+    if (mostRecent?.id === id) {
+      await prisma.$executeRaw`
+        UPDATE "UserProfile" SET "classificacao" = ${cargo}, "updatedAt" = NOW()
+        WHERE "userId" = ${updatedRow.evaluatedUserId}
+      `
+      await prisma.$executeRaw`
+        UPDATE "CreatedUser" SET "classificacao" = ${cargo}
+        WHERE "id" = ${updatedRow.evaluatedUserId}
+      `
+    }
+  }
+
   return {}
 }
 
