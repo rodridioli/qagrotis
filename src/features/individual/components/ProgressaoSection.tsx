@@ -120,7 +120,10 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      toast.error("Preencha todos os campos obrigatórios.")
+      return
+    }
     setSaving(true)
     const payload = {
       evaluatedUserId,
@@ -162,10 +165,14 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
                 id="prog-data"
                 type="date"
                 value={form.data}
-                onChange={(e) => setForm((f) => ({ ...f, data: e.target.value }))}
-                className="h-9 w-full rounded-custom border border-border-default bg-surface-input px-3 text-sm text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                onChange={(e) => { setForm((f) => ({ ...f, data: e.target.value })); setErrors(p => ({ ...p, data: "" })) }}
+                aria-invalid={!!errors.data}
+                className={`h-9 w-full rounded-custom border px-3 text-sm text-text-primary outline-none transition-colors ${
+                  errors.data 
+                    ? "border-destructive bg-surface-input focus:ring-2 focus:ring-destructive/20" 
+                    : "border-border-default bg-surface-input focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                }`}
               />
-              {errors.data ? <p className="text-xs text-destructive">{errors.data}</p> : null}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -174,9 +181,9 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
               </label>
               <Select
                 value={form.tipo}
-                onValueChange={(v) => setForm((f) => ({ ...f, tipo: v as ProgressaoTipo }))}
+                onValueChange={(v) => { setForm((f) => ({ ...f, tipo: v as ProgressaoTipo })); setErrors(p => ({ ...p, tipo: "" })) }}
               >
-                <SelectTrigger id="prog-tipo" aria-label="Tipo de progressão">
+                <SelectTrigger id="prog-tipo" aria-label="Tipo de progressão" error={errors.tipo}>
                   <SelectValue placeholder="Selecione o tipo">
                     {PROGRESSAO_TIPO_OPTIONS.find((o) => o.value === form.tipo)?.label}
                   </SelectValue>
@@ -187,7 +194,6 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
                   ))}
                 </SelectPopup>
               </Select>
-              {errors.tipo ? <p className="text-xs text-destructive">{errors.tipo}</p> : null}
             </div>
           </div>
 
@@ -198,9 +204,9 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
               </label>
               <Select
                 value={form.regime}
-                onValueChange={(v) => setForm((f) => ({ ...f, regime: v as ProgressaoRegime }))}
+                onValueChange={(v) => { setForm((f) => ({ ...f, regime: v as ProgressaoRegime })); setErrors(p => ({ ...p, regime: "" })) }}
               >
-                <SelectTrigger id="prog-regime" aria-label="Regime de trabalho">
+                <SelectTrigger id="prog-regime" aria-label="Regime de trabalho" error={errors.regime}>
                   <SelectValue placeholder="Selecione o regime">
                     {PROGRESSAO_REGIME_OPTIONS.find((o) => o.value === form.regime)?.label}
                   </SelectValue>
@@ -211,7 +217,6 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
                   ))}
                 </SelectPopup>
               </Select>
-              {errors.regime ? <p className="text-xs text-destructive">{errors.regime}</p> : null}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -223,10 +228,14 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
                 type="text"
                 placeholder="Ex.: Analista de QA"
                 value={form.cargo}
-                onChange={(e) => setForm((f) => ({ ...f, cargo: e.target.value }))}
-                className="h-9 w-full rounded-custom border border-border-default bg-surface-input px-3 text-sm text-text-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                onChange={(e) => { setForm((f) => ({ ...f, cargo: e.target.value })); setErrors(p => ({ ...p, cargo: "" })) }}
+                aria-invalid={!!errors.cargo}
+                className={`h-9 w-full rounded-custom border px-3 text-sm text-text-primary outline-none transition-colors ${
+                  errors.cargo
+                    ? "border-destructive bg-surface-input focus:ring-2 focus:ring-destructive/20"
+                    : "border-border-default bg-surface-input focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                }`}
               />
-              {errors.cargo ? <p className="text-xs text-destructive">{errors.cargo}</p> : null}
             </div>
           </div>
 
@@ -244,11 +253,15 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
                 inputMode="numeric"
                 placeholder="0,00"
                 value={form.valorDisplay}
-                onChange={(e) => setForm((f) => ({ ...f, valorDisplay: maskCurrency(e.target.value) }))}
-                className="h-9 w-full rounded-custom border border-border-default bg-surface-input pl-9 pr-3 text-right text-sm text-text-primary tabular-nums outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                onChange={(e) => { setForm((f) => ({ ...f, valorDisplay: maskCurrency(e.target.value) })); setErrors(p => ({ ...p, valorDisplay: "" })) }}
+                aria-invalid={!!errors.valorDisplay}
+                className={`h-9 w-full rounded-custom border pl-9 pr-3 text-right text-sm text-text-primary tabular-nums outline-none transition-colors ${
+                  errors.valorDisplay
+                    ? "border-destructive bg-surface-input focus:ring-2 focus:ring-destructive/20"
+                    : "border-border-default bg-surface-input focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                }`}
               />
             </div>
-            {errors.valorDisplay ? <p className="text-xs text-destructive">{errors.valorDisplay}</p> : null}
           </div>
         </form>
 

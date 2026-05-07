@@ -80,6 +80,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
   // ── Modelo de IA modal (criar / editar) ─────────────────────────────────────
   const [integracaoModalOpen, setIntegracaoModalOpen] = useState(false)
   const [integracaoEditando, setIntegracaoEditando] = useState<IntegracaoRecord | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [intProvider, setIntProvider] = useState<"openrouter" | "groq" | "google" | "openai" | "anthropic">("openrouter")
   const [intModel, setIntModel] = useState("google/gemini-2.0-flash-exp:free")
   const [intApiKey, setIntApiKey] = useState("")
@@ -94,6 +95,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
     setIntApiKey("")
     setIntShowKey(false)
     setIntKeyStatus("idle")
+    setErrors({})
     setIntegracaoModalOpen(true)
   }
 
@@ -104,6 +106,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
     setIntApiKey(item.apiKey ?? "")
     setIntShowKey(false)
     setIntKeyStatus("idle")
+    setErrors({})
     setIntegracaoModalOpen(true)
   }
 
@@ -136,8 +139,19 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
     }
   }, [intApiKey, intProvider])
 
+  function validateIntForm() {
+    const e: Record<string, string> = {}
+    if (!intModel.trim()) e.model = "O Modelo é obrigatório."
+    if (!intApiKey.trim()) e.apiKey = "A API Key é obrigatória."
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
   function handleSalvarIntegracao() {
-    if (!intApiKey.trim()) { toast.error("A API Key é obrigatória."); return }
+    if (!validateIntForm()) {
+      toast.error("Preencha todos os campos obrigatórios.")
+      return
+    }
     if (intKeyStatus === "validating") { toast.error("Aguarde a validação da API Key."); return }
     startIntegracaoModalTransition(async () => {
       try {
@@ -553,9 +567,10 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                 </label>
                 <Input
                   value={intModel}
-                  onChange={(e) => setIntModel(e.target.value)}
+                  onChange={(e) => { setIntModel(e.target.value); setErrors(p => ({ ...p, model: "" })) }}
                   placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
                   disabled={isIntegracaoModalPending}
+                  error={errors.model}
                 />
               </div>
             </div>
@@ -570,7 +585,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                   <Input
                     type={intShowKey ? "text" : "password"}
                     value={intApiKey}
-                    onChange={(e) => { setIntApiKey(e.target.value); setIntKeyStatus("idle") }}
+                    onChange={(e) => { setIntApiKey(e.target.value); setIntKeyStatus("idle"); setErrors(p => ({ ...p, apiKey: "" })) }}
                     placeholder="Cole aqui a sua API Key..."
                     className="pr-16"
                     disabled={isIntegracaoModalPending}

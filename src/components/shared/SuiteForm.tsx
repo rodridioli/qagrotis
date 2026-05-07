@@ -170,6 +170,7 @@ export function SuiteForm({
   const [encerrarOpen, setEncerrarOpen] = useState(false)
   const [encerrada, setEncerrada] = useState(suite?.encerrada ?? false)
   const [selectedHistorico, setSelectedHistorico] = useState<Set<number>>(new Set())
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   function buildCenariosJiraContent(ids: Set<string>): string {
     const selected = cenarios.filter(c => ids.has(c.id))
@@ -542,12 +543,22 @@ export function SuiteForm({
     toast.success("Cenário removido da suíte.")
   }
 
+  function validateSuiteForm() {
+    const e: Record<string, string> = {}
+    if (!suiteName.trim()) e.suiteName = "O nome da Suíte é obrigatório."
+    if (!versao.trim()) e.versao = "A Versão é obrigatória."
+    if (!selectedModule.trim()) e.modulo = "O Módulo é obrigatório."
+    if (!sistemaSelecionado.trim()) e.sistema = "O Sistema é obrigatório."
+    if (cenarios.length === 0) e.cenarios = "É necessário adicionar pelo menos um cenário."
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
   async function handleSave() {
-    if (!suiteName.trim()) { toast.error("O nome da Suíte é obrigatório."); return }
-    if (!versao.trim()) { toast.error("A Versão é obrigatória."); return }
-    if (!selectedModule.trim()) { toast.error("O Módulo é obrigatório."); return }
-    if (!sistemaSelecionado.trim()) { toast.error("O Sistema é obrigatório."); return }
-if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um cenário."); return }
+    if (!validateSuiteForm()) {
+      toast.error("Preencha todos os campos obrigatórios.")
+      return
+    }
 
     setIsSaving(true)
     try {
@@ -803,7 +814,12 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
               <label className="text-sm font-medium text-text-primary">
                 Suíte <span className="text-destructive">*</span>
               </label>
-              <Input value={suiteName} onChange={(e) => setSuiteName(e.target.value)} disabled={encerrada} />
+              <Input
+                value={suiteName}
+                onChange={(e) => { setSuiteName(e.target.value); setErrors(p => ({ ...p, suiteName: "" })) }}
+                disabled={encerrada}
+                error={errors.suiteName}
+              />
             </div>
 
             {/* Linha 2: Sistema, Versão, Tipo, Módulo */}
@@ -813,7 +829,7 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                   Sistema <span className="text-destructive">*</span>
                 </label>
                 <Select value={sistemaSelecionado} disabled={true}>
-                  <SelectTrigger>
+                  <SelectTrigger error={errors.sistema}>
                     <SelectValue placeholder={systemList.length === 0 ? "Nenhum sistema cadastrado" : "Selecionar"} />
                   </SelectTrigger>
                   <SelectPopup>
@@ -825,7 +841,12 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                 <label className="text-sm font-medium text-text-primary">
                   Versão <span className="text-destructive">*</span>
                 </label>
-                <Input value={versao} onChange={(e) => setVersao(e.target.value)} disabled={encerrada} />
+                <Input
+                  value={versao}
+                  onChange={(e) => { setVersao(e.target.value); setErrors(p => ({ ...p, versao: "" })) }}
+                  disabled={encerrada}
+                  error={errors.versao}
+                />
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-primary">Tipo</label>
@@ -842,8 +863,12 @@ if (cenarios.length === 0) { toast.error("É necessário adicionar pelo menos um
                 <label className="text-sm font-medium text-text-primary">
                   Módulo <span className="text-destructive">*</span>
                 </label>
-                <Select value={selectedModule} onValueChange={(v) => setSelectedModule(v || "")} disabled={encerrada}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <Select
+                  value={selectedModule}
+                  onValueChange={(v) => { setSelectedModule(v || ""); setErrors(p => ({ ...p, modulo: "" })) }}
+                  disabled={encerrada}
+                >
+                  <SelectTrigger error={errors.modulo}><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectPopup>
                     {filteredModules.map((m) => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
                   </SelectPopup>

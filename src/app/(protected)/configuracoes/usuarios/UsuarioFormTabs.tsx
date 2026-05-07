@@ -74,6 +74,7 @@ export default function UsuarioFormTabs({
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   // --- Endereço e Contato ---
   const [cep, setCep] = useState(initialData?.cep ?? "")
@@ -134,11 +135,22 @@ export default function UsuarioFormTabs({
     }
   }
 
+  function validateForm() {
+    const e: Record<string, string> = {}
+    if (!nome.trim()) e.nome = "Nome é obrigatório."
+    if (!email.trim()) e.email = "E-mail é obrigatório."
+    if (mode === "create" && !password) e.password = "Senha é obrigatória."
+    if (password && password !== confirmPassword) e.confirmPassword = "As senhas não coincidem."
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
   function handleSave() {
-    if (!nome.trim()) { toast.error("O nome é obrigatório."); return }
-    if (!email.trim()) { toast.error("O e-mail é obrigatório."); return }
-    if (mode === "create" && password.length < 8) { toast.error("A senha deve ter no mínimo 8 caracteres."); return }
-    if (password && password !== confirmPassword) { toast.error("As senhas não coincidem."); return }
+    if (!validateForm()) {
+      setActiveTab("cadastro")
+      toast.error("Preencha todos os campos obrigatórios corretamente.")
+      return
+    }
 
     startTransition(async () => {
       const payload: Record<string, unknown> = {
@@ -298,13 +310,15 @@ export default function UsuarioFormTabs({
             <div className="p-5">
             <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
               <div className="min-w-0 flex-1 space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Nome <span className="text-destructive">*</span></label>
-                  <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">E-mail <span className="text-destructive">*</span></label>
-                  <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="email@empresa.com" />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-text-primary">Nome <span className="text-destructive">*</span></label>
+                    <Input value={nome} onChange={(e) => { setNome(e.target.value); setErrors(p => ({ ...p, nome: "" })) }} placeholder="Nome completo" error={errors.nome} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-text-primary">E-mail <span className="text-destructive">*</span></label>
+                    <Input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErrors(p => ({ ...p, email: "" })) }} placeholder="email@exemplo.com" error={errors.email} />
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-1.5">
@@ -392,14 +406,26 @@ export default function UsuarioFormTabs({
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="relative">
-                      <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Nova senha" />
-                      <button onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => { setPassword(e.target.value); setErrors(p => ({ ...p, password: "" })) }}
+                        placeholder="Nova senha"
+                        error={errors.password}
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-text-secondary">
                         {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </button>
                     </div>
                     <div className="relative">
-                      <Input type={showConfirm ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirmar senha" />
-                      <button onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary">
+                      <Input
+                        type={showConfirm ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => { setConfirmPassword(e.target.value); setErrors(p => ({ ...p, confirmPassword: "" })) }}
+                        placeholder="Confirmar senha"
+                        error={errors.confirmPassword}
+                      />
+                      <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-2.5 text-text-secondary">
                         {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </button>
                     </div>
