@@ -3,7 +3,7 @@
 import { z } from "zod"
 import { prisma } from "@/core/prisma"
 import { requireSession } from "@/core/session"
-import { buildRole, can } from "@/lib/rbac/policy"
+import { buildRole, can } from "@/core/rbac/policy"
 import {
   BADGE_DEFINITIONS,
   LANGUAGE_LEVEL_ORDER,

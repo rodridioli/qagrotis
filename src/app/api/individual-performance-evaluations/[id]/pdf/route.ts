@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/core/auth"
-import { buildRole, can } from "@/lib/rbac/policy"
+import { buildRole, can } from "@/core/rbac/policy"
 import {
   getIndividualPerformanceEvaluation,
   getMyCompletedEvaluation,

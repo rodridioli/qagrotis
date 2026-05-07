@@ -4,7 +4,7 @@ export const metadata = { title: "Configurações" }
 import Link from "next/link"
 import { Users, Monitor, Box, Building2, Sparkles, KeyRound } from "lucide-react"
 import { auth } from "@/core/auth"
-import { buildRole, can, type Capability } from "@/lib/rbac/policy"
+import { buildRole, can, type Capability } from "@/core/rbac/policy"
 import JiraConfigButton from "./JiraConfigButton"
 
 interface ConfigCard {

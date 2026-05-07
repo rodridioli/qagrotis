@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation"
 import { getQaUserProfile } from "@/features/usuarios/actions/usuarios"
 import { checkIsAdmin } from "@/core/session"
 import { auth } from "@/core/auth"
-import { buildRole, canEditUserField, manageableProfiles, type AccessProfile } from "@/lib/rbac/policy"
+import { buildRole, canEditUserField, manageableProfiles, type AccessProfile } from "@/core/rbac/policy"
 import EditarUsuarioClient from "./EditarUsuarioClient"
 
 export default async function EditarUsuarioPage({

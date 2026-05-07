@@ -40,17 +40,18 @@ interface Props {
   canFilterByProfile: boolean
 }
 
-const PROFILE_OPTIONS: { value: Exclude<AccessProfileId, "MGR">; label: string }[] = [
+const PROFILE_OPTIONS: { value: AccessProfileId; label: string }[] = [
   { value: "QA", label: "QA" },
   { value: "UX", label: "UX" },
   { value: "TW", label: "TW" },
+  { value: "MGR", label: "Manager" },
 ]
 
 const PROFILE_LABEL: Record<AccessProfileId, string> = {
   QA: "QA",
   UX: "UX",
   TW: "TW",
-  MGR: "Manager",
+  MGR: "MGR",
 }
 
 type TabId =
@@ -248,9 +249,7 @@ export default function EquipeClient({
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("performance")
   const [filterOpen, setFilterOpen] = useState(false)
-  const initialProfile: Exclude<AccessProfileId, "MGR"> =
-    userAccessProfile === "MGR" ? "QA" : (userAccessProfile as Exclude<AccessProfileId, "MGR">)
-  const [selectedProfile, setSelectedProfile] = useState<Exclude<AccessProfileId, "MGR">>(initialProfile)
+  const [selectedProfile, setSelectedProfile] = useState<AccessProfileId>(userAccessProfile)
 
   const [draft, setDraft] = useState(DEFAULT_FILTERS)
   const [applied, setApplied] = useState(DEFAULT_FILTERS)
@@ -397,7 +396,7 @@ const aniversariantesPorMes = useMemo(() => {
         {activeTab === "performance" && canFilterByProfile && (
           <Select
             value={selectedProfile}
-            onValueChange={(v) => setSelectedProfile(v as Exclude<AccessProfileId, "MGR">)}
+            onValueChange={(v) => setSelectedProfile(v as AccessProfileId)}
           >
             <SelectTrigger className="h-9 w-32" aria-label="Filtrar por perfil de acesso">
               {PROFILE_LABEL[selectedProfile]}

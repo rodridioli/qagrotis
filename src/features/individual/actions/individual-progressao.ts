@@ -9,7 +9,7 @@ import {
   ensureUserClassificacaoColumns,
 } from "@/core/prisma-schema-ensure"
 import { requireSession } from "@/core/session"
-import { buildRole, can } from "@/lib/rbac/policy"
+import { buildRole, can } from "@/core/rbac/policy"
 import type { ProgressaoListRow } from "@/features/individual/lib/individual-progressao"
 
 async function requireMgr() {

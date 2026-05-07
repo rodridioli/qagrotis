@@ -35,6 +35,7 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
   const [apiKey, setApiKey] = useState(integracao.apiKey)
   const [showKey, setShowKey] = useState(false)
   const [keyStatus, setKeyStatus] = useState<KeyStatus>("idle")
+  const [fieldErrors, setFieldErrors] = useState<{ model?: boolean; apiKey?: boolean }>({})
 
 
   const validateKey = useCallback(async () => {
@@ -60,7 +61,15 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
   }
 
   function handleSave() {
-    if (!apiKey.trim()) { toast.error("A API Key é obrigatória."); return }
+    const e: typeof fieldErrors = {}
+    if (!model.trim()) e.model = true
+    if (!apiKey.trim()) e.apiKey = true
+    if (Object.keys(e).length > 0) {
+      setFieldErrors(e)
+      toast.error(!model.trim() ? "O Modelo é obrigatório." : "A API Key é obrigatória.")
+      return
+    }
+    setFieldErrors({})
     if (keyStatus === "validating") { toast.error("Aguarde a validação da API Key."); return }
 
     startTransition(async () => {
@@ -150,9 +159,10 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
             </label>
             <Input
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={(e) => { setModel(e.target.value); setFieldErrors(p => ({ ...p, model: false })) }}
               placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
               disabled={isPending}
+              aria-invalid={!!fieldErrors.model}
             />
             {provider === "openrouter" && (
               <p className="text-[10px] text-text-secondary">Modelos gratuitos: meta-llama/llama-3.1-8b-instruct:free · mistralai/mistral-7b-instruct:free · google/gemma-2-9b-it:free · microsoft/phi-3-mini-128k-instruct:free</p>
@@ -177,10 +187,11 @@ export default function EditarIntegracaoClient({ integracao }: Props) {
               <Input
                 type={showKey ? "text" : "password"}
                 value={apiKey}
-                onChange={(e) => handleApiKeyChange(e.target.value)}
+                onChange={(e) => { handleApiKeyChange(e.target.value); setFieldErrors(p => ({ ...p, apiKey: false })) }}
                 placeholder="Cole aqui a sua API Key..."
                 className="pr-16"
                 disabled={isPending}
+                aria-invalid={!!fieldErrors.apiKey}
               />
               <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-3">
                 {statusIcon[keyStatus]}

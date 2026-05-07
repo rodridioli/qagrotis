@@ -73,7 +73,7 @@ function buildContent(cenario: CenarioRecord, manualNames: string[], autoNames: 
 export function JiraExportModal({ open, onClose, cenario, manualAttachments, autoAttachments }: Props) {
   const router = useRouter()
   const [issueInput, setIssueInput] = useState("")
-  const [inputTouched, setInputTouched] = useState(false)
+  const [issueInputError, setIssueInputError] = useState(false)
   const [loading, setLoading] = useState(false)
   const [existing, setExisting] = useState<{ summary: string; descText: string } | null>(null)
 
@@ -81,14 +81,14 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
 
   function handleClose() {
     setIssueInput("")
-    setInputTouched(false)
+    setIssueInputError(false)
     setExisting(null)
     onClose()
   }
 
   async function handleCheckIssue() {
     const key = normalizeJiraIssueKey(issueInput)
-    if (!key) { toast.error("Informe a URL ou chave da issue."); return }
+    if (!key) { setIssueInputError(true); toast.error("Informe a URL ou chave da issue."); return }
 
     try {
       const cr = await fetch("/api/jira/credentials", { credentials: "same-origin" })
@@ -205,14 +205,11 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
               <Input
                 placeholder="https://…/browse/UX-951 ou ux-951 (qualquer caixa)"
                 value={issueInput}
-                onChange={(e) => setIssueInput(e.target.value)}
-                onBlur={() => setInputTouched(true)}
+                onChange={(e) => { setIssueInput(e.target.value); setIssueInputError(false) }}
                 onKeyDown={(e) => { if (e.key === "Enter" && !loading) handleCheckIssue() }}
+                aria-invalid={issueInputError}
                 autoFocus
               />
-              {inputTouched && !issueInput.trim() && (
-                <p className="text-xs text-destructive">Campo obrigatório.</p>
-              )}
             </div>
 
             {hasAttachments && (
@@ -233,7 +230,7 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
           </div>
           <DialogFooter showCloseButton={false}>
             <CancelActionButton onClick={handleClose} />
-            <Button onClick={handleCheckIssue} disabled={loading || !issueInput.trim()}>
+            <Button onClick={handleCheckIssue} disabled={loading}>
               {loading
                 ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
                 : <ExternalLink className="size-4 shrink-0" aria-hidden />}

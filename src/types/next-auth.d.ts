@@ -1,5 +1,5 @@
 import type { Plan } from "@prisma/client"
-import type { AccessProfile, UserType } from "@/lib/rbac/policy"
+import type { AccessProfile, UserType } from "@/core/rbac/policy"
 
 declare module "next-auth" {
   interface Session {

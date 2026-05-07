@@ -29,6 +29,7 @@ export default function NovaIntegracaoForm() {
   const [showKey, setShowKey] = useState(false)
 
   const [keyStatus, setKeyStatus] = useState<KeyStatus>("idle")
+  const [fieldErrors, setFieldErrors] = useState<{ model?: boolean; apiKey?: boolean }>({})
 
   const validateKey = useCallback(async () => {
     if (!apiKey.trim()) { toast.error("Digite a API Key antes de verificar."); return }
@@ -53,7 +54,15 @@ export default function NovaIntegracaoForm() {
   }
 
   function handleSave() {
-    if (!apiKey.trim()) { toast.error("A API Key é obrigatória."); return }
+    const e: typeof fieldErrors = {}
+    if (!model.trim()) e.model = true
+    if (!apiKey.trim()) e.apiKey = true
+    if (Object.keys(e).length > 0) {
+      setFieldErrors(e)
+      toast.error(!model.trim() ? "O Modelo é obrigatório." : "A API Key é obrigatória.")
+      return
+    }
+    setFieldErrors({})
     if (keyStatus === "validating") { toast.error("Aguarde a validação da API Key."); return }
 
     startTransition(async () => {
@@ -143,9 +152,10 @@ export default function NovaIntegracaoForm() {
             </label>
             <Input
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={(e) => { setModel(e.target.value); setFieldErrors(p => ({ ...p, model: false })) }}
               placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
               disabled={isPending}
+              aria-invalid={!!fieldErrors.model}
             />
             {provider === "openrouter" && (
               <p className="text-[10px] text-text-secondary">
@@ -173,10 +183,11 @@ export default function NovaIntegracaoForm() {
               <Input
                 type={showKey ? "text" : "password"}
                 value={apiKey}
-                onChange={(e) => handleApiKeyChange(e.target.value)}
+                onChange={(e) => { handleApiKeyChange(e.target.value); setFieldErrors(p => ({ ...p, apiKey: false })) }}
                 placeholder="Cole aqui a sua API Key..."
                 className="pr-16"
                 disabled={isPending}
+                aria-invalid={!!fieldErrors.apiKey}
               />
               <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-3">
                 {statusIcon[keyStatus]}

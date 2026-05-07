@@ -650,11 +650,6 @@ export default function EditarCenarioClient({
                 </label>
               ))}
             </div>
-            {!manual && !automatizado && (
-              <p className="mt-2 text-xs text-destructive">
-                Selecione ao menos um tipo (Manual ou Automatizado).
-              </p>
-            )}
           </div>
 
           {/* Descrição */}

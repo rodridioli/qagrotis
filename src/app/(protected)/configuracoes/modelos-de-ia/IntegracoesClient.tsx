@@ -570,7 +570,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                   onChange={(e) => { setIntModel(e.target.value); setErrors(p => ({ ...p, model: "" })) }}
                   placeholder="Ex.: gemini-2.0-flash, llama-3.1-70b..."
                   disabled={isIntegracaoModalPending}
-                  error={errors.model}
+                  aria-invalid={!!errors.model}
                 />
               </div>
             </div>
@@ -589,6 +589,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                     placeholder="Cole aqui a sua API Key..."
                     className="pr-16"
                     disabled={isIntegracaoModalPending}
+                    aria-invalid={!!errors.apiKey}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-3">
                     {intStatusIcon[intKeyStatus]}

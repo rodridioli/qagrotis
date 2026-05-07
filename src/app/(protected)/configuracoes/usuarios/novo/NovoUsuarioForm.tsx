@@ -25,7 +25,7 @@ import {
   type DiaSemanaHibridoId,
 } from "@/features/usuarios/lib/usuario-trabalho"
 import { toast } from "sonner"
-import { ACCESS_PROFILES, type AccessProfile } from "@/lib/rbac/policy"
+import { ACCESS_PROFILES, type AccessProfile } from "@/core/rbac/policy"
 
 interface NovoUsuarioFormProps {
   /** Perfis que o admin logado pode atribuir (vem do server). */

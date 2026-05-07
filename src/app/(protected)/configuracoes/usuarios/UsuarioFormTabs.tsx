@@ -26,7 +26,7 @@ import {
 } from "@/features/usuarios/lib/usuario-trabalho"
 import { toast } from "sonner"
 import { useSession } from "next-auth/react"
-import { ACCESS_PROFILES, type AccessProfile } from "@/lib/rbac/policy"
+import { ACCESS_PROFILES, type AccessProfile } from "@/core/rbac/policy"
 
 interface UsuarioFormTabsProps {
   mode: "create" | "edit"

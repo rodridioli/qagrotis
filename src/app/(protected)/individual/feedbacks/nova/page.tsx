@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic"
 
 import { redirect } from "next/navigation"
 import { auth } from "@/core/auth"
-import { buildRole, can } from "@/lib/rbac/policy"
+import { buildRole, can } from "@/core/rbac/policy"
 import { getActiveQaUsers } from "@/features/usuarios/actions/usuarios"
 import { IndividualFeedbackPageClient } from "@/features/individual/components/IndividualFeedbackPageClient"
 

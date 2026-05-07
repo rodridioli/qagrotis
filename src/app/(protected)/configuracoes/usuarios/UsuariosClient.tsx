@@ -36,7 +36,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { inativarQaUsers, ativarQaUser, getQaUsers, type QaUserRecord } from "@/features/usuarios/actions/usuarios"
-import type { AccessProfile } from "@/lib/rbac/policy"
+import type { AccessProfile } from "@/core/rbac/policy"
 import { cn } from "@/core/utils"
 import { toast } from "sonner"
 

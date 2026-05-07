@@ -183,7 +183,7 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
                 value={form.tipo}
                 onValueChange={(v) => { setForm((f) => ({ ...f, tipo: v as ProgressaoTipo })); setErrors(p => ({ ...p, tipo: "" })) }}
               >
-                <SelectTrigger id="prog-tipo" aria-label="Tipo de progressão" error={errors.tipo}>
+                <SelectTrigger id="prog-tipo" aria-label="Tipo de progressão" className={errors.tipo ? "border-destructive ring-2 ring-destructive/20" : ""}>
                   <SelectValue placeholder="Selecione o tipo">
                     {PROGRESSAO_TIPO_OPTIONS.find((o) => o.value === form.tipo)?.label}
                   </SelectValue>
@@ -206,7 +206,7 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
                 value={form.regime}
                 onValueChange={(v) => { setForm((f) => ({ ...f, regime: v as ProgressaoRegime })); setErrors(p => ({ ...p, regime: "" })) }}
               >
-                <SelectTrigger id="prog-regime" aria-label="Regime de trabalho" error={errors.regime}>
+                <SelectTrigger id="prog-regime" aria-label="Regime de trabalho" className={errors.regime ? "border-destructive ring-2 ring-destructive/20" : ""}>
                   <SelectValue placeholder="Selecione o regime">
                     {PROGRESSAO_REGIME_OPTIONS.find((o) => o.value === form.regime)?.label}
                   </SelectValue>

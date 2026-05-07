@@ -211,7 +211,7 @@ export function SuiteForm({
 
   async function handleJiraExport() {
     const issueKey = normalizeJiraIssueKey(jiraIssueInput)
-    if (!issueKey) { toast.error("Informe a URL ou chave da issue."); return }
+    if (!issueKey) { setJiraIssueInputError(true); toast.error("Informe a URL ou chave da issue."); return }
     try {
       const cr = await fetch("/api/jira/credentials", { credentials: "same-origin" })
       const cfg = cr.ok ? ((await cr.json()) as { configured?: boolean }) : null
@@ -315,7 +315,7 @@ export function SuiteForm({
   const [jiraPending, setJiraPending] = useState<null | "fetch" | "replace" | "append">(null)
   const [jiraContent, setJiraContent] = useState("")
   const [jiraEvidences, setJiraEvidences] = useState<EvFile[]>([])
-  const [jiraInputTouched, setJiraInputTouched] = useState(false)
+  const [jiraIssueInputError, setJiraIssueInputError] = useState(false)
   const [jiraExisting, setJiraExisting] = useState<{ summary: string; descText: string; hasContent: boolean; attachmentIds?: number[] } | null>(null)
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set())
   const [addSearch, setAddSearch] = useState("")
@@ -818,7 +818,7 @@ export function SuiteForm({
                 value={suiteName}
                 onChange={(e) => { setSuiteName(e.target.value); setErrors(p => ({ ...p, suiteName: "" })) }}
                 disabled={encerrada}
-                error={errors.suiteName}
+                aria-invalid={!!errors.suiteName}
               />
             </div>
 
@@ -829,7 +829,7 @@ export function SuiteForm({
                   Sistema <span className="text-destructive">*</span>
                 </label>
                 <Select value={sistemaSelecionado} disabled={true}>
-                  <SelectTrigger error={errors.sistema}>
+                  <SelectTrigger className={errors.sistema ? "border-destructive ring-2 ring-destructive/20" : ""}>
                     <SelectValue placeholder={systemList.length === 0 ? "Nenhum sistema cadastrado" : "Selecionar"} />
                   </SelectTrigger>
                   <SelectPopup>
@@ -845,7 +845,7 @@ export function SuiteForm({
                   value={versao}
                   onChange={(e) => { setVersao(e.target.value); setErrors(p => ({ ...p, versao: "" })) }}
                   disabled={encerrada}
-                  error={errors.versao}
+                  aria-invalid={!!errors.versao}
                 />
               </div>
               <div className="space-y-1.5">
@@ -868,7 +868,7 @@ export function SuiteForm({
                   onValueChange={(v) => { setSelectedModule(v || ""); setErrors(p => ({ ...p, modulo: "" })) }}
                   disabled={encerrada}
                 >
-                  <SelectTrigger error={errors.modulo}><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectTrigger className={errors.modulo ? "border-destructive ring-2 ring-destructive/20" : ""}><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectPopup>
                     {filteredModules.map((m) => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
                   </SelectPopup>
@@ -1345,7 +1345,7 @@ export function SuiteForm({
       />
 
       {/* ── Jira Modal — Passo 1: URL/Chave ── */}
-      <Dialog open={jiraModalOpen && !jiraExisting} onOpenChange={(v) => { if (!v) { setJiraModalOpen(false); setJiraIssueInput(""); setJiraInputTouched(false) } }}>
+      <Dialog open={jiraModalOpen && !jiraExisting} onOpenChange={(v) => { if (!v) { setJiraModalOpen(false); setJiraIssueInput(""); setJiraIssueInputError(false) } }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Exportar para o Jira</DialogTitle>
@@ -1358,19 +1358,16 @@ export function SuiteForm({
               <Input
                 placeholder="https://…/browse/UX-951 ou ux-951 (qualquer caixa)"
                 value={jiraIssueInput}
-                onChange={(e) => setJiraIssueInput(e.target.value)}
-                onBlur={() => setJiraInputTouched(true)}
+                onChange={(e) => { setJiraIssueInput(e.target.value); setJiraIssueInputError(false) }}
                 onKeyDown={(e) => { if (e.key === "Enter" && !jiraPending) handleJiraExport() }}
+                aria-invalid={jiraIssueInputError}
                 autoFocus
               />
-              {jiraInputTouched && !jiraIssueInput.trim() && (
-                <p className="text-xs text-destructive">Campo obrigatório.</p>
-              )}
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
             <CancelActionButton onClick={() => { setJiraModalOpen(false); setJiraIssueInput("") }} />
-            <Button onClick={handleJiraExport} disabled={jiraPending !== null || !jiraIssueInput.trim()}>
+            <Button onClick={handleJiraExport} disabled={jiraPending !== null}>
               {jiraPending === "fetch"
                 ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
                 : <ExternalLink className="size-4 shrink-0" aria-hidden />}

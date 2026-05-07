@@ -8,7 +8,7 @@ import {
   ensureIndividualFeedbackPeriodoColumn,
 } from "@/core/prisma-schema-ensure"
 import { requireSession } from "@/core/session"
-import { buildRole, can } from "@/lib/rbac/policy"
+import { buildRole, can } from "@/core/rbac/policy"
 import { getActiveQaUsers } from "@/features/usuarios/actions/usuarios"
 import {
   isFeedbackTipoSlug,

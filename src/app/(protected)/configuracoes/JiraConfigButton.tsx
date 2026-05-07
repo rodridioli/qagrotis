@@ -25,6 +25,7 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
   const [token, setToken] = useState("")
   const [hasStoredToken, setHasStoredToken] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{ jiraUrl?: boolean; email?: boolean; token?: boolean }>({})
 
   async function handleOpen() {
     setToken("")
@@ -52,14 +53,17 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
   }
 
   async function handleSave() {
-    if (!jiraUrl.trim() || !email.trim()) {
-      toast.error("URL e e-mail são obrigatórios.")
+    const e: typeof fieldErrors = {}
+    if (!jiraUrl.trim()) e.jiraUrl = true
+    if (!email.trim()) e.email = true
+    if (!token.trim() && !hasStoredToken) e.token = true
+    if (Object.keys(e).length > 0) {
+      setFieldErrors(e)
+      if (e.jiraUrl || e.email) toast.error("URL e e-mail são obrigatórios.")
+      else toast.error("Informe o API Token.")
       return
     }
-    if (!token.trim() && !hasStoredToken) {
-      toast.error("Informe o API Token.")
-      return
-    }
+    setFieldErrors({})
     setSaving(true)
     try {
       if (token.trim()) {
@@ -137,15 +141,15 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
             </p>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">URL do Jira <span className="text-destructive">*</span></label>
-              <Input placeholder="https://empresa.atlassian.net" value={jiraUrl} onChange={(e) => setJiraUrl(e.target.value)} />
+              <Input placeholder="https://empresa.atlassian.net" value={jiraUrl} onChange={(e) => { setJiraUrl(e.target.value); setFieldErrors(p => ({ ...p, jiraUrl: false })) }} aria-invalid={!!fieldErrors.jiraUrl} />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">E-mail da conta Jira <span className="text-destructive">*</span></label>
-              <Input placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input placeholder="seu@email.com" value={email} onChange={(e) => { setEmail(e.target.value); setFieldErrors(p => ({ ...p, email: false })) }} aria-invalid={!!fieldErrors.email} />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">API Token {!hasStoredToken && <span className="text-destructive">*</span>}</label>
-              <Input type="password" placeholder={hasStoredToken ? "Deixe em branco para manter o token atual" : "••••••••••••••••••••"} value={token} onChange={(e) => setToken(e.target.value)} />
+              <Input type="password" placeholder={hasStoredToken ? "Deixe em branco para manter o token atual" : "••••••••••••••••••••"} value={token} onChange={(e) => { setToken(e.target.value); setFieldErrors(p => ({ ...p, token: false })) }} aria-invalid={!!fieldErrors.token} />
               <p className="text-xs text-text-secondary">
                 Gere em{" "}
                 <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener noreferrer" className="text-brand-primary underline">
@@ -159,7 +163,7 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
             <Button
               className="gap-1.5"
               onClick={handleSave}
-              disabled={saving || !jiraUrl.trim() || !email.trim() || (!token.trim() && !hasStoredToken)}
+              disabled={saving}
             >
               {saving
                 ? <><Loader2 className="size-4 shrink-0 animate-spin" />Salvando…</>

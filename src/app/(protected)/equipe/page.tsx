@@ -6,7 +6,7 @@ import { ensureEquipeChapterTables } from "@/core/prisma-schema-ensure"
 import { serializeRscProps } from "@/core/rsc-serialize"
 import { checkIsAdmin } from "@/core/session"
 import { auth } from "@/core/auth"
-import { buildRole, can, type AccessProfile } from "@/lib/rbac/policy"
+import { buildRole, can, type AccessProfile } from "@/core/rbac/policy"
 import EquipeClient from "./EquipeClient"
 
 export default async function EquipePage() {

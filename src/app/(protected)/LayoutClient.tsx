@@ -9,7 +9,7 @@ import {
   ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
   Target, Network, ClipboardCheck, MessageSquare, User,
 } from "lucide-react"
-import { buildRole, can, isDisabled, isVisible, type Role, type Capability, type AccessProfile } from "@/lib/rbac/policy"
+import { buildRole, can, isDisabled, isVisible, type Role, type Capability, type AccessProfile } from "@/core/rbac/policy"
 import {
   Select,
   SelectTrigger,

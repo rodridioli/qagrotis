@@ -2,7 +2,7 @@ import { auth } from "@/core/auth"
 import { getQaUsers } from "@/features/usuarios/actions/usuarios"
 import { checkIsAdmin } from "@/core/session"
 import { serializeRscProps } from "@/core/rsc-serialize"
-import { type AccessProfile } from "@/lib/rbac/policy"
+import { type AccessProfile } from "@/core/rbac/policy"
 import UsuariosClient from "./UsuariosClient"
 
 // Always render fresh — Google OAuth creates users at login time and must appear immediately
