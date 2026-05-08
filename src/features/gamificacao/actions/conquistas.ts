@@ -11,6 +11,7 @@ import {
   type ListUserBadgesResponse,
 } from "@/features/gamificacao/lib/conquistas"
 import { createNotification } from "@/core/actions/notifications"
+import { ensureNotificationTables } from "@/core/prisma-schema-ensure"
 
 function monthsBetween(from: Date, to: Date): number {
   return (
@@ -158,6 +159,7 @@ export async function listUserBadges(targetUserId?: string): Promise<ListUserBad
   // Detect newly unlocked badges and emit notifications (only for own profile, lazy detection)
   if (userId === session.user.id) {
     try {
+      await ensureNotificationTables()
       const persistedBadges = await prisma.userBadge.findMany({
         where: { userId },
         select: { badgeId: true },

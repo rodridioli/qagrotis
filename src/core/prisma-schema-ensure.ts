@@ -12,6 +12,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredIndividualProgressao?: boolean
   __qagrotisEnsuredIndividualProgressaoCargo?: boolean
   __qagrotisEnsuredClassificacao?: boolean
+  __qagrotisEnsuredNotificationTables?: boolean
 }
 
 /**
@@ -381,5 +382,52 @@ END $$;
     await prisma.$executeRawUnsafe(`ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "accessProfile" "AccessProfile"`)
   } catch (e) {
     console.error("[prisma-schema-ensure] accessProfile enum/column", e)
+  }
+}
+
+export async function ensureNotificationTables(): Promise<void> {
+  if (g.__qagrotisEnsuredNotificationTables) return
+  try {
+    await prisma.$executeRawUnsafe(`
+DO $$ BEGIN
+    CREATE TYPE "NotificationType" AS ENUM ('FEEDBACK', 'EVALUATION', 'PROGRESSION', 'ACHIEVEMENT');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+`)
+    await prisma.$executeRawUnsafe(`
+CREATE TABLE IF NOT EXISTS "Notification" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" "NotificationType" NOT NULL,
+    "title" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "link" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "CreatedUser"(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+`)
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "Notification_userId_idx" ON "Notification"("userId")`,
+    )
+    await prisma.$executeRawUnsafe(`
+CREATE TABLE IF NOT EXISTS "UserBadge" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "badgeId" TEXT NOT NULL,
+    "unlockedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "UserBadge_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "UserBadge_userId_fkey" FOREIGN KEY ("userId") REFERENCES "CreatedUser"(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "UserBadge_userId_badgeId_key" UNIQUE ("userId", "badgeId")
+);
+`)
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "UserBadge_userId_idx" ON "UserBadge"("userId")`,
+    )
+    g.__qagrotisEnsuredNotificationTables = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] Notification/UserBadge tables", e)
+    throw e
   }
 }

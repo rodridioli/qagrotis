@@ -3,6 +3,7 @@
 import { z } from "zod"
 import { prisma } from "@/core/prisma"
 import { requireSession } from "@/core/session"
+import { ensureNotificationTables } from "@/core/prisma-schema-ensure"
 
 export type NotificationType = "FEEDBACK" | "EVALUATION" | "PROGRESSION" | "ACHIEVEMENT"
 
@@ -19,6 +20,7 @@ const idSchema = z.string().min(1).max(128)
 
 export async function getUnreadNotifications(): Promise<NotificationData[]> {
   const session = await requireSession()
+  await ensureNotificationTables()
   const rows = await prisma.notification.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
@@ -38,6 +40,7 @@ export async function deleteNotification(id: string): Promise<{ error?: string }
 
   try {
     const session = await requireSession()
+    await ensureNotificationTables()
     const existing = await prisma.notification.findUnique({
       where: { id: parsed.data },
       select: { userId: true },
@@ -56,6 +59,7 @@ export async function deleteNotification(id: string): Promise<{ error?: string }
 export async function deleteAllNotifications(): Promise<{ error?: string }> {
   try {
     const session = await requireSession()
+    await ensureNotificationTables()
     await prisma.notification.deleteMany({ where: { userId: session.user.id } })
     return {}
   } catch (e) {
@@ -82,6 +86,7 @@ export async function createNotification(
   const parsed = createSchema.safeParse({ userId, type, title, message, link })
   if (!parsed.success) return
 
+  await ensureNotificationTables()
   await prisma.notification.create({
     data: {
       userId: parsed.data.userId,
