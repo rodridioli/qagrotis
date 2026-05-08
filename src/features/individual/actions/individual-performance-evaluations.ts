@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { prisma } from "@/core/prisma"
+import { createNotification } from "@/core/actions/notifications"
 import { ensureIndividualPerformanceEvaluationTable } from "@/core/prisma-schema-ensure"
 import { requireSession } from "@/core/session"
 import { buildRole, can } from "@/core/rbac/policy"
@@ -328,6 +329,22 @@ export async function updateIndividualPerformanceEvaluation(
       },
     })
     revalidatePath("/individual/avaliacoes")
+
+    if (parsed.data.mode === "complete") {
+      try {
+        await createNotification(
+          existing.evaluatedUserId,
+          "EVALUATION",
+          "Avaliação de desempenho finalizada",
+          "Sua avaliação de desempenho foi concluída e está disponível para visualização.",
+          `/individual/avaliacoes`,
+        )
+      } catch (notifErr) {
+        if (process.env.NODE_ENV !== "production")
+          console.error("[updateIndividualPerformanceEvaluation] notification trigger:", notifErr)
+      }
+    }
+
     return {}
   } catch (e) {
     console.error("[updateIndividualPerformanceEvaluation]", e)

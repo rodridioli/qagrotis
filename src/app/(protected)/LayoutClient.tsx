@@ -32,6 +32,7 @@ import { signOut, useSession } from "next-auth/react"
 import { SistemaContext } from "@/core/modulo-context"
 import { AssistenteDrawer } from "@/components/shared/AssistenteDrawer"
 import type { IntegracaoSafeRecord } from "@/features/integracoes/actions/integracoes"
+import { NotificationBell } from "@/components/notifications/NotificationBell"
 
 const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"
@@ -498,6 +499,7 @@ const Topbar = React.memo(function Topbar({
             {PROFILE_BADGE[accessProfile].label}
           </span>
         )}
+        <NotificationBell />
         <Link
           href={profileHref}
           title="Editar meu perfil"

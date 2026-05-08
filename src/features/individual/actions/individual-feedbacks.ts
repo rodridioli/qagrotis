@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { prisma } from "@/core/prisma"
+import { createNotification } from "@/core/actions/notifications"
 import {
   ensureIndividualFeedbackTable,
   ensureIndividualFeedbackPeriodoColumn,
@@ -270,6 +271,22 @@ export async function createAndSaveIndividualFeedback(input: {
     })) as { id: string }
 
     revalidatePath(`/individual/feedbacks`)
+
+    if (input.mode === "complete") {
+      try {
+        await createNotification(
+          input.evaluatedUserId,
+          "FEEDBACK",
+          "Você recebeu um feedback",
+          "Um novo feedback foi registrado para você.",
+          `/individual/feedbacks`,
+        )
+      } catch (notifErr) {
+        if (process.env.NODE_ENV !== "production")
+          console.error("[createAndSaveIndividualFeedback] notification trigger:", notifErr)
+      }
+    }
+
     return { id: row.id }
   } catch (e) {
     console.error("[createAndSaveIndividualFeedback]", e)

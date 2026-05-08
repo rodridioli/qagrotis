@@ -10,6 +10,7 @@ import {
   type BadgeResult,
   type ListUserBadgesResponse,
 } from "@/features/gamificacao/lib/conquistas"
+import { createNotification } from "@/core/actions/notifications"
 
 function monthsBetween(from: Date, to: Date): number {
   return (
@@ -148,11 +149,47 @@ export async function listUserBadges(targetUserId?: string): Promise<ListUserBad
     "lang-fluente": bestLangLevel >= 3,
   }
 
+  const badgeResults = BADGE_DEFINITIONS.map((def) => ({
+    id: def.id,
+    label: def.label ?? def.id,
+    unlocked: unlockedMap[def.id] ?? false,
+  }))
+
+  // Detect newly unlocked badges and emit notifications (only for own profile, lazy detection)
+  if (userId === session.user.id) {
+    try {
+      const persistedBadges = await prisma.userBadge.findMany({
+        where: { userId },
+        select: { badgeId: true },
+      })
+      const persistedIds = new Set(persistedBadges.map((b) => b.badgeId))
+
+      for (const badge of badgeResults) {
+        if (badge.unlocked && !persistedIds.has(badge.id)) {
+          try {
+            await prisma.userBadge.create({
+              data: { userId, badgeId: badge.id },
+            })
+            await createNotification(
+              userId,
+              "ACHIEVEMENT",
+              `Conquista desbloqueada: ${badge.label}`,
+              `Você desbloqueou a conquista "${badge.label}". Parabéns!`,
+              `/individual/conquistas`,
+            )
+          } catch {
+            // @@unique([userId, badgeId]) ensures idempotency on race conditions
+          }
+        }
+      }
+    } catch (notifErr) {
+      if (process.env.NODE_ENV !== "production")
+        console.error("[listUserBadges] achievement trigger:", notifErr)
+    }
+  }
+
   return {
-    badges: BADGE_DEFINITIONS.map((def) => ({
-      id: def.id,
-      unlocked: unlockedMap[def.id] ?? false,
-    })),
+    badges: badgeResults.map(({ id, unlocked }) => ({ id, unlocked })),
     tenureMonths,
   }
 }

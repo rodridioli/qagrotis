@@ -238,6 +238,9 @@ model CreatedUser {
   languages        Json?     // [{ name, level }]
   certifications   Json?     // [{ title, institution, year }]
   careerHistory    Json?     // [{ date, cargo, salary, type }]
+
+  notifications  Notification[]
+  userBadges     UserBadge[]
 }
 
 /// Credenciais Jira por usuário (mesmo userId da sessão: CreatedUser ou fallback OAuth).
@@ -446,4 +449,37 @@ model IndividualProgressao {
 
   @@unique([evaluatedUserId, codigo])
   @@index([evaluatedUserId])
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+enum NotificationType {
+  FEEDBACK
+  EVALUATION
+  PROGRESSION
+  ACHIEVEMENT
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      CreatedUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+}
+
+model UserBadge {
+  id         String      @id @default(cuid())
+  userId     String
+  user       CreatedUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId    String
+  unlockedAt DateTime    @default(now())
+
+  @@unique([userId, badgeId])
+  @@index([userId])
 }

@@ -3,6 +3,7 @@
 import { randomUUID } from "crypto"
 import { z } from "zod"
 import { prisma } from "@/core/prisma"
+import { createNotification } from "@/core/actions/notifications"
 import {
   ensureIndividualProgressaoTable,
   ensureIndividualProgressaoCargoColumn,
@@ -121,6 +122,19 @@ export async function createProgressao(
       UPDATE "CreatedUser" SET "classificacao" = ${cargo}
       WHERE "id" = ${evaluatedUserId}
     `
+
+    try {
+      await createNotification(
+        evaluatedUserId,
+        "PROGRESSION",
+        "Nova progressão registrada",
+        "Uma progressão de carreira foi registrada para você.",
+        `/individual/progressao`,
+      )
+    } catch (notifErr) {
+      if (process.env.NODE_ENV !== "production")
+        console.error("[createProgressao] notification trigger:", notifErr)
+    }
 
     return {}
   } catch (err) {
