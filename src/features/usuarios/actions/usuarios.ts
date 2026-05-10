@@ -488,9 +488,7 @@ export async function criarQaUser(data: {
   }
 
   try {
-    await ensureUserDataNascimentoColumns()
-    await ensureUserWorkScheduleColumns()
-    await ensureUserHybridWorkDaysColumns()
+    await ensureAllUserProfileColumns()
 
     const [inactiveRecords, existingCreated] = await Promise.all([
       prisma.inactiveUser.findMany({ select: { userId: true } }),
@@ -689,9 +687,7 @@ export async function atualizarQaUser(
   if (!idResult.success) return { error: "ID inválido." }
 
   try {
-    await ensureUserDataNascimentoColumns()
-    await ensureUserWorkScheduleColumns()
-    await ensureUserHybridWorkDaysColumns()
+    await ensureAllUserProfileColumns()
 
     const isAdmin = await checkIsAdmin()
     const sessionEmail = session.user?.email?.toLowerCase() ?? ""
