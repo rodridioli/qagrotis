@@ -137,9 +137,10 @@ export function IndividualFeedbackPageClient({
     if (initialDetail) setFeedbackStatus(initialDetail.status)
   }, [initialDetail])
 
-  const mountedRef = React.useRef(false)
+  const prevTipoRef = React.useRef(tipo)
   React.useEffect(() => {
-    if (!mountedRef.current) { mountedRef.current = true; return }
+    if (prevTipoRef.current === tipo) return
+    prevTipoRef.current = tipo
     setCampos({})
   }, [tipo])
 

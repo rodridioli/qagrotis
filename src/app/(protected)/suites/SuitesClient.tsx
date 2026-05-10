@@ -507,6 +507,7 @@ const showBulkActions = !filters.apenasInativos
             : `${inativarIds.length} suítes serão inativadas de forma definitiva e não poderão ser recuperadas.`
         }
         confirmLabel="Inativar"
+        confirmIcon={<Power className="size-4 shrink-0" aria-hidden />}
         onConfirm={confirmInativar}
       />
 
@@ -516,6 +517,8 @@ const showBulkActions = !filters.apenasInativos
         title="Deseja ativar?"
         description="Este cadastro voltará a aparecer na listagem de ativos."
         confirmLabel="Ativar"
+        confirmIcon={<RotateCcw className="size-4 shrink-0" aria-hidden />}
+        buttonVariant="default"
         onConfirm={handleAtivar}
       />
     </div>

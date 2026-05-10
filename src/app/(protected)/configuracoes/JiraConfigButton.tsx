@@ -134,11 +134,6 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
             <DialogTitle>Integração Jira</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-4 py-2">
-            <p className="text-sm text-text-secondary">
-              Suas credenciais ficam vinculadas à sua conta e armazenadas no banco de dados (URL, e-mail e token de API).
-              Cada usuário configura o próprio acesso ao Jira. O token não é exibido depois de salvo; para trocá-lo,
-              informe um novo API Token.
-            </p>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">URL do Jira <span className="text-destructive">*</span></label>
               <Input placeholder="https://empresa.atlassian.net" value={jiraUrl} onChange={(e) => { setJiraUrl(e.target.value); setFieldErrors(p => ({ ...p, jiraUrl: false })) }} aria-invalid={!!fieldErrors.jiraUrl} />

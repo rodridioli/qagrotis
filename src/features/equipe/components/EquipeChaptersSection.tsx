@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CalendarPlus, Search } from "lucide-react"
+import { CalendarPlus, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -268,6 +268,7 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
             : ""
         }
         confirmLabel="Remover"
+        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
         onConfirm={() => void confirmDelete()}
       />
     </div>

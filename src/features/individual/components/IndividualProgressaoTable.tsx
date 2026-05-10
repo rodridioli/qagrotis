@@ -21,6 +21,7 @@ export interface IndividualProgressaoTableProps {
   onRequestDelete?: (row: ProgressaoListRow) => void
   footer?: ReactNode
   readOnly?: boolean
+  valoresVisiveis?: boolean
 }
 
 function formatDataPt(ymd: string): string {
@@ -35,6 +36,7 @@ export function IndividualProgressaoTable({
   onRequestDelete,
   footer,
   readOnly = false,
+  valoresVisiveis = false,
 }: IndividualProgressaoTableProps) {
   return (
     <>
@@ -99,7 +101,7 @@ export function IndividualProgressaoTable({
                   {r.cargo || <span className="text-text-disabled">—</span>}
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-text-primary sm:px-4">
-                  {formatValorBRL(r.valor)}
+                  {valoresVisiveis ? formatValorBRL(r.valor) : "R$ •••••••"}
                 </td>
                 {!readOnly ? (
                   <td className="px-2 py-3 text-center sm:px-3">

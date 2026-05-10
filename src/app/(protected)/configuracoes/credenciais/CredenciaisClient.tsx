@@ -440,6 +440,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
         title="Deseja inativar?"
         description="Esta credencial será inativada e não poderá ser usada em novos cenários."
         confirmLabel="Inativar"
+        confirmIcon={<Power className="size-4 shrink-0" aria-hidden />}
         onConfirm={handleInativar}
       />
     </div>

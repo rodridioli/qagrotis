@@ -464,6 +464,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
         title="Deseja inativar?"
         description={confirmDescription}
         confirmLabel="Inativar"
+        confirmIcon={<Power className="size-4 shrink-0" aria-hidden />}
         onConfirm={confirmInativar}
       />
 
@@ -473,6 +474,8 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
         title="Deseja ativar?"
         description="Este cadastro voltará a aparecer na listagem de ativos."
         confirmLabel="Ativar"
+        confirmIcon={<RotateCcw className="size-4 shrink-0" aria-hidden />}
+        buttonVariant="default"
         onConfirm={handleAtivar}
       />
 

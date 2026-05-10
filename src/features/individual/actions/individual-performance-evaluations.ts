@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { z } from "zod"
 import { prisma } from "@/core/prisma"
 import { createNotification } from "@/core/actions/notifications"
@@ -196,6 +196,7 @@ export async function createDraftIndividualPerformanceEvaluation(
       select: { id: true },
     })
     revalidatePath("/individual/avaliacoes")
+    revalidateTag("notifications", "seconds")
     return { id: created.id }
   } catch (e) {
     console.error("[createDraftIndividualPerformanceEvaluation]", e)
@@ -265,6 +266,7 @@ export async function createAndSaveIndividualPerformanceEvaluation(
       select: { id: true },
     })
     revalidatePath("/individual/avaliacoes")
+    revalidateTag("notifications", "seconds")
 
     if (parsed.data.mode === "complete") {
       try {
@@ -345,6 +347,7 @@ export async function updateIndividualPerformanceEvaluation(
       },
     })
     revalidatePath("/individual/avaliacoes")
+    revalidateTag("notifications", "seconds")
 
     if (parsed.data.mode === "complete") {
       try {

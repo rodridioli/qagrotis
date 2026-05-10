@@ -4,7 +4,7 @@ import React, { useState, useEffect, useTransition, useRef, Suspense } from "rea
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
-  LayoutDashboard, FileText, Rocket, BookOpen,
+  LayoutDashboard, FileText, Rocket,
   Settings, LifeBuoy, LogOut, ChevronLeft,
   ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
   Target, Network, ClipboardCheck, MessageSquare, User,
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/core/utils"
 import { IndividualSidebarNavGroup } from "@/features/individual/components/IndividualSidebarNavGroup"
+import { EquipeSidebarNavGroup } from "@/features/equipe/components/EquipeSidebarNavGroup"
 import { individualSectionLabel } from "@/features/individual/lib/individual-sections"
 import { QAgrotisLogo } from "@/components/shared/QAgrotisLogo"
 import { QAgrotisIcon } from "@/components/shared/QAgrotisIcon"
@@ -43,7 +44,6 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
   { href: "/pdi",           icon: Target,          label: "PDI",              alwaysEnabled: true,  capability: "menu.pdi" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
-  { href: "/documentos",    icon: BookOpen,        label: "Documentos",       alwaysEnabled: false, capability: "menu.documentos" },
   { href: "/assistente",    icon: LifeBuoy,        label: "Central de Ajuda", alwaysEnabled: false, capability: "menu.assistente" },
   { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
   { href: "/individual",    icon: User,            label: "Individual",             alwaysEnabled: true,  capability: "menu.individual" },
@@ -64,7 +64,6 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
     { capability: "menu.painel" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
-    { capability: "menu.documentos" },
     { capability: "menu.assistente" },
     { capability: "menu.configuracoes" },
     { capability: "menu.atualizacoes" },
@@ -76,12 +75,21 @@ const TITLE_MAP: Record<string, string> = {
   "/cenarios":      "Cenários",
   "/gerador":       "Gerador",
   "/suites":        "Suítes",
-  "/documentos":    "Documentos",
   "/configuracoes": "Configurações",
   "/assistente":    "Central de Ajuda",
   "/atualizacoes":  "Atualizações",
   "/equipe":        "Equipe",
   "/individual":    "Individual",
+}
+
+const EQUIPE_TAB_LABELS: Record<string, string> = {
+  performance: "Performance",
+  chapters: "Chapters",
+  horarios: "Horários",
+  ferias: "Férias",
+  ausencias: "Ausências",
+  metas: "Metas",
+  aniversarios: "Aniversários",
 }
 
 function getTitle(pathname: string): string {
@@ -91,6 +99,11 @@ function getTitle(pathname: string): string {
     const secao = pathname.split("/")[2] ?? ""
     const label = individualSectionLabel(secao)
     if (label) return `Individual — ${label}`
+  }
+  if (pathname.startsWith("/equipe/")) {
+    const secao = pathname.split("/")[2] ?? ""
+    const label = EQUIPE_TAB_LABELS[secao]
+    if (label) return `Equipe — ${label}`
   }
   for (const [key, value] of Object.entries(TITLE_MAP)) {
     if (pathname.startsWith(key)) return value
@@ -173,6 +186,27 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                 return [{ ...base, label: label ?? base.label }]
               })
             })().map(({ href, icon: Icon, label, alwaysEnabled, capability }) => {
+              if (href === "/equipe") {
+                return (
+                  <Suspense
+                    key="equipe-sidebar-tree"
+                    fallback={
+                      <div
+                        className={cn(
+                          "flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-text-secondary",
+                          collapsed ? "lg:justify-center" : "",
+                        )}
+                      >
+                        <Users className="size-4.5 shrink-0 text-text-secondary" aria-hidden />
+                        {!collapsed ? <span className="truncate">Equipe</span> : null}
+                      </div>
+                    }
+                  >
+                    <EquipeSidebarNavGroup collapsed={collapsed} onNavigate={onNavigate} />
+                  </Suspense>
+                )
+              }
+
               if (href === "/individual" && can(role, "individual.viewOthers")) {
                 return (
                   <Suspense
@@ -200,7 +234,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
               let disabled = rbacDisabled
               if (!disabled && !alwaysEnabled) {
                 if (href === "/gerador" || href === "/assistente") {
-                  disabled = !hasSistemaModulo || !hasIntegracoes
+                  disabled = !hasIntegracoes
                 } else if (href === "/dashboard" || href === "/suites" || href === "/cenarios") {
                   disabled = !hasSistemaModulo
                 }

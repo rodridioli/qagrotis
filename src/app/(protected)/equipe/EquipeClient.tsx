@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import {
   BarChart3, Users, Clock, Calendar,
   SlidersHorizontal, X, Check, RotateCcw,
@@ -247,7 +248,13 @@ export default function EquipeClient({
   userAccessProfile,
   canFilterByProfile,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>("performance")
+  const pathname = usePathname()
+  const router = useRouter()
+
+  const activeTab = useMemo((): TabId => {
+    const secao = pathname.split("/")[2] ?? ""
+    return TABS.some((t) => t.id === secao) ? (secao as TabId) : "performance"
+  }, [pathname])
   const [filterOpen, setFilterOpen] = useState(false)
   const [selectedProfile, setSelectedProfile] = useState<AccessProfileId>(userAccessProfile)
 
@@ -378,7 +385,7 @@ const aniversariantesPorMes = useMemo(() => {
             <button
               key={id}
               type="button"
-              onClick={() => setActiveTab(id)}
+              onClick={() => router.push(`/equipe/${id}`)}
               className={cn(
                 "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150",
                 activeTab === id

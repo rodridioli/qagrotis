@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { z } from "zod"
 import { prisma } from "@/core/prisma"
 import { createNotification } from "@/core/actions/notifications"
@@ -211,6 +211,7 @@ export async function getIndividualFeedback(
       updatedAt: Date
     } | null
     if (!row) return null
+    console.log("[getIndividualFeedback] raw row.campos:", JSON.stringify(row.campos))
     return rowToDetail(row)
   } catch (e) {
     console.error("[getIndividualFeedback]", e)
@@ -237,6 +238,9 @@ export async function createAndSaveIndividualFeedback(input: {
       .safeParse(input.periodo)
     if (!periodoR.success) return { error: "Período inválido." }
 
+    console.log("[createAndSaveIndividualFeedback] input.campos:", JSON.stringify(input.campos))
+    console.log("[createAndSaveIndividualFeedback] typeof input.campos:", typeof input.campos)
+
     let campos: FeedbackCampos
     try {
       campos = parseCamposForTipo(tipoR.data, input.campos, input.mode)
@@ -246,6 +250,8 @@ export async function createAndSaveIndividualFeedback(input: {
       }
       return { error: "Campos inválidos." }
     }
+
+    console.log("[createAndSaveIndividualFeedback] parsed campos:", JSON.stringify(campos))
 
     await ensureIndividualFeedbackTable()
   await ensureIndividualFeedbackPeriodoColumn()
@@ -270,7 +276,10 @@ export async function createAndSaveIndividualFeedback(input: {
       select: { id: true },
     })) as { id: string }
 
+    console.log("[createAndSaveIndividualFeedback] DB create OK, id:", row.id, "stored campos:", JSON.stringify(campos))
+
     revalidatePath(`/individual/feedbacks`)
+    revalidateTag("notifications", "seconds")
 
     if (input.mode === "complete") {
       try {
@@ -336,6 +345,9 @@ export async function updateIndividualFeedback(input: {
       return { error: "Campos inválidos." }
     }
 
+    console.log("[updateIndividualFeedback] input.campos:", JSON.stringify(input.campos))
+    console.log("[updateIndividualFeedback] parsed campos:", JSON.stringify(campos))
+
     await prisma.individualFeedback.update({
       where: { id: idR.data },
       data: {
@@ -347,8 +359,11 @@ export async function updateIndividualFeedback(input: {
       },
     })
 
+    console.log("[updateIndividualFeedback] DB update OK for id:", idR.data)
+
     revalidatePath(`/individual/feedbacks`)
     revalidatePath(`/individual/feedbacks/${idR.data}`)
+    revalidateTag("notifications", "seconds")
     return {}
   } catch (e) {
     console.error("[updateIndividualFeedback]", e)

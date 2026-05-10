@@ -9,6 +9,7 @@ import { IndividualAvaliacoesSection } from "@/features/individual/components/In
 import { IndividualFeedbacksSection } from "@/features/individual/components/IndividualFeedbacksSection"
 import { ConquistasSection } from "@/features/individual/components/ConquistasSection"
 import { ProgressaoSection, type ProgressaoSectionHandle } from "@/features/individual/components/ProgressaoSection"
+import { MgrProgressaoDashboard } from "@/features/individual/components/MgrProgressaoDashboard"
 
 interface Props {
   secao: string
@@ -64,7 +65,7 @@ export function IndividualSecaoDevelopmentPanel({
               Adicionar Feedback
             </Button>
           ) : null}
-          {showProgressao ? (
+          {showProgressao && !isAdministradorMgr ? (
             <Button
               type="button"
               className="shrink-0 gap-2"
@@ -91,7 +92,9 @@ export function IndividualSecaoDevelopmentPanel({
       ) : showConquistas ? (
         <ConquistasSection evaluatedUserId={selectedUserId} />
       ) : showProgressao ? (
-        <ProgressaoSection ref={progressaoRef} evaluatedUserId={selectedUserId} />
+        isAdministradorMgr
+          ? <MgrProgressaoDashboard />
+          : <ProgressaoSection ref={progressaoRef} evaluatedUserId={selectedUserId} />
       ) : (
         <div className="flex w-full flex-1 flex-col items-center justify-center py-16">
           <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>

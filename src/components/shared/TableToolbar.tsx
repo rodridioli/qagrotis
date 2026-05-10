@@ -62,9 +62,9 @@ export function TableToolbar({
                 )}
               </button>
             )}
-            {extra}
           </>
         )}
+        {extra}
       </div>
     </div>
   )

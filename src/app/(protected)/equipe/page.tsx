@@ -1,41 +1,7 @@
 export const dynamic = "force-dynamic"
-export const metadata = { title: "Equipe" }
 
-import { getSistemasEModulos } from "@/features/equipe/actions/equipe"
-import { ensureEquipeChapterTables } from "@/core/prisma-schema-ensure"
-import { serializeRscProps } from "@/core/rsc-serialize"
-import { checkIsAdmin } from "@/core/session"
-import { auth } from "@/core/auth"
-import { buildRole, can, type AccessProfile } from "@/core/rbac/policy"
-import EquipeClient from "./EquipeClient"
+import { redirect } from "next/navigation"
 
-export default async function EquipePage() {
-  try {
-    await ensureEquipeChapterTables()
-  } catch {
-    /* DDL opcional; actions de chapters repetem a garantia */
-  }
-
-  let sistemas: string[] = []
-  let modulosPorSistema: Record<string, string[]> = {}
-  try {
-    const data = await getSistemasEModulos()
-    sistemas = data.sistemas
-    modulosPorSistema = data.modulosPorSistema
-  } catch {
-    // DB indisponível ou erro Prisma — a página continua renderizando; filtros ficam vazios
-  }
-  const [isAdmin, session] = await Promise.all([checkIsAdmin(), auth()])
-  const role = buildRole(session?.user?.type, session?.user?.accessProfile)
-  const userAccessProfile = (session?.user?.accessProfile ?? "QA") as AccessProfile
-  const canFilterByProfile = can(role, "equipe.performance.filterByProfile")
-  return (
-    <EquipeClient
-      sistemas={serializeRscProps(sistemas)}
-      modulosPorSistema={serializeRscProps(modulosPorSistema)}
-      isAdmin={serializeRscProps(isAdmin)}
-      userAccessProfile={serializeRscProps(userAccessProfile)}
-      canFilterByProfile={serializeRscProps(canFilterByProfile)}
-    />
-  )
+export default function EquipePage() {
+  redirect("/equipe/performance")
 }

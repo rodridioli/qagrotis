@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, Trash2, X } from "lucide-react"
+import { Check, Eye, EyeOff, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -311,6 +311,8 @@ export const ProgressaoSection = React.forwardRef<ProgressaoSectionHandle, Progr
     const [deleteOpen, setDeleteOpen] = React.useState(false)
     const [deleteRow, setDeleteRow] = React.useState<ProgressaoListRow | null>(null)
 
+    const [valoresVisiveis, setValoresVisiveis] = React.useState(false)
+
     React.useImperativeHandle(ref, () => ({
       openAdd() {
         setEditRow(null)
@@ -365,6 +367,20 @@ export const ProgressaoSection = React.forwardRef<ProgressaoSectionHandle, Progr
             totalLabel="Total de progressões"
             totalCount={loading ? 0 : rows.length}
             baseCount={0}
+            extra={
+              <button
+                type="button"
+                onClick={() => setValoresVisiveis((v) => !v)}
+                aria-label={valoresVisiveis ? "Ocultar valores" : "Exibir valores"}
+                title={valoresVisiveis ? "Ocultar valores" : "Exibir valores"}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              >
+                {valoresVisiveis
+                  ? <EyeOff className="size-4 shrink-0" aria-hidden />
+                  : <Eye className="size-4 shrink-0" aria-hidden />
+                }
+              </button>
+            }
           />
 
           {error ? (
@@ -382,6 +398,7 @@ export const ProgressaoSection = React.forwardRef<ProgressaoSectionHandle, Progr
               rows={paginated}
               onEdit={(row) => { setEditRow(row); setModalOpen(true) }}
               onRequestDelete={(row) => { setDeleteRow(row); setDeleteOpen(true) }}
+              valoresVisiveis={valoresVisiveis}
               footer={
                 totalPages > 1 ? (
                   <TablePagination

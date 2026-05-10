@@ -1341,6 +1341,7 @@ export function SuiteForm({
             : `${selectedHistorico.size} registros serão removidos do histórico. Essa ação não pode ser desfeita.`
         }
         confirmLabel="Remover"
+        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
         onConfirm={confirmRemoverHistorico}
       />
 
