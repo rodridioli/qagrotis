@@ -209,7 +209,7 @@ export function IndividualAvaliacoesTable({
                         )}
                         {r.status === "CONCLUIDA" ? "Visualizar" : "Editar"}
                       </DropdownMenuItem>
-                      {onExport ? (
+                      {onExport && r.status === "CONCLUIDA" ? (
                         <DropdownMenuItem onClick={() => onExport(r)}>
                           <FileDown className="size-4" />
                           Exportar

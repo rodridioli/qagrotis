@@ -1,11 +1,9 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
-  BarChart3, Users, Clock, Calendar,
   SlidersHorizontal, X, Check, RotateCcw,
 } from "lucide-react"
-import { cn } from "@/core/utils"
 import {
   getPerformanceData,
   getEquipeListagemCadastro,
@@ -64,15 +62,6 @@ type TabId =
   | "metas"
   | "aniversarios"
 
-const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
-  { id: "performance", label: "Performance",       icon: BarChart3 },
-  { id: "chapters",   label: "Chapters",           icon: Users     },
-  { id: "horarios",   label: "Horários",           icon: Clock     },
-  { id: "ferias",     label: "Férias",             icon: Calendar  },
-  { id: "ausencias",  label: "Ausências",          icon: Calendar  },
-  { id: "metas",      label: "Metas",              icon: BarChart3 },
-  { id: "aniversarios", label: "Aniversários",     icon: Users     },
-]
 
 const PERIODOS = [
   { value: "hoje",         label: "Hoje"          },
@@ -377,46 +366,24 @@ const aniversariantesPorMes = useMemo(() => {
 
   return (
     <div className="space-y-5">
-      {/* Tab bar + filter button inline */}
-      <div className="flex items-center gap-2">
-        <div className="flex flex-wrap gap-0.5 rounded-custom border border-border-default bg-surface-card p-1 shadow-card">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveTab(id)}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150",
-                activeTab === id
-                  ? "bg-brand-primary text-white shadow-sm"
-                  : "text-text-secondary hover:bg-neutral-grey-100 hover:text-text-primary",
-              )}
+      {/* Performance-specific controls */}
+      {activeTab === "performance" && (
+        <div className="flex items-center gap-2">
+          {canFilterByProfile && (
+            <Select
+              value={selectedProfile}
+              onValueChange={(v) => setSelectedProfile(v as AccessProfileId)}
             >
-              <Icon className="size-4 shrink-0" />
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Profile selector — only MGR escolhe; demais perfis veem só o próprio (sem badge). */}
-        {activeTab === "performance" && canFilterByProfile && (
-          <Select
-            value={selectedProfile}
-            onValueChange={(v) => setSelectedProfile(v as AccessProfileId)}
-          >
-            <SelectTrigger className="h-9 w-32" aria-label="Filtrar por perfil de acesso">
-              {PROFILE_LABEL[selectedProfile]}
-            </SelectTrigger>
-            <SelectPopup>
-              {PROFILE_OPTIONS.map((p) => (
-                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-              ))}
-            </SelectPopup>
-          </Select>
-        )}
-
-        {/* Filter icon — matches TableToolbar pattern exactly */}
-        {activeTab === "performance" && (
+              <SelectTrigger className="h-9 w-32" aria-label="Filtrar por perfil de acesso">
+                {PROFILE_LABEL[selectedProfile]}
+              </SelectTrigger>
+              <SelectPopup>
+                {PROFILE_OPTIONS.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          )}
           <button
             type="button"
             onClick={handleOpenFilter}
@@ -430,8 +397,8 @@ const aniversariantesPorMes = useMemo(() => {
               </span>
             )}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Performance ── */}
       {activeTab === "performance" && (
