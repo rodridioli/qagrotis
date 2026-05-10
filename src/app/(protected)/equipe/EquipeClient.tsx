@@ -33,8 +33,6 @@ import {
 type AccessProfileId = "QA" | "UX" | "TW" | "MGR"
 
 interface Props {
-  sistemas: string[]
-  modulosPorSistema: Record<string, string[]>
   isAdmin: boolean
   userAccessProfile: AccessProfileId
   canFilterByProfile: boolean
@@ -145,28 +143,17 @@ function getDateRange(periodo: string): { dataInicio?: string; dataFim?: string 
 // ── Filter Modal ─────────────────────────────────────────────────────────────
 
 function FilterModal({
-  open, onOpenChange, sistemas, modulosPorSistema,
+  open, onOpenChange,
   pending, draft, onDraftChange, onApply, onReset,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
-  sistemas: string[]
-  modulosPorSistema: Record<string, string[]>
   pending: boolean
-  draft: { sistema: string; modulo: string; periodo: string }
-  onDraftChange: (v: { sistema: string; modulo: string; periodo: string }) => void
+  draft: { periodo: string }
+  onDraftChange: (v: { periodo: string }) => void
   onApply: () => void
   onReset: () => void
 }) {
-  const modulosDisponiveis = useMemo<string[]>(() => {
-    if (draft.sistema === "todos") return [...new Set(Object.values(modulosPorSistema).flat())]
-    return modulosPorSistema[draft.sistema] ?? []
-  }, [draft.sistema, modulosPorSistema])
-
-  function setSistema(v: string) {
-    onDraftChange({ ...draft, sistema: v, modulo: "todos" })
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton className="sm:max-w-md">
@@ -176,34 +163,8 @@ function FilterModal({
 
         <div className="flex flex-col gap-4 py-2">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">Sistema</label>
-            <Select value={draft.sistema} onValueChange={(v) => setSistema(v ?? "todos")}>
-              <SelectTrigger className="w-full">
-                <span className="truncate">{draft.sistema === "todos" ? "Todos" : draft.sistema}</span>
-              </SelectTrigger>
-              <SelectPopup>
-                <SelectItem value="todos">Todos</SelectItem>
-                {sistemas.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectPopup>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">Módulo</label>
-            <Select value={draft.modulo} onValueChange={(v) => onDraftChange({ ...draft, modulo: v ?? "todos" })}>
-              <SelectTrigger className="w-full">
-                <span className="truncate">{draft.modulo === "todos" ? "Todos" : draft.modulo}</span>
-              </SelectTrigger>
-              <SelectPopup>
-                <SelectItem value="todos">Todos</SelectItem>
-                {modulosDisponiveis.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-              </SelectPopup>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">Período</label>
-            <Select value={draft.periodo} onValueChange={(v) => onDraftChange({ ...draft, periodo: v ?? "mes-atual" })}>
+            <Select value={draft.periodo} onValueChange={(v) => onDraftChange({ periodo: v ?? "mes-atual" })}>
               <SelectTrigger className="w-full">
                 <span className="truncate">
                   {PERIODOS.find((p) => p.value === draft.periodo)?.label ?? draft.periodo}
@@ -239,11 +200,9 @@ function FilterModal({
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-const DEFAULT_FILTERS = { sistema: "todos", modulo: "todos", periodo: "mes-atual" }
+const DEFAULT_FILTERS = { periodo: "mes-atual" }
 
 export default function EquipeClient({
-  sistemas,
-  modulosPorSistema,
   isAdmin,
   userAccessProfile,
   canFilterByProfile,
@@ -270,8 +229,6 @@ export default function EquipeClient({
   const [cadastroError, setCadastroError] = useState<string | null>(null)
 
   const activeFilterCount = [
-    applied.sistema !== "todos",
-    applied.modulo  !== "todos",
     applied.periodo !== "mes-atual",
   ].filter(Boolean).length
 
@@ -308,8 +265,6 @@ const aniversariantesPorMes = useMemo(() => {
       setPerformanceError(null)
     })
     getPerformanceData({
-      sistema: applied.sistema === "todos" ? undefined : applied.sistema,
-      modulo:  applied.modulo  === "todos" ? undefined : applied.modulo,
       dataInicio,
       dataFim,
     })
@@ -439,8 +394,6 @@ const aniversariantesPorMes = useMemo(() => {
           <FilterModal
             open={filterOpen}
             onOpenChange={setFilterOpen}
-            sistemas={sistemas}
-            modulosPorSistema={modulosPorSistema}
             pending={performanceLoading}
             draft={draft}
             onDraftChange={setDraft}
