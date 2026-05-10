@@ -22,25 +22,6 @@ export async function readLegacyJiraCookies(): Promise<StoredJiraCredentials | n
   }
 }
 
-/**
- * Retorna as credenciais Jira do Administrador:MGR — configuração global única do sistema.
- * Todos os usuários que precisam exportar para o Jira usam estas credenciais.
- */
-export async function getGlobalJiraCredentials(): Promise<StoredJiraCredentials | null> {
-  try {
-    const admins = await prisma.createdUser.findMany({
-      where: { type: "Administrador" },
-      select: { id: true, accessProfile: true },
-    })
-    const mgr = admins.find((u) => u.accessProfile === "MGR")
-    if (!mgr) return null
-    return getUserJiraCredentials(mgr.id)
-  } catch (e) {
-    console.error("[jira-credentials-db] getGlobalJiraCredentials:", e)
-    return null
-  }
-}
-
 export async function getUserJiraCredentials(userId: string): Promise<StoredJiraCredentials | null> {
   try {
     const row = await prisma.userJiraCredentials.findUnique({
@@ -99,20 +80,25 @@ export async function deleteUserJiraCredentials(userId: string): Promise<void> {
 }
 
 /**
- * Resolve credenciais Jira globais (do Administrador:MGR).
- * Todos os usuários compartilham a mesma configuração — NÃO usa credenciais individuais.
- * NÃO confia no body/form da requisição para impedir SSRF lateral via `jiraUrl`.
+ * Resolve credenciais a partir do BD do usuário (com fallback para cookies legados).
+ * NÃO confia no body/form da requisição: dados controlados pelo cliente são ignorados
+ * para impedir SSRF lateral via `jiraUrl`.
  */
 export async function resolveJiraCredentialsForRequest(
-  _userId?: string,
+  userId: string,
   _partial?: { jiraUrl?: string; email?: string; apiToken?: string },
 ): Promise<StoredJiraCredentials | null> {
-  void _userId
   void _partial
-  const creds = await getGlobalJiraCredentials()
-  if (!creds) return null
-  if (!isAllowedJiraUrl(creds.jiraUrl)) return null
-  return creds
+  const [stored, legacy] = await Promise.all([
+    getUserJiraCredentials(userId),
+    readLegacyJiraCookies(),
+  ])
+  const jiraUrl = stored?.jiraUrl || legacy?.jiraUrl || ""
+  const jiraEmail = stored?.jiraEmail || legacy?.jiraEmail || ""
+  const apiToken = stored?.apiToken || legacy?.apiToken || ""
+  if (!jiraUrl || !jiraEmail || !apiToken) return null
+  if (!isAllowedJiraUrl(jiraUrl)) return null
+  return { jiraUrl, jiraEmail, apiToken }
 }
 
 /** Valida que a URL do Jira é HTTPS e não aponta para hosts internos/privados. */
@@ -135,7 +121,6 @@ export function isSameJiraHost(storedUrl: string, targetUrl: string): boolean {
   try { stored = new URL(storedUrl); target = new URL(targetUrl) } catch { return false }
   if (target.protocol !== "https:") return false
   if (target.hostname.toLowerCase() === stored.hostname.toLowerCase()) return true
-  // Anexos Atlassian Cloud podem residir em *.atlassian.net e api.media.atlassian.com
   const allowed = ["atlassian.net", "atlassian.com", "media.atlassian.com"]
   return allowed.some((d) => target.hostname.toLowerCase().endsWith(`.${d}`) || target.hostname.toLowerCase() === d)
 }
