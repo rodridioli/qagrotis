@@ -26,6 +26,7 @@ export interface UserPerformanceData {
   cenariosCriados: number
   testesExecutados: number
   errosEncontrados: number
+  alertas: number
   sucessos: number
   testesAutomatizados: number
   percentualAutomatizado: number
@@ -187,6 +188,7 @@ export async function getPerformanceData(filters: {
       cenariosCriados: number
       testesExecutados: number
       errosEncontrados: number
+      alertas: number
       sucessos: number
       testesAutomatizados: number
       bySystem: Map<string, Set<string>>
@@ -198,6 +200,7 @@ export async function getPerformanceData(filters: {
           cenariosCriados: 0,
           testesExecutados: 0,
           errosEncontrados: 0,
+          alertas: 0,
           sucessos: 0,
           testesAutomatizados: 0,
           bySystem: new Map(),
@@ -261,6 +264,7 @@ export async function getPerformanceData(filters: {
         const bucket = ensureCounter(runnerKey)
         bucket.testesExecutados += 1
         if (h.resultado === "Erro") bucket.errosEncontrados += 1
+        if (h.resultado === "Alerta") bucket.alertas += 1
         if (h.resultado === "Sucesso") bucket.sucessos += 1
         const modulo = (h.module ?? "").trim()
         if (modulo) {
@@ -314,6 +318,7 @@ export async function getPerformanceData(filters: {
         cenariosCriados,
         testesExecutados: bucket?.testesExecutados ?? 0,
         errosEncontrados: bucket?.errosEncontrados ?? 0,
+        alertas: bucket?.alertas ?? 0,
         sucessos: bucket?.sucessos ?? 0,
         testesAutomatizados,
         percentualAutomatizado,

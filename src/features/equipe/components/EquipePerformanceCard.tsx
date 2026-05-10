@@ -104,7 +104,7 @@ function StatBox({
 }: {
   label: string
   value: number
-  variant: "cenarios" | "testes" | "success" | "error" | "info"
+  variant: "cenarios" | "testes" | "success" | "warning" | "error" | "info"
 }) {
   const surface = cn(
     "flex w-full min-w-0 flex-col items-center justify-center rounded-lg px-1 py-2 sm:px-1.5 sm:py-2.5",
@@ -112,6 +112,7 @@ function StatBox({
       "bg-neutral-grey-100 dark:bg-neutral-grey-200",
     variant === "testes" && "bg-badge-info/10",
     variant === "success" && "bg-badge-success/10",
+    variant === "warning" && "bg-badge-warning/10",
     variant === "error" && "bg-destructive/10",
     variant === "info" && "bg-badge-info/10",
   )
@@ -120,6 +121,7 @@ function StatBox({
     variant === "cenarios" && "text-text-primary",
     variant === "testes" && "text-badge-info-text",
     variant === "success" && "text-badge-success-text",
+    variant === "warning" && "text-badge-warning-text",
     variant === "error" && "text-destructive",
     variant === "info" && "text-badge-info-text",
   )
@@ -159,7 +161,8 @@ type CardLabels = {
   cenarios: string
   testes: string
   sucesso: string
-  erros?: string         // omitido = não renderiza o box "Erros"
+  alertas?: string      // omitido = não renderiza o box "Alertas"
+  erros?: string        // omitido = não renderiza o box "Erros"
   automatizados?: string // omitido = não renderiza a barra de automatizados
 }
 
@@ -189,6 +192,7 @@ const DEFAULT_LABELS: CardLabels = {
   cenarios: "Cenários",
   testes: "Testes",
   sucesso: "Sucesso",
+  alertas: "Alertas",
   erros: "Erros",
   automatizados: "Automatizados",
 }
@@ -252,16 +256,23 @@ export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps
         ))}
       </div>
 
-      {/* Métricas: 4 colunas (com Erros) ou 3 colunas (sem Erros). */}
+      {/* Métricas: 5 cols (alertas+erros), 4 cols (só erros), 3 cols (nenhum). */}
       <div
         className={cn(
           "grid gap-1.5 border-t border-border-default px-3 py-3 sm:gap-2 sm:px-4 sm:py-4",
-          labels.erros ? "grid-cols-4" : "grid-cols-3",
+          labels.alertas && labels.erros
+            ? "grid-cols-5"
+            : labels.erros
+              ? "grid-cols-4"
+              : "grid-cols-3",
         )}
       >
         <StatBox label={labels.cenarios} value={user.cenariosCriados} variant="cenarios" />
         <StatBox label={labels.testes} value={user.testesExecutados} variant="testes" />
         <StatBox label={labels.sucesso} value={user.sucessos} variant="success" />
+        {labels.alertas && (
+          <StatBox label={labels.alertas} value={user.alertas} variant="warning" />
+        )}
         {labels.erros && (
           <StatBox label={labels.erros} value={user.errosEncontrados} variant={errosVariant} />
         )}
