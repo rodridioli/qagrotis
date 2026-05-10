@@ -38,6 +38,7 @@ interface Props {
   isAdmin: boolean
   userAccessProfile: AccessProfileId
   canFilterByProfile: boolean
+  initialTab?: TabId
 }
 
 const PROFILE_OPTIONS: { value: AccessProfileId; label: string }[] = [
@@ -246,8 +247,13 @@ export default function EquipeClient({
   isAdmin,
   userAccessProfile,
   canFilterByProfile,
+  initialTab = "performance",
 }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>("performance")
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab)
+
+  useEffect(() => {
+    setActiveTab(initialTab)
+  }, [initialTab])
   const [filterOpen, setFilterOpen] = useState(false)
   const [selectedProfile, setSelectedProfile] = useState<AccessProfileId>(userAccessProfile)
 
