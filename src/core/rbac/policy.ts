@@ -70,6 +70,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.painel",
       "menu.suites",
       "menu.cenarios",
+      "menu.gerador",
       "menu.documentos",
       "menu.assistente",
       "menu.equipe",
