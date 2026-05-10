@@ -256,23 +256,27 @@ export default function UsuarioFormTabs({
   }
 
   const isAdmin = sessionUser?.type === "Administrador"
+  const isStandardUser = sessionUser?.type === "Padrão"
+  const isSelfEdit = mode === "edit" && !!sessionUser?.id && sessionUser.id === userId
   const backHref = isAdmin ? "/configuracoes/usuarios" : "/configuracoes"
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <PageBreadcrumb
-          backHref={backHref}
-          items={isAdmin ? [
-            { label: "Configurações", href: "/configuracoes" },
-            { label: "Usuários", href: "/configuracoes/usuarios" },
-            { label: mode === "create" ? "Novo Usuário" : (initialData?.name ?? "Editar") },
-          ] : [
-            { label: "Configurações", href: "/configuracoes" },
-            { label: mode === "create" ? "Novo Usuário" : (initialData?.name ?? "Editar") },
-          ]}
-        />
+        {!(isStandardUser && isSelfEdit) && (
+          <PageBreadcrumb
+            backHref={backHref}
+            items={isAdmin ? [
+              { label: "Configurações", href: "/configuracoes" },
+              { label: "Usuários", href: "/configuracoes/usuarios" },
+              { label: mode === "create" ? "Novo Usuário" : (initialData?.name ?? "Editar") },
+            ] : [
+              { label: "Configurações", href: "/configuracoes" },
+              { label: mode === "create" ? "Novo Usuário" : (initialData?.name ?? "Editar") },
+            ]}
+          />
+        )}
         <Button onClick={handleSave} disabled={isPending}>
           <Check className="size-4" />
           {isPending ? "Salvando…" : "Salvar"}

@@ -2,16 +2,18 @@ import { unstable_cache } from "next/cache"
 import { getSistemas } from "@/features/qa/actions/sistemas"
 import { getIntegracoesSafe } from "@/features/integracoes/actions/integracoes"
 import { getModulos } from "@/features/qa/actions/modulos"
+import { prisma } from "@/core/prisma"
 
 // Cache tag used to invalidate menu data when systems/integracoes change
 export const LAYOUT_CACHE_TAG = "layout-menu"
 
 export const getLayoutMenuData = unstable_cache(
   async () => {
-    const [sistemas, integracoes, modulos] = await Promise.all([
+    const [sistemas, integracoes, modulos, cenariosCount] = await Promise.all([
       getSistemas(),
       getIntegracoesSafe(),
       getModulos(),
+      prisma.cenario.count(),
     ])
     const sistemaNames = sistemas.filter((s) => s.active).map((s) => s.name)
     const activeIntegracoes = integracoes.filter((i) => i.active)
@@ -20,7 +22,8 @@ export const getLayoutMenuData = unstable_cache(
     const hasSistemaComModulo = modulos.some(
       (m) => m.active && activeSistemaNames.has(m.sistemaName)
     )
-    return { sistemaNames, activeIntegracoes, hasSistemaComModulo }
+    const hasCenario = cenariosCount > 0
+    return { sistemaNames, activeIntegracoes, hasSistemaComModulo, hasCenario }
   },
   ["layout-menu-data"],
   { tags: [LAYOUT_CACHE_TAG], revalidate: 60 }

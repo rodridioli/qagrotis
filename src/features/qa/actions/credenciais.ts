@@ -52,7 +52,7 @@ export async function criarCredencial(data: {
   usuario: string
   senha: string
 }): Promise<CredencialRecord> {
-  await requireAdmin()
+  await requireSession()
   const parsed = credencialInputSchema.parse({
     nome:        data.nome.trim(),
     urlAmbiente: data.urlAmbiente?.trim() || null,
@@ -77,7 +77,7 @@ export async function atualizarCredencial(
   id: string,
   data: { nome: string; urlAmbiente?: string | null; usuario: string; senha?: string }
 ): Promise<CredencialRecord> {
-  await requireAdmin()
+  await requireSession()
   idSchema.parse(id)
   const parsed = z.object({
     nome:        z.string().min(1).max(200),
@@ -110,7 +110,7 @@ export async function atualizarCredencial(
 }
 
 export async function inativarCredencial(id: string): Promise<void> {
-  await requireAdmin()
+  await requireSession()
   idSchema.parse(id)
   await prisma.credencial.update({ where: { id }, data: { active: false } })
   revalidatePath("/configuracoes/credenciais")

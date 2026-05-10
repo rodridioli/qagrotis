@@ -113,7 +113,18 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
       })
       if (!res.ok) {
         const err = await res.text()
-        toast.error(`Erro ao buscar issue: ${err.slice(0, 150)}`)
+        let isNotConfigured = false
+        try {
+          const parsed = JSON.parse(err) as { jiraStatus?: number }
+          if (parsed.jiraStatus === 404 || parsed.jiraStatus === 401 || parsed.jiraStatus === 403) {
+            isNotConfigured = true
+          }
+        } catch { isNotConfigured = true }
+        toast.error(
+          isNotConfigured
+            ? "Integração com o Jira não configurada. Solicite ao administrador a atualização ou configuração do token de integração."
+            : `Erro ao buscar issue: ${err.slice(0, 150)}`
+        )
         return
       }
       const data = await res.json() as { summary: string; descText: string; hasContent: boolean }

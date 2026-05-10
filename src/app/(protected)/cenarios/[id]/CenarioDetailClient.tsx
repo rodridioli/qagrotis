@@ -336,7 +336,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
       toast.success("Alerta registrado com sucesso.")
       setAlertModalOpen(false)
       setAlertaObs("")
-      router.push(`/suites/${suite.id}?tab=historico`)
+      router.push(`/suites/${suite.id}?tab=cenarios`)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro ao registrar o alerta")
     } finally {

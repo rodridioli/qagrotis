@@ -15,6 +15,7 @@ import { ChapterStarsSummary } from "@/features/equipe/components/ChapterStarsSu
 
 export interface EquipeChaptersTableProps {
   rows: EquipeChapterListRow[]
+  total?: number
   isAdmin: boolean
   onEdit: (row: EquipeChapterListRow) => void
   onRequestDelete: (row: EquipeChapterListRow) => void
@@ -54,14 +55,25 @@ function getInitials(name: string): string {
  */
 export function EquipeChaptersTable({
   rows,
+  total,
   isAdmin,
   onEdit,
   onRequestDelete,
   onOpenRating,
   footer,
 }: EquipeChaptersTableProps) {
+  const totalCount = total ?? rows.length
   if (rows.length === 0) {
-    return <EmptyState message="Nenhum chapter cadastrado." />
+    return (
+      <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
+        <div className="px-4 py-3 text-sm text-text-secondary">
+          Total de Chapters: {totalCount}
+        </div>
+        <div className="border-t border-border-default px-4 py-10 text-center text-sm text-text-secondary">
+          Nenhum chapter cadastrado.
+        </div>
+      </div>
+    )
   }
 
   return (

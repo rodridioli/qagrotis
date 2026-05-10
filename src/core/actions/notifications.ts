@@ -102,3 +102,58 @@ export async function createNotification(
     },
   })
 }
+
+/**
+ * Verifica se há aniversariantes hoje e envia notificação para todos os usuários.
+ * Usa deduplicação por data para não enviar mais de uma vez por dia.
+ * Chamada sem requireSession pois é disparada internamente pelo layout server.
+ */
+export async function checkAndSendBirthdayNotifications(): Promise<void> {
+  try {
+    await ensureNotificationTables()
+
+    const now = new Date()
+    const month = now.getMonth() + 1
+    const day = now.getDate()
+
+    // Dedup: verifica se já enviamos aniversários hoje
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const alreadySent = await prisma.notification.findFirst({
+      where: { title: "🎂 Aniversário hoje!", createdAt: { gte: todayStart } },
+      select: { id: true },
+    })
+    if (alreadySent) return
+
+    // Busca aniversariantes (CreatedUser)
+    const allUsers = await prisma.createdUser.findMany({
+      select: { id: true, name: true, dataNascimento: true },
+    })
+
+    const birthdayUsers = allUsers.filter((u) => {
+      if (!u.dataNascimento) return false
+      const d = new Date(u.dataNascimento)
+      return d.getMonth() + 1 === month && d.getDate() === day
+    })
+
+    if (birthdayUsers.length === 0) return
+
+    const recipientIds = allUsers.map((u) => u.id)
+
+    for (const bday of birthdayUsers) {
+      const message = `${bday.name} está fazendo aniversário hoje! 🥳 Parabenize-o(a)!`
+      for (const recipientId of recipientIds) {
+        await prisma.notification.create({
+          data: {
+            userId: recipientId,
+            type: "ACHIEVEMENT",
+            title: "🎂 Aniversário hoje!",
+            message,
+            link: null,
+          },
+        })
+      }
+    }
+  } catch (e) {
+    console.error("[checkAndSendBirthdayNotifications]", e)
+  }
+}
