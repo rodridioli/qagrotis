@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import {
+  BarChart3, Users, Clock, Calendar,
   SlidersHorizontal, X, Check, RotateCcw,
 } from "lucide-react"
 import {
