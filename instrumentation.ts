@@ -5,7 +5,7 @@
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === "edge") return
   try {
-    const { ensureUserDataNascimentoColumns } = await import("@/lib/prisma-schema-ensure")
+    const { ensureUserDataNascimentoColumns } = await import("@/core/prisma-schema-ensure")
     await ensureUserDataNascimentoColumns()
   } catch (e) {
     console.error("[instrumentation] register schema ensure", e)
