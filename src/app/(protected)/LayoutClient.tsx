@@ -50,7 +50,7 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/avaliacao-desempenho",  icon: ClipboardCheck,  label: "Avaliação de Desempenho", alwaysEnabled: true,  capability: "menu.avaliacaoDesempenho" },
   { href: "/feedbacks",             icon: MessageSquare,   label: "Feedbacks",              alwaysEnabled: true,  capability: "menu.feedbacks" },
   { href: "/configuracoes", icon: Settings,        label: "Configurações",          alwaysEnabled: true,  capability: "menu.configuracoes" },
-  { href: "/atualizacoes",  icon: History,         label: "Atualizações",     alwaysEnabled: true,  capability: "menu.atualizacoes" },
+  { href: "/atualizacoes",  icon: History,         label: "Atualizações",     alwaysEnabled: false, capability: "menu.atualizacoes" },
 ]
 
 /**
@@ -81,7 +81,13 @@ const TITLE_MAP: Record<string, string> = {
   "/individual":    "Individual",
 }
 
-function getTitle(pathname: string): string {
+function getTitle(pathname: string, role?: Role): string {
+  if (
+    role?.startsWith("Padrão:") &&
+    /^\/configuracoes\/usuarios\/[^/]+\/editar$/.test(pathname)
+  ) {
+    return "Meu Cadastro"
+  }
   if (pathname.startsWith("/individual/avaliacoes/nova")) return "Nova avaliação"
   if (/^\/individual\/avaliacoes\/[^/]+$/.test(pathname)) return "Avaliação de desempenho"
   if (pathname.startsWith("/individual/")) {
@@ -104,13 +110,14 @@ interface SidebarProps {
   assistenteOpen: boolean
   onAssistenteOpen: () => void
   hasSistemaModulo: boolean
+  hasCenario: boolean
   hasIntegracoes: boolean
   role: Role
   /** Navegação com transição (mantém overlay de carregamento até a rota resolver). */
   onNavigate?: (href: string) => void
 }
 
-const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasIntegracoes, role, onNavigate }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, role, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -170,7 +177,25 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                 return [{ ...base, label: label ?? base.label }]
               })
             })().map(({ href, icon: Icon, label, alwaysEnabled, capability }) => {
+              // Disable logic: only applies to roles that depend on sistema/módulo
+              const needsSistema = can(role, "topbar.sistemaSelector")
+
               if (href === "/equipe") {
+                const equipeDisabled = needsSistema && !hasSistemaModulo
+                if (equipeDisabled) {
+                  return (
+                    <span
+                      key="equipe-disabled"
+                      className={cn(
+                        "flex cursor-not-allowed items-center gap-3 rounded px-2.5 py-2 text-sm font-medium opacity-40",
+                        collapsed ? "lg:justify-center" : "",
+                      )}
+                    >
+                      <Users className="size-4.5 shrink-0 text-text-secondary" aria-hidden />
+                      {!collapsed ? <span className="truncate text-text-secondary">Equipe</span> : null}
+                    </span>
+                  )
+                }
                 return (
                   <Suspense
                     key="equipe-sidebar-tree"
@@ -191,7 +216,22 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                 )
               }
 
-              if (href === "/individual" && can(role, "individual.viewOthers")) {
+              if (href === "/individual") {
+                const individualDisabled = needsSistema && !hasSistemaModulo
+                if (individualDisabled) {
+                  return (
+                    <span
+                      key="individual-disabled"
+                      className={cn(
+                        "flex cursor-not-allowed items-center gap-3 rounded px-2.5 py-2 text-sm font-medium opacity-40",
+                        collapsed ? "lg:justify-center" : "",
+                      )}
+                    >
+                      <User className="size-4.5 shrink-0 text-text-secondary" aria-hidden />
+                      {!collapsed ? <span className="truncate text-text-secondary">Individual</span> : null}
+                    </span>
+                  )
+                }
                 return (
                   <Suspense
                     key="individual-sidebar-tree"
@@ -218,9 +258,13 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
               let disabled = rbacDisabled
               if (!disabled && !alwaysEnabled) {
                 if (href === "/gerador" || href === "/assistente") {
-                  disabled = !hasSistemaModulo || !hasIntegracoes
-                } else if (href === "/dashboard" || href === "/suites" || href === "/cenarios") {
-                  disabled = !hasSistemaModulo
+                  disabled = !hasIntegracoes
+                } else if (href === "/suites") {
+                  disabled = needsSistema && !hasCenario
+                } else if (href === "/dashboard" || href === "/cenarios") {
+                  disabled = needsSistema && !hasSistemaModulo
+                } else if (href === "/atualizacoes") {
+                  disabled = needsSistema && !hasSistemaModulo
                 }
               }
 
@@ -410,7 +454,7 @@ const Topbar = React.memo(function Topbar({
   accessProfile,
 }: TopbarProps) {
   const pathname = usePathname()
-  const title = getTitle(pathname)
+  const title = getTitle(pathname, role)
   const { data: session } = useSession()
   /** Evita mismatch de hidratação: no SSR o cliente ainda não aplicou a sessão do browser. */
   const [sessionUiReady, setSessionUiReady] = useState(false)
@@ -549,6 +593,7 @@ interface Props {
   sistemaNames: string[]
   integracoes?: IntegracaoSafeRecord[]
   hasSistemaComModulo?: boolean
+  hasCenario?: boolean
   isAdmin?: boolean
 }
 
@@ -557,6 +602,7 @@ export default function LayoutClient({
   sistemaNames: sistemaNamesProp,
   integracoes: integracoesProp = [],
   hasSistemaComModulo: hasSistemaComModuloProp = false,
+  hasCenario: hasCenarioProp = false,
   isAdmin = false,
 }: Props) {
   const router = useRouter()
@@ -577,12 +623,14 @@ export default function LayoutClient({
   const [stableNames, setStableNames] = useState(sistemaNamesProp)
   const [stableIntegracoes, setStableIntegracoes] = useState(integracoesProp)
   const [stableHasSistemaComModulo, setStableHasSistemaComModulo] = useState(hasSistemaComModuloProp)
+  const [stableHasCenario, setStableHasCenario] = useState(hasCenarioProp)
 
   useEffect(() => {
     if (sistemaNamesProp.length > 0) setStableNames(sistemaNamesProp)
     setStableIntegracoes(integracoesProp)
     setStableHasSistemaComModulo(hasSistemaComModuloProp)
-  }, [sistemaNamesProp, integracoesProp, hasSistemaComModuloProp])
+    setStableHasCenario(hasCenarioProp)
+  }, [sistemaNamesProp, integracoesProp, hasSistemaComModuloProp, hasCenarioProp])
 
   const sistemaNames = stableNames
   const integracoes = stableIntegracoes
@@ -617,6 +665,7 @@ export default function LayoutClient({
   // Gerador, Assistente: require modelo de IA (integração)
   const hasActiveSistema = sistemaNames.length > 0
   const hasSistemaModulo = stableHasSistemaComModulo   // sistema + módulo vinculado
+  const hasCenario = stableHasCenario
 
   // ── Theme ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -702,6 +751,7 @@ export default function LayoutClient({
           assistenteOpen={assistenteOpen}
           onAssistenteOpen={() => setAssistenteOpen(true)}
           hasSistemaModulo={hasSistemaModulo}
+          hasCenario={hasCenario}
           hasIntegracoes={integracoes.length > 0}
           role={role}
           onNavigate={handleNavigate}

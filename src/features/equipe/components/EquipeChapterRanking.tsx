@@ -5,7 +5,6 @@ import Image from "next/image"
 import { Trophy } from "lucide-react"
 import type { EquipeChapterRankingPage } from "@/features/equipe/lib/equipe-chapters-shared"
 import { RankingPositionBadge } from "@/components/shared/RankingPositionBadge"
-import { EmptyState } from "@/components/shared/EmptyState"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { cn } from "@/core/utils"
 
@@ -44,7 +43,7 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
 
       <div className={cn("relative min-w-0", loading && "pointer-events-none opacity-60")}>
         {!data || data.totalItems === 0 ? (
-          <EmptyState message="Nenhum ponto ainda." className="mx-0 my-2 py-6" />
+          <p className="px-4 py-6 text-center text-sm text-text-secondary">Nenhum ponto ainda.</p>
         ) : (
           <>
             <div className="overflow-x-auto">

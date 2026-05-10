@@ -158,6 +158,7 @@ export default function NovoCenarioClient({
   const [isSaving, startSaveTransition] = useTransition()
   const [hasSaved, setHasSaved] = useState(false)
   const [savedId, setSavedId] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set())
 
   // ── Loading for sub-operations ───────────────────────────────────────────────
   const [isClientePending, startClienteTransition] = useTransition()
@@ -259,30 +260,35 @@ export default function NovoCenarioClient({
 
   // ── Save ─────────────────────────────────────────────────────────────────────
   async function handleSave(): Promise<boolean> {
-    if (!moduloValue) { toast.error("Módulo é obrigatório."); setActiveTab("caso"); return false }
-    if (!risco) { toast.error("Risco é obrigatório."); setActiveTab("caso"); return false }
-    if (!manual && !automatizado) { toast.error("É obrigatório habilitar pelo menos um tipo: Manual ou Automatizado."); setActiveTab("caso"); return false }
-    if (!scenarioName.trim()) { toast.error("Nome do cenário é obrigatório."); setActiveTab("caso"); return false }
-    if (!descricao.trim()) { toast.error("Descrição é obrigatória."); setActiveTab("caso"); return false }
+    const errs = new Set<string>()
+    if (!moduloValue) errs.add("modulo")
+    if (!risco) errs.add("risco")
+    if (!scenarioName.trim()) errs.add("scenarioName")
+    if (!descricao.trim()) errs.add("descricao")
+    if (manual && !bdd.trim()) errs.add("bdd")
+    if (automatizado && !credencialId) errs.add("credencial")
+    if (!resultadoEsperado.trim()) errs.add("resultadoEsperado")
 
-    if (manual) {
-      if (!bdd.trim()) { toast.error("BDD (Gherkin) é obrigatório para Teste Manual."); setActiveTab("caso"); return false }
+    if (errs.size > 0) {
+      setFieldErrors(errs)
+      setActiveTab("caso")
+      toast.error("Preencha todos os campos obrigatórios.")
+      return false
     }
 
-    if (automatizado) {
-      if (!credencialId) {
-        toast.error("Credenciais é obrigatório.")
-        setActiveTab("caso")
-        return false
-      }
-      if (steps.filter((s) => s.acao.trim() && s.resultado.trim()).length === 0) {
-        toast.error("Adicione pelo menos 1 passo com ação e resultado.")
-        setActiveTab("caso")
-        return false
-      }
+    if (!manual && !automatizado) {
+      toast.error("É obrigatório habilitar pelo menos um tipo: Manual ou Automatizado.")
+      setActiveTab("caso")
+      return false
     }
 
-    if (!resultadoEsperado.trim()) { toast.error("Resultado Esperado é obrigatório."); setActiveTab("caso"); return false }
+    if (automatizado && steps.filter((s) => s.acao.trim() && s.resultado.trim()).length === 0) {
+      toast.error("Adicione pelo menos 1 passo com ação e resultado.")
+      setActiveTab("caso")
+      return false
+    }
+
+    setFieldErrors(new Set())
 
     const tipo: "Manual" | "Automatizado" | "Man./Auto." =
       manual && automatizado ? "Man./Auto." : automatizado ? "Automatizado" : "Manual"
@@ -512,7 +518,7 @@ export default function NovoCenarioClient({
               </label>
               <Select
                 value={moduloValue}
-                onValueChange={(v) => setModuloValue(v ?? "")}
+                onValueChange={(v) => { setModuloValue(v ?? ""); setFieldErrors((p) => { const s = new Set(p); s.delete("modulo"); return s }) }}
                 open={moduloSelectOpen}
                 onOpenChange={(open) => {
                   if (open && modulosDosistema.length === 0) {
@@ -523,7 +529,7 @@ export default function NovoCenarioClient({
                   setModuloSelectOpen(open)
                 }}
               >
-                <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <SelectTrigger className={fieldErrors.has("modulo") ? "border-destructive" : ""}><SelectValue placeholder="Selecionar" /></SelectTrigger>
                 <SelectPopup>
                   {modulosDosistema.map((m) => (
                     <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
@@ -548,8 +554,8 @@ export default function NovoCenarioClient({
               <label className="text-sm font-medium text-text-primary">
                 Risco <span className="text-destructive">*</span>
               </label>
-              <Select value={risco} onValueChange={(v) => setRisco(v ?? "")}>
-                <SelectTrigger>
+              <Select value={risco} onValueChange={(v) => { setRisco(v ?? ""); setFieldErrors((p) => { const s = new Set(p); s.delete("risco"); return s }) }}>
+                <SelectTrigger className={fieldErrors.has("risco") ? "border-destructive" : ""}>
                   {riscoSelecionado ? (
                     <span className="flex items-center gap-1.5" style={{ color: riscoSelecionado.color }}>
                       <span>{riscoSelecionado.icon}</span>
@@ -580,8 +586,9 @@ export default function NovoCenarioClient({
             </label>
             <Input
               value={scenarioName}
-              onChange={(e) => { setScenarioName(e.target.value); setHasSaved(false) }}
+              onChange={(e) => { setScenarioName(e.target.value); setHasSaved(false); setFieldErrors((p) => { const s = new Set(p); s.delete("scenarioName"); return s }) }}
               placeholder="Nome do cenário de teste"
+              className={fieldErrors.has("scenarioName") ? "border-destructive" : ""}
             />
           </div>
 
@@ -623,9 +630,9 @@ export default function NovoCenarioClient({
             </label>
             <AutoResizeTextarea
               value={descricao}
-              onChange={(e) => { setDescricao(e.target.value); setHasSaved(false) }}
+              onChange={(e) => { setDescricao(e.target.value); setHasSaved(false); setFieldErrors((p) => { const s = new Set(p); s.delete("descricao"); return s }) }}
               placeholder="Descrição do cenário de teste..."
-              className="min-h-[100px]"
+              className={`min-h-[100px]${fieldErrors.has("descricao") ? " border-destructive" : ""}`}
             />
           </div>
 
@@ -659,9 +666,9 @@ export default function NovoCenarioClient({
               </label>
               <AutoResizeTextarea
                 value={bdd}
-                onChange={(e) => setBdd(e.target.value)}
+                onChange={(e) => { setBdd(e.target.value); setFieldErrors((p) => { const s = new Set(p); s.delete("bdd"); return s }) }}
                 placeholder={`Dado que o usuário está na tela de...\nQuando ele realiza a ação...\nEntão o sistema deve...`}
-                className="min-h-[100px]"
+                className={`min-h-[100px]${fieldErrors.has("bdd") ? " border-destructive" : ""}`}
               />
             </div>
           )}
@@ -673,15 +680,18 @@ export default function NovoCenarioClient({
                 <label className="text-sm font-medium text-text-primary">
                   Credencial <span className="text-destructive">*</span>
                 </label>
-                <CredencialCombobox
-                  credenciais={credenciais}
-                  value={credencialId}
-                  onChange={(v) => {
-                    setCredencialId(v)
-                    setHasSaved(false)
-                  }}
-                  onAddCredencial={() => setAddCredencialOpen(true)}
-                />
+                <div className={fieldErrors.has("credencial") ? "rounded-custom border border-destructive" : ""}>
+                  <CredencialCombobox
+                    credenciais={credenciais}
+                    value={credencialId}
+                    onChange={(v) => {
+                      setCredencialId(v)
+                      setHasSaved(false)
+                      setFieldErrors((p) => { const s = new Set(p); s.delete("credencial"); return s })
+                    }}
+                    onAddCredencial={() => setAddCredencialOpen(true)}
+                  />
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -775,7 +785,7 @@ export default function NovoCenarioClient({
             </label>
             <AutoResizeTextarea
               value={resultadoEsperado}
-              onChange={(e) => { setResultadoEsperado(e.target.value); setHasSaved(false) }}
+              onChange={(e) => { setResultadoEsperado(e.target.value); setHasSaved(false); setFieldErrors((p) => { const s = new Set(p); s.delete("resultadoEsperado"); return s }) }}
               onKeyDown={(e) => {
                 if (automatizado && e.key === "Tab" && !e.shiftKey) {
                   e.preventDefault()
@@ -783,7 +793,7 @@ export default function NovoCenarioClient({
                 }
               }}
               placeholder="Descreva o resultado esperado..."
-              className="min-h-[100px]"
+              className={`min-h-[100px]${fieldErrors.has("resultadoEsperado") ? " border-destructive" : ""}`}
             />
           </div>
         </div>
