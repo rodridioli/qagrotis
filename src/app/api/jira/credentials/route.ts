@@ -83,8 +83,8 @@ export async function POST(req: NextRequest) {
     if (e instanceof Error && e.message === "MISSING_TOKEN") {
       return new Response("Informe o API Token na primeira configuração ou ao trocar o token.", { status: 400 })
     }
-    if (process.env.NODE_ENV !== "production") console.error("[jira/credentials] POST:", e)
-    return new Response("Erro ao salvar configuração.", { status: 500 })
+    console.error("[jira/credentials] POST:", e)
+    return new Response("Erro ao salvar configuração no banco de dados.", { status: 500 })
   }
 
   return Response.json({ success: true })
