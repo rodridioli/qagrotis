@@ -1,7 +1,7 @@
 "use client"
 
-import type { ReactNode } from "react"
-import { MoreVertical, Pencil, Trash2 } from "lucide-react"
+import { useState, type ReactNode } from "react"
+import { Eye, EyeOff, MoreVertical, Pencil, Trash2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -36,6 +36,8 @@ export function IndividualProgressaoTable({
   footer,
   readOnly = false,
 }: IndividualProgressaoTableProps) {
+  const [showValor, setShowValor] = useState(false)
+
   return (
     <>
       <div className="overflow-x-auto">
@@ -58,7 +60,15 @@ export function IndividualProgressaoTable({
                 Cargo
               </th>
               <th className="px-3 py-3 text-right text-xs font-semibold text-text-secondary sm:px-4">
-                Valor
+                <button
+                  type="button"
+                  onClick={() => setShowValor((v) => !v)}
+                  aria-label={showValor ? "Ocultar valores" : "Exibir valores"}
+                  className="inline-flex items-center gap-1.5 hover:text-text-primary transition-colors"
+                >
+                  Valor
+                  {showValor ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                </button>
               </th>
               {!readOnly ? (
                 <th className="w-12 px-2 py-3 text-center text-xs font-semibold text-text-secondary sm:px-3">
@@ -99,7 +109,7 @@ export function IndividualProgressaoTable({
                   {r.cargo || <span className="text-text-disabled">—</span>}
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-text-primary sm:px-4">
-                  {formatValorBRL(r.valor)}
+                  {showValor ? formatValorBRL(r.valor) : <span className="tracking-widest text-text-disabled">••••</span>}
                 </td>
                 {!readOnly ? (
                   <td className="px-2 py-3 text-center sm:px-3">
