@@ -256,7 +256,7 @@ export default function UsuarioFormTabs({
   }
 
   const isAdmin = sessionUser?.type === "Administrador"
-  const backHref = isAdmin ? "/configuracoes/usuarios" : "/configuracoes"
+  const backHref = isAdmin ? "/configuracoes/usuarios" : "/dashboard"
 
   return (
     <div className="space-y-4">
@@ -269,8 +269,7 @@ export default function UsuarioFormTabs({
             { label: "Usuários", href: "/configuracoes/usuarios" },
             { label: mode === "create" ? "Novo Usuário" : (initialData?.name ?? "Editar") },
           ] : [
-            { label: "Configurações", href: "/configuracoes" },
-            { label: mode === "create" ? "Novo Usuário" : (initialData?.name ?? "Editar") },
+            { label: initialData?.name ?? "Meu Perfil" },
           ]}
         />
         <Button onClick={handleSave} disabled={isPending}>

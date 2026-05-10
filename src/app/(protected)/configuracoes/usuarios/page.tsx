@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation"
 import { auth } from "@/core/auth"
 import { getQaUsers } from "@/features/usuarios/actions/usuarios"
 import { checkIsAdmin } from "@/core/session"
@@ -9,6 +10,9 @@ import UsuariosClient from "./UsuariosClient"
 export const dynamic = "force-dynamic"
 
 export default async function UsuariosPage() {
+  const session = await auth()
+  if (session?.user?.type !== "Administrador") redirect("/forbidden")
+
   const [rUsers, rSession, rAdmin] = await Promise.allSettled([
     getQaUsers(),
     auth(),

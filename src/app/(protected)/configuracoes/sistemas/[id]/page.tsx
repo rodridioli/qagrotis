@@ -3,12 +3,15 @@ export const metadata = { title: "Sistema" }
 import React from "react"
 import Link from "next/link"
 import { Pencil } from "lucide-react"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
+import { auth } from "@/core/auth"
 import { getSistema } from "@/features/qa/actions/sistemas"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 
 export default async function SistemaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const session = await auth()
+  if (session?.user?.type !== "Administrador") redirect("/forbidden")
   const sistema = await getSistema(id)
 
   if (!sistema) notFound()

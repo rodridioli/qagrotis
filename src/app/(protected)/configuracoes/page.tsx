@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Configurações" }
 
+import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Users, Monitor, Box, Building2, Sparkles, KeyRound } from "lucide-react"
 import { auth } from "@/core/auth"
@@ -25,6 +26,7 @@ const CARDS: ConfigCard[] = [
 
 export default async function ConfiguracoesPage() {
   const session = await auth()
+  if (session?.user?.type !== "Administrador") redirect("/forbidden")
   const currentEmail = session?.user?.email ?? ""
   const role = buildRole(session?.user?.type, session?.user?.accessProfile)
 

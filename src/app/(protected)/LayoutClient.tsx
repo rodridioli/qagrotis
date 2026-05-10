@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, FileText, Rocket, BookOpen,
-  Settings, LifeBuoy, LogOut, ChevronLeft,
+  Settings, LogOut, ChevronLeft,
   ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
   Target, Network, ClipboardCheck, MessageSquare, User,
 } from "lucide-react"
@@ -30,7 +30,6 @@ import { QAgrotisLogo } from "@/components/shared/QAgrotisLogo"
 import { QAgrotisIcon } from "@/components/shared/QAgrotisIcon"
 import { signOut, useSession } from "next-auth/react"
 import { SistemaContext } from "@/core/modulo-context"
-import { AssistenteDrawer } from "@/components/shared/AssistenteDrawer"
 import type { IntegracaoSafeRecord } from "@/features/integracoes/actions/integracoes"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 
@@ -44,7 +43,6 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/pdi",           icon: Target,          label: "PDI",              alwaysEnabled: true,  capability: "menu.pdi" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
   { href: "/documentos",    icon: BookOpen,        label: "Documentos",       alwaysEnabled: false, capability: "menu.documentos" },
-  { href: "/assistente",    icon: LifeBuoy,        label: "Central de Ajuda", alwaysEnabled: false, capability: "menu.assistente" },
   { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
   { href: "/individual",    icon: User,            label: "Individual",             alwaysEnabled: true,  capability: "menu.individual" },
   { href: "/mapa-conhecimento",     icon: Network,         label: "Mapa de Conhecimento",   alwaysEnabled: true,  capability: "menu.mapaConhecimento" },
@@ -64,8 +62,6 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
     { capability: "menu.painel" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
-    { capability: "menu.documentos" },
-    { capability: "menu.assistente" },
     { capability: "menu.configuracoes" },
     { capability: "menu.atualizacoes" },
   ],
@@ -78,7 +74,6 @@ const TITLE_MAP: Record<string, string> = {
   "/suites":        "Suítes",
   "/documentos":    "Documentos",
   "/configuracoes": "Configurações",
-  "/assistente":    "Central de Ajuda",
   "/atualizacoes":  "Atualizações",
   "/equipe":        "Equipe",
   "/individual":    "Individual",
@@ -104,8 +99,6 @@ interface SidebarProps {
   mobileOpen: boolean
   onCloseMobile: () => void
   isDark: boolean
-  assistenteOpen: boolean
-  onAssistenteOpen: () => void
   hasSistemaModulo: boolean
   hasIntegracoes: boolean
   role: Role
@@ -113,7 +106,7 @@ interface SidebarProps {
   onNavigate?: (href: string) => void
 }
 
-const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasIntegracoes, role, onNavigate }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, hasSistemaModulo, hasIntegracoes, role, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -199,17 +192,14 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
               // Depois, contexto (sem sistema/integração) só se RBAC permite a feature.
               let disabled = rbacDisabled
               if (!disabled && !alwaysEnabled) {
-                if (href === "/gerador" || href === "/assistente") {
+                if (href === "/gerador") {
                   disabled = !hasSistemaModulo || !hasIntegracoes
                 } else if (href === "/dashboard" || href === "/suites" || href === "/cenarios") {
                   disabled = !hasSistemaModulo
                 }
               }
 
-              const isAssistente = href === "/assistente"
-              const isActive = isAssistente
-                ? assistenteOpen
-                : !disabled && pathname.startsWith(href)
+              const isActive = !disabled && pathname.startsWith(href)
               const showLabel = !collapsed
 
               if (disabled) {
@@ -241,62 +231,6 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                   {showLabel && <span className="truncate">{label}</span>}
                 </>
               )
-
-              // "Assistente de IA" is a drawer trigger, not a route link
-              if (isAssistente) {
-                if (!hasIntegracoes) {
-                  const disabledClassName = cn(
-                    "flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-text-secondary opacity-50 cursor-not-allowed",
-                    collapsed ? "lg:justify-center" : ""
-                  )
-                  if (!showLabel) {
-                    return (
-                      <Tooltip key={href}>
-                        <TooltipTrigger render={<span className={cn(disabledClassName, "w-full")} />}>
-                          {itemChildren}
-                        </TooltipTrigger>
-                        <TooltipContent>{label} (Desabilitado)</TooltipContent>
-                      </Tooltip>
-                    )
-                  }
-                  return (
-                    <span key={href} className={cn(disabledClassName, "w-full")}>
-                      {itemChildren}
-                    </span>
-                  )
-                }
-
-                if (!showLabel) {
-                  return (
-                    <Tooltip key={href}>
-                      <TooltipTrigger
-                        render={
-                          <button
-                            type="button"
-                            onClick={onAssistenteOpen}
-                            style={itemStyle}
-                            className={cn(itemClassName, "w-full cursor-pointer")}
-                          />
-                        }
-                      >
-                        {itemChildren}
-                      </TooltipTrigger>
-                      <TooltipContent>{label}</TooltipContent>
-                    </Tooltip>
-                  )
-                }
-                return (
-                  <button
-                    key={href}
-                    type="button"
-                    onClick={onAssistenteOpen}
-                    style={itemStyle}
-                    className={cn(itemClassName, "w-full cursor-pointer")}
-                  >
-                    {itemChildren}
-                  </button>
-                )
-              }
 
               if (!showLabel) {
                 return (
@@ -549,7 +483,6 @@ export default function LayoutClient({
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isDark, setIsDark] = useState(false)
-  const [assistenteOpen, setAssistenteOpen] = useState(false)
   const [isPending, startNavigationTransition] = useTransition()
   const [isSistemaChangePending, startSistemaChangeTransition] = useTransition()
   const [sistemaSwitchOverlay, setSistemaSwitchOverlay] = useState(false)
@@ -681,14 +614,11 @@ export default function LayoutClient({
           mobileOpen={mobileOpen}
           onCloseMobile={() => setMobileOpen(false)}
           isDark={isDark}
-          assistenteOpen={assistenteOpen}
-          onAssistenteOpen={() => setAssistenteOpen(true)}
           hasSistemaModulo={hasSistemaModulo}
           hasIntegracoes={integracoes.length > 0}
           role={role}
           onNavigate={handleNavigate}
         />
-        <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Topbar
             collapsed={collapsed}

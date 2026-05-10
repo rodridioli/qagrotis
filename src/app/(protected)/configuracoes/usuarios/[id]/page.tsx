@@ -2,7 +2,8 @@ export const metadata = { title: "Usuário" }
 
 import React from "react"
 import Image from "next/image"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
+import { auth } from "@/core/auth"
 import { getQaUsers } from "@/features/usuarios/actions/usuarios"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { cn } from "@/core/utils"
@@ -37,6 +38,8 @@ function Field({ label, value }: { label: string; value: string }) {
 
 export default async function UsuarioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const session = await auth()
+  if (session?.user?.type !== "Administrador") redirect("/forbidden")
   const users = await getQaUsers()
   const user = users.find((u) => u.id === id)
 

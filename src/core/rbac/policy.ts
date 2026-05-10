@@ -16,7 +16,6 @@ export type Capability =
   | "menu.cenarios"
   | "menu.gerador"
   | "menu.documentos"
-  | "menu.assistente"
   | "menu.equipe"
   | "menu.configuracoes"
   | "menu.atualizacoes"
@@ -72,15 +71,10 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.cenarios",
       "menu.gerador",
       "menu.documentos",
-      "menu.assistente",
       "menu.equipe",
       "menu.individual",
-      "menu.configuracoes",
       "menu.atualizacoes",
       "topbar.sistemaSelector",
-      "config.clientes",
-      "config.credenciais",
-      "config.jira",
     ],
     disabled: [],
     manageableProfiles: [],
@@ -92,7 +86,6 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.cenarios",
       "menu.gerador",
       "menu.documentos",
-      "menu.assistente",
       "menu.equipe",
       "menu.individual",
       "menu.configuracoes",
@@ -102,9 +95,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.sistemas",
       "config.modulos",
       "config.clientes",
-      "config.modelosIA",
       "config.credenciais",
-      "config.jira",
       "users.create",
     ],
     disabled: [],
@@ -115,30 +106,24 @@ const POLICY: Record<Role, RoleConfig> = {
   "Padrão:UX": {
     capabilities: [
       "menu.painel",
-      "menu.assistente",
       "menu.equipe",
       "menu.individual",
-      "menu.configuracoes",
       "menu.atualizacoes",
-      "config.jira",
     ],
-    disabled: ["menu.gerador", "menu.documentos"],
+    disabled: [],
     manageableProfiles: [],
   },
   "Administrador:UX": {
     capabilities: [
       "menu.painel",
-      "menu.assistente",
       "menu.equipe",
       "menu.individual",
       "menu.configuracoes",
       "menu.atualizacoes",
       "config.usuarios",
-      "config.modelosIA",
-      "config.jira",
       "users.create",
     ],
-    disabled: ["menu.gerador", "menu.documentos"],
+    disabled: [],
     manageableProfiles: ["UX"],
   },
 
@@ -146,30 +131,24 @@ const POLICY: Record<Role, RoleConfig> = {
   "Padrão:TW": {
     capabilities: [
       "menu.painel",
-      "menu.assistente",
       "menu.equipe",
       "menu.individual",
-      "menu.configuracoes",
       "menu.atualizacoes",
-      "config.jira",
     ],
-    disabled: ["menu.gerador", "menu.documentos"],
+    disabled: [],
     manageableProfiles: [],
   },
   "Administrador:TW": {
     capabilities: [
       "menu.painel",
-      "menu.assistente",
       "menu.equipe",
       "menu.individual",
       "menu.configuracoes",
       "menu.atualizacoes",
       "config.usuarios",
-      "config.modelosIA",
-      "config.jira",
       "users.create",
     ],
-    disabled: ["menu.gerador", "menu.documentos"],
+    disabled: [],
     manageableProfiles: ["TW"],
   },
 
@@ -183,8 +162,6 @@ const POLICY: Record<Role, RoleConfig> = {
   "Administrador:MGR": {
     capabilities: [
       "menu.painel",
-      "menu.documentos",
-      "menu.assistente",
       "menu.equipe",
       "menu.individual",
       "menu.configuracoes",
