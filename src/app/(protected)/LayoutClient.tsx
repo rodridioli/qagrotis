@@ -4,8 +4,8 @@ import React, { useState, useEffect, useTransition, useRef, Suspense } from "rea
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
-  LayoutDashboard, FileText, Rocket, BookOpen,
-  Settings, LifeBuoy, LogOut, ChevronLeft,
+  LayoutDashboard, FileText, Rocket,
+  Settings, LogOut, ChevronLeft,
   ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
   Target, Network, ClipboardCheck, MessageSquare, User,
 } from "lucide-react"
@@ -26,6 +26,7 @@ import {
 import { cn } from "@/core/utils"
 import { IndividualSidebarNavGroup } from "@/features/individual/components/IndividualSidebarNavGroup"
 import { individualSectionLabel } from "@/features/individual/lib/individual-sections"
+import { EquipeSidebarNavGroup } from "@/features/equipe/components/EquipeSidebarNavGroup"
 import { QAgrotisLogo } from "@/components/shared/QAgrotisLogo"
 import { QAgrotisIcon } from "@/components/shared/QAgrotisIcon"
 import { signOut, useSession } from "next-auth/react"
@@ -43,8 +44,6 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
   { href: "/pdi",           icon: Target,          label: "PDI",              alwaysEnabled: true,  capability: "menu.pdi" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
-  { href: "/documentos",    icon: BookOpen,        label: "Documentos",       alwaysEnabled: false, capability: "menu.documentos" },
-  { href: "/assistente",    icon: LifeBuoy,        label: "Central de Ajuda", alwaysEnabled: false, capability: "menu.assistente" },
   { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
   { href: "/individual",    icon: User,            label: "Individual",             alwaysEnabled: true,  capability: "menu.individual" },
   { href: "/mapa-conhecimento",     icon: Network,         label: "Mapa de Conhecimento",   alwaysEnabled: true,  capability: "menu.mapaConhecimento" },
@@ -64,8 +63,6 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
     { capability: "menu.painel" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
-    { capability: "menu.documentos" },
-    { capability: "menu.assistente" },
     { capability: "menu.configuracoes" },
     { capability: "menu.atualizacoes" },
   ],
@@ -173,6 +170,27 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                 return [{ ...base, label: label ?? base.label }]
               })
             })().map(({ href, icon: Icon, label, alwaysEnabled, capability }) => {
+              if (href === "/equipe") {
+                return (
+                  <Suspense
+                    key="equipe-sidebar-tree"
+                    fallback={
+                      <div
+                        className={cn(
+                          "flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-text-secondary",
+                          collapsed ? "lg:justify-center" : "",
+                        )}
+                      >
+                        <Users className="size-4.5 shrink-0 text-text-secondary" aria-hidden />
+                        {!collapsed ? <span className="truncate">Equipe</span> : null}
+                      </div>
+                    }
+                  >
+                    <EquipeSidebarNavGroup collapsed={collapsed} onNavigate={onNavigate} />
+                  </Suspense>
+                )
+              }
+
               if (href === "/individual" && can(role, "individual.viewOthers")) {
                 return (
                   <Suspense
