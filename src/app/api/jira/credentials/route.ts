@@ -3,12 +3,21 @@ import { NextRequest } from "next/server"
 import { cookies } from "next/headers"
 import {
   deleteUserJiraCredentials,
-  getGlobalJiraCredentials,
+  getUserJiraCredentials,
+  readLegacyJiraCookies,
   upsertUserJiraCredentials,
 } from "@/features/qa/lib/jira-credentials-db"
 import { validateOrigin } from "@/core/security"
 
 const LEGACY_JIRA_COOKIES = ["jira_url", "jira_email", "jira_token"] as const
+
+const COOKIE_OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: 60 * 60 * 24 * 365,
+}
 
 /** Remove cookies legados após persistência bem-sucedida na BD. */
 async function clearLegacyCookiesOnce() {
@@ -18,23 +27,30 @@ async function clearLegacyCookiesOnce() {
   }
 }
 
-/** Verifica que o usuário é Administrador:MGR — único perfil autorizado a gerenciar a config global do Jira. */
-function isMgrAdmin(session: { user: { type?: string | null; accessProfile?: string | null } }): boolean {
-  return session.user.type === "Administrador" && session.user.accessProfile === "MGR"
+async function saveToLegacyCookies(jiraUrl: string, jiraEmail: string, jiraToken: string) {
+  const cookieStore = await cookies()
+  cookieStore.set("jira_url", jiraUrl, COOKIE_OPTS)
+  cookieStore.set("jira_email", jiraEmail, COOKIE_OPTS)
+  cookieStore.set("jira_token", jiraToken, COOKIE_OPTS)
 }
 
-// GET — retorna configuração global do Jira (qualquer usuário autenticado pode consultar o status)
+// GET — credenciais do próprio usuário (sem expor o token)
 export async function GET() {
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
 
   try {
-    const creds = await getGlobalJiraCredentials()
+    const db = await getUserJiraCredentials(session.user.id)
+    const leg = await readLegacyJiraCookies()
+    const jiraUrl = (db?.jiraUrl || leg?.jiraUrl || "").trim()
+    const jiraEmail = (db?.jiraEmail || leg?.jiraEmail || "").trim()
+    const hasToken = !!(db?.apiToken?.trim() || leg?.apiToken?.trim())
+
     return Response.json({
-      jiraUrl:    creds?.jiraUrl   ?? "",
-      jiraEmail:  creds?.jiraEmail ?? "",
-      hasToken:   !!creds?.apiToken,
-      configured: !!(creds?.jiraUrl && creds?.jiraEmail && creds?.apiToken),
+      jiraUrl,
+      jiraEmail,
+      hasToken,
+      configured: !!(jiraUrl && jiraEmail && hasToken),
     })
   } catch (e) {
     if (process.env.NODE_ENV !== "production") console.error("[jira/credentials] GET:", e)
@@ -45,13 +61,12 @@ export async function GET() {
   }
 }
 
-// POST — grava configuração global do Jira (somente Administrador:MGR)
+// POST — grava integração Jira do próprio usuário (PostgreSQL), com fallback para cookies se a migração não existir
 export async function POST(req: NextRequest) {
   const csrfError = validateOrigin(req)
   if (csrfError) return csrfError
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
-  if (!isMgrAdmin(session)) return new Response("Forbidden", { status: 403 })
 
   let body: { jiraUrl?: string; jiraEmail?: string; jiraToken?: string }
   try {
@@ -66,41 +81,57 @@ export async function POST(req: NextRequest) {
   }
 
   if (!jiraToken?.trim()) {
-    const existing = await getGlobalJiraCredentials()
-    if (!existing?.apiToken?.trim()) {
+    const existing = await getUserJiraCredentials(session.user.id)
+    const leg = await readLegacyJiraCookies()
+    const hasStored = !!(existing?.apiToken?.trim() || leg?.apiToken?.trim())
+    if (!hasStored) {
       return new Response("Informe o API Token na primeira configuração ou ao trocar o token.", { status: 400 })
     }
   }
 
+  let savedToDb = false
   try {
     await upsertUserJiraCredentials(session.user.id, {
-      jiraUrl:   jiraUrl.trim(),
+      jiraUrl: jiraUrl.trim(),
       jiraEmail: jiraEmail.trim(),
-      apiToken:  jiraToken,
+      apiToken: jiraToken,
     })
-    await clearLegacyCookiesOnce()
+    savedToDb = true
   } catch (e) {
     if (e instanceof Error && e.message === "MISSING_TOKEN") {
       return new Response("Informe o API Token na primeira configuração ou ao trocar o token.", { status: 400 })
     }
-    console.error("[jira/credentials] POST:", e)
-    return new Response("Erro ao salvar configuração no banco de dados.", { status: 500 })
+    if (process.env.NODE_ENV !== "production") console.error("[jira/credentials] POST: falha na BD — usando cookies (rode prisma migrate deploy).", e)
+    const token =
+      jiraToken?.trim() ||
+      (await getUserJiraCredentials(session.user.id))?.apiToken ||
+      (await readLegacyJiraCookies())?.apiToken ||
+      ""
+    if (!token.trim()) {
+      return new Response(
+        "Não foi possível gravar no banco e não há token armazenado. Rode a migração Prisma ou informe o API Token.",
+        { status: 503 },
+      )
+    }
+    await saveToLegacyCookies(jiraUrl.trim(), jiraEmail.trim(), token.trim())
+  }
+
+  if (savedToDb) {
+    await clearLegacyCookiesOnce()
   }
 
   return Response.json({ success: true })
 }
 
-// DELETE — remove configuração global do Jira (somente Administrador:MGR)
+// DELETE — remove integração do próprio usuário
 export async function DELETE(req: NextRequest) {
   const csrfError = validateOrigin(req)
   if (csrfError) return csrfError
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
-  if (!isMgrAdmin(session)) return new Response("Forbidden", { status: 403 })
 
   await deleteUserJiraCredentials(session.user.id)
-  const cookieStore = await cookies()
-  for (const name of LEGACY_JIRA_COOKIES) cookieStore.delete(name)
+  await clearLegacyCookiesOnce()
 
   return Response.json({ success: true })
 }
