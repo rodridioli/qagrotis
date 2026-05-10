@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useTransition, useRef, Suspense } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   LayoutDashboard, FileText, Rocket,
   Settings, LogOut, ChevronLeft,
@@ -27,6 +27,8 @@ import { cn } from "@/core/utils"
 import { IndividualSidebarNavGroup } from "@/features/individual/components/IndividualSidebarNavGroup"
 import { individualSectionLabel } from "@/features/individual/lib/individual-sections"
 import { EquipeSidebarNavGroup } from "@/features/equipe/components/EquipeSidebarNavGroup"
+import { EQUIPE_NAV_ENTRIES } from "@/features/equipe/components/equipeNavEntries"
+import { PainelSidebarNavGroup } from "@/features/painel/components/PainelSidebarNavGroup"
 import { QAgrotisLogo } from "@/components/shared/QAgrotisLogo"
 import { QAgrotisIcon } from "@/components/shared/QAgrotisIcon"
 import { signOut, useSession } from "next-auth/react"
@@ -81,12 +83,16 @@ const TITLE_MAP: Record<string, string> = {
   "/individual":    "Individual",
 }
 
-function getTitle(pathname: string, role?: Role): string {
+function getTitle(pathname: string, role?: Role, tab?: string): string {
   if (
     role?.startsWith("Padrão:") &&
     /^\/configuracoes\/usuarios\/[^/]+\/editar$/.test(pathname)
   ) {
     return "Meu Cadastro"
+  }
+  if (pathname === "/dashboard" && tab) {
+    const perfil = tab.toUpperCase()
+    if (["MGR", "QA", "UX", "TW"].includes(perfil)) return `Painel — ${perfil}`
   }
   if (pathname.startsWith("/individual/avaliacoes/nova")) return "Nova avaliação"
   if (/^\/individual\/avaliacoes\/[^/]+$/.test(pathname)) return "Avaliação de desempenho"
@@ -94,6 +100,11 @@ function getTitle(pathname: string, role?: Role): string {
     const secao = pathname.split("/")[2] ?? ""
     const label = individualSectionLabel(secao)
     if (label) return `Individual — ${label}`
+  }
+  if (pathname.startsWith("/equipe")) {
+    const entry = EQUIPE_NAV_ENTRIES.find((e) => e.id === tab)
+    if (entry) return `Equipe — ${entry.label}`
+    return "Equipe"
   }
   for (const [key, value] of Object.entries(TITLE_MAP)) {
     if (pathname.startsWith(key)) return value
@@ -179,6 +190,27 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
             })().map(({ href, icon: Icon, label, alwaysEnabled, capability }) => {
               // Disable logic: only applies to roles that depend on sistema/módulo
               const needsSistema = can(role, "topbar.sistemaSelector")
+
+              if (href === "/dashboard" && role === "Administrador:MGR") {
+                return (
+                  <Suspense
+                    key="painel-sidebar-tree"
+                    fallback={
+                      <div
+                        className={cn(
+                          "flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-text-secondary",
+                          collapsed ? "lg:justify-center" : "",
+                        )}
+                      >
+                        <LayoutDashboard className="size-4.5 shrink-0 text-text-secondary" aria-hidden />
+                        {!collapsed ? <span className="truncate">Painel</span> : null}
+                      </div>
+                    }
+                  >
+                    <PainelSidebarNavGroup collapsed={collapsed} onNavigate={onNavigate} />
+                  </Suspense>
+                )
+              }
 
               if (href === "/equipe") {
                 const equipeDisabled = needsSistema && !hasSistemaModulo
@@ -454,7 +486,9 @@ const Topbar = React.memo(function Topbar({
   accessProfile,
 }: TopbarProps) {
   const pathname = usePathname()
-  const title = getTitle(pathname, role)
+  const searchParams = useSearchParams()
+  const tab = searchParams.get("tab") ?? searchParams.get("perfil") ?? undefined
+  const title = getTitle(pathname, role, tab)
   const { data: session } = useSession()
   /** Evita mismatch de hidratação: no SSR o cliente ainda não aplicou a sessão do browser. */
   const [sessionUiReady, setSessionUiReady] = useState(false)
@@ -758,19 +792,21 @@ export default function LayoutClient({
         />
         <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <Topbar
-            collapsed={collapsed}
-            onToggleDesktop={() => setCollapsed((v) => !v)}
-            onToggleMobile={() => setMobileOpen((v) => !v)}
-            sistemaNames={sistemaNames}
-            sistemaSelecionado={sistemaSelecionado}
-            onSistemaChange={handleSistemaChange}
-            sistemaSelectPending={sistemaSwitchOverlay || isSistemaChangePending}
-            isDark={isDark}
-            onToggleTheme={handleToggleTheme}
-            role={role}
-            accessProfile={accessProfile}
-          />
+          <Suspense fallback={null}>
+            <Topbar
+              collapsed={collapsed}
+              onToggleDesktop={() => setCollapsed((v) => !v)}
+              onToggleMobile={() => setMobileOpen((v) => !v)}
+              sistemaNames={sistemaNames}
+              sistemaSelecionado={sistemaSelecionado}
+              onSistemaChange={handleSistemaChange}
+              sistemaSelectPending={sistemaSwitchOverlay || isSistemaChangePending}
+              isDark={isDark}
+              onToggleTheme={handleToggleTheme}
+              role={role}
+              accessProfile={accessProfile}
+            />
+          </Suspense>
           <main className="relative flex-1 overflow-auto bg-surface-default p-4 lg:p-6">
             {(isPending || sistemaSwitchOverlay) && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-default/80 backdrop-blur-sm">

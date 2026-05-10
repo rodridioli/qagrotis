@@ -22,7 +22,7 @@ export interface UserPerformanceData {
   classificacao: string | null
   photoPath: string | null
   /** Sistemas e módulos onde o usuário tem cenários (atividade) no período filtrado */
-  atividadePorSistema: { sistema: string; modulos: string[] }[]
+  atividadePorSistema: { sistema: string; modulos: { name: string; count: number }[] }[]
   cenariosCriados: number
   testesExecutados: number
   errosEncontrados: number
@@ -30,6 +30,8 @@ export interface UserPerformanceData {
   testesAutomatizados: number
   percentualAutomatizado: number
   score: number
+  /** Contagem de usuários ativos por perfil — preenchido apenas para cards de usuário MGR */
+  perfilCounts?: { label: string; count: number }[]
 }
 
 export async function getPerformanceData(filters: {
@@ -188,6 +190,7 @@ export async function getPerformanceData(filters: {
       sucessos: number
       testesAutomatizados: number
       bySystem: Map<string, Set<string>>
+      moduloTestCount: Map<string, number>
     }>()
     const ensureCounter = (emailKey: string) => {
       if (!counters.has(emailKey)) {
@@ -198,6 +201,7 @@ export async function getPerformanceData(filters: {
           sucessos: 0,
           testesAutomatizados: 0,
           bySystem: new Map(),
+          moduloTestCount: new Map(),
         })
       }
       return counters.get(emailKey)!
@@ -258,7 +262,17 @@ export async function getPerformanceData(filters: {
         bucket.testesExecutados += 1
         if (h.resultado === "Erro") bucket.errosEncontrados += 1
         if (h.resultado === "Sucesso") bucket.sucessos += 1
+        const modulo = (h.module ?? "").trim()
+        if (modulo) {
+          bucket.moduloTestCount.set(modulo, (bucket.moduloTestCount.get(modulo) ?? 0) + 1)
+        }
       }
+    }
+
+    const profileCountMap: Record<string, number> = { MGR: 0, QA: 0, UX: 0, TW: 0 }
+    for (const u of activeUsers) {
+      const p = u.accessProfile ?? "QA"
+      if (p in profileCountMap) profileCountMap[p]++
     }
 
     const result: UserPerformanceData[] = activeUsers.map((u) => {
@@ -272,10 +286,22 @@ export async function getPerformanceData(filters: {
         ? [...bucket.bySystem.entries()]
             .map(([sistema, modSet]) => ({
               sistema,
-              modulos: [...modSet].sort((a, b) => a.localeCompare(b, "pt-BR")),
+              modulos: [...modSet]
+                .sort((a, b) => a.localeCompare(b, "pt-BR"))
+                .map((name) => ({ name, count: bucket.moduloTestCount.get(name) ?? 0 })),
             }))
             .sort((a, b) => a.sistema.localeCompare(b.sistema, "pt-BR"))
         : []
+
+      const perfilCounts =
+        u.accessProfile === "MGR"
+          ? [
+              { label: "MGR", count: profileCountMap.MGR },
+              { label: "QA",  count: profileCountMap.QA  },
+              { label: "UX",  count: profileCountMap.UX  },
+              { label: "TW",  count: profileCountMap.TW  },
+            ]
+          : undefined
 
       return {
         userId: u.id,
@@ -295,6 +321,7 @@ export async function getPerformanceData(filters: {
           (bucket?.testesExecutados ?? 0) * 1000000 +
           percentualAutomatizado * 1000 +
           cenariosCriados,
+        perfilCounts,
       }
     })
 

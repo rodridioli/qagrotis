@@ -164,6 +164,13 @@ type CardLabels = {
 }
 
 const LABELS_BY_PROFILE: Record<string, CardLabels> = {
+  MGR: {
+    cenarios: "Feedbacks",
+    testes: "Avaliações",
+    sucesso: "Operacional",
+    erros: "Gestão",
+    automatizados: "Domínio",
+  },
   UX: {
     cenarios: "Protótipos",
     testes: "Pesquisas",
@@ -189,8 +196,13 @@ const DEFAULT_LABELS: CardLabels = {
 export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps) {
   const labels = LABELS_BY_PROFILE[user.accessProfile ?? ""] ?? DEFAULT_LABELS
   const errosVariant: "error" | "info" = user.accessProfile === "UX" ? "info" : "error"
+  const isMgr = user.accessProfile === "MGR"
+  const isQA = user.accessProfile === "QA"
   const hasAnySistema = user.atividadePorSistema.length > 0
   const detailRowsResolved = useMemo(() => {
+    if (isMgr && user.perfilCounts && user.perfilCounts.length > 0) {
+      return user.perfilCounts.map((e) => ({ label: e.label, value: String(e.count) }))
+    }
     if (!hasAnySistema) {
       return FALLBACK_ROW_LABELS.map((label) => ({ label, value: "—" }))
     }
@@ -198,10 +210,15 @@ export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps
     return [0, 1, 2].map((i) => {
       const row = src[i]
       const label = row?.sistema?.trim() || FALLBACK_ROW_LABELS[i]
-      const value = row?.modulos?.length ? row.modulos.join(", ") : "—"
+      const mods = row?.modulos ?? []
+      const value = mods.length
+        ? isQA
+          ? mods.map((m) => `${m.name} (${m.count})`).join(", ")
+          : mods.map((m) => m.name).join(", ")
+        : "—"
       return { label, value }
     })
-  }, [hasAnySistema, user.atividadePorSistema])
+  }, [isMgr, isQA, hasAnySistema, user.atividadePorSistema, user.perfilCounts])
 
   return (
     <article
@@ -257,10 +274,12 @@ export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps
             {labels.automatizados}
           </span>
           <span className="text-xs font-semibold tabular-nums text-text-primary sm:text-sm">
-            {user.testesAutomatizados} de {user.cenariosCriados} - {user.percentualAutomatizado}%
+            {isMgr
+              ? "60%"
+              : `${user.testesAutomatizados} de ${user.cenariosCriados} - ${user.percentualAutomatizado}%`}
           </span>
         </div>
-        <ProgressBar value={user.percentualAutomatizado} />
+        <ProgressBar value={isMgr ? 60 : user.percentualAutomatizado} />
       </div>
       )}
     </article>
