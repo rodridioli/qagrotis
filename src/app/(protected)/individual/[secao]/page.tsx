@@ -6,7 +6,6 @@ import { buildRole, can } from "@/core/rbac/policy"
 import { getActiveQaUsers } from "@/features/usuarios/actions/usuarios"
 import { serializeRscProps } from "@/core/rsc-serialize"
 import { IndividualSecaoDevelopmentPanel } from "../IndividualSecaoDevelopmentPanel"
-import { IndividualSectionTabs } from "@/features/individual/components/IndividualSectionTabs"
 import { MinhasAvaliacoesSection } from "@/features/individual/components/MinhasAvaliacoesSection"
 import { MinhasFeedbacksSection } from "@/features/individual/components/MinhasFeedbacksSection"
 import { ConquistasSection } from "@/features/individual/components/ConquistasSection"
@@ -74,8 +73,6 @@ export default async function IndividualSecaoPage({
 
   return (
     <div className="space-y-4">
-      {!canViewOthers ? <IndividualSectionTabs querySuffix={querySuffix} /> : null}
-
       {showMgrUserFilter ? (
         <IndividualSecaoDevelopmentPanel
           secao={secao}
