@@ -29,9 +29,9 @@ export interface EquipeNavEntry {
 export const EQUIPE_NAV_ENTRIES: EquipeNavEntry[] = [
   { id: "performance",  label: "Visão geral",        icon: BarChart3 },
   { id: "chapters",     label: "Chapters",           icon: Users     },
-  { id: "horarios",     label: "Disponibilidade",    icon: Clock     },
-  { id: "ferias",       label: "Aviso de Férias",    icon: Calendar  },
-  { id: "ausencias",    label: "Aviso de Ausências", icon: Calendar  },
+  { id: "horarios",     label: "Horários",  icon: Clock     },
+  { id: "ferias",       label: "Férias",    icon: Calendar  },
+  { id: "ausencias",    label: "Ausências", icon: Calendar  },
   { id: "metas",        label: "OKRs",               icon: Target    },
   { id: "aniversarios", label: "Aniversários",       icon: Users     },
 ]
