@@ -28,14 +28,15 @@ export async function readLegacyJiraCookies(): Promise<StoredJiraCredentials | n
  */
 export async function getGlobalJiraCredentials(): Promise<StoredJiraCredentials | null> {
   try {
-    const mgr = await prisma.createdUser.findFirst({
-      where: { type: "Administrador", accessProfile: "MGR" },
-      select: { id: true },
+    const admins = await prisma.createdUser.findMany({
+      where: { type: "Administrador" },
+      select: { id: true, accessProfile: true },
     })
+    const mgr = admins.find((u) => u.accessProfile === "MGR")
     if (!mgr) return null
     return getUserJiraCredentials(mgr.id)
   } catch (e) {
-    if (process.env.NODE_ENV !== "production") console.error("[jira-credentials-db] getGlobalJiraCredentials:", e)
+    console.error("[jira-credentials-db] getGlobalJiraCredentials:", e)
     return null
   }
 }
