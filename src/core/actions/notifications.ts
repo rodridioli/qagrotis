@@ -19,19 +19,24 @@ export type NotificationData = {
 const idSchema = z.string().min(1).max(128)
 
 export async function getUnreadNotifications(): Promise<NotificationData[]> {
-  const session = await requireSession()
-  await ensureNotificationTables()
-  const rows = await prisma.notification.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    select: { id: true, type: true, title: true, message: true, link: true, createdAt: true },
-  })
-  return rows.map((r) => ({
-    ...r,
-    type: r.type as NotificationType,
-    createdAt: r.createdAt.toISOString(),
-  }))
+  try {
+    const session = await requireSession()
+    await ensureNotificationTables()
+    const rows = await prisma.notification.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { id: true, type: true, title: true, message: true, link: true, createdAt: true },
+    })
+    return rows.map((r) => ({
+      ...r,
+      type: r.type as NotificationType,
+      createdAt: r.createdAt.toISOString(),
+    }))
+  } catch (e) {
+    console.error("[getUnreadNotifications] ERRO:", e)
+    throw e
+  }
 }
 
 export async function deleteNotification(id: string): Promise<{ error?: string }> {

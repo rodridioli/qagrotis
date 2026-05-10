@@ -265,6 +265,22 @@ export async function createAndSaveIndividualPerformanceEvaluation(
       select: { id: true },
     })
     revalidatePath("/individual/avaliacoes")
+
+    if (parsed.data.mode === "complete") {
+      try {
+        await createNotification(
+          parsed.data.evaluatedUserId,
+          "EVALUATION",
+          "Avaliação de desempenho finalizada",
+          "Sua avaliação de desempenho foi concluída e está disponível para visualização.",
+          `/individual/avaliacoes`,
+        )
+      } catch (notifErr) {
+        if (process.env.NODE_ENV !== "production")
+          console.error("[createAndSaveIndividualPerformanceEvaluation] notification trigger:", notifErr)
+      }
+    }
+
     return { id: created.id }
   } catch (e) {
     console.error("[createAndSaveIndividualPerformanceEvaluation]", e)
