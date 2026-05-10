@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, updateTag } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { LAYOUT_CACHE_TAG } from "@/core/layout-cache"
 import { normalizeProvider } from "@/lib/ai/provider"
 import { z } from "zod"
@@ -80,7 +80,7 @@ export async function criarIntegracao(data: unknown): Promise<void> {
   await prisma.integracao.create({ data: { id, ...parsed, provider, active: true } })
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath("/gerador")
-  updateTag(LAYOUT_CACHE_TAG)
+  revalidateTag(LAYOUT_CACHE_TAG)
 }
 
 export async function atualizarIntegracao(id: string, data: unknown): Promise<void> {
@@ -99,7 +99,7 @@ export async function atualizarIntegracao(id: string, data: unknown): Promise<vo
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath(`/configuracoes/modelos-de-ia/${id}/editar`)
   revalidatePath("/gerador")
-  updateTag(LAYOUT_CACHE_TAG)
+  revalidateTag(LAYOUT_CACHE_TAG)
 }
 
 export async function inativarIntegracoes(ids: string[]): Promise<void> {
@@ -110,7 +110,7 @@ export async function inativarIntegracoes(ids: string[]): Promise<void> {
   await prisma.integracao.updateMany({ where: { id: { in: ids } }, data: { active: false } })
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath("/gerador")
-  updateTag(LAYOUT_CACHE_TAG)
+  revalidateTag(LAYOUT_CACHE_TAG)
 }
 
 export async function ativarIntegracao(id: string): Promise<void> {
@@ -119,5 +119,5 @@ export async function ativarIntegracao(id: string): Promise<void> {
   await prisma.integracao.update({ where: { id }, data: { active: true } })
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath("/gerador")
-  updateTag(LAYOUT_CACHE_TAG)
+  revalidateTag(LAYOUT_CACHE_TAG)
 }
