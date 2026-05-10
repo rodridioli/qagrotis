@@ -60,6 +60,15 @@ type TabId =
   | "metas"
   | "aniversarios"
 
+const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
+  { id: "performance",  label: "Visão geral",        icon: BarChart3 },
+  { id: "chapters",     label: "Chapters",           icon: Users     },
+  { id: "horarios",     label: "Disponibilidade",    icon: Clock     },
+  { id: "ferias",       label: "Aviso de Férias",    icon: Calendar  },
+  { id: "ausencias",    label: "Aviso de Ausências", icon: Calendar  },
+  { id: "metas",        label: "OKRs",               icon: BarChart3 },
+  { id: "aniversarios", label: "Aniversários",       icon: Users     },
+]
 
 const PERIODOS = [
   { value: "hoje",         label: "Hoje"          },

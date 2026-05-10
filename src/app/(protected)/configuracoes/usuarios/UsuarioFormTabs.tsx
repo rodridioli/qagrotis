@@ -277,7 +277,7 @@ export default function UsuarioFormTabs({
             ]}
           />
         )}
-        <Button onClick={handleSave} disabled={isPending}>
+        <Button onClick={handleSave} disabled={isPending} className="ml-auto">
           <Check className="size-4" />
           {isPending ? "Salvando…" : "Salvar"}
         </Button>
