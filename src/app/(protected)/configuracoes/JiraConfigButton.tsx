@@ -135,9 +135,8 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
           </DialogHeader>
           <div className="flex flex-col gap-4 py-2">
             <p className="text-sm text-text-secondary">
-              Suas credenciais ficam vinculadas à sua conta e armazenadas no banco de dados (URL, e-mail e token de API).
-              Cada usuário configura o próprio acesso ao Jira. O token não é exibido depois de salvo; para trocá-lo,
-              informe um novo API Token.
+              Esta configuração é global e vale para todos os usuários do sistema. Apenas o Administrador MGR pode
+              configurar. O token não é exibido depois de salvo; para trocá-lo, informe um novo API Token.
             </p>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">URL do Jira <span className="text-destructive">*</span></label>

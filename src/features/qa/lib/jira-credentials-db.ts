@@ -22,6 +22,24 @@ export async function readLegacyJiraCookies(): Promise<StoredJiraCredentials | n
   }
 }
 
+/**
+ * Retorna as credenciais Jira do Administrador:MGR — configuração global única do sistema.
+ * Todos os usuários que precisam exportar para o Jira usam estas credenciais.
+ */
+export async function getGlobalJiraCredentials(): Promise<StoredJiraCredentials | null> {
+  try {
+    const mgr = await prisma.createdUser.findFirst({
+      where: { type: "Administrador", accessProfile: "MGR" },
+      select: { id: true },
+    })
+    if (!mgr) return null
+    return getUserJiraCredentials(mgr.id)
+  } catch (e) {
+    if (process.env.NODE_ENV !== "production") console.error("[jira-credentials-db] getGlobalJiraCredentials:", e)
+    return null
+  }
+}
+
 export async function getUserJiraCredentials(userId: string): Promise<StoredJiraCredentials | null> {
   try {
     const row = await prisma.userJiraCredentials.findUnique({
@@ -80,25 +98,20 @@ export async function deleteUserJiraCredentials(userId: string): Promise<void> {
 }
 
 /**
- * Resolve credenciais a partir do BD do usuário (com fallback para cookies legados).
- * NÃO confia no body/form da requisição: dados controlados pelo cliente são ignorados
- * para impedir SSRF lateral via `jiraUrl`.
+ * Resolve credenciais Jira globais (do Administrador:MGR).
+ * Todos os usuários compartilham a mesma configuração — NÃO usa credenciais individuais.
+ * NÃO confia no body/form da requisição para impedir SSRF lateral via `jiraUrl`.
  */
 export async function resolveJiraCredentialsForRequest(
-  userId: string,
+  _userId?: string,
   _partial?: { jiraUrl?: string; email?: string; apiToken?: string },
 ): Promise<StoredJiraCredentials | null> {
+  void _userId
   void _partial
-  const [stored, legacy] = await Promise.all([
-    getUserJiraCredentials(userId),
-    readLegacyJiraCookies(),
-  ])
-  const jiraUrl = stored?.jiraUrl || legacy?.jiraUrl || ""
-  const jiraEmail = stored?.jiraEmail || legacy?.jiraEmail || ""
-  const apiToken = stored?.apiToken || legacy?.apiToken || ""
-  if (!jiraUrl || !jiraEmail || !apiToken) return null
-  if (!isAllowedJiraUrl(jiraUrl)) return null
-  return { jiraUrl, jiraEmail, apiToken }
+  const creds = await getGlobalJiraCredentials()
+  if (!creds) return null
+  if (!isAllowedJiraUrl(creds.jiraUrl)) return null
+  return creds
 }
 
 /** Valida que a URL do Jira é HTTPS e não aponta para hosts internos/privados. */
