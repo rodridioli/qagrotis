@@ -2,15 +2,15 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { ChevronRight, LayoutDashboard } from "lucide-react"
+import { BarChart3, CheckSquare, ChevronRight, Code2, LayoutDashboard, Palette } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/core/utils"
 
 const PAINEL_SUBITEMS = [
-  { id: "MGR", label: "MGR" },
-  { id: "QA",  label: "QA"  },
-  { id: "UX",  label: "UX"  },
-  { id: "TW",  label: "TW"  },
+  { id: "MGR", label: "MGR", Icon: BarChart3 },
+  { id: "QA",  label: "QA",  Icon: CheckSquare },
+  { id: "UX",  label: "UX",  Icon: Palette },
+  { id: "TW",  label: "TW",  Icon: Code2 },
 ] as const
 
 export interface PainelSidebarNavGroupProps {
@@ -121,7 +121,7 @@ export function PainelSidebarNavGroup({ collapsed, onNavigate }: PainelSidebarNa
       {open ? (
         <nav id="painel-sidebar-subnav" aria-label="Secções Painel" className="ml-2 border-l border-border-default pl-2">
           <ul className="flex flex-col gap-0.5">
-            {PAINEL_SUBITEMS.map(({ id, label }) => {
+            {PAINEL_SUBITEMS.map(({ id, label, Icon }) => {
               const href = `/dashboard?perfil=${id}`
               const active = parentActive && activePerfil === id
               return (
@@ -133,6 +133,7 @@ export function PainelSidebarNavGroup({ collapsed, onNavigate }: PainelSidebarNa
                     aria-current={active ? "page" : undefined}
                     onClick={() => go(href)}
                   >
+                    <Icon className="size-4 shrink-0" aria-hidden />
                     <span className="truncate">{label}</span>
                   </button>
                 </li>
