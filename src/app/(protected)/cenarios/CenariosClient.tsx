@@ -62,9 +62,10 @@ interface Props {
   initialCenarios: CenarioRecord[]
   allModulos: ModuloRecord[]
   initialClientes: ClienteRecord[]
+  isAdmin: boolean
 }
 
-export default function CenariosClient({ initialCenarios: initialCenariosParam, allModulos, initialClientes }: Props) {
+export default function CenariosClient({ initialCenarios: initialCenariosParam, allModulos, initialClientes, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isImporting, setIsImporting] = useState(false)
@@ -496,7 +497,7 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
                         <CenarioTipoBadge tipo={c.tipo as "Automatizado" | "Manual" | "Man./Auto."} />
                       </td>
                       <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
-                        {filters.apenasInativos ? (
+                        {filters.apenasInativos && isAdmin ? (
                           <button
                             type="button"
                             aria-label="Ativar"

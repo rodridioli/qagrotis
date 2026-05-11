@@ -84,9 +84,10 @@ function AutomacaoBar({ pct }: { pct: number }) {
 interface Props {
   allModulos: ModuloRecord[]
   suites: SuiteListRecord[]
+  isAdmin: boolean
 }
 
-export default function SuitesClient({ allModulos, suites }: Props) {
+export default function SuitesClient({ allModulos, suites, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { sistemaSelecionado } = useSistemaSelecionado()
@@ -371,7 +372,7 @@ const showBulkActions = !filters.apenasInativos
                         <SuiteSituacaoBadge situacao={derivarSituacao(s)} />
                       </td>
                       <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
-                        {filters.apenasInativos ? (
+                        {filters.apenasInativos && isAdmin ? (
                           <button
                             type="button"
                             aria-label="Ativar"
