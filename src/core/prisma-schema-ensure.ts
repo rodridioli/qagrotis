@@ -13,6 +13,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredIndividualProgressaoCargo?: boolean
   __qagrotisEnsuredClassificacao?: boolean
   __qagrotisEnsuredNotificationTables?: boolean
+  __qagrotisEnsuredCenarioSuiteRelations?: boolean
 }
 
 /**
@@ -429,5 +430,24 @@ CREATE TABLE IF NOT EXISTS "UserBadge" (
   } catch (e) {
     console.error("[prisma-schema-ensure] Notification/UserBadge tables", e)
     throw e
+  }
+}
+
+/**
+ * Garante colunas FK de relação em Cenario e Suite.
+ * Adicionadas ao schema sem migration formal — idempotente via IF NOT EXISTS.
+ */
+export async function ensureCenarioSuiteRelationColumns(): Promise<void> {
+  if (g.__qagrotisEnsuredCenarioSuiteRelations) return
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Cenario" ADD COLUMN IF NOT EXISTS "systemId" TEXT`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Cenario" ADD COLUMN IF NOT EXISTS "moduleId" TEXT`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Cenario" ADD COLUMN IF NOT EXISTS "credencialId" TEXT`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Cenario" ADD COLUMN IF NOT EXISTS "createdBy" TEXT`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Suite" ADD COLUMN IF NOT EXISTS "sistemaId" TEXT`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Suite" ADD COLUMN IF NOT EXISTS "moduloId" TEXT`)
+    g.__qagrotisEnsuredCenarioSuiteRelations = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] Cenario/Suite relation columns", e)
   }
 }

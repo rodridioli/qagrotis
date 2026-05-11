@@ -418,7 +418,6 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                   {showEditSenha ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
-              <p className="text-xs text-text-secondary">Deixe em branco para manter a senha atual.</p>
             </div>
           </div>
           <DialogFooter showCloseButton={false}>

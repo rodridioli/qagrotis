@@ -6,6 +6,7 @@ import { requireSession, requireAdmin } from "@/core/session"
 import { nextId } from "@/core/db-utils"
 import { prisma } from "@/core/prisma"
 import { aggregateHistoricoExecucoesErrosByCenarioId } from "@/features/qa/lib/suite-historico-stats"
+import { ensureCenarioSuiteRelationColumns } from "@/core/prisma-schema-ensure"
 
 export interface CenarioStep {
   acao: string
@@ -123,6 +124,7 @@ function toRecord(row: any): CenarioRecord {
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getCenarios(): Promise<CenarioRecord[]> {
+  await ensureCenarioSuiteRelationColumns()
   const [rows, activeSuites] = await Promise.all([
     prisma.cenario.findMany({ orderBy: { createdAt: "asc" }, take: 2000 }),
     prisma.suite.findMany({
