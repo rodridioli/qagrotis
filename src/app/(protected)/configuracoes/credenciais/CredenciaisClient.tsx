@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, MoreVertical, Pencil, Plus, Power, X, Check } from "lucide-react"
+import { Eye, EyeOff, MoreVertical, Pencil, Plus, Trash2, X, Check } from "lucide-react"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Button } from "@/components/ui/button"
@@ -163,7 +163,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
       toast.success("Credencial inativada.")
       router.refresh()
     } catch {
-      toast.error("Erro ao inativar.")
+      toast.error("Erro ao remover.")
     } finally {
       setInativarOpen(false)
       setInativarId(null)
@@ -254,8 +254,8 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                               variant="destructive"
                               onClick={() => { setInativarId(c.id); setInativarOpen(true) }}
                             >
-                              <Power className="size-4" />
-                              Inativar
+                              <Trash2 className="size-4" />
+                              Remover
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -436,9 +436,9 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
       <ConfirmDialog
         open={inativarOpen}
         onOpenChange={setInativarOpen}
-        title="Deseja inativar?"
-        description="Esta credencial será inativada e não poderá ser usada em novos cenários."
-        confirmLabel="Inativar"
+        title="Deseja remover?"
+        description="Esta credencial será removida e não poderá ser usada em novos cenários."
+        confirmLabel="Remover"
         onConfirm={handleInativar}
       />
     </div>
