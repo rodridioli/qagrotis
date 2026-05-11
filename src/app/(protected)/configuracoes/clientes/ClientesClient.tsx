@@ -279,24 +279,22 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
           ]}
         />
 
-        {isAdmin && (
-          <div className="flex items-center gap-3">
-            {showBulkActions && (
-              <Button
-                variant="outline"
-                disabled={selectedIds.size === 0 || isPending}
-                onClick={handleInativarSelection}
-              >
-                <Power className="size-4" />
-                Inativar
-              </Button>
-            )}
-            <Button onClick={() => setAddOpen(true)}>
-              <Plus className="size-4" />
-              Adicionar Cliente
+        <div className="flex items-center gap-3">
+          {isAdmin && showBulkActions && (
+            <Button
+              variant="outline"
+              disabled={selectedIds.size === 0 || isPending}
+              onClick={handleInativarSelection}
+            >
+              <Power className="size-4" />
+              Inativar
             </Button>
-          </div>
-        )}
+          )}
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="size-4" />
+            Adicionar Cliente
+          </Button>
+        </div>
       </div>
 
       {/* -- Table card -- */}
