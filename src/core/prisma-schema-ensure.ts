@@ -14,6 +14,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredClassificacao?: boolean
   __qagrotisEnsuredNotificationTables?: boolean
   __qagrotisEnsuredCenarioSuiteRelations?: boolean
+  __qagrotisEnsuredClienteTable?: boolean
 }
 
 /**
@@ -430,6 +431,31 @@ CREATE TABLE IF NOT EXISTS "UserBadge" (
   } catch (e) {
     console.error("[prisma-schema-ensure] Notification/UserBadge tables", e)
     throw e
+  }
+}
+
+/**
+ * Garante que a tabela Cliente existe e tem todas as colunas esperadas.
+ * Idempotente — seguro chamar em cada request.
+ */
+export async function ensureClienteTable(): Promise<void> {
+  if (g.__qagrotisEnsuredClienteTable) return
+  try {
+    await prisma.$executeRawUnsafe(`
+CREATE TABLE IF NOT EXISTS "Cliente" (
+    "id"           TEXT NOT NULL,
+    "nomeFantasia" TEXT NOT NULL,
+    "razaoSocial"  TEXT,
+    "cpfCnpj"      TEXT,
+    "active"       BOOLEAN NOT NULL DEFAULT true,
+    "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Cliente_pkey" PRIMARY KEY ("id")
+)`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Cliente" ADD COLUMN IF NOT EXISTS "razaoSocial" TEXT`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Cliente" ADD COLUMN IF NOT EXISTS "cpfCnpj" TEXT`)
+    g.__qagrotisEnsuredClienteTable = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] Cliente table", e)
   }
 }
 
