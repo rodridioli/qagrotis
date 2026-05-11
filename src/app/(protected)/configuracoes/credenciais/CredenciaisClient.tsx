@@ -322,7 +322,7 @@ export function CredenciaisClient({ initialCredenciais, isAdmin }: Props) {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
                   ))}
