@@ -129,6 +129,13 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
       toast.error("CPF ou CNPJ inválido.")
       return
     }
+    const duplicate = items.some(
+      (c) => c.active && c.nomeFantasia.trim().toLowerCase() === addNomeFantasia.trim().toLowerCase()
+    )
+    if (duplicate) {
+      toast.error("Já existe um cliente ativo com esse nome.")
+      return
+    }
     startAddTransition(async () => {
       try {
         const novo = await criarCliente({
