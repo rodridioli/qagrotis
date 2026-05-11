@@ -48,6 +48,7 @@ interface Props {
 
 export default function ClientesClient({ initialClientes: initialClientesParam, initialCenarios, isAdmin }: Props) {
   const router = useRouter()
+  const [items, setItems] = useState<ClienteRecord[]>(initialClientesParam)
   const [isPending, startTransition] = useTransition()
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
@@ -130,14 +131,14 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
     }
     startAddTransition(async () => {
       try {
-        await criarCliente({
+        const novo = await criarCliente({
           nomeFantasia: addNomeFantasia,
           razaoSocial: addRazaoSocial || null,
           cpfCnpj: addCpfCnpj || null,
         })
+        setItems((prev) => [novo, ...prev])
         setAddOpen(false)
         resetAddForm()
-        router.refresh()
         toast.success("Cliente criado com sucesso.")
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Erro ao criar cliente. Tente novamente.")
@@ -146,7 +147,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
   }
 
   const filtered = useMemo(() => {
-    const result = initialClientesParam.filter((c) => {
+    const result = items.filter((c) => {
       const matchSearch =
         !deferredSearch ||
         c.id.toLowerCase().includes(deferredSearch.toLowerCase()) ||
@@ -160,7 +161,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
       const diff = numericId(a.id) - numericId(b.id)
       return sortOrder === "desc" ? -diff : diff
     })
-  }, [deferredSearch, apenasInativos, initialClientesParam, sortOrder])
+  }, [deferredSearch, apenasInativos, items, sortOrder])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageItems = filtered.slice(
@@ -179,7 +180,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
   }, [initialCenarios])
 
   const activeFilterCount = apenasInativos ? 1 : 0
-  const hasActiveClientes = initialClientesParam.some((c) => c.active)
+  const hasActiveClientes = items.some((c) => c.active)
   const showBulkActions = isAdmin && !apenasInativos && hasActiveClientes
   const selectableIds = pageItems.map((c) => c.id)
 
@@ -307,7 +308,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
           onFilterOpen={() => { setPendingInativos(apenasInativos); setFilterOpen(true) }}
           totalLabel="Total de clientes"
           totalCount={filtered.length}
-          baseCount={initialClientesParam.length}
+          baseCount={items.length}
         />
 
         {pageItems.length === 0 ? (
