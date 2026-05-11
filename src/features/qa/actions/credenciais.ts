@@ -38,7 +38,6 @@ function toRecord(row: {
 export async function getCredenciais(): Promise<CredencialRecord[]> {
   await requireSession()
   const rows = await prisma.credencial.findMany({
-    where: { active: true },
     orderBy: { createdAt: "desc" },
     select: { id: true, nome: true, urlAmbiente: true, usuario: true, active: true, createdAt: true },
     take: 500,
@@ -113,6 +112,13 @@ export async function inativarCredencial(id: string): Promise<void> {
   await requireSession()
   idSchema.parse(id)
   await prisma.credencial.update({ where: { id }, data: { active: false } })
+  revalidatePath("/configuracoes/credenciais")
+}
+
+export async function ativarCredencial(id: string): Promise<void> {
+  await requireSession()
+  idSchema.parse(id)
+  await prisma.credencial.update({ where: { id }, data: { active: true } })
   revalidatePath("/configuracoes/credenciais")
 }
 

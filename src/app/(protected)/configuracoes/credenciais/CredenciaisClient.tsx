@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useMemo, useTransition } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, MoreVertical, Pencil, Plus, Trash2, X, Check } from "lucide-react"
+import { Eye, EyeOff, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X, Check } from "lucide-react"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import {
   Dialog,
@@ -26,7 +26,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { TableToolbar } from "@/components/shared/TableToolbar"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { toast } from "sonner"
-import { criarCredencial, atualizarCredencial, inativarCredencial, type CredencialRecord } from "@/features/qa/actions/credenciais"
+import { criarCredencial, atualizarCredencial, inativarCredencial, ativarCredencial, type CredencialRecord } from "@/features/qa/actions/credenciais"
 
 const ITEMS_PER_PAGE = 20
 
@@ -39,6 +39,11 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
   const [items, setItems] = useState(initialCredenciais)
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
+
+  // Filter
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [apenasInativos, setApenasInativos] = useState(false)
+  const [pendingInativos, setPendingInativos] = useState(false)
 
   // Add modal
   const [addOpen, setAddOpen] = useState(false)
@@ -65,13 +70,35 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
   const [inativarId, setInativarId] = useState<string | null>(null)
   const [inativarOpen, setInativarOpen] = useState(false)
 
+  // Ativar
+  const [ativarId, setAtivarId] = useState<string | null>(null)
+  const [ativarOpen, setAtivarOpen] = useState(false)
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return items.filter((c) => c.nome.toLowerCase().includes(q))
-  }, [items, search])
+    return items.filter((c) => {
+      const matchSearch = !q || c.nome.toLowerCase().includes(q) || c.usuario.toLowerCase().includes(q)
+      const matchAtivo = apenasInativos ? !c.active : c.active
+      return matchSearch && matchAtivo
+    })
+  }, [items, search, apenasInativos])
 
+  const activeFilterCount = apenasInativos ? 1 : 0
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE))
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+
+  function applyFilters() {
+    setApenasInativos(pendingInativos)
+    setPage(1)
+    setFilterOpen(false)
+  }
+
+  function clearFilters() {
+    setPendingInativos(false)
+    setApenasInativos(false)
+    setPage(1)
+    setFilterOpen(false)
+  }
 
   function resetAddForm() {
     setNome("")
@@ -159,14 +186,29 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
     if (!inativarId) return
     try {
       await inativarCredencial(inativarId)
-      setItems((prev) => prev.filter((c) => c.id !== inativarId))
+      setItems((prev) => prev.map((c) => c.id === inativarId ? { ...c, active: false } : c))
       toast.success("Credencial inativada.")
       router.refresh()
     } catch {
-      toast.error("Erro ao remover.")
+      toast.error("Erro ao inativar.")
     } finally {
       setInativarOpen(false)
       setInativarId(null)
+    }
+  }
+
+  async function handleAtivar() {
+    if (!ativarId) return
+    try {
+      await ativarCredencial(ativarId)
+      setItems((prev) => prev.map((c) => c.id === ativarId ? { ...c, active: true } : c))
+      toast.success("Credencial ativada com sucesso.")
+      router.refresh()
+    } catch {
+      toast.error("Erro ao ativar. Tente novamente.")
+    } finally {
+      setAtivarOpen(false)
+      setAtivarId(null)
     }
   }
 
@@ -181,10 +223,12 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
           ]}
         />
 
-        <Button onClick={() => setAddOpen(true)} className="gap-2">
-          <Plus className="size-4" />
-          Adicionar Credencial
-        </Button>
+        {!apenasInativos && (
+          <Button onClick={() => setAddOpen(true)} className="gap-2">
+            <Plus className="size-4" />
+            Adicionar Credencial
+          </Button>
+        )}
       </div>
 
       {/* ── Table card ── */}
@@ -193,14 +237,18 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
           search={search}
           onSearchChange={(v) => { setSearch(v); setPage(1) }}
           searchPlaceholder="Buscar credencial..."
+          activeFilterCount={activeFilterCount}
+          onFilterOpen={() => { setPendingInativos(apenasInativos); setFilterOpen(true) }}
           totalLabel="Total de credenciais"
           totalCount={filtered.length}
-          baseCount={items.length}
+          baseCount={items.filter((c) => apenasInativos ? !c.active : c.active).length}
         />
 
         {filtered.length === 0 ? (
           <EmptyState
-            message={items.length === 0 ? "Nenhum registro encontrado." : "Nenhum resultado para a busca."}
+            message={items.filter((c) => apenasInativos ? !c.active : c.active).length === 0
+              ? "Nenhum registro encontrado."
+              : "Nenhum resultado para a busca."}
           />
         ) : (
           <>
@@ -219,13 +267,17 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                   {paginated.map((c) => (
                     <tr key={c.id} className="border-b border-border-default last:border-0 transition-colors">
                       <td className="bg-surface-card px-4 py-3 font-medium whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => openEditar(c)}
-                          className="text-brand-primary hover:underline"
-                        >
-                          {c.id}
-                        </button>
+                        {apenasInativos ? (
+                          <span className="text-text-secondary">{c.id}</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openEditar(c)}
+                            className="text-brand-primary hover:underline"
+                          >
+                            {c.id}
+                          </button>
+                        )}
                       </td>
                       <td className="bg-surface-card px-4 py-3 font-medium text-text-primary">{c.nome}</td>
                       <td className="max-w-xs truncate bg-surface-card px-4 py-3 text-text-secondary" title={c.urlAmbiente ?? undefined}>
@@ -233,32 +285,43 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                       </td>
                       <td className="bg-surface-card px-4 py-3 text-text-secondary">{c.usuario}</td>
                       <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <button
-                                type="button"
-                                aria-label="Mais ações"
-                                className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
-                              />
-                            }
+                        {apenasInativos ? (
+                          <button
+                            type="button"
+                            aria-label="Ativar"
+                            onClick={() => { setAtivarId(c.id); setAtivarOpen(true) }}
+                            className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
                           >
-                            <MoreVertical className="size-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditar(c)}>
-                              <Pencil className="size-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => { setInativarId(c.id); setInativarOpen(true) }}
+                            <RotateCcw className="size-4" />
+                          </button>
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  aria-label="Mais ações"
+                                  className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+                                />
+                              }
                             >
-                              <Trash2 className="size-4" />
-                              Remover
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              <MoreVertical className="size-4" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditar(c)}>
+                                <Pencil className="size-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => { setInativarId(c.id); setInativarOpen(true) }}
+                              >
+                                <Power className="size-4" />
+                                Inativar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -433,13 +496,55 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
         </DialogContent>
       </Dialog>
 
+      {/* ── Filter dialog ── */}
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Filtros</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <Checkbox
+              label="Exibir somente inativos"
+              checked={pendingInativos}
+              onChange={(e) => setPendingInativos((e.target as HTMLInputElement).checked)}
+            />
+          </div>
+          <DialogFooter showCloseButton={false}>
+            <DialogClose render={<Button variant="ghost" onClick={clearFilters} />}>
+              Limpar filtros
+            </DialogClose>
+            <div className="flex gap-2">
+              <DialogClose render={<Button variant="outline" />}>
+                <X className="size-4" />
+                Cancelar
+              </DialogClose>
+              <Button onClick={applyFilters}>
+                <Filter className="size-4" />
+                Filtrar
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Confirm inativar ── */}
       <ConfirmDialog
         open={inativarOpen}
         onOpenChange={setInativarOpen}
-        title="Deseja remover?"
-        description="Esta credencial será removida e não poderá ser usada em novos cenários."
-        confirmLabel="Remover"
+        title="Deseja inativar?"
+        description="Esta credencial será inativada e não poderá ser usada em novos cenários."
+        confirmLabel="Inativar"
         onConfirm={handleInativar}
+      />
+
+      {/* ── Confirm ativar ── */}
+      <ConfirmDialog
+        open={ativarOpen}
+        onOpenChange={setAtivarOpen}
+        title="Deseja ativar?"
+        description="Esta credencial voltará a aparecer na listagem de ativos."
+        confirmLabel="Ativar"
+        onConfirm={handleAtivar}
       />
     </div>
   )

@@ -52,7 +52,7 @@ export default async function EditarCenarioPage({ params }: Props) {
       allSistemas={serializeRscProps(sistemas.filter((s) => s.active))}
       initialClientes={serializeRscProps(clientes)}
       allCenarios={serializeRscProps(cenarios.filter((c) => c.active && c.id !== id))}
-      initialCredenciais={serializeRscProps(credenciais)}
+      initialCredenciais={serializeRscProps(credenciais.filter((c) => c.active))}
     />
   )
 }

@@ -39,7 +39,7 @@ export default async function NovoCenarioPage() {
       allSistemas={serializeRscProps(sistemas.filter((s) => s.active))}
       initialClientes={serializeRscProps(clientes.filter((c) => c.active))}
       allCenarios={serializeRscProps(cenarios.filter((c) => c.active))}
-      initialCredenciais={serializeRscProps(credenciais)}
+      initialCredenciais={serializeRscProps(credenciais.filter((c) => c.active))}
     />
   )
 }
