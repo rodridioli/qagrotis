@@ -1047,7 +1047,7 @@ export default function EditarCenarioClient({
                     setNewClienteRazaoSocial("")
                     setNewClienteCpf("")
                     setAddClienteOpen(false)
-                    router.refresh()
+                    toast.success("Cliente adicionado com sucesso.")
                   } catch (e) {
                     toast.error(e instanceof Error ? e.message : "Erro ao adicionar cliente.")
                   }
