@@ -116,7 +116,7 @@ export async function inativarCredencial(id: string): Promise<void> {
 }
 
 export async function ativarCredencial(id: string): Promise<void> {
-  await requireSession()
+  await requireAdmin()
   idSchema.parse(id)
   await prisma.credencial.update({ where: { id }, data: { active: true } })
   revalidatePath("/configuracoes/credenciais")

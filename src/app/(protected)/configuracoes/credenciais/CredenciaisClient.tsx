@@ -32,9 +32,10 @@ const ITEMS_PER_PAGE = 20
 
 interface Props {
   initialCredenciais: CredencialRecord[]
+  isAdmin: boolean
 }
 
-export function CredenciaisClient({ initialCredenciais }: Props) {
+export function CredenciaisClient({ initialCredenciais, isAdmin }: Props) {
   const router = useRouter()
   const [items, setItems] = useState(initialCredenciais)
   const [search, setSearch] = useState("")
@@ -285,7 +286,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                       </td>
                       <td className="bg-surface-card px-4 py-3 text-text-secondary">{c.usuario}</td>
                       <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
-                        {apenasInativos ? (
+                        {apenasInativos && isAdmin ? (
                           <button
                             type="button"
                             aria-label="Ativar"
@@ -294,7 +295,7 @@ export function CredenciaisClient({ initialCredenciais }: Props) {
                           >
                             <RotateCcw className="size-4" />
                           </button>
-                        ) : (
+                        ) : !apenasInativos ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               render={
