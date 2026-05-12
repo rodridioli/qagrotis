@@ -318,10 +318,12 @@ export default function UsuarioFormTabs({
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-text-primary">Nome <span className="text-destructive">*</span></label>
                     <Input value={nome} onChange={(e) => { setNome(e.target.value); setErrors(p => ({ ...p, nome: "" })) }} placeholder="Nome completo" aria-invalid={!!errors.nome} />
+                    {errors.nome && <p className="text-sm text-destructive mt-1">{errors.nome}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-text-primary">E-mail <span className="text-destructive">*</span></label>
                     <Input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErrors(p => ({ ...p, email: "" })) }} placeholder="email@exemplo.com" aria-invalid={!!errors.email} />
+                    {errors.email && <p className="text-sm text-destructive mt-1">{errors.email}</p>}
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
@@ -409,29 +411,35 @@ export default function UsuarioFormTabs({
                     </Button>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => { setPassword(e.target.value); setErrors(p => ({ ...p, password: "" })) }}
-                        placeholder="Nova senha"
-                        aria-invalid={!!errors.password}
-                      />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-text-secondary">
-                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                      </button>
+                    <div className="space-y-1">
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => { setPassword(e.target.value); setErrors(p => ({ ...p, password: "" })) }}
+                          placeholder="Nova senha"
+                          aria-invalid={!!errors.password}
+                        />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-text-secondary">
+                          {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                      </div>
+                      {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
                     </div>
-                    <div className="relative">
-                      <Input
-                        type={showConfirm ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => { setConfirmPassword(e.target.value); setErrors(p => ({ ...p, confirmPassword: "" })) }}
-                        placeholder="Confirmar senha"
-                        aria-invalid={!!errors.confirmPassword}
-                      />
-                      <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-2.5 text-text-secondary">
-                        {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                      </button>
+                    <div className="space-y-1">
+                      <div className="relative">
+                        <Input
+                          type={showConfirm ? "text" : "password"}
+                          value={confirmPassword}
+                          onChange={(e) => { setConfirmPassword(e.target.value); setErrors(p => ({ ...p, confirmPassword: "" })) }}
+                          placeholder="Confirmar senha"
+                          aria-invalid={!!errors.confirmPassword}
+                        />
+                        <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-2.5 text-text-secondary">
+                          {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                      </div>
+                      {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword}</p>}
                     </div>
                   </div>
                 </div>

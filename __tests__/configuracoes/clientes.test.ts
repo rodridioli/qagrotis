@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import { validateCpfCnpj, formatCpfCnpj } from "@/lib/utils"
+import { validateCpfCnpj, formatCpfCnpj } from "@/core/utils"
 
 // ─── Unit: formatCpfCnpj ─────────────────────────────────────────────────────
 

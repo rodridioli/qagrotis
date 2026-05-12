@@ -820,6 +820,7 @@ export function SuiteForm({
                 disabled={encerrada}
                 aria-invalid={!!errors.suiteName}
               />
+              {errors.suiteName && <p className="text-sm text-destructive mt-1">{errors.suiteName}</p>}
             </div>
 
             {/* Linha 2: Sistema, Versão, Tipo, Módulo */}
@@ -847,6 +848,7 @@ export function SuiteForm({
                   disabled={encerrada}
                   aria-invalid={!!errors.versao}
                 />
+                {errors.versao && <p className="text-sm text-destructive mt-1">{errors.versao}</p>}
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-primary">Tipo</label>
@@ -873,6 +875,7 @@ export function SuiteForm({
                     {filteredModules.map((m) => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
                   </SelectPopup>
                 </Select>
+                {errors.modulo && <p className="text-sm text-destructive mt-1">{errors.modulo}</p>}
               </div>
             </div>
 
@@ -908,6 +911,7 @@ export function SuiteForm({
             )}
           </div>
 
+          {errors.cenarios && <p className="text-sm text-destructive mx-5 mb-2">{errors.cenarios}</p>}
           {cenarios.length === 0 ? (
             <EmptyState message="Nenhum cenário adicionado à suíte." className="mx-5" />
           ) : (

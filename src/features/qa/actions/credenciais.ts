@@ -45,13 +45,12 @@ export async function getCredenciais(): Promise<CredencialRecord[]> {
   return rows.map(toRecord)
 }
 
-export async function criarCredencial(data: {
+async function _inserirCredencial(data: {
   nome: string
   urlAmbiente?: string | null
   usuario: string
   senha: string
 }): Promise<CredencialRecord> {
-  await requireSession()
   const parsed = credencialInputSchema.parse({
     nome:        data.nome.trim(),
     urlAmbiente: data.urlAmbiente?.trim() || null,
@@ -72,11 +71,21 @@ export async function criarCredencial(data: {
   return toRecord(row)
 }
 
+export async function criarCredencial(data: {
+  nome: string
+  urlAmbiente?: string | null
+  usuario: string
+  senha: string
+}): Promise<CredencialRecord> {
+  await requireAdmin()
+  return _inserirCredencial(data)
+}
+
 export async function atualizarCredencial(
   id: string,
   data: { nome: string; urlAmbiente?: string | null; usuario: string; senha?: string }
 ): Promise<CredencialRecord> {
-  await requireSession()
+  await requireAdmin()
   idSchema.parse(id)
   const parsed = z.object({
     nome:        z.string().min(1).max(200),
@@ -109,7 +118,7 @@ export async function atualizarCredencial(
 }
 
 export async function inativarCredencial(id: string): Promise<void> {
-  await requireSession()
+  await requireAdmin()
   idSchema.parse(id)
   await prisma.credencial.update({ where: { id }, data: { active: false } })
   revalidatePath("/configuracoes/credenciais")
@@ -178,5 +187,5 @@ export async function encontrarOuCriarCredencialPorImportacao(data: {
     year: "numeric",
   })
   const nome = `Credencial [${userLabel}] + ${dateStr}`.slice(0, 200)
-  return criarCredencial({ nome, urlAmbiente, usuario, senha })
+  return _inserirCredencial({ nome, urlAmbiente, usuario, senha })
 }

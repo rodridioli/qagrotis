@@ -3,8 +3,8 @@
  * Run: npx tsx scripts/seed-rbac-test-users.ts
  */
 import "dotenv/config"
-import { prisma } from "../lib/prisma"
-import { hashPassword } from "../lib/db-utils"
+import { prisma } from "../src/core/prisma"
+import { hashPassword } from "../src/core/db-utils"
 
 type UserType = "Padrão" | "Administrador"
 type AccessProfile = "QA" | "UX" | "TW" | "MGR"

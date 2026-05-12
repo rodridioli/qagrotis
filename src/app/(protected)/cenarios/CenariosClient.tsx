@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useDeferredValue, useTransition, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertCircle, ArrowRightLeft, ChevronDown, ChevronUp, FileText, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, Upload, X } from "lucide-react"
+import { AlertCircle, ArrowRightLeft, ChevronDown, ChevronUp, ClipboardList, FileText, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, Upload, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -412,7 +412,11 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
         />
 
         {pageItems.length === 0 ? (
-          <EmptyState message="Nenhum registro encontrado." />
+          <EmptyState
+            icon={ClipboardList}
+            message="Nenhum cenário cadastrado ainda."
+            action={isAdmin ? { label: "Criar Cenário", onClick: () => router.push("/cenarios/novo") } : undefined}
+          />
         ) : (
           <>
             <div className="overflow-x-auto">

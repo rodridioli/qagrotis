@@ -5,26 +5,37 @@ export type GoogleAccessResult =
 /**
  * Access rules for Google OAuth login:
  *
- * 1. User must have been pre-registered in CreatedUser by an admin — no auto-registration.
- * 2. Inactive users → always blocked, regardless of domain.
- * 3. Any e-mail domain is accepted as long as the address was pre-registered.
+ * @agrotis.com users:
+ *   - Not registered or inactive → auto-register/reactivate on sign-in (autoRegister: true)
+ *   - Already registered and active → allow normally (autoRegister: false)
+ *
+ * External users:
+ *   - Not pre-registered by an admin → block (UnauthorizedDomain)
+ *   - Registered but inactive → block (GoogleInactive)
+ *   - Registered and active → allow
  */
 export function resolveGoogleAccess(
-  _email: string,
+  email: string,
   existingCreated: { id: string } | null,
   inactiveIds: Set<string>
 ): GoogleAccessResult {
-  // Not pre-registered — block regardless of domain.
+  const isAgrotis = email.endsWith("@agrotis.com")
+
+  if (isAgrotis) {
+    // Agrotis domain: auto-register first-time users and reactivate inactive ones
+    if (!existingCreated || inactiveIds.has(existingCreated.id)) {
+      return { allow: true, autoRegister: true }
+    }
+    return { allow: true, autoRegister: false, internalId: existingCreated.id }
+  }
+
+  // External users: must be pre-registered by an admin
   if (!existingCreated) {
     return { allow: false, redirect: "/login?error=UnauthorizedDomain" }
   }
-
-  // Pre-registered but inactive — block.
   if (inactiveIds.has(existingCreated.id)) {
     return { allow: false, redirect: "/login?error=GoogleInactive" }
   }
-
-  // Pre-registered and active — allow.
   return { allow: true, autoRegister: false, internalId: existingCreated.id }
 }
 

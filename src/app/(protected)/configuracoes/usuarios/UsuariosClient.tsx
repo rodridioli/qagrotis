@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power, AlertCircle, RefreshCw } from "lucide-react"
+import { ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power, AlertCircle, RefreshCw, Users } from "lucide-react"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -360,10 +360,11 @@ export default function UsuariosClient({
 
         {pageItems.length === 0 ? (
           <EmptyState
+            icon={Users}
             message={
               usersFetchFailed && !fetchRecovered && users.length === 0
                 ? "Lista indisponível. Use o botão Tentar novamente acima ou verifique o banco de dados (Vercel / Postgres)."
-                : "Nenhum registro encontrado."
+                : "Nenhum usuário cadastrado ainda."
             }
           />
         ) : (

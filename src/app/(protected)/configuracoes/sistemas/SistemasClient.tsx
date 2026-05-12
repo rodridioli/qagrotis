@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
+import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, Server, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -74,12 +74,14 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
   const [sistemaEditando, setSistemaEditando] = useState<SistemaRecord | null>(null)
   const [sistemaModalNome, setSistemaModalNome] = useState("")
   const [sistemaModalDescricao, setSistemaModalDescricao] = useState("")
+  const [sistemaModalErrors, setSistemaModalErrors] = useState<{ nome?: string }>({})
   const [isSistemaModalPending, startSistemaModalTransition] = useTransition()
 
   function openAdicionarSistema() {
     setSistemaEditando(null)
     setSistemaModalNome("")
     setSistemaModalDescricao("")
+    setSistemaModalErrors({})
     setSistemaModalOpen(true)
   }
 
@@ -87,11 +89,12 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
     setSistemaEditando(s)
     setSistemaModalNome(s.name)
     setSistemaModalDescricao(s.description ?? "")
+    setSistemaModalErrors({})
     setSistemaModalOpen(true)
   }
 
   function handleSalvarSistema() {
-    if (!sistemaModalNome.trim()) { toast.error("O nome é obrigatório."); return }
+    if (!sistemaModalNome.trim()) { setSistemaModalErrors({ nome: "O nome é obrigatório." }); return }
     startSistemaModalTransition(async () => {
       try {
         if (sistemaEditando) {
@@ -278,7 +281,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
         />
 
         {pageItems.length === 0 ? (
-          <EmptyState message="Nenhum registro encontrado." />
+          <EmptyState icon={Server} message="Nenhum sistema cadastrado ainda." />
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -511,10 +514,14 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
               </label>
               <Input
                 value={sistemaModalNome}
-                onChange={(e) => setSistemaModalNome(e.target.value)}
+                onChange={(e) => { setSistemaModalNome(e.target.value); setSistemaModalErrors({}) }}
                 placeholder="Nome do sistema"
                 disabled={isSistemaModalPending}
+                aria-invalid={!!sistemaModalErrors.nome}
               />
+              {sistemaModalErrors.nome && (
+                <p className="text-sm text-destructive mt-1">{sistemaModalErrors.nome}</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Descrição</label>

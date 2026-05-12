@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { normalizeJiraIssueKey } from "@/lib/jira-issue-key"
+import { normalizeJiraIssueKey } from "@/features/qa/lib/jira-issue-key"
 
 describe("normalizeJiraIssueKey", () => {
   it("aceita projeto em minúsculas", () => {
