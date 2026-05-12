@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useDeferredValue, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Building2, ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
+import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -315,7 +315,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
         />
 
         {pageItems.length === 0 ? (
-          <EmptyState icon={Building2} message="Nenhum cliente cadastrado ainda." />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <>
             <div className="overflow-x-auto">

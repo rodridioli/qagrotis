@@ -59,7 +59,8 @@ interface Props {
 
 export function GeradorClient({ initialCenarios, allModulos, integracoes }: Props) {
   const router = useRouter()
-  const { status: sessionStatus } = useSession()
+  const { data: session, status: sessionStatus } = useSession()
+  const isMgr = session?.user?.type === "Administrador" && session?.user?.accessProfile === "MGR"
   const { sistemaSelecionado } = useSistemaSelecionado()
 
   const [contexto, setContexto] = useState("")
@@ -617,14 +618,16 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             {activeIntegracoes.length === 0 ? (
               <div className="space-y-2">
                 <p className="text-sm text-text-secondary">Nenhuma integração cadastrada ou ativa.</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={openIntModal}
-                >
-                  <Plus className="size-4" />
-                  Adicionar Modelo
-                </Button>
+                {isMgr && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openIntModal}
+                  >
+                    <Plus className="size-4" />
+                    Adicionar Modelo
+                  </Button>
+                )}
               </div>
             ) : (
               <Select value={aiProvider} onValueChange={(v) => setAiProvider(v ?? "")}>

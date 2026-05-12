@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, Server, X } from "lucide-react"
+import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -281,7 +281,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
         />
 
         {pageItems.length === 0 ? (
-          <EmptyState icon={Server} message="Nenhum sistema cadastrado ainda." />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -487,7 +487,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
           </DialogHeader>
           <div className="py-2 space-y-1 max-h-80 overflow-y-auto">
             {modulosModalSistema && initialModulos.filter((m) => m.sistemaId === modulosModalSistema.id && m.active).length === 0 ? (
-              <EmptyState message="Nenhum módulo cadastrado." className="mx-0 my-2" />
+              <EmptyState message="Nenhum registro encontrado." className="mx-0 my-2" />
             ) : modulosModalSistema && initialModulos.filter((m) => m.sistemaId === modulosModalSistema.id && m.active).map((m) => (
               <div key={m.id} className="flex items-center justify-between rounded-lg border border-border-default px-3 py-2">
                 <div>
