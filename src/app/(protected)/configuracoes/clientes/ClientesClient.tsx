@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useDeferredValue, useTransition } from "react"
+import React, { useState, useMemo, useEffect, useDeferredValue, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
@@ -49,6 +49,12 @@ interface Props {
 export default function ClientesClient({ initialClientes: initialClientesParam, initialCenarios, isAdmin }: Props) {
   const router = useRouter()
   const [items, setItems] = useState<ClienteRecord[]>(initialClientesParam)
+
+  // Keep list in sync when initialClientes changes (e.g. after router.refresh())
+  useEffect(() => {
+    setItems(initialClientesParam)
+  }, [initialClientesParam])
+
   const [isPending, startTransition] = useTransition()
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
@@ -96,6 +102,19 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
           razaoSocial: editRazaoSocial || null,
           cpfCnpj: editCpfCnpj || null,
         })
+        const id = editingCliente.id
+        setItems((prev) =>
+          prev.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  nomeFantasia: editNomeFantasia.trim(),
+                  razaoSocial: editRazaoSocial.trim() || null,
+                  cpfCnpj: editCpfCnpj.trim() || null,
+                }
+              : c,
+          ),
+        )
         setEditOpen(false)
         router.refresh()
         toast.success("Cliente atualizado com sucesso.")
@@ -216,6 +235,9 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
     if (!ativarId) return
     try {
       await ativarCliente(ativarId)
+      setItems((prev) =>
+        prev.map((c) => (c.id === ativarId ? { ...c, active: true } : c)),
+      )
       toast.success("Cliente ativado com sucesso.")
       router.refresh()
     } catch {
@@ -240,6 +262,10 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
     startTransition(async () => {
       try {
         await inativarClientes(ids)
+        const idSet = new Set(ids)
+        setItems((prev) =>
+          prev.map((c) => (idSet.has(c.id) ? { ...c, active: false } : c)),
+        )
         setIsInativando(false)
         router.refresh()
         toast.success(
