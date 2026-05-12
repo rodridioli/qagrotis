@@ -248,7 +248,7 @@ export default function UsuarioFormTabs({
           toast.error(result.error)
           return
         }
-        toast.success("Usuário atualizado.")
+        toast.success("Usuário atualizado com sucesso.")
         if (sessionUser?.id === userId) await updateSession()
         router.refresh()
       }

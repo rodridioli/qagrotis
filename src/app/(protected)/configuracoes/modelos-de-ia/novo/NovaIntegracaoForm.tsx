@@ -76,7 +76,7 @@ export default function NovaIntegracaoForm() {
         toast.success("Modelo de IA criado com sucesso.")
         router.push("/configuracoes/modelos-de-ia")
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao salvar")
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar. Tente novamente.")
       }
     })
   }

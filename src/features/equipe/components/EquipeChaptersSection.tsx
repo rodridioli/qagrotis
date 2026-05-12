@@ -171,7 +171,7 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
       toast.error(res.error)
       return
     }
-    toast.success("Chapter removido.")
+    toast.success("Chapter removido com sucesso.")
     setDeleteOpen(false)
     setDeleteRow(null)
     await refetch()

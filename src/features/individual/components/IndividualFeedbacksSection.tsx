@@ -117,7 +117,7 @@ export function IndividualFeedbacksSection({
       toast.error(res.error)
       return
     }
-    toast.success("Feedback removido.")
+    toast.success("Feedback removido com sucesso.")
     setDeleteOpen(false)
     setDeleteRow(null)
     void refetch()

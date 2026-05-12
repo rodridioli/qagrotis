@@ -192,7 +192,7 @@ export function IndividualFeedbackPageClient({
           router.push(`${listHref}${sep}completed=1`)
           return
         }
-        toast.success("Feedback salvo.")
+        toast.success("Feedback salvo com sucesso.")
         router.push(`/individual/feedbacks/${res.id}${userQuery}`)
       } else {
         const res = await updateIndividualFeedback({
@@ -213,7 +213,7 @@ export function IndividualFeedbackPageClient({
           return
         }
         setFeedbackStatus("RASCUNHO")
-        toast.success("Feedback salvo.")
+        toast.success("Feedback salvo com sucesso.")
         router.refresh()
       }
     } catch (e) {

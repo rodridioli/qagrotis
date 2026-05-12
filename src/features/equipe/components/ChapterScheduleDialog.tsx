@@ -124,7 +124,7 @@ export function ChapterScheduleDialog({
               toast.error(res.error)
               return
             }
-            toast.success("Chapter agendado.")
+            toast.success("Chapter agendado com sucesso.")
             onOpenChange(false)
             onSuccess()
             return
@@ -145,7 +145,7 @@ export function ChapterScheduleDialog({
             toast.error(res.error)
             return
           }
-          toast.success("Chapter atualizado.")
+          toast.success("Chapter atualizado com sucesso.")
           onOpenChange(false)
           onSuccess()
         } catch (e) {

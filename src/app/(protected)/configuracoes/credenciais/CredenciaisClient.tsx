@@ -148,7 +148,7 @@ export function CredenciaisClient({ initialCredenciais, isAdmin }: Props) {
         resetAddForm()
         router.refresh()
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erro ao salvar.")
+        toast.error(e instanceof Error ? e.message : "Erro ao salvar. Tente novamente.")
       }
     })
   }
@@ -178,7 +178,7 @@ export function CredenciaisClient({ initialCredenciais, isAdmin }: Props) {
         setEditOpen(false)
         router.refresh()
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erro ao atualizar.")
+        toast.error(e instanceof Error ? e.message : "Erro ao atualizar. Tente novamente.")
       }
     })
   }
@@ -188,10 +188,10 @@ export function CredenciaisClient({ initialCredenciais, isAdmin }: Props) {
     try {
       await inativarCredencial(inativarId)
       setItems((prev) => prev.map((c) => c.id === inativarId ? { ...c, active: false } : c))
-      toast.success("Credencial inativada.")
+      toast.success("Credencial inativada com sucesso.")
       router.refresh()
     } catch {
-      toast.error("Erro ao inativar.")
+      toast.error("Erro ao inativar. Tente novamente.")
     } finally {
       setInativarOpen(false)
       setInativarId(null)

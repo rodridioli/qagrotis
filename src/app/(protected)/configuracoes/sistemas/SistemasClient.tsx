@@ -176,7 +176,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
     try {
       await ativarSistema(ativarId)
       setLocalSistemas((prev) => prev.filter((s) => s.id !== ativarId))
-      toast.success("Cadastro ativado com sucesso.")
+      toast.success("Sistema ativado com sucesso.")
       router.refresh()
     } catch {
       toast.error("Erro ao ativar. Tente novamente.")

@@ -186,7 +186,7 @@ const showBulkActions = !filters.apenasInativos
     try {
       await ativarSuite(ativarId)
       setInativadosIds((prev) => { const n = new Set(prev); n.delete(ativarId); return n })
-      toast.success("Cadastro ativado com sucesso.")
+      toast.success("Suíte ativada com sucesso.")
       router.refresh()
     } catch {
       toast.error("Erro ao ativar. Tente novamente.")

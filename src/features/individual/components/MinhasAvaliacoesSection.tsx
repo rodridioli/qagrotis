@@ -43,7 +43,7 @@ export function MinhasAvaliacoesSection({ showCompletedToast = false }: { showCo
 
   React.useEffect(() => {
     if (!showCompletedToast) return
-    toast.success("Avaliação concluída.")
+    toast.success("Avaliação concluída com sucesso.")
     const url = new URL(window.location.href)
     url.searchParams.delete("completed")
     window.history.replaceState({}, "", url.toString())
@@ -123,7 +123,7 @@ export function MinhasAvaliacoesSection({ showCompletedToast = false }: { showCo
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
-      toast.success("Exportação concluída.")
+      toast.success("Exportado com sucesso.")
     } catch {
       toast.error("Não foi possível exportar o relatório.")
     }

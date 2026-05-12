@@ -216,7 +216,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
     if (!ativarId) return
     try {
       await ativarCliente(ativarId)
-      toast.success("Cadastro ativado com sucesso.")
+      toast.success("Cliente ativado com sucesso.")
       router.refresh()
     } catch {
       toast.error("Erro ao ativar. Tente novamente.")

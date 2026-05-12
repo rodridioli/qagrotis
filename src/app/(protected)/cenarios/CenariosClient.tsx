@@ -181,7 +181,7 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
     if (!ativarId) return
     try {
       await ativarCenario(ativarId)
-      toast.success("Cadastro ativado com sucesso.")
+      toast.success("Cenário ativado com sucesso.")
       router.refresh()
     } catch {
       toast.error("Erro ao ativar. Tente novamente.")

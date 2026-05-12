@@ -208,7 +208,7 @@ export default function UsuariosClient({
       setUsers((prev) =>
         prev.map((u) => (u.id === ativarId ? { ...u, active: true } : u)),
       )
-      toast.success("Cadastro ativado com sucesso.")
+      toast.success("Usuário ativado com sucesso.")
       router.refresh()
     } catch {
       toast.error("Erro ao ativar. Tente novamente.")

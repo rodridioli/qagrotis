@@ -194,7 +194,7 @@ export default function ModulosClient({ initialModulos: initialModulosParam, ini
     try {
       await ativarModulo(ativarId)
       setLocalModulos((prev) => prev.filter((m) => m.id !== ativarId))
-      toast.success("Cadastro ativado com sucesso.")
+      toast.success("Módulo ativado com sucesso.")
       router.refresh()
     } catch {
       toast.error("Erro ao ativar. Tente novamente.")

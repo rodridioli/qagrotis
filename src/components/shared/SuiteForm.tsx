@@ -520,7 +520,7 @@ export function SuiteForm({
     if (!md.trim()) return
     const name = suiteMarkdownDownloadFilename(suiteName, suite?.id ?? "")
     downloadMarkdownFile(name, md)
-    toast.success("Arquivo Markdown transferido.")
+    toast.success("Arquivo Markdown exportado com sucesso.")
   }
 
   function handleExportarMdHistorico() {
@@ -529,7 +529,7 @@ export function SuiteForm({
     const { content } = buildHistoricoExportBundle(selected)
     const name = suiteMarkdownDownloadFilename(suiteName, suite?.id ?? "")
     downloadMarkdownFile(name, content)
-    toast.success("Arquivo Markdown transferido.")
+    toast.success("Arquivo Markdown exportado com sucesso.")
   }
 
   function handleRemove(id: string) {
@@ -540,7 +540,7 @@ export function SuiteForm({
   function confirmRemove() {
     setCenarios((prev) => prev.filter((c) => c.id !== removeId))
     setRemoveOpen(false)
-    toast.success("Cenário removido da suíte.")
+    toast.success("Cenário removido com sucesso.")
   }
 
   function validateSuiteForm() {
@@ -587,7 +587,7 @@ export function SuiteForm({
         router.replace(`/suites/${nova.id}`)
       } else if (suite?.id) {
         await atualizarSuite(suite.id, payload)
-        toast.success("Suíte atualizada.")
+        toast.success("Suíte atualizada com sucesso.")
         // Preserve active tab after save by navigating with tab query param
         router.replace(`/suites/${suite.id}?tab=${activeTab}`)
         router.refresh()
@@ -606,7 +606,7 @@ export function SuiteForm({
     try {
       await encerrarSuite(suite.id)
       setEncerrada(true)
-      toast.success("Suíte encerrada.")
+      toast.success("Suíte encerrada com sucesso.")
     } catch {
       toast.error("Não foi possível encerrar a suíte. Tente novamente.")
     } finally {
@@ -620,7 +620,7 @@ export function SuiteForm({
     try {
       await reabrirSuite(suite.id)
       setEncerrada(false)
-      toast.success("Suíte reaberta.")
+      toast.success("Suíte reaberta com sucesso.")
     } catch {
       toast.error("Não foi possível reabrir a suíte. Tente novamente.")
     } finally {
@@ -645,7 +645,7 @@ export function SuiteForm({
     })
     setSelectedAddIds(new Set())
     setAddCenarioOpen(false)
-    toast.success("Cenários adicionados. A suíte será guardada automaticamente.", { duration: 2500 })
+    toast.success("Cenários adicionados. A suíte será salva automaticamente.", { duration: 2500 })
   }
 
   // ── Auto-save when cenarios change (only for existing suites with ID) ────────
@@ -718,8 +718,8 @@ export function SuiteForm({
       await removerHistoricoSuite(suite.id, indicesToRemove)
       toast.success(
         indicesToRemove.length === 1
-          ? "Registro removido do histórico."
-          : `${indicesToRemove.length} registros removidos do histórico.`
+          ? "Registro removido com sucesso."
+          : `${indicesToRemove.length} registros removidos com sucesso.`
       )
     } catch {
       setHistorico(previousHistorico)

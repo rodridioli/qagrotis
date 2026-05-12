@@ -121,12 +121,12 @@ export function ChapterRatingDialog({
         toast.error(res.error)
         return
       }
-      toast.success("Avaliação guardada.")
+      toast.success("Avaliação salva com sucesso.")
       await reload()
       await onSubmitted?.()
       setView("overview")
     } catch {
-      toast.error("Não foi possível guardar.")
+      toast.error("Não foi possível salvar. Tente novamente.")
     } finally {
       setSaving(false)
     }
