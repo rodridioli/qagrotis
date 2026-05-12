@@ -8,6 +8,7 @@ export interface ProgressaoListRow {
   tipo: ProgressaoTipo
   regime: ProgressaoRegime
   cargo: string
+  valorHora: number | null // centavos
   valor: number // centavos
 }
 

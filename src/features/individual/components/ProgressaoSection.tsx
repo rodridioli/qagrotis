@@ -73,10 +73,11 @@ interface ProgressaoFormState {
   tipo: ProgressaoTipo | ""
   regime: ProgressaoRegime | ""
   cargo: string
+  valorHoraDisplay: string
   valorDisplay: string
 }
 
-const EMPTY_FORM: ProgressaoFormState = { data: "", tipo: "", regime: "", cargo: "", valorDisplay: "" }
+const EMPTY_FORM: ProgressaoFormState = { data: "", tipo: "", regime: "", cargo: "", valorHoraDisplay: "", valorDisplay: "" }
 
 interface ProgressaoModalProps {
   open: boolean
@@ -99,6 +100,7 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
         tipo: editRow.tipo,
         regime: editRow.regime,
         cargo: editRow.cargo,
+        valorHoraDisplay: editRow.valorHora != null ? centsToDisplay(editRow.valorHora) : "",
         valorDisplay: centsToDisplay(editRow.valor),
       })
     } else {
@@ -125,12 +127,14 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
       return
     }
     setSaving(true)
+    const valorHoraCents = displayToCents(form.valorHoraDisplay)
     const payload = {
       evaluatedUserId,
       data: form.data,
       tipo: form.tipo as ProgressaoTipo,
       regime: form.regime as ProgressaoRegime,
       cargo: form.cargo.trim(),
+      valorHora: valorHoraCents > 0 ? valorHoraCents : null,
       valor: displayToCents(form.valorDisplay),
     }
     try {
@@ -239,28 +243,50 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="prog-valor" className="text-sm font-medium text-text-primary">
-              Valor <span className="text-destructive">*</span>
-            </label>
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-text-secondary">
-                R$
-              </span>
-              <input
-                id="prog-valor"
-                type="text"
-                inputMode="numeric"
-                placeholder="0,00"
-                value={form.valorDisplay}
-                onChange={(e) => { setForm((f) => ({ ...f, valorDisplay: maskCurrency(e.target.value) })); setErrors(p => ({ ...p, valorDisplay: "" })) }}
-                aria-invalid={!!errors.valorDisplay}
-                className={`h-9 w-full rounded-custom border pl-9 pr-3 text-right text-sm text-text-primary tabular-nums outline-none transition-colors ${
-                  errors.valorDisplay
-                    ? "border-destructive bg-surface-input focus:ring-2 focus:ring-destructive/20"
-                    : "border-border-default bg-surface-input focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
-                }`}
-              />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="prog-valor-hora" className="text-sm font-medium text-text-primary">
+                Valor Hora
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-text-secondary">
+                  R$
+                </span>
+                <input
+                  id="prog-valor-hora"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0,00"
+                  value={form.valorHoraDisplay}
+                  onChange={(e) => { setForm((f) => ({ ...f, valorHoraDisplay: maskCurrency(e.target.value) })) }}
+                  className="h-9 w-full rounded-custom border border-border-default bg-surface-input pl-9 pr-3 text-right text-sm text-text-primary tabular-nums outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="prog-valor" className="text-sm font-medium text-text-primary">
+                Valor <span className="text-destructive">*</span>
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-text-secondary">
+                  R$
+                </span>
+                <input
+                  id="prog-valor"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0,00"
+                  value={form.valorDisplay}
+                  onChange={(e) => { setForm((f) => ({ ...f, valorDisplay: maskCurrency(e.target.value) })); setErrors(p => ({ ...p, valorDisplay: "" })) }}
+                  aria-invalid={!!errors.valorDisplay}
+                  className={`h-9 w-full rounded-custom border pl-9 pr-3 text-right text-sm text-text-primary tabular-nums outline-none transition-colors ${
+                    errors.valorDisplay
+                      ? "border-destructive bg-surface-input focus:ring-2 focus:ring-destructive/20"
+                      : "border-border-default bg-surface-input focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                  }`}
+                />
+              </div>
             </div>
           </div>
         </form>

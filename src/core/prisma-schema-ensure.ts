@@ -11,6 +11,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredIndividualFeedbackPeriodo?: boolean
   __qagrotisEnsuredIndividualProgressao?: boolean
   __qagrotisEnsuredIndividualProgressaoCargo?: boolean
+  __qagrotisEnsuredIndividualProgressaoValorHora?: boolean
   __qagrotisEnsuredClassificacao?: boolean
   __qagrotisEnsuredNotificationTables?: boolean
   __qagrotisEnsuredCenarioSuiteRelations?: boolean
@@ -356,6 +357,21 @@ export async function ensureIndividualProgressaoCargoColumn(): Promise<void> {
     g.__qagrotisEnsuredIndividualProgressaoCargo = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualProgressao.cargo", e)
+  }
+}
+
+/**
+ * Garante a coluna `valorHora` em `IndividualProgressao`.
+ */
+export async function ensureIndividualProgressaoValorHoraColumn(): Promise<void> {
+  if (g.__qagrotisEnsuredIndividualProgressaoValorHora) return
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "IndividualProgressao" ADD COLUMN IF NOT EXISTS "valorHora" INTEGER`,
+    )
+    g.__qagrotisEnsuredIndividualProgressaoValorHora = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] IndividualProgressao.valorHora", e)
   }
 }
 

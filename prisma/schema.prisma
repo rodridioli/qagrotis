@@ -442,6 +442,8 @@ model IndividualProgressao {
   regime           String
   /** Cargo/função no momento da progressão. */
   cargo            String?
+  /** Valor hora em centavos (ex.: 150000 = R$ 1.500,00). */
+  valorHora        Int?
   /** Valor em centavos (ex.: 200000 = R$ 2.000,00). */
   valor            Int
   createdAt        DateTime @default(now())

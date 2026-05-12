@@ -36,6 +36,7 @@ export function IndividualProgressaoTable({
   footer,
   readOnly = false,
 }: IndividualProgressaoTableProps) {
+  const [showValorHora, setShowValorHora] = useState(false)
   const [showValor, setShowValor] = useState(false)
 
   return (
@@ -58,6 +59,17 @@ export function IndividualProgressaoTable({
               </th>
               <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">
                 Cargo
+              </th>
+              <th className="px-3 py-3 text-right text-xs font-semibold text-text-secondary sm:px-4">
+                <button
+                  type="button"
+                  onClick={() => setShowValorHora((v) => !v)}
+                  aria-label={showValorHora ? "Ocultar valor hora" : "Exibir valor hora"}
+                  className="inline-flex items-center gap-1.5 hover:text-text-primary transition-colors"
+                >
+                  Valor Hora
+                  {showValorHora ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                </button>
               </th>
               <th className="px-3 py-3 text-right text-xs font-semibold text-text-secondary sm:px-4">
                 <button
@@ -107,6 +119,13 @@ export function IndividualProgressaoTable({
                 </td>
                 <td className="px-3 py-3 text-text-primary sm:px-4">
                   {r.cargo || <span className="text-text-disabled">—</span>}
+                </td>
+                <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-text-primary sm:px-4">
+                  {r.valorHora != null
+                    ? showValorHora
+                      ? formatValorBRL(r.valorHora)
+                      : <span className="tracking-widest text-text-disabled">••••</span>
+                    : <span className="text-text-disabled">—</span>}
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-text-primary sm:px-4">
                   {showValor ? formatValorBRL(r.valor) : <span className="tracking-widest text-text-disabled">••••</span>}
