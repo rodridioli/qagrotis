@@ -669,11 +669,8 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
               <Input
                 value={jiraInput}
                 onChange={(e) => setJiraInput(e.target.value)}
-                placeholder="https://…/browse/UX-951 ou UX-951 (ux-951 também vale)"
+                placeholder="https://agrotis.atlassian.net/browse/UX-951 ou UX-951"
               />
-              <p className="text-xs text-text-secondary">
-                Cole a URL da issue ou só a chave; o projeto pode estar em minúsculas (ex.: ux-951). O conteúdo da issue será analisado junto com o contexto e os anexos.
-              </p>
             </div>
           )}
 
@@ -683,7 +680,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
             <AutoResizeTextarea
               value={contexto}
               onChange={(e) => setContexto(e.target.value)}
-              placeholder="Cole aqui requisitos, regras de negócio ou descrição da funcionalidade. Ou use o microfone para ditar."
+              placeholder="Adicione requisitos, regras de negócio ou a descrição da funcionalidade."
               className="min-h-[200px]"
             />
             <GeradorSuggestions
