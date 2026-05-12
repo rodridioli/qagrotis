@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { BarChart3, CheckSquare, ChevronRight, Code2, LayoutDashboard, Palette } from "lucide-react"
+import { BarChart3, CheckSquare, ChevronRight, FileText, LayoutDashboard, Palette } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/core/utils"
 
@@ -10,7 +10,7 @@ const PAINEL_SUBITEMS = [
   { id: "MGR", label: "MGR", Icon: BarChart3 },
   { id: "QA",  label: "QA",  Icon: CheckSquare },
   { id: "UX",  label: "UX",  Icon: Palette },
-  { id: "TW",  label: "TW",  Icon: Code2 },
+  { id: "TW",  label: "TW",  Icon: FileText },
 ] as const
 
 export interface PainelSidebarNavGroupProps {
