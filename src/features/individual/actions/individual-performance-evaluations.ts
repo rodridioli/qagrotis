@@ -345,6 +345,7 @@ export async function updateIndividualPerformanceEvaluation(
       },
     })
     revalidatePath("/individual/avaliacoes")
+    revalidatePath(`/individual/avaliacoes/${parsed.data.id}`)
 
     if (parsed.data.mode === "complete") {
       try {
