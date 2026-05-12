@@ -95,7 +95,9 @@ export default function UsuarioFormTabs({
   const [languages, setLanguages] = useState<any[]>(initialData?.languages ?? [])
   const [certifications, setCertifications] = useState<any[]>(initialData?.certifications ?? [])
 
-  const canSeeRestricted = mode === "create" || (sessionUser?.id === userId || (sessionUser?.type === "Administrador" && sessionUser?.accessProfile === "MGR"))
+  const canSeeRestricted = mode === "create"
+    ? sessionUser?.accessProfile === "MGR"
+    : (sessionUser?.id === userId || (sessionUser?.type === "Administrador" && sessionUser?.accessProfile === "MGR"))
 
   const TABS = [
     { id: "cadastro" as const, label: "Cadastro", icon: UserIcon, disabled: false },
