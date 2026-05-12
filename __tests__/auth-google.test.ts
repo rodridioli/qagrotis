@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import { resolveGoogleAccess, resolveGoogleInternalId } from "@/lib/auth-google"
+import { resolveGoogleAccess, resolveGoogleInternalId } from "@/core/auth-google"
 
 const noInactives = new Set<string>()
 

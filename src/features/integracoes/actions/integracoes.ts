@@ -1,11 +1,11 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { LAYOUT_CACHE_TAG } from "@/core/layout-cache"
 import { normalizeProvider } from "@/lib/ai/provider"
 import { z } from "zod"
 import { nextId } from "@/core/db-utils"
-import { requireAdmin } from "@/core/session"
+import { requireAdmin, requireSession } from "@/core/session"
 import { prisma } from "@/core/prisma"
 
 export interface IntegracaoRecord {
@@ -34,6 +34,7 @@ const idsArraySchema = z.array(idSchema).max(1000)
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getIntegracoes(): Promise<IntegracaoRecord[]> {
+  await requireAdmin()
   const rows = await prisma.integracao.findMany({ orderBy: { createdAt: "asc" }, take: 100 })
   return rows.map((r) => ({
     ...r,
@@ -44,6 +45,7 @@ export async function getIntegracoes(): Promise<IntegracaoRecord[]> {
 
 // Não retorna apiKey — usar em contextos que serializam props para o cliente
 export async function getIntegracoesSafe(): Promise<IntegracaoSafeRecord[]> {
+  await requireSession()
   const rows = await prisma.integracao.findMany({
     orderBy: { createdAt: "asc" },
     take: 100,
@@ -56,6 +58,7 @@ export async function getIntegracoesSafe(): Promise<IntegracaoSafeRecord[]> {
 }
 
 export async function getIntegracao(id: string): Promise<IntegracaoRecord | null> {
+  await requireAdmin()
   const result = idSchema.safeParse(id)
   if (!result.success) return null
   const row = await prisma.integracao.findUnique({ where: { id } })
@@ -80,7 +83,7 @@ export async function criarIntegracao(data: unknown): Promise<void> {
   await prisma.integracao.create({ data: { id, ...parsed, provider, active: true } })
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath("/gerador")
-  revalidateTag(LAYOUT_CACHE_TAG)
+  updateTag(LAYOUT_CACHE_TAG)
 }
 
 export async function atualizarIntegracao(id: string, data: unknown): Promise<void> {
@@ -99,7 +102,7 @@ export async function atualizarIntegracao(id: string, data: unknown): Promise<vo
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath(`/configuracoes/modelos-de-ia/${id}/editar`)
   revalidatePath("/gerador")
-  revalidateTag(LAYOUT_CACHE_TAG)
+  updateTag(LAYOUT_CACHE_TAG)
 }
 
 export async function inativarIntegracoes(ids: string[]): Promise<void> {
@@ -110,7 +113,7 @@ export async function inativarIntegracoes(ids: string[]): Promise<void> {
   await prisma.integracao.updateMany({ where: { id: { in: ids } }, data: { active: false } })
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath("/gerador")
-  revalidateTag(LAYOUT_CACHE_TAG)
+  updateTag(LAYOUT_CACHE_TAG)
 }
 
 export async function ativarIntegracao(id: string): Promise<void> {
@@ -119,5 +122,5 @@ export async function ativarIntegracao(id: string): Promise<void> {
   await prisma.integracao.update({ where: { id }, data: { active: true } })
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath("/gerador")
-  revalidateTag(LAYOUT_CACHE_TAG)
+  updateTag(LAYOUT_CACHE_TAG)
 }

@@ -20,7 +20,7 @@ export default defineConfig({
           name: 'unit',
           environment: 'node',
           include: ['__tests__/**/*.test.ts'],
-          alias: { '@': path.resolve(dirname, '.') },
+          alias: { '@': path.resolve(dirname, 'src') },
         },
       },
       {

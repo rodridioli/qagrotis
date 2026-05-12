@@ -9,7 +9,7 @@ import {
   parseYmdToDbDate,
   todayYmdBrazil,
   CHAPTER_TZ,
-} from "@/lib/equipe-chapter-dates"
+} from "@/features/equipe/lib/equipe-chapter-dates"
 
 describe("parseYmdToDbDate / formatYmdInTz", () => {
   it("parse e formata ymd estável", () => {

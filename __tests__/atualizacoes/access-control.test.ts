@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import type { UserType } from "@/lib/qagrotis-constants"
+import type { UserType } from "@/features/qa/lib/qagrotis-constants"
 
 // ─── Simulação da lógica do guard (versão BUGADA — deve ser rejeitada) ────────
 

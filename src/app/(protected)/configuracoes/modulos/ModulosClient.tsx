@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
+import { ChevronDown, ChevronUp, Check, Filter, Layers, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -295,7 +295,7 @@ export default function ModulosClient({ initialModulos: initialModulosParam, ini
         />
 
         {pageItems.length === 0 ? (
-          <EmptyState message="Nenhum registro encontrado." />
+          <EmptyState icon={Layers} message="Nenhum módulo cadastrado ainda." />
         ) : (
           <>
             <div className="overflow-x-auto">

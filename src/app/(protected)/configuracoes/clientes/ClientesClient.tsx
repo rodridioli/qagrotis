@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useDeferredValue, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
+import { Building2, ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -71,6 +71,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
   const [editNomeFantasia, setEditNomeFantasia] = useState("")
   const [editRazaoSocial, setEditRazaoSocial] = useState("")
   const [editCpfCnpj, setEditCpfCnpj] = useState("")
+  const [editErrors, setEditErrors] = useState<{ nomeFantasia?: string; cpfCnpj?: string }>({})
   const [isEditPending, startEditTransition] = useTransition()
 
   function openEditarCliente(c: ClienteRecord) {
@@ -78,19 +79,16 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
     setEditNomeFantasia(c.nomeFantasia)
     setEditRazaoSocial(c.razaoSocial ?? "")
     setEditCpfCnpj(c.cpfCnpj ?? "")
+    setEditErrors({})
     setEditOpen(true)
   }
 
   function handleSalvarCliente() {
     if (!editingCliente) return
-    if (!editNomeFantasia.trim()) {
-      toast.error("O Nome Fantasia é obrigatório.")
-      return
-    }
-    if (editCpfCnpj.trim() && !validateCpfCnpj(editCpfCnpj)) {
-      toast.error("CPF ou CNPJ inválido.")
-      return
-    }
+    const errs: typeof editErrors = {}
+    if (!editNomeFantasia.trim()) errs.nomeFantasia = "O Nome Fantasia é obrigatório."
+    if (editCpfCnpj.trim() && !validateCpfCnpj(editCpfCnpj)) errs.cpfCnpj = "CPF ou CNPJ inválido."
+    if (Object.keys(errs).length > 0) { setEditErrors(errs); return }
     startEditTransition(async () => {
       try {
         await atualizarCliente(editingCliente.id, {
@@ -112,28 +110,26 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
   const [addNomeFantasia, setAddNomeFantasia] = useState("")
   const [addRazaoSocial, setAddRazaoSocial] = useState("")
   const [addCpfCnpj, setAddCpfCnpj] = useState("")
+  const [addErrors, setAddErrors] = useState<{ nomeFantasia?: string; cpfCnpj?: string }>({})
   const [isAddPending, startAddTransition] = useTransition()
 
   function resetAddForm() {
     setAddNomeFantasia("")
     setAddRazaoSocial("")
     setAddCpfCnpj("")
+    setAddErrors({})
   }
 
   function handleAdicionarCliente() {
-    if (!addNomeFantasia.trim()) {
-      toast.error("O Nome Fantasia é obrigatório.")
-      return
-    }
-    if (addCpfCnpj.trim() && !validateCpfCnpj(addCpfCnpj)) {
-      toast.error("CPF ou CNPJ inválido.")
-      return
-    }
+    const errs: typeof addErrors = {}
+    if (!addNomeFantasia.trim()) errs.nomeFantasia = "O Nome Fantasia é obrigatório."
+    if (addCpfCnpj.trim() && !validateCpfCnpj(addCpfCnpj)) errs.cpfCnpj = "CPF ou CNPJ inválido."
+    if (Object.keys(errs).length > 0) { setAddErrors(errs); return }
     const duplicate = items.some(
       (c) => c.active && c.nomeFantasia.trim().toLowerCase() === addNomeFantasia.trim().toLowerCase()
     )
     if (duplicate) {
-      toast.error("Já existe um cliente ativo com esse nome.")
+      setAddErrors({ nomeFantasia: "Já existe um cliente ativo com esse nome." })
       return
     }
     startAddTransition(async () => {
@@ -319,7 +315,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
         />
 
         {pageItems.length === 0 ? (
-          <EmptyState message="Nenhum registro encontrado." />
+          <EmptyState icon={Building2} message="Nenhum cliente cadastrado ainda." />
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -525,10 +521,12 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
               </label>
               <Input
                 value={editNomeFantasia}
-                onChange={(e) => setEditNomeFantasia(e.target.value)}
+                onChange={(e) => { setEditNomeFantasia(e.target.value); setEditErrors((p) => ({ ...p, nomeFantasia: undefined })) }}
                 placeholder="Nome Fantasia"
                 disabled={isEditPending}
+                aria-invalid={!!editErrors.nomeFantasia}
               />
+              {editErrors.nomeFantasia && <p className="text-sm text-destructive mt-1">{editErrors.nomeFantasia}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Razão Social</label>
@@ -543,10 +541,12 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
               <label className="text-sm font-medium text-text-primary">CPF / CNPJ</label>
               <Input
                 value={editCpfCnpj}
-                onChange={(e) => setEditCpfCnpj(formatCpfCnpj(e.target.value))}
+                onChange={(e) => { setEditCpfCnpj(formatCpfCnpj(e.target.value)); setEditErrors((p) => ({ ...p, cpfCnpj: undefined })) }}
                 placeholder="000.000.000-00 ou 00.000.000/0000-00"
                 disabled={isEditPending}
+                aria-invalid={!!editErrors.cpfCnpj}
               />
+              {editErrors.cpfCnpj && <p className="text-sm text-destructive mt-1">{editErrors.cpfCnpj}</p>}
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
@@ -575,10 +575,12 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
               </label>
               <Input
                 value={addNomeFantasia}
-                onChange={(e) => setAddNomeFantasia(e.target.value)}
+                onChange={(e) => { setAddNomeFantasia(e.target.value); setAddErrors((p) => ({ ...p, nomeFantasia: undefined })) }}
                 placeholder="Nome Fantasia"
                 disabled={isAddPending}
+                aria-invalid={!!addErrors.nomeFantasia}
               />
+              {addErrors.nomeFantasia && <p className="text-sm text-destructive mt-1">{addErrors.nomeFantasia}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Razão Social</label>
@@ -593,10 +595,12 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
               <label className="text-sm font-medium text-text-primary">CPF / CNPJ</label>
               <Input
                 value={addCpfCnpj}
-                onChange={(e) => setAddCpfCnpj(formatCpfCnpj(e.target.value))}
+                onChange={(e) => { setAddCpfCnpj(formatCpfCnpj(e.target.value)); setAddErrors((p) => ({ ...p, cpfCnpj: undefined })) }}
                 placeholder="000.000.000-00 ou 00.000.000/0000-00"
                 disabled={isAddPending}
+                aria-invalid={!!addErrors.cpfCnpj}
               />
+              {addErrors.cpfCnpj && <p className="text-sm text-destructive mt-1">{addErrors.cpfCnpj}</p>}
             </div>
           </div>
           <DialogFooter showCloseButton={false}>

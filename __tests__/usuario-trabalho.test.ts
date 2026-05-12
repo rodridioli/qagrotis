@@ -6,7 +6,7 @@ import {
   normalizeDiasTrabalhoHibrido,
   parseHorarioInput,
   sanitizeFormatoTrabalho,
-} from "@/lib/usuario-trabalho"
+} from "@/features/usuarios/lib/usuario-trabalho"
 
 describe("parseHorarioInput", () => {
   it("aceita HH:mm válido", () => {

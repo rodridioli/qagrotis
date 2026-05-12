@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { aggregateHistoricoExecucoesErrosByCenarioId } from "@/lib/suite-historico-stats"
+import { aggregateHistoricoExecucoesErrosByCenarioId } from "@/features/qa/lib/suite-historico-stats"
 
 describe("aggregateHistoricoExecucoesErrosByCenarioId", () => {
   it("agrega execuções e erros por id de cenário em todas as suítes", () => {

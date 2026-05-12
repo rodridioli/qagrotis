@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   computePerformanceScorePercent,
   PERFORMANCE_COMPETENCY_IDS,
-} from "@/lib/individual-performance-evaluation"
+} from "@/features/individual/lib/individual-performance-evaluation"
 
 function allAtLevel(level: 0 | 1 | 2 | 3 | 4): Record<string, number> {
   const o: Record<string, number> = {}
