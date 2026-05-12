@@ -37,6 +37,7 @@ export type Capability =
   | "config.modelosIA"
   | "config.credenciais"
   | "config.jira"
+  | "config.meuCadastro"
   // Ações em usuários
   | "users.create"
   | "users.editProfileFields" // Tipo, Perfil, Cargo, Horários, Formato, Dias
@@ -81,6 +82,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.clientes",
       "config.credenciais",
       "config.jira",
+      "config.meuCadastro",
     ],
     disabled: [],
     manageableProfiles: [],
@@ -120,6 +122,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.configuracoes",
       "menu.atualizacoes",
       "config.jira",
+      "config.meuCadastro",
     ],
     disabled: ["menu.documentos"],
     manageableProfiles: [],
@@ -150,6 +153,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.configuracoes",
       "menu.atualizacoes",
       "config.jira",
+      "config.meuCadastro",
     ],
     disabled: ["menu.documentos"],
     manageableProfiles: [],

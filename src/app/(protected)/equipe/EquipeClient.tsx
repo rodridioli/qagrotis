@@ -409,7 +409,7 @@ const aniversariantesPorMes = useMemo(() => {
               <p className="text-center text-sm text-destructive">{cadastroError}</p>
             </div>
           ) : aniversariantes.length === 0 ? (
-            <EmptyState message="Nenhum usuário ativo com data de nascimento cadastrada." />
+            <EmptyState message="Nenhum registro encontrado." />
           ) : (
             <div className="space-y-8">
               {aniversariantesPorMes.map(({ month, titulo, users }) => (

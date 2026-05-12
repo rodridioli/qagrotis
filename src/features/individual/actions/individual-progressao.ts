@@ -7,6 +7,7 @@ import { createNotification } from "@/core/actions/notifications"
 import {
   ensureIndividualProgressaoTable,
   ensureIndividualProgressaoCargoColumn,
+  ensureIndividualProgressaoValorHoraColumn,
   ensureUserClassificacaoColumns,
 } from "@/core/prisma-schema-ensure"
 import { requireSession } from "@/core/session"
@@ -27,6 +28,7 @@ interface RawRow {
   tipo: string
   regime: string
   cargo: string | null
+  valorHora: number | null
   valor: number
 }
 
@@ -38,6 +40,7 @@ function toRow(p: RawRow): ProgressaoListRow {
     tipo: p.tipo as ProgressaoListRow["tipo"],
     regime: p.regime as ProgressaoListRow["regime"],
     cargo: p.cargo ?? "",
+    valorHora: p.valorHora ?? null,
     valor: p.valor,
   }
 }
@@ -47,10 +50,11 @@ export async function listProgressoes(evaluatedUserId: string): Promise<Progress
   await requireMgr()
   await ensureIndividualProgressaoTable()
   await ensureIndividualProgressaoCargoColumn()
+  await ensureIndividualProgressaoValorHoraColumn()
   const parsed = z.string().min(1).max(128).safeParse(evaluatedUserId)
   if (!parsed.success) throw new Error("ID de usuário inválido.")
   const rows = await prisma.$queryRaw<RawRow[]>`
-    SELECT id, codigo, data, tipo, regime, cargo, valor
+    SELECT id, codigo, data, tipo, regime, cargo, "valorHora", valor
     FROM "IndividualProgressao"
     WHERE "evaluatedUserId" = ${parsed.data}
     ORDER BY data DESC
@@ -63,8 +67,9 @@ export async function listMinhasProgressoes(): Promise<ProgressaoListRow[]> {
   const session = await requireSession()
   await ensureIndividualProgressaoTable()
   await ensureIndividualProgressaoCargoColumn()
+  await ensureIndividualProgressaoValorHoraColumn()
   const rows = await prisma.$queryRaw<RawRow[]>`
-    SELECT id, codigo, data, tipo, regime, cargo, valor
+    SELECT id, codigo, data, tipo, regime, cargo, "valorHora", valor
     FROM "IndividualProgressao"
     WHERE "evaluatedUserId" = ${session.user.id}
     ORDER BY data DESC
@@ -78,6 +83,7 @@ const progressaoSchema = z.object({
   tipo: z.enum(["ADMISSAO", "DISSIDIO", "PROMOCAO", "MERITO"]),
   regime: z.enum(["CLT", "PJ", "COOPERADO"]),
   cargo: z.string().min(1, "Cargo obrigatório.").max(200),
+  valorHora: z.number().int().min(0).max(999_999_900).nullable().optional(),
   valor: z.number().int().min(1, "Valor obrigatório.").max(999_999_900),
 })
 
@@ -88,10 +94,11 @@ export async function createProgressao(
     const session = await requireMgr()
     await ensureIndividualProgressaoTable()
     await ensureIndividualProgressaoCargoColumn()
+    await ensureIndividualProgressaoValorHoraColumn()
     const parsed = progressaoSchema.safeParse(input)
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
-    const { evaluatedUserId, data, tipo, regime, cargo, valor } = parsed.data
+    const { evaluatedUserId, data, tipo, regime, cargo, valorHora, valor } = parsed.data
 
     const [last] = await prisma.$queryRaw<{ codigo: number }[]>`
       SELECT codigo FROM "IndividualProgressao"
@@ -102,12 +109,13 @@ export async function createProgressao(
     const codigo = (last?.codigo ?? 0) + 1
     const id = randomUUID()
     const dataTs = new Date(`${data}T12:00:00.000Z`)
+    const valorHoraVal = valorHora ?? null
 
     await prisma.$executeRaw`
       INSERT INTO "IndividualProgressao"
-        (id, "evaluatedUserId", "createdByUserId", codigo, data, tipo, regime, cargo, valor, "createdAt", "updatedAt")
+        (id, "evaluatedUserId", "createdByUserId", codigo, data, tipo, regime, cargo, "valorHora", valor, "createdAt", "updatedAt")
       VALUES
-        (${id}, ${evaluatedUserId}, ${session.user.id}, ${codigo}, ${dataTs}, ${tipo}, ${regime}, ${cargo}, ${valor}, NOW(), NOW())
+        (${id}, ${evaluatedUserId}, ${session.user.id}, ${codigo}, ${dataTs}, ${tipo}, ${regime}, ${cargo}, ${valorHoraVal}, ${valor}, NOW(), NOW())
     `
 
     // Ensure classificacao columns exist
@@ -152,15 +160,17 @@ export async function updateProgressao(
     await requireMgr()
     await ensureIndividualProgressaoTable()
     await ensureIndividualProgressaoCargoColumn()
+    await ensureIndividualProgressaoValorHoraColumn()
     const parsed = updateSchema.safeParse(input)
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
-    const { id, data, tipo, regime, cargo, valor } = parsed.data
+    const { id, data, tipo, regime, cargo, valorHora, valor } = parsed.data
     const dataTs = new Date(`${data}T12:00:00.000Z`)
+    const valorHoraVal = valorHora ?? null
 
     await prisma.$executeRaw`
       UPDATE "IndividualProgressao"
-      SET data = ${dataTs}, tipo = ${tipo}, regime = ${regime}, cargo = ${cargo}, valor = ${valor}, "updatedAt" = NOW()
+      SET data = ${dataTs}, tipo = ${tipo}, regime = ${regime}, cargo = ${cargo}, "valorHora" = ${valorHoraVal}, valor = ${valor}, "updatedAt" = NOW()
       WHERE id = ${id}
     `
 
@@ -202,6 +212,7 @@ export async function deleteProgressao(id: string): Promise<{ error?: string }> 
     await requireMgr()
     await ensureIndividualProgressaoTable()
     await ensureIndividualProgressaoCargoColumn()
+    await ensureIndividualProgressaoValorHoraColumn()
     const parsed = z.string().min(1).max(128).safeParse(id)
     if (!parsed.success) return { error: "ID inválido." }
     await prisma.$executeRaw`

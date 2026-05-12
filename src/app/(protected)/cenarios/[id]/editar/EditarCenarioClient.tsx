@@ -501,7 +501,7 @@ export default function EditarCenarioClient({
       </div>
 
       {/* Tab card */}
-      <div className="rounded-xl bg-surface-card shadow-card">
+      <div className="overflow-hidden rounded-xl bg-surface-card shadow-card">
 
         {/* Tab nav */}
         <div className="flex border-b border-border-default overflow-hidden rounded-t-xl">

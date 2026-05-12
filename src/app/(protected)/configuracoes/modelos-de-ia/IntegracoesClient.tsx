@@ -348,7 +348,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
         />
 
         {pageItems.length === 0 ? (
-          <EmptyState message="Nenhum modelo de IA cadastrado." />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <>
             <div className="overflow-x-auto">

@@ -95,7 +95,9 @@ export default function UsuarioFormTabs({
   const [languages, setLanguages] = useState<any[]>(initialData?.languages ?? [])
   const [certifications, setCertifications] = useState<any[]>(initialData?.certifications ?? [])
 
-  const canSeeRestricted = mode === "create" || (sessionUser?.id === userId || (sessionUser?.type === "Administrador" && sessionUser?.accessProfile === "MGR"))
+  const canSeeRestricted = mode === "create"
+    ? sessionUser?.accessProfile === "MGR"
+    : (sessionUser?.id === userId || (sessionUser?.type === "Administrador" && sessionUser?.accessProfile === "MGR"))
 
   const TABS = [
     { id: "cadastro" as const, label: "Cadastro", icon: UserIcon, disabled: false },
@@ -264,19 +266,20 @@ export default function UsuarioFormTabs({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {!(isStandardUser && isSelfEdit) && (
-          <PageBreadcrumb
-            backHref={backHref}
-            items={isAdmin ? [
-              { label: "Configurações", href: "/configuracoes" },
-              { label: "Usuários", href: "/configuracoes/usuarios" },
-              { label: mode === "create" ? "Novo Usuário" : (initialData?.name ?? "Editar") },
-            ] : [
-              { label: "Configurações", href: "/configuracoes" },
-              { label: mode === "create" ? "Novo Usuário" : (initialData?.name ?? "Editar") },
-            ]}
-          />
-        )}
+        <PageBreadcrumb
+          backHref={backHref}
+          items={isStandardUser && isSelfEdit ? [
+            { label: "Configurações", href: "/configuracoes" },
+            { label: "Meu Cadastro" },
+          ] : isAdmin ? [
+            { label: "Configurações", href: "/configuracoes" },
+            { label: "Usuários", href: "/configuracoes/usuarios" },
+            { label: mode === "create" ? "Novo Usuário" : (initialData?.name ?? "Editar") },
+          ] : [
+            { label: "Configurações", href: "/configuracoes" },
+            { label: mode === "create" ? "Novo Usuário" : (initialData?.name ?? "Editar") },
+          ]}
+        />
         <Button onClick={handleSave} disabled={isPending} className="ml-auto">
           <Check className="size-4" />
           {isPending ? "Salvando…" : "Salvar"}
