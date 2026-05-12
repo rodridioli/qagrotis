@@ -1,6 +1,6 @@
 import { getLayoutMenuData } from "@/core/layout-cache"
 import { checkIsAdmin } from "@/core/session"
-import { checkAndSendBirthdayNotifications } from "@/core/actions/notifications"
+import { checkAndSendBirthdayNotifications, checkAndSendCompanyAnniversaryNotifications } from "@/core/actions/notifications"
 import LayoutClient from "./LayoutClient"
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -27,6 +27,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   // Dispara verificação de aniversários sem bloquear o render
   void checkAndSendBirthdayNotifications()
+  void checkAndSendCompanyAnniversaryNotifications()
 
   return (
     <LayoutClient
