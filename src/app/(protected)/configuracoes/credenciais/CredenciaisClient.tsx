@@ -246,11 +246,7 @@ export function CredenciaisClient({ initialCredenciais, isAdmin }: Props) {
         />
 
         {filtered.length === 0 ? (
-          <EmptyState
-            message={items.filter((c) => apenasInativos ? !c.active : c.active).length === 0
-              ? "Nenhum registro encontrado."
-              : "Nenhum resultado para a busca."}
-          />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <>
             <div className="overflow-x-auto">

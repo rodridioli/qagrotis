@@ -161,9 +161,7 @@ export function IndividualAvaliacoesSection({
         {loading ? (
           <SectionSpinner />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            message={rows.length === 0 ? "Nenhum registro encontrado." : "Nenhum resultado para a busca."}
-          />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <IndividualAvaliacoesTable
             rows={paginated}

@@ -69,7 +69,7 @@ export function MinhasProgressoesSection() {
         {loading ? (
           <SectionSpinner />
         ) : rows.length === 0 ? (
-          <EmptyState message="Nenhuma progressão registrada." />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <IndividualProgressaoTable
             rows={paginated}

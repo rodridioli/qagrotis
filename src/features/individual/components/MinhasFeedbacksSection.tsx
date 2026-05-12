@@ -112,13 +112,7 @@ export function MinhasFeedbacksSection({ showCompletedToast = false }: { showCom
         {loading ? (
           <SectionSpinner />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            message={
-              rows.length === 0
-                ? "Nenhum feedback recebido."
-                : "Nenhum resultado para a busca."
-            }
-          />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <IndividualFeedbacksTable
             rows={paginated}

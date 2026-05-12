@@ -128,7 +128,7 @@ export function AtualizacoesClient({ entries }: Props) {
         />
 
         {pageItems.length === 0 ? (
-          <EmptyState message="Nenhuma versão encontrada." />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <>
             <div className="overflow-x-auto">

@@ -150,13 +150,7 @@ export function MinhasAvaliacoesSection({ showCompletedToast = false }: { showCo
         {loading ? (
           <SectionSpinner />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            message={
-              rows.length === 0
-                ? "Nenhuma avaliação concluída disponível."
-                : "Nenhum resultado para a busca."
-            }
-          />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <IndividualAvaliacoesTable
             rows={paginated}

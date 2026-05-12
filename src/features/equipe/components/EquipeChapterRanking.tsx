@@ -7,6 +7,7 @@ import type { EquipeChapterRankingPage } from "@/features/equipe/lib/equipe-chap
 import { RankingPositionBadge } from "@/components/shared/RankingPositionBadge"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { cn } from "@/core/utils"
+import { EmptyState } from "@/components/shared/EmptyState"
 
 function getInitials(name: string): string {
   return name
@@ -43,7 +44,7 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
 
       <div className={cn("relative min-w-0", loading && "pointer-events-none opacity-60")}>
         {!data || data.totalItems === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-text-secondary">Nenhum ponto ainda.</p>
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <>
             <div className="overflow-x-auto">

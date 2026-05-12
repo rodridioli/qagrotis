@@ -91,8 +91,8 @@ export function IndividualAvaliacoesTable({
       }
       if (listTotal === 0) {
         return (
-          <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card">
-            <p className="text-sm text-text-secondary">Nenhuma avaliação cadastrada para este usuário.</p>
+          <div className="rounded-xl border border-border-default bg-surface-card shadow-card">
+            <EmptyState message="Nenhum registro encontrado." />
           </div>
         )
       }
@@ -100,21 +100,21 @@ export function IndividualAvaliacoesTable({
         return (
           <AvaliacoesListEmptyChrome
             totalLabelCount={listTotal}
-            innerMessage="Nenhum resultado para a busca."
+            innerMessage="Nenhum registro encontrado."
           />
         )
       }
       return (
-        <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card">
-          <p className="text-sm text-text-secondary">Nenhum resultado para a busca.</p>
+        <div className="rounded-xl border border-border-default bg-surface-card shadow-card">
+          <EmptyState message="Nenhum registro encontrado." />
         </div>
       )
     }
 
     if (rows.length === 0) {
       return (
-        <div className="flex min-h-36 items-center justify-center rounded-xl border border-border-default bg-surface-card px-4 py-10 text-sm text-text-secondary shadow-card">
-          Nenhum registro nesta página.
+        <div className="rounded-xl border border-border-default bg-surface-card shadow-card">
+          <EmptyState message="Nenhum registro encontrado." />
         </div>
       )
     }

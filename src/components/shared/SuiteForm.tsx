@@ -1258,7 +1258,7 @@ export function SuiteForm({
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border-default">
               {filteredAdd.length === 0 ? (
-                <p className="py-6 text-center text-sm text-text-secondary">Nenhum cenário encontrado.</p>
+                <p className="py-6 text-center text-sm text-text-secondary">Nenhum registro encontrado.</p>
               ) : filteredAdd.map((c) => (
                 <label key={c.id} className="flex cursor-pointer items-center gap-3 border-b border-border-default px-3 py-2.5 last:border-0 hover:bg-neutral-grey-50">
                   <Checkbox

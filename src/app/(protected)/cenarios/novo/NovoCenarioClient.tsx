@@ -934,7 +934,7 @@ export default function NovoCenarioClient({
                   {isDepSearchPending ? (
                     <p className="py-6 text-center text-sm text-text-secondary">Buscando...</p>
                   ) : filteredDepCenarios.items.length === 0 ? (
-                    <p className="py-6 text-center text-sm text-text-secondary">Nenhum cenário encontrado.</p>
+                    <p className="py-6 text-center text-sm text-text-secondary">Nenhum registro encontrado.</p>
                   ) : (
                     <>
                       {filteredDepCenarios.total > DEP_LIMIT && (
