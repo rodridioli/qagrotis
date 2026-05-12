@@ -121,12 +121,12 @@ export function ChapterRatingDialog({
         toast.error(res.error)
         return
       }
-      toast.success("Avaliação guardada.")
+      toast.success("Avaliação salva com sucesso.")
       await reload()
       await onSubmitted?.()
       setView("overview")
     } catch {
-      toast.error("Não foi possível guardar.")
+      toast.error("Não foi possível salvar. Tente novamente.")
     } finally {
       setSaving(false)
     }
@@ -206,7 +206,7 @@ export function ChapterRatingDialog({
                 Histórico
               </p>
               {entries.length === 0 ? (
-                <EmptyState message="Ainda não há avaliações." className="mx-0 my-2" />
+                <EmptyState message="Nenhum registro encontrado." className="mx-0 my-2" />
               ) : (
                 <ul className="max-h-56 space-y-3 overflow-y-auto pr-1">
                   {entries.map((e) => (

@@ -40,7 +40,7 @@ export function MinhasFeedbacksSection({ showCompletedToast = false }: { showCom
 
   React.useEffect(() => {
     if (!showCompletedToast) return
-    toast.success("Feedback concluído.")
+    toast.success("Feedback concluído com sucesso.")
     const url = new URL(window.location.href)
     url.searchParams.delete("completed")
     window.history.replaceState({}, "", url.toString())
@@ -112,13 +112,7 @@ export function MinhasFeedbacksSection({ showCompletedToast = false }: { showCom
         {loading ? (
           <SectionSpinner />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            message={
-              rows.length === 0
-                ? "Nenhum feedback recebido."
-                : "Nenhum resultado para a busca."
-            }
-          />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <IndividualFeedbacksTable
             rows={paginated}

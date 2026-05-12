@@ -69,8 +69,8 @@ export function EquipeChaptersTable({
         <div className="px-4 py-3 text-sm text-text-secondary">
           Total de Chapters: {totalCount}
         </div>
-        <div className="border-t border-border-default px-4 py-10 text-center text-sm text-text-secondary">
-          Nenhum chapter cadastrado.
+        <div className="border-t border-border-default">
+          <EmptyState message="Nenhum registro encontrado." />
         </div>
       </div>
     )

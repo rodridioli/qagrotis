@@ -184,7 +184,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
           model: intModel.trim(),
           apiKey: intApiKey.trim(),
         })
-        toast.success("Integração criada com sucesso.")
+        toast.success("Modelo de IA criado com sucesso.")
         setIntModalOpen(false)
         router.refresh()
       } catch (err) {

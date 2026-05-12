@@ -145,7 +145,7 @@ export function ConquistasSection({ evaluatedUserId }: ConquistasSectionProps) {
               {loading ? (
                 defs.map((_, i) => <BadgeSkeleton key={i} />)
               ) : groupBadges.length === 0 ? (
-                <p className="text-sm italic text-text-secondary">Nenhum registro encontrado.</p>
+                <p className="text-sm text-text-secondary">Nenhum registro encontrado.</p>
               ) : (
                 groupBadges.map((def) => (
                   <BadgeAchievement

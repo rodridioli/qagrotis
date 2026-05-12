@@ -248,7 +248,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
     try {
       await ativarIntegracao(ativarId)
       setLocalIntegracoes((prev) => prev.filter((i) => i.id !== ativarId))
-      toast.success("Cadastro ativado com sucesso.")
+      toast.success("Modelo de IA ativado com sucesso.")
       router.refresh()
     } catch {
       toast.error("Erro ao ativar. Tente novamente.")

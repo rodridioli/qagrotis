@@ -387,7 +387,7 @@ const aniversariantesPorMes = useMemo(() => {
           ) : (() => {
             const visibleUsers = users.filter((u) => (u.accessProfile ?? "QA") === selectedProfile)
             if (visibleUsers.length === 0) {
-              return <EmptyState message="Nenhum dado encontrado para os filtros selecionados." />
+              return <EmptyState message="Nenhum registro encontrado." />
             }
             return (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

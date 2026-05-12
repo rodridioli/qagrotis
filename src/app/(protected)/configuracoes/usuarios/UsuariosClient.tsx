@@ -208,7 +208,7 @@ export default function UsuariosClient({
       setUsers((prev) =>
         prev.map((u) => (u.id === ativarId ? { ...u, active: true } : u)),
       )
-      toast.success("Cadastro ativado com sucesso.")
+      toast.success("Usuário ativado com sucesso.")
       router.refresh()
     } catch {
       toast.error("Erro ao ativar. Tente novamente.")
@@ -364,7 +364,7 @@ export default function UsuariosClient({
             message={
               usersFetchFailed && !fetchRecovered && users.length === 0
                 ? "Lista indisponível. Use o botão Tentar novamente acima ou verifique o banco de dados (Vercel / Postgres)."
-                : "Nenhum usuário cadastrado ainda."
+                : "Nenhum registro encontrado."
             }
           />
         ) : (

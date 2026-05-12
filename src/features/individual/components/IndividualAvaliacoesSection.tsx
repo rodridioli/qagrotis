@@ -134,7 +134,7 @@ export function IndividualAvaliacoesSection({
       toast.error(res.error)
       return
     }
-    toast.success("Avaliação removida.")
+    toast.success("Avaliação removida com sucesso.")
     setDeleteOpen(false)
     setDeleteRow(null)
     void refetch()
@@ -161,9 +161,7 @@ export function IndividualAvaliacoesSection({
         {loading ? (
           <SectionSpinner />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            message={rows.length === 0 ? "Nenhum registro encontrado." : "Nenhum resultado para a busca."}
-          />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <IndividualAvaliacoesTable
             rows={paginated}
@@ -188,7 +186,7 @@ export function IndividualAvaliacoesSection({
                         a.click()
                         a.remove()
                         URL.revokeObjectURL(url)
-                        toast.success("Exportação concluída.")
+                        toast.success("Exportado com sucesso.")
                       } catch {
                         toast.error("Não foi possível exportar.")
                       }

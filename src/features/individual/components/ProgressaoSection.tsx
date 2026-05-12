@@ -139,7 +139,7 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
         : await createProgressao(payload)
       setSaving(false)
       if (res.error) { toast.error(res.error); return }
-      toast.success(editRow ? "Progressão atualizada." : "Progressão adicionada.")
+      toast.success(editRow ? "Progressão atualizada com sucesso." : "Progressão criada com sucesso.")
       onOpenChange(false)
       onSuccess()
     } catch (e) {
@@ -350,7 +350,7 @@ export const ProgressaoSection = React.forwardRef<ProgressaoSectionHandle, Progr
       if (!deleteRow) return
       const res = await deleteProgressao(deleteRow.id)
       if (res.error) { toast.error(res.error); return }
-      toast.success("Progressão removida.")
+      toast.success("Progressão removida com sucesso.")
       setDeleteOpen(false)
       setDeleteRow(null)
       void refetch()

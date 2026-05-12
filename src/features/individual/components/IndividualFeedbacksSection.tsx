@@ -117,7 +117,7 @@ export function IndividualFeedbacksSection({
       toast.error(res.error)
       return
     }
-    toast.success("Feedback removido.")
+    toast.success("Feedback removido com sucesso.")
     setDeleteOpen(false)
     setDeleteRow(null)
     void refetch()
@@ -144,7 +144,7 @@ export function IndividualFeedbacksSection({
         {loading ? (
           <SectionSpinner />
         ) : filtered.length === 0 ? (
-          <EmptyState message={rows.length === 0 ? "Nenhum registro encontrado." : "Nenhum resultado para a busca."} />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <IndividualFeedbacksTable
             rows={paginated}
