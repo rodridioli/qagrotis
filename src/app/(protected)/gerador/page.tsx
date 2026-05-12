@@ -4,24 +4,24 @@ export const metadata = { title: "Gerador" }
 import { GeradorClient } from "./GeradorClient"
 import { getCenarios } from "@/features/qa/actions/cenarios"
 import { getModulos } from "@/features/qa/actions/modulos"
-import { getIntegracoes } from "@/features/integracoes/actions/integracoes"
+import { getIntegracoesSafe } from "@/features/integracoes/actions/integracoes"
 import { loadParallelOrFallback } from "@/core/safe-server-data"
 import { serializeRscProps } from "@/core/rsc-serialize"
 import type { CenarioRecord } from "@/features/qa/actions/cenarios"
 import type { ModuloRecord } from "@/features/qa/actions/modulos"
-import type { IntegracaoRecord } from "@/features/integracoes/actions/integracoes"
+import type { IntegracaoSafeRecord } from "@/features/integracoes/actions/integracoes"
 
 export default async function GeradorPage() {
   const { cenarios, modulos, integracoes } = await loadParallelOrFallback<{
     cenarios: CenarioRecord[]
     modulos: ModuloRecord[]
-    integracoes: IntegracaoRecord[]
+    integracoes: IntegracaoSafeRecord[]
   }>(
     "gerador",
     {
       cenarios: () => getCenarios(),
       modulos: () => getModulos(),
-      integracoes: () => getIntegracoes(),
+      integracoes: () => getIntegracoesSafe(),
     },
     { cenarios: [], modulos: [], integracoes: [] },
   )
