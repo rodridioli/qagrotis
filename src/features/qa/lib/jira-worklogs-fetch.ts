@@ -11,7 +11,12 @@ const LONG_SESSION_SECONDS = 8 * 3600
 export type JiraLancamentoEntry = {
   id: string
   issueKey: string
+  projectKey: string
   summary: string | null
+  issueType?: string | null
+  priority?: string | null
+  labels?: string[]
+  qtdCenariosQA?: number | null
   started: string
   timeSpentSeconds: number
   hours: number
@@ -132,18 +137,59 @@ export async function findJiraAccountIdByEmail(
   return { accountId: pick.accountId, displayName: pick.displayName }
 }
 
+// ── Custom field discovery ────────────────────────────────────────────────────
+// Cache the resolved field ID for the lifetime of the process to avoid
+// repeated GET /rest/api/3/field calls on every request.
+let cachedQtdCenariosQAFieldId: string | null | undefined = undefined
+
+async function resolveQtdCenariosQAFieldId(
+  base: string,
+  credentials: string,
+): Promise<string | null> {
+  if (cachedQtdCenariosQAFieldId !== undefined) return cachedQtdCenariosQAFieldId
+
+  try {
+    const { ok, data } = await jiraJson<{ id: string; name: string }[]>(
+      `${base}/rest/api/3/field`,
+      credentials,
+    )
+    if (!ok || !Array.isArray(data)) {
+      cachedQtdCenariosQAFieldId = null
+      return null
+    }
+    const needle = /qtd\.?\s*cen[aá]rios\s*qa/i
+    const found = data.find((f) => needle.test(f.name))
+    cachedQtdCenariosQAFieldId = found?.id ?? null
+  } catch {
+    cachedQtdCenariosQAFieldId = null
+  }
+
+  return cachedQtdCenariosQAFieldId
+}
+
+// ── Issue search ──────────────────────────────────────────────────────────────
+
+type IssueFields = {
+  summary?: string
+  issuetype?: { name?: string }
+  priority?: { name?: string }
+  labels?: string[]
+  [key: string]: unknown
+}
+
 async function searchIssuesByJql(
   base: string,
   credentials: string,
   jql: string,
   startAt: number,
+  extraFields: string[],
 ): Promise<{
-  issues: { key: string; fields?: { summary?: string } }[]
+  issues: { key: string; fields?: IssueFields }[]
   total: number
 } | null> {
   const searchUrl = `${base}/rest/api/3/search`
   const { ok, data, status } = await jiraJson<{
-    issues?: { key: string; fields?: { summary?: string } }[]
+    issues?: { key: string; fields?: IssueFields }[]
     total?: number
     startAt?: number
     maxResults?: number
@@ -151,7 +197,7 @@ async function searchIssuesByJql(
     method: "POST",
     body: JSON.stringify({
       jql,
-      fields: ["summary"],
+      fields: ["summary", "issuetype", "priority", "labels", ...extraFields],
       maxResults: SEARCH_PAGE,
       startAt,
     }),
@@ -179,12 +225,15 @@ export async function fetchWorklogsForAuthorInRange(
     return { entries: [], truncatedIssues: false, truncatedWorklogs: false }
   }
 
+  const qtdFieldId = await resolveQtdCenariosQAFieldId(base, credentials)
+  const extraFields = qtdFieldId ? [qtdFieldId] : []
+
   const escaped = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
   const jqlDated = `worklogAuthor = "${escaped}" AND worklogDate >= "${jFrom}" AND worklogDate <= "${jTo}" ORDER BY updated DESC`
   const jqlFallback = `worklogAuthor = "${escaped}" ORDER BY updated DESC`
 
   const issueKeys: string[] = []
-  const summaries = new Map<string, string | null>()
+  const issueFieldsMap = new Map<string, IssueFields>()
   let startAt = 0
   let total = 0
 
@@ -192,16 +241,16 @@ export async function fetchWorklogsForAuthorInRange(
     startAt = 0
     total = 0
     issueKeys.length = 0
-    summaries.clear()
+    issueFieldsMap.clear()
     do {
-      const batch = await searchIssuesByJql(base, credentials, jql, startAt)
+      const batch = await searchIssuesByJql(base, credentials, jql, startAt, extraFields)
       if (!batch) break
       total = batch.total
       for (const issue of batch.issues) {
         if (issueKeys.length >= capIssues) break
         if (!issueKeys.includes(issue.key)) {
           issueKeys.push(issue.key)
-          summaries.set(issue.key, issue.fields?.summary ?? null)
+          issueFieldsMap.set(issue.key, issue.fields ?? {})
         }
       }
       startAt += batch.issues.length
@@ -220,6 +269,18 @@ export async function fetchWorklogsForAuthorInRange(
 
   for (const issueKey of issueKeys) {
     if (entries.length >= MAX_WORKLOGS_TOTAL) break
+    const fields = issueFieldsMap.get(issueKey) ?? {}
+    const projectKey = issueKey.split("-")[0] ?? issueKey
+    const issueType = (fields.issuetype?.name as string | undefined) ?? null
+    const priority = (fields.priority?.name as string | undefined) ?? null
+    const labels = Array.isArray(fields.labels) ? (fields.labels as string[]) : []
+    let qtdCenariosQA: number | null = null
+    if (qtdFieldId && fields[qtdFieldId] != null) {
+      const raw = fields[qtdFieldId]
+      const parsed = typeof raw === "number" ? raw : Number(raw)
+      if (Number.isFinite(parsed)) qtdCenariosQA = parsed
+    }
+
     let wlStart = 0
     const wlUrlBase = `${base}/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog`
     for (;;) {
@@ -246,7 +307,12 @@ export async function fetchWorklogsForAuthorInRange(
         entries.push({
           id: `${issueKey}-${w.id}`,
           issueKey,
-          summary: summaries.get(issueKey) ?? null,
+          projectKey,
+          summary: (fields.summary as string | undefined) ?? null,
+          issueType,
+          priority,
+          labels,
+          qtdCenariosQA,
           started,
           timeSpentSeconds: w.timeSpentSeconds,
           hours: Math.round((w.timeSpentSeconds / 3600) * 100) / 100,
