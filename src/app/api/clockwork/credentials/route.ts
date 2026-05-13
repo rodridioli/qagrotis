@@ -72,11 +72,24 @@ export async function POST(req: NextRequest) {
   try {
     await upsertClockworkApiToken(session.user.id, apiToken)
   } catch (e) {
+    console.error("[clockwork/credentials] POST:", e)
     if (e instanceof Error && e.message === "MISSING_TOKEN") {
       return Response.json({ error: "Informe o API Token." }, { status: 400 })
     }
-    if (process.env.NODE_ENV !== "production") console.error("[clockwork/credentials] POST:", e)
-    return Response.json({ error: "Não foi possível gravar." }, { status: 503 })
+    const msg = e instanceof Error ? e.message : ""
+    if (msg.includes("ENCRYPTION_KEY")) {
+      return Response.json(
+        { error: "Configuração incompleta no servidor: variável ENCRYPTION_KEY não definida. Contacte o administrador." },
+        { status: 503 },
+      )
+    }
+    if (msg.includes("does not exist") || msg.includes("P2021") || msg.includes("relation") || msg.includes("ClockworkIntegration")) {
+      return Response.json(
+        { error: "Tabela de integração não encontrada. Execute prisma migrate deploy no ambiente de deploy." },
+        { status: 503 },
+      )
+    }
+    return Response.json({ error: "Não foi possível gravar. Verifique os logs do servidor." }, { status: 503 })
   }
 
   return Response.json({ success: true })

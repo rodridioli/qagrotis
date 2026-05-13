@@ -20,7 +20,6 @@ export default function ClockworkConfigButton() {
   const [hasStoredToken, setHasStoredToken] = useState(false)
   const [hasEnvFallback, setHasEnvFallback] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [removing, setRemoving] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ token?: boolean }>({})
 
   async function handleOpen() {
@@ -73,32 +72,6 @@ export default function ClockworkConfigButton() {
     }
   }
 
-  async function handleRemove() {
-    if (!hasStoredToken) {
-      toast.message("Não há token guardado na aplicação para remover.")
-      return
-    }
-    if (!window.confirm("Remover o token Clockwork guardado na base de dados? (Variável CLOCKWORK_API_TOKEN no servidor, se existir, continua a funcionar.)")) {
-      return
-    }
-    setRemoving(true)
-    try {
-      const r = await fetch("/api/clockwork/credentials", { method: "DELETE", credentials: "same-origin" })
-      if (!r.ok) {
-        const j = (await r.json().catch(() => null)) as { error?: string } | null
-        throw new Error(j?.error || "Erro ao remover.")
-      }
-      setHasStoredToken(false)
-      setToken("")
-      toast.success("Integração Clockwork removida da base de dados.")
-      setOpen(false)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível remover.")
-    } finally {
-      setRemoving(false)
-    }
-  }
-
   return (
     <>
       <button
@@ -135,7 +108,8 @@ export default function ClockworkConfigButton() {
               </label>
               <Input
                 type="password"
-                placeholder={hasStoredToken ? "Deixe em branco para manter o token atual" : "••••••••••••••••••••"}
+                autoComplete="new-password"
+                placeholder={hasStoredToken ? "Deixe em branco para manter o token atual" : ""}
                 value={token}
                 onChange={(e) => {
                   setToken(e.target.value)
@@ -158,37 +132,20 @@ export default function ClockworkConfigButton() {
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
-            <div className="flex w-full flex-wrap items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleRemove}
-                disabled={saving || removing || !hasStoredToken}
-              >
-                {removing ? (
-                  <>
-                    <Loader2 className="mr-1 size-4 shrink-0 animate-spin" aria-hidden />
-                    Removendo…
-                  </>
-                ) : (
-                  "Remover da base"
-                )}
-              </Button>
-              <CancelActionButton onClick={() => setOpen(false)} disabled={saving || removing} />
-              <Button className="gap-1.5" onClick={handleSave} disabled={saving || removing}>
-                {saving ? (
-                  <>
-                    <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-                    Salvando…
-                  </>
-                ) : (
-                  <>
-                    <Check className="size-4 shrink-0" aria-hidden />
-                    Salvar
-                  </>
-                )}
-              </Button>
-            </div>
+            <CancelActionButton onClick={() => setOpen(false)} disabled={saving} />
+            <Button className="gap-1.5" onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                  Salvando…
+                </>
+              ) : (
+                <>
+                  <Check className="size-4 shrink-0" aria-hidden />
+                  Salvar
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
