@@ -25,6 +25,7 @@ type LancamentoRow = {
   hours: number
   isLongSession: boolean
   comment: string | null
+  dataSource?: "jira" | "clockwork"
 }
 
 type ApiOk = {
@@ -38,6 +39,8 @@ type ApiOk = {
   jiraBrowseBase?: string
   message?: string
   jiraAuthorDisplayName?: string | null
+  includesClockwork?: boolean
+  clockworkMergedCount?: number
 }
 
 function formatTotalDuration(totalSeconds: number): string {
@@ -134,10 +137,12 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
   return (
     <div className="flex w-full flex-col gap-6">
       <p className="text-xs leading-relaxed text-text-secondary">
-        São listados apenas <strong className="font-medium text-text-primary">worklogs nativos do Jira</strong> (aba
-        &quot;Work log&quot; / registo de trabalho da issue). Horas só no widget{" "}
-        <strong className="font-medium text-text-primary">Clockwork</strong> podem não existir na API de worklogs —
-        confirme no Jira se o tempo aparece em Work log. Ajuste o intervalo de datas para incluir o dia do lançamento.
+        Por defeito listamos <strong className="font-medium text-text-primary">worklogs nativos do Jira</strong> (Work
+        log da issue). Se o tempo existir só no Clockwork (Pro), um administrador MGR pode configurar o token em{" "}
+        <strong className="font-medium text-text-primary">Configurações → Integração Clockwork</strong>; opcionalmente
+        pode existir <strong className="font-medium text-text-primary">CLOCKWORK_API_TOKEN</strong> no servidor como
+        reserva. Esses lançamentos são fundidos aqui e assinalados como Clockwork. Ajuste o intervalo para incluir o dia
+        do registo.
       </p>
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div className="flex flex-wrap gap-2">
@@ -189,10 +194,10 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
       </div>
 
       {loading ? (
-        <SectionSpinner label="A carregar lançamentos do Jira…" />
+        <SectionSpinner label="A carregar lançamentos…" />
       ) : error ? (
         <EmptyState message={`Erro: ${error}`} />
-      ) : data?.noJiraUser ? (
+      ) : data?.noJiraUser && !data.entries.length ? (
         <EmptyState
           message={
             data.message ??
@@ -201,6 +206,18 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
         />
       ) : (
         <>
+          {data?.noJiraUser && data.entries.length > 0 ? (
+            <div
+              className="rounded-lg border border-border-default bg-surface-card px-4 py-3 text-sm text-text-secondary"
+              role="status"
+            >
+              <p className="font-medium text-text-primary">Utilizador Jira não encontrado por e-mail</p>
+              <p className="mt-1">
+                A tabela pode mostrar apenas lançamentos vindos da API Clockwork (token no servidor). Associe o mesmo
+                e-mail no Jira para alinhar worklogs nativos.
+              </p>
+            </div>
+          ) : null}
           {data && data.longSessionCount > 0 ? (
             <div
               className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-text-primary"
@@ -244,16 +261,26 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
                 Utilizador Jira: <span className="font-medium text-text-primary">{data.jiraAuthorDisplayName}</span>
               </p>
             ) : null}
+            {data?.includesClockwork && (data.clockworkMergedCount ?? 0) > 0 ? (
+              <p className="mt-2 text-sm text-text-secondary">
+                Inclui{" "}
+                <span className="font-medium text-text-primary">
+                  {data.clockworkMergedCount} lançamento(s) Clockwork
+                </span>{" "}
+                não duplicados face ao Jira.
+              </p>
+            ) : null}
           </div>
 
           {!data?.entries.length ? (
-            <EmptyState message="Não há worklogs no Jira neste intervalo." />
+            <EmptyState message="Não há lançamentos neste intervalo (Jira + Clockwork, se configurado)." />
           ) : (
             <div className="overflow-x-auto rounded-custom border border-border-default">
               <table className="w-full min-w-[42rem] border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
                     <th className="px-3 py-2 font-medium">Issue</th>
+                    <th className="hidden px-3 py-2 font-medium sm:table-cell">Fonte</th>
                     <th className="px-3 py-2 font-medium">Resumo</th>
                     <th className="px-3 py-2 font-medium">Data</th>
                     <th className="px-3 py-2 font-medium">Tempo</th>
@@ -290,6 +317,15 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
                             row.issueKey
                           )}
                         </div>
+                      </td>
+                      <td className="hidden whitespace-nowrap px-3 py-2 align-top text-xs text-text-secondary sm:table-cell">
+                        {row.dataSource === "clockwork" ? (
+                          <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-800 dark:text-violet-200">
+                            Clockwork
+                          </span>
+                        ) : (
+                          <span className="text-text-secondary">Jira</span>
+                        )}
                       </td>
                       <td className="max-w-[14rem] px-3 py-2 align-top text-text-primary">
                         {row.summary ?? "—"}

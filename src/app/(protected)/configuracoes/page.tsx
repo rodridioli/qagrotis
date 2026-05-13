@@ -6,6 +6,7 @@ import { Users, Monitor, Box, Building2, Sparkles, KeyRound, UserCircle } from "
 import { auth } from "@/core/auth"
 import { buildRole, can, type Capability } from "@/core/rbac/policy"
 import JiraConfigButton from "./JiraConfigButton"
+import ClockworkConfigButton from "./ClockworkConfigButton"
 
 interface ConfigCard {
   href: string
@@ -31,6 +32,7 @@ export default async function ConfiguracoesPage() {
 
   const visibleCards = CARDS.filter((c) => can(role, c.capability))
   const showJira = can(role, "config.jira")
+  const showClockwork = can(role, "config.clockwork")
   const showMeuCadastro = can(role, "config.meuCadastro") && !!userId
 
   return (
@@ -62,6 +64,7 @@ export default async function ConfiguracoesPage() {
         ))}
 
         {showJira && <JiraConfigButton defaultEmail={currentEmail} />}
+        {showClockwork && <ClockworkConfigButton />}
       </div>
     </div>
   )

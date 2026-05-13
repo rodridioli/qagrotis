@@ -17,6 +17,8 @@ export type JiraLancamentoEntry = {
   hours: number
   isLongSession: boolean
   comment: string | null
+  /** Presente quando o registo veio da API Clockwork (fundido com Jira). */
+  dataSource?: "jira" | "clockwork"
 }
 
 function jqlDateFromIso(iso: string): string | null {
