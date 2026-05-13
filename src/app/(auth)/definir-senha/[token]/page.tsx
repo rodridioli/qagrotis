@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { use, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -12,8 +12,9 @@ import { toast } from "sonner"
 export default function DefinirSenhaPage({
   params,
 }: {
-  params: { token: string }
+  params: Promise<{ token: string }>
 }) {
+  const { token } = use(params)
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [password, setPassword] = useState("")
@@ -36,7 +37,7 @@ export default function DefinirSenhaPage({
     }
 
     startTransition(async () => {
-      const result = await definirSenha(params.token, password)
+      const result = await definirSenha(token, password)
       if (!result.ok) {
         toast.error(result.reason)
         return

@@ -564,7 +564,7 @@ export default function UsuarioFormTabs({
                     <div className="md:col-span-3"><Input value={item.institution} onChange={e => { const n = [...education]; n[idx].institution = e.target.value; setEducation(n) }} placeholder="Instituição" /></div>
                     <div className="md:col-span-1"><Input value={item.year} onChange={e => { const n = [...education]; n[idx].year = e.target.value; setEducation(n) }} placeholder="Ano" /></div>
                     <div className="md:col-span-3">
-                      <Select value={item.type ?? ""} onValueChange={(v) => { const n = [...education]; n[idx].type = v; setEducation(n) }}>
+                      <Select value={item.type ?? ""} onValueChange={(v) => { const n = [...education]; n[idx].type = v ?? undefined; setEducation(n) }}>
                         <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
                         <SelectPopup>
                           {["Ensino Médio", "Graduação", "Pós-Graduação", "Mestrado", "Doutorado", "Pós-Doutorado"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
@@ -625,7 +625,7 @@ export default function UsuarioFormTabs({
                   <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                     <div className="md:col-span-6 space-y-1"><Input value={item.name} onChange={e => { const n = [...languages]; n[idx].name = e.target.value; setLanguages(n) }} placeholder="Idioma" /></div>
                     <div className="md:col-span-5 space-y-1">
-                      <Select value={item.level} onValueChange={v => { const n = [...languages]; n[idx].level = v; setLanguages(n) }}>
+                      <Select value={item.level} onValueChange={v => { const n = [...languages]; n[idx].level = v ?? ""; setLanguages(n) }}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectPopup>
                           {["Básico", "Intermediário", "Avançado", "Fluente / Nativo"].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}

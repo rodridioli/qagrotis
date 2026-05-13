@@ -203,7 +203,7 @@ export function AssistenteDrawer({ open, onOpenChange }: AssistenteDrawerProps) 
           {/* ── Messages ── */}
           <div className="flex-1 overflow-y-auto px-4 py-4">
             {messages.length === 0 ? (
-              <EmptyState />
+              <AssistenteMessagesEmpty />
             ) : (
               <div className="flex flex-col gap-4">
                 {messages.map((msg) => (
@@ -251,13 +251,14 @@ export function AssistenteDrawer({ open, onOpenChange }: AssistenteDrawerProps) 
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function EmptyState() {
+function AssistenteMessagesEmpty() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 py-8 text-center">
       <div className="flex size-14 items-center justify-center rounded-full bg-brand-primary/10">
         <LifeBuoy className="size-7 text-brand-primary" />
       </div>
       <p className="text-sm font-medium text-text-primary">Como posso ajudar?</p>
+      <p className="max-w-xs text-xs text-text-secondary">Escreva abaixo para começar a conversa.</p>
     </div>
   )
 }

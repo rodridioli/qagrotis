@@ -143,6 +143,7 @@ export function PhotoCropModal({ file, open, onOpenChange, onConfirm }: PhotoCro
             onPointerCancel={onPointerUp}
           >
             {imgUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- blob: URL do recorte local
               <img
                 ref={imgRef}
                 src={imgUrl}

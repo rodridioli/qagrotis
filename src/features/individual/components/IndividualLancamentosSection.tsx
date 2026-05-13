@@ -175,11 +175,10 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
       {loading ? (
         <SectionSpinner label="A carregar lançamentos do Jira…" />
       ) : error ? (
-        <EmptyState title="Erro" description={error} />
+        <EmptyState message={`Erro: ${error}`} />
       ) : data?.noJiraUser ? (
         <EmptyState
-          title="Sem correspondência no Jira"
-          description={
+          message={
             data.message ??
             "Não foi encontrado utilizador Jira com o mesmo e-mail deste cadastro."
           }
@@ -232,7 +231,7 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
           </div>
 
           {!data?.entries.length ? (
-            <EmptyState title="Sem lançamentos" description="Não há worklogs no Jira neste intervalo." />
+            <EmptyState message="Não há worklogs no Jira neste intervalo." />
           ) : (
             <div className="overflow-x-auto rounded-custom border border-border-default">
               <table className="w-full min-w-[42rem] border-collapse text-left text-sm">

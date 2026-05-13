@@ -25,6 +25,7 @@
 *.pem
 *.bak
 build.log
+lint-output.txt
 
 # debug
 npm-debug.log*
