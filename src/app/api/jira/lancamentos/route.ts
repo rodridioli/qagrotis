@@ -97,6 +97,8 @@ export async function GET(req: NextRequest) {
     return Response.json({
       source: "jira" as const,
       entries: [] as const,
+      totalSeconds: 0,
+      longSessionCount: 0,
       truncatedIssues: false,
       truncatedWorklogs: false,
       noJiraUser: true,
@@ -113,9 +115,14 @@ export async function GET(req: NextRequest) {
     to,
   )
 
+  const totalSeconds = entries.reduce((acc, e) => acc + e.timeSpentSeconds, 0)
+  const longSessionCount = entries.filter((e) => e.isLongSession).length
+
   return Response.json({
     source: "jira" as const,
     entries,
+    totalSeconds,
+    longSessionCount,
     truncatedIssues,
     truncatedWorklogs,
     noJiraUser: false,

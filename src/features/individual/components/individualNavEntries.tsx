@@ -11,6 +11,7 @@ import {
   Award,
   TrendingUp,
   LineChart,
+  Clock,
 } from "lucide-react"
 import {
   INDIVIDUAL_SECTION_ORDER,
@@ -28,6 +29,7 @@ const ICONS: Record<IndividualSectionSlug, ElementType> = {
   conquistas: Award,
   pdi: TrendingUp,
   progressao: LineChart,
+  lancamentos: Clock,
 }
 
 export interface IndividualNavEntry {

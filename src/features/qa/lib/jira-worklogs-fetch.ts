@@ -6,6 +6,7 @@
 const MAX_ISSUES = 80
 const SEARCH_PAGE = 40
 const MAX_WORKLOGS_TOTAL = 500
+const LONG_SESSION_SECONDS = 8 * 3600
 
 export type JiraLancamentoEntry = {
   id: string
@@ -13,6 +14,8 @@ export type JiraLancamentoEntry = {
   summary: string | null
   started: string
   timeSpentSeconds: number
+  hours: number
+  isLongSession: boolean
   comment: string | null
 }
 
@@ -191,6 +194,8 @@ export async function fetchWorklogsForAuthorInRange(
           summary: summaries.get(issueKey) ?? null,
           started,
           timeSpentSeconds: w.timeSpentSeconds,
+          hours: Math.round((w.timeSpentSeconds / 3600) * 100) / 100,
+          isLongSession: w.timeSpentSeconds > LONG_SESSION_SECONDS,
           comment: worklogCommentToPlain(w.comment),
         })
         if (entries.length >= MAX_WORKLOGS_TOTAL) break

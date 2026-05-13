@@ -9,6 +9,7 @@ import { IndividualAvaliacoesSection } from "@/features/individual/components/In
 import { IndividualFeedbacksSection } from "@/features/individual/components/IndividualFeedbacksSection"
 import { ConquistasSection } from "@/features/individual/components/ConquistasSection"
 import { ProgressaoSection, type ProgressaoSectionHandle } from "@/features/individual/components/ProgressaoSection"
+import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
 
 interface Props {
   secao: string
@@ -32,6 +33,7 @@ export function IndividualSecaoDevelopmentPanel({
   const showFeedbacks  = secao === "feedbacks"
   const showConquistas = secao === "conquistas"
   const showProgressao = secao === "progressao"
+  const showLancamentos = secao === "lancamentos"
 
   return (
     <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-stretch gap-8">
@@ -92,6 +94,8 @@ export function IndividualSecaoDevelopmentPanel({
         <ConquistasSection evaluatedUserId={selectedUserId} />
       ) : showProgressao ? (
         <ProgressaoSection ref={progressaoRef} evaluatedUserId={selectedUserId} />
+      ) : showLancamentos ? (
+        <IndividualLancamentosSection evaluatedUserId={selectedUserId} />
       ) : (
         <div className="flex w-full flex-1 flex-col items-center justify-center py-16">
           <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>

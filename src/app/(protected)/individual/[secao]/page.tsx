@@ -10,6 +10,7 @@ import { MinhasAvaliacoesSection } from "@/features/individual/components/Minhas
 import { MinhasFeedbacksSection } from "@/features/individual/components/MinhasFeedbacksSection"
 import { ConquistasSection } from "@/features/individual/components/ConquistasSection"
 import { MinhasProgressoesSection } from "@/features/individual/components/MinhasProgressoesSection"
+import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
 import { individualSectionLabel, isIndividualSectionSlug } from "@/features/individual/lib/individual-sections"
 
 export async function generateMetadata({
@@ -88,6 +89,8 @@ export default async function IndividualSecaoPage({
         <ConquistasSection />
       ) : secao === "progressao" ? (
         <MinhasProgressoesSection />
+      ) : secao === "lancamentos" ? (
+        <IndividualLancamentosSection evaluatedUserId={session.user.id} />
       ) : (
         <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center justify-center py-16">
           <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>
