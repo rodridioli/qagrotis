@@ -40,7 +40,14 @@ export async function upsertClockworkApiToken(actingUserId: string, apiToken: st
     where: { id: SINGLETON_ID },
     select: { apiToken: true },
   })
-  const existingPlain = existing?.apiToken ? decryptField(existing.apiToken).trim() : ""
+  let existingPlain = ""
+  if (existing?.apiToken) {
+    try {
+      existingPlain = decryptField(existing.apiToken).trim()
+    } catch {
+      existingPlain = ""
+    }
+  }
 
   if (!incoming && !existingPlain) {
     throw new Error("MISSING_TOKEN")
