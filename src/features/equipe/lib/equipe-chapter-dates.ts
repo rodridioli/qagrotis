@@ -53,16 +53,19 @@ export function isValidCalendarYmd(ymd: string): boolean {
 }
 
 /** Novo chapter: qualquer data civil válida. */
-export function isValidNewChapterDate(ymd: string, _now: Date = new Date()): boolean {
+export function isValidNewChapterDate(ymd: string, now: Date = new Date()): boolean {
+  void now
   return isValidCalendarYmd(ymd)
 }
 
 /** Edição: qualquer data civil válida. */
 export function isValidUpdatedChapterDate(
   ymd: string,
-  _previousYmd: string,
-  _now: Date = new Date(),
+  previousYmd: string,
+  now: Date = new Date(),
 ): boolean {
+  void previousYmd
+  void now
   return isValidCalendarYmd(ymd)
 }
 

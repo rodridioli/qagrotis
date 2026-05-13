@@ -54,16 +54,6 @@ interface RoleConfig {
   manageableProfiles: AccessProfile[]
 }
 
-const ALL_CONFIG: Capability[] = [
-  "config.usuarios",
-  "config.sistemas",
-  "config.modulos",
-  "config.clientes",
-  "config.modelosIA",
-  "config.credenciais",
-  "config.jira",
-]
-
 const POLICY: Record<Role, RoleConfig> = {
   // ─────────────────────────────────────────── QA
   "Padrão:QA": {

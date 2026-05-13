@@ -30,7 +30,6 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate }: EquipeSidebarNa
 
   const activeTabId = searchParams.get("tab") ?? "performance"
   const parentActive = pathname.startsWith("/equipe")
-  const showLabel = !collapsed
 
   function go(href: string) {
     if (onNavigate) onNavigate(href)

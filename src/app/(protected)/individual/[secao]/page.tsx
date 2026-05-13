@@ -63,7 +63,6 @@ export default async function IndividualSecaoPage({
   }
 
   const showMgrUserFilter = canViewOthers && activeUsers.length > 0
-  const querySuffix = showMgrUserFilter ? `?userId=${encodeURIComponent(targetUserId)}` : ""
   const isAdministradorMgr =
     session.user.type === "Administrador" && session.user.accessProfile === "MGR"
 

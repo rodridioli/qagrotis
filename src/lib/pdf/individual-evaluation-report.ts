@@ -73,15 +73,6 @@ function formatYmdPt(ymd: string): string {
   return `${d}/${m}/${y}`
 }
 
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => (w[0] ?? "").toUpperCase())
-    .join("")
-}
-
 /** Cores por faixa de pontuação — idênticas ao web (scorePercentToneClass). */
 function scoreRgb(pct: number | null): [number, number, number] {
   if (pct == null) return C.muted
@@ -128,27 +119,6 @@ function clipRoundedRect(doc: jsPDF, x: number, y: number, w: number, h: number,
   ].join(" ")
   // doc.internal.write exists at runtime but is not in jsPDF's public type declarations
   ;(doc.internal as unknown as { write: (data: string) => void }).write(path)
-}
-
-/** Badge colorida (ex.: Concluída / Rascunho). */
-function drawBadge(
-  doc: jsPDF,
-  text: string,
-  x: number,
-  y: number,
-  fill: [number, number, number],
-  fg: [number, number, number],
-): void {
-  doc.setFont("helvetica", "bold")
-  doc.setFontSize(6)
-  const tw = doc.getTextWidth(text)
-  const bw = tw + 6
-  const bh = 4.5
-  doc.setFillColor(...fill)
-  doc.setDrawColor(...fill)
-  doc.roundedRect(x, y, bw, bh, 1, 1, "F")
-  doc.setTextColor(...fg)
-  doc.text(text, x + bw / 2, y + bh / 2 + 1.1, { align: "center" })
 }
 
 // ── Entry point ─────────────────────────────────────────────────────────────

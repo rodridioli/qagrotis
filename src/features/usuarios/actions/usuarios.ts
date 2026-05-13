@@ -226,7 +226,8 @@ export async function getActiveQaUsers(): Promise<QaUserRecord[]> {
   return all.filter((u) => u.active)
 }
 
-async function resolveEmailForQaUserId(id: string): Promise<string | null> {
+/** E-mail normalizado (lower) para um cadastro QA (CreatedUser ou Auth `User`). */
+export async function resolveEmailForQaUserId(id: string): Promise<string | null> {
   const row = await prisma.createdUser.findUnique({ where: { id }, select: { email: true } })
   if (row?.email?.trim()) return row.email.trim().toLowerCase()
   const auth = await prisma.user.findUnique({ where: { id }, select: { email: true } })
@@ -446,11 +447,11 @@ export async function criarQaUser(data: {
   emergencyContact?: string | null
   instagram?: string | null
   linkedin?: string | null
-  education?: any[] | null
-  courses?: any[] | null
-  languages?: any[] | null
-  certifications?: any[] | null
-  careerHistory?: any[] | null
+  education?: unknown[] | null
+  courses?: unknown[] | null
+  languages?: unknown[] | null
+  certifications?: unknown[] | null
+  careerHistory?: unknown[] | null
 }): Promise<{ id?: string; error?: string; emailEnviado?: boolean }> {
   // Auth — return error instead of throwing so Next.js error boundary isn't triggered
   try {
@@ -669,11 +670,11 @@ export async function atualizarQaUser(
     emergencyContact?: string | null
     instagram?: string | null
     linkedin?: string | null
-    education?: any[] | null
-    courses?: any[] | null
-    languages?: any[] | null
-    certifications?: any[] | null
-    careerHistory?: any[] | null
+    education?: unknown[] | null
+    courses?: unknown[] | null
+    languages?: unknown[] | null
+    certifications?: unknown[] | null
+    careerHistory?: unknown[] | null
   }
 ): Promise<{ error?: string }> {
   let session: Awaited<ReturnType<typeof requireSession>>
@@ -721,7 +722,7 @@ export async function atualizarQaUser(
     const isAdminMgr = isAdmin && session.user?.accessProfile === "MGR"
     const canEditSensitive = isSelf || isAdminMgr
 
-    const sensitiveData: Record<string, any> = {}
+    const sensitiveData: Record<string, unknown> = {}
     if (canEditSensitive) {
       if (data.cep !== undefined)              sensitiveData.cep = data.cep
       if (data.address !== undefined)          sensitiveData.address = data.address

@@ -49,7 +49,7 @@ export function IndividualAvaliacoesSection({
   showCompletedToast = false,
 }: IndividualAvaliacoesSectionProps) {
   const router = useRouter()
-  const [isNavigating, startTransition] = React.useTransition()
+  const [, startTransition] = React.useTransition()
 
   React.useEffect(() => {
     if (!showCompletedToast) return

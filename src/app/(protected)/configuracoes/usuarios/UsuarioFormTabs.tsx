@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useTransition, useEffect } from "react"
+import React, { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Check, Eye, EyeOff, RefreshCw, Plus, Trash2, ExternalLink, MessageSquare, MapIcon as Map, BookOpen, User as UserIcon } from "lucide-react"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -28,6 +28,28 @@ import { toast } from "sonner"
 import { useSession } from "next-auth/react"
 import { ACCESS_PROFILES, type AccessProfile } from "@/core/rbac/policy"
 
+interface EducationEntry {
+  title: string
+  institution: string
+  year: string
+  type?: string
+}
+interface CourseEntry {
+  name: string
+  institution: string
+  year: string
+  hours: string
+}
+interface LanguageEntry {
+  name: string
+  level: string
+}
+interface CertificationEntry {
+  title: string
+  institution: string
+  year: string
+}
+
 interface UsuarioFormTabsProps {
   mode: "create" | "edit"
   userId?: string
@@ -52,15 +74,12 @@ export default function UsuarioFormTabs({
   const [nome, setNome] = useState(initialData?.name ?? "")
   const [email, setEmail] = useState(initialData?.email ?? "")
   const [tipo, setTipo] = useState<string>(initialData?.type ?? "Padrão")
-  const [accessProfile, setAccessProfile] = useState<AccessProfile>((initialData?.accessProfile as AccessProfile) ?? manageableProfiles[0] ?? "QA")
   /** Admin QA/UX/TW: só um perfil gerenciável — campo travado nesse valor. */
   const accessProfileSelectDisabled = manageableProfiles.length === 1
-  const lockedAccessProfile = accessProfileSelectDisabled ? manageableProfiles[0] ?? null : null
-
-  useEffect(() => {
-    if (!lockedAccessProfile) return
-    setAccessProfile(lockedAccessProfile)
-  }, [lockedAccessProfile])
+  const [accessProfile, setAccessProfile] = useState<AccessProfile>(() => {
+    if (manageableProfiles.length === 1) return manageableProfiles[0] ?? "QA"
+    return (initialData?.accessProfile as AccessProfile) ?? manageableProfiles[0] ?? "QA"
+  })
 
   const [dataNascimento, setDataNascimento] = useState(initialData?.dataNascimento ?? "")
   const [horarioEntrada, setHorarioEntrada] = useState(initialData?.horarioEntrada ?? "")
@@ -90,10 +109,18 @@ export default function UsuarioFormTabs({
   const [linkedin, setLinkedin] = useState(initialData?.linkedin ?? "")
 
   // --- Formação e Cursos ---
-  const [education, setEducation] = useState<any[]>(initialData?.education ?? [])
-  const [courses, setCourses] = useState<any[]>(initialData?.courses ?? [])
-  const [languages, setLanguages] = useState<any[]>(initialData?.languages ?? [])
-  const [certifications, setCertifications] = useState<any[]>(initialData?.certifications ?? [])
+  const [education, setEducation] = useState<EducationEntry[]>(
+    (initialData?.education as EducationEntry[] | undefined) ?? [],
+  )
+  const [courses, setCourses] = useState<CourseEntry[]>(
+    (initialData?.courses as CourseEntry[] | undefined) ?? [],
+  )
+  const [languages, setLanguages] = useState<LanguageEntry[]>(
+    (initialData?.languages as LanguageEntry[] | undefined) ?? [],
+  )
+  const [certifications, setCertifications] = useState<CertificationEntry[]>(
+    (initialData?.certifications as CertificationEntry[] | undefined) ?? [],
+  )
 
   const canSeeRestricted = mode === "create"
     ? sessionUser?.accessProfile === "MGR"

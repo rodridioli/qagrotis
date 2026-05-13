@@ -133,7 +133,7 @@ export function extractCredentialTripletFromDoc(doc: string): {
     return ""
   }
 
-  let url = pickUrl()
+  const url = pickUrl()
   let usuario = pickLogin()
   let senha = pickSenha()
 
