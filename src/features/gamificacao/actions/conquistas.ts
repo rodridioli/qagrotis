@@ -7,7 +7,6 @@ import { buildRole, can } from "@/core/rbac/policy"
 import {
   BADGE_DEFINITIONS,
   LANGUAGE_LEVEL_ORDER,
-  type BadgeResult,
   type ListUserBadgesResponse,
 } from "@/features/gamificacao/lib/conquistas"
 import { createNotification } from "@/core/actions/notifications"

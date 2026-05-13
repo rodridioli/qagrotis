@@ -7,7 +7,7 @@ const fs = require("fs")
 const { execSync } = require("child_process")
 const path = require("path")
 
-const changelogPath = path.join(__dirname, "../data/changelog.json")
+const changelogPath = path.join(__dirname, "../src/data/changelog.json")
 const data = JSON.parse(fs.readFileSync(changelogPath, "utf-8"))
 
 // Get latest version and bump patch

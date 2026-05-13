@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/nextjs-vite"
+import type { Meta } from "@storybook/nextjs-vite"
 
 /**
  * NotificationBell depende de useSession (next-auth) e React Query.

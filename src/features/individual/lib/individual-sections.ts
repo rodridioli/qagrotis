@@ -10,6 +10,7 @@ export const INDIVIDUAL_SECTION_ORDER = [
   "conquistas",
   "pdi",
   "progressao",
+  "lancamentos",
 ] as const
 
 export type IndividualSectionSlug = (typeof INDIVIDUAL_SECTION_ORDER)[number]
@@ -24,6 +25,7 @@ export const INDIVIDUAL_SECTION_LABELS: Record<IndividualSectionSlug, string> = 
   conquistas: "Conquistas",
   pdi: "PDI",
   progressao: "Progressão",
+  lancamentos: "Lançamentos",
 }
 
 export function isIndividualSectionSlug(secao: string): secao is IndividualSectionSlug {

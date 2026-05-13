@@ -26,9 +26,12 @@ export function PhotoCropModal({ file, open, onOpenChange, onConfirm }: PhotoCro
   const dragStart = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
 
   useEffect(() => {
-    if (!file) { setImgUrl(null); return }
+    if (!file) {
+      queueMicrotask(() => setImgUrl(null))
+      return
+    }
     const url = URL.createObjectURL(file)
-    setImgUrl(url)
+    queueMicrotask(() => setImgUrl(url))
     return () => URL.revokeObjectURL(url)
   }, [file])
 
@@ -140,6 +143,7 @@ export function PhotoCropModal({ file, open, onOpenChange, onConfirm }: PhotoCro
             onPointerCancel={onPointerUp}
           >
             {imgUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- blob: URL do recorte local
               <img
                 ref={imgRef}
                 src={imgUrl}

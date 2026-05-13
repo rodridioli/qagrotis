@@ -516,7 +516,7 @@ const Topbar = React.memo(function Topbar({
       : avatarApi
   const [avatarFailed, setAvatarFailed] = useState(false)
   useEffect(() => {
-    setAvatarFailed(false)
+    queueMicrotask(() => setAvatarFailed(false))
   }, [avatarSrc])
   const profileHref = internalId
     ? `/configuracoes/usuarios/${internalId}/editar`
@@ -637,7 +637,7 @@ export default function LayoutClient({
   integracoes: integracoesProp = [],
   hasSistemaComModulo: hasSistemaComModuloProp = false,
   hasCenario: hasCenarioProp = false,
-  isAdmin = false,
+  isAdmin: _isAdmin = false,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()

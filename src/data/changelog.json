@@ -1,5 +1,52 @@
 [
   {
+    "version": "1.6.27",
+    "commit": "deploy-vercel",
+    "date": "2026-05-13",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "build estável (tsconfig, changelog, types Prisma, EmptyState)",
+      "feat(individual): secção Lançamentos com worklogs Jira",
+      "chore(backup): checkpoint antes de Individual Lançamentos (Jira UI)"
+    ]
+  },
+  {
+    "version": "1.6.26",
+    "commit": "deploy-vercel",
+    "date": "2026-05-13",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "feat(individual): secção Lançamentos com worklogs Jira",
+      "chore(backup): checkpoint antes de Individual Lançamentos (Jira UI)"
+    ]
+  },
+  {
+    "version": "1.6.25",
+    "commit": "deploy-vercel",
+    "date": "2026-05-13",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "feat(individual): secção Lançamentos com worklogs Jira",
+      "chore(backup): checkpoint antes de Individual Lançamentos (Jira UI)",
+      "fix(clientes): sync list state after activate/inactivate and edit",
+      "exibe modelos de IA para usuários Padrão no Gerador e ajusta textos de placeholder",
+      "remove rolagem horizontal no card de abas de Cenários",
+      "fix/ux: guard botão Adicionar Modelo por role e padroniza empty states restantes",
+      "ux: troca ícone do item TW no menu lateral de Code2 para FileText",
+      "botão Meu Cadastro em Configurações para usuários Padrão (QA/UX/TW)",
+      "desabilita abas Endereço e Formação para admins QA/UX/TW ao criar usuário",
+      "notificações de parabéns para aniversariante e aniversário de empresa",
+      "adiciona campo e coluna Valor Hora em Progressão",
+      "ux: padronização de UX writing em toasts, labels e mensagens",
+      "padroniza empty states com mensagem única \"Nenhum registro encontrado.\"",
+      "remove requireSession de getIntegracoesSafe para restaurar menu de navegação",
+      "revisão geral de segurança, padrões de UI e organização de arquivos"
+    ]
+  },
+  {
     "version": "1.6.24",
     "commit": "deploy-vercel",
     "date": "2026-04-29",

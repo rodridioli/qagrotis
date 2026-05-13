@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import {
-  BarChart3, Users, Clock, Calendar,
   SlidersHorizontal, X, Check, RotateCcw,
 } from "lucide-react"
 import {
@@ -60,16 +59,6 @@ type TabId =
   | "ausencias"
   | "metas"
   | "aniversarios"
-
-const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
-  { id: "performance",  label: "Visão geral",        icon: BarChart3 },
-  { id: "chapters",     label: "Chapters",           icon: Users     },
-  { id: "horarios",     label: "Horários",  icon: Clock     },
-  { id: "ferias",       label: "Férias",    icon: Calendar  },
-  { id: "ausencias",    label: "Ausências", icon: Calendar  },
-  { id: "metas",        label: "OKRs",               icon: BarChart3 },
-  { id: "aniversarios", label: "Aniversários",       icon: Users     },
-]
 
 const PERIODOS = [
   { value: "hoje",         label: "Hoje"          },

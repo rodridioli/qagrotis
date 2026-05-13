@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useMemo, useState } from "react"
 import { cn } from "@/core/utils"
 import { Layers, FileText, ClipboardList, Cpu } from "lucide-react"
 import { useSistemaSelecionado } from "@/core/modulo-context"

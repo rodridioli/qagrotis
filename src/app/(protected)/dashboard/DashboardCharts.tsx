@@ -275,7 +275,7 @@ export function DashboardCharts({
 }: Props) {
   const [loading, setLoading] = useState<Record<string, boolean>>({})
 
-  const withLoading = (key: string, fn: (v: any) => void) => (v: any) => {
+  const withLoading = <T,>(key: string, fn: (v: T) => void) => (v: T) => {
     setLoading(prev => ({ ...prev, [key]: true }))
     fn(v)
     setTimeout(() => {

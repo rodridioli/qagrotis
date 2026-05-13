@@ -1,5 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react"
-import { Building2, ClipboardList, Layers, Server, Users } from "lucide-react"
+import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { EmptyState } from "@/components/shared/EmptyState"
 
 const meta: Meta<typeof EmptyState> = {
@@ -17,42 +16,30 @@ export const Default: Story = {
   },
 }
 
-export const WithIcon: Story = {
+export const SearchEmpty: Story = {
   args: {
-    icon: Users,
-    message: "Nenhum usuário cadastrado ainda.",
+    message: "Nenhum resultado para a busca.",
   },
 }
 
-export const WithDescription: Story = {
+export const InlineSection: Story = {
   args: {
-    icon: Building2,
-    message: "Nenhum cliente cadastrado ainda.",
-    description: "Clientes são associados a cenários e suítes de teste.",
+    message: "Nenhuma evidência anexada.",
+    className: "mx-0 my-0",
   },
 }
 
-export const WithAction: Story = {
+export const CustomMargin: Story = {
   args: {
-    icon: ClipboardList,
-    message: "Nenhum cenário cadastrado ainda.",
-    description: "Crie seu primeiro cenário para começar a organizar os testes.",
-    action: { label: "Criar Cenário", onClick: () => {} },
+    message: "Nenhum cenário vinculado.",
+    className: "mx-5",
   },
 }
 
-export const Sistemas: Story = {
+export const LongMessage: Story = {
   args: {
-    icon: Server,
-    message: "Nenhum sistema cadastrado ainda.",
-    description: "Sistemas agrupam módulos e cenários de teste.",
-  },
-}
-
-export const Modulos: Story = {
-  args: {
-    icon: Layers,
-    message: "Nenhum módulo cadastrado ainda.",
-    description: "Módulos são subdivisões de um sistema.",
+    message:
+      "Nenhuma execução registrada. O histórico será preenchido após a execução dos cenários.",
+    className: "mx-5",
   },
 }

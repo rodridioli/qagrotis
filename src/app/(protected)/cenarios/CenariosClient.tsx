@@ -412,10 +412,7 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
         />
 
         {pageItems.length === 0 ? (
-          <EmptyState
-            message="Nenhum registro encontrado."
-            action={isAdmin ? { label: "Criar Cenário", onClick: () => router.push("/cenarios/novo") } : undefined}
-          />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <>
             <div className="overflow-x-auto">
