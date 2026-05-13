@@ -5,6 +5,7 @@ import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credent
 import {
   fetchWorklogsForAuthorInRange,
   findJiraAccountIdByEmail,
+  resolveTimeZoneForWorklogs,
 } from "@/features/qa/lib/jira-worklogs-fetch"
 import { getActiveQaUsers, resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
 import type { NextRequest } from "next/server"
@@ -108,12 +109,15 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  const timeZoneId = resolveTimeZoneForWorklogs(url.searchParams.get("tz"))
+
   const { entries, truncatedIssues, truncatedWorklogs } = await fetchWorklogsForAuthorInRange(
     base,
     credentials,
     jiraUser.accountId,
     from,
     to,
+    timeZoneId,
   )
 
   const totalSeconds = entries.reduce((acc, e) => acc + e.timeSpentSeconds, 0)

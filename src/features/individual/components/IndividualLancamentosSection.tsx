@@ -79,7 +79,12 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
   const load = React.useCallback(async () => {
     setLoading(true)
     setError(null)
-    const qs = new URLSearchParams({ from, to, userId: evaluatedUserId })
+    const qs = new URLSearchParams({
+      from,
+      to,
+      userId: evaluatedUserId,
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    })
     try {
       const res = await fetch(`/api/jira/lancamentos?${qs}`, { credentials: "same-origin" })
       const body = (await res.json().catch(() => null)) as ApiOk | { error?: string } | null
@@ -128,6 +133,12 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
 
   return (
     <div className="flex w-full flex-col gap-6">
+      <p className="text-xs leading-relaxed text-text-secondary">
+        São listados apenas <strong className="font-medium text-text-primary">worklogs nativos do Jira</strong> (aba
+        &quot;Work log&quot; / registo de trabalho da issue). Horas só no widget{" "}
+        <strong className="font-medium text-text-primary">Clockwork</strong> podem não existir na API de worklogs —
+        confirme no Jira se o tempo aparece em Work log. Ajuste o intervalo de datas para incluir o dia do lançamento.
+      </p>
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div className="flex flex-wrap gap-2">
           {(
