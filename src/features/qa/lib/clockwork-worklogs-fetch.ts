@@ -30,13 +30,19 @@ function mapClockworkRow(raw: unknown): JiraLancamentoEntry | null {
   const issueKey =
     (typeof issue?.key === "string" && issue.key.trim()) ||
     (issue?.id != null && String(issue.id).trim() ? `ID-${String(issue.id).trim()}` : "DESCONHECIDO")
+  const projectKey = issueKey.includes("-") ? issueKey.split("-")[0] : issueKey
   const summary = typeof issue?.summary === "string" ? issue.summary : null
   const id = r.id != null ? String(r.id) : `${issueKey}-${started}-${ts}`
   const comment = typeof r.comment === "string" && r.comment.trim() ? r.comment.trim() : null
   return {
     id: `cw-${id}`,
     issueKey,
+    projectKey,
     summary,
+    issueType: null,
+    priority: null,
+    labels: [],
+    qtdCenariosQA: null,
     started,
     timeSpentSeconds: ts,
     hours: Math.round((ts / 3600) * 100) / 100,

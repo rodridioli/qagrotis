@@ -1,14 +1,25 @@
 "use client"
 
 import * as React from "react"
-import { AlertTriangle } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import {
+  AlertTriangle,
+  BarChart3,
+  Bot,
+  Bug,
+  Clock,
+  Flame,
+  Hash,
+  Layers,
+  TrendingUp,
+  Zap,
+} from "lucide-react"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
+import { TableToolbar } from "@/components/shared/TableToolbar"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/core/utils"
 import {
   getLancamentosPresetRange,
-  toIsoLocal,
   type LancamentosPeriodPreset,
 } from "@/features/individual/lib/individual-lancamentos-date-presets"
 
@@ -19,7 +30,12 @@ export interface IndividualLancamentosSectionProps {
 type LancamentoRow = {
   id: string
   issueKey: string
+  projectKey: string
   summary: string | null
+  issueType?: string | null
+  priority?: string | null
+  labels?: string[]
+  qtdCenariosQA?: number | null
   started: string
   timeSpentSeconds: number
   hours: number
@@ -43,9 +59,9 @@ type ApiOk = {
   clockworkMergedCount?: number
 }
 
-function formatTotalDuration(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600)
-  const m = Math.floor((totalSeconds % 3600) / 60)
+function formatHours(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
   if (h === 0) return `${m} min`
   if (m === 0) return `${h} h`
   return `${h} h ${m} min`
@@ -56,14 +72,190 @@ function formatHoursShort(hours: number): string {
   return `${hours.toFixed(2)} h`
 }
 
+function alertLevel(hours: number): "red" | "yellow" | null {
+  if (hours > 10) return "red"
+  if (hours > 6) return "yellow"
+  return null
+}
+
+// ── Dashboard stats ─────────────────────────────────────────────────────────
+
+type ProjectHours = { key: string; seconds: number }
+
+function computeStats(entries: LancamentoRow[]) {
+  const projectMap = new Map<string, number>()
+  const issueSet = new Set<string>()
+  const criticalIssues = new Set<string>()
+  const brokenTestIssues = new Set<string>()
+  let qtdCenariosTotal = 0
+  let desvioSeconds = 0
+  let taSeconds = 0
+
+  const CRITICAL_PRIORITIES = new Set(["Critical", "Highest", "Crítica", "Alta"])
+  const isCritical = (e: LancamentoRow) =>
+    e.priority ? CRITICAL_PRIORITIES.has(e.priority) : false
+  const isBrokenTest = (e: LancamentoRow) =>
+    (e.issueType ?? "").toLowerCase().includes("broken")
+  const isDesvio = (e: LancamentoRow) =>
+    (e.labels ?? []).some((l) => l.toLowerCase() === "desvio") ||
+    (e.issueType ?? "").toLowerCase() === "desvio"
+  const isTA = (e: LancamentoRow) =>
+    (e.labels ?? []).some((l) => l.toUpperCase() === "TA") ||
+    (e.issueType ?? "").toLowerCase().includes("automatizado")
+
+  for (const e of entries) {
+    const pk = e.projectKey || e.issueKey.split("-")[0]
+    projectMap.set(pk, (projectMap.get(pk) ?? 0) + e.timeSpentSeconds)
+    issueSet.add(e.issueKey)
+    if (isCritical(e)) criticalIssues.add(e.issueKey)
+    if (isBrokenTest(e)) brokenTestIssues.add(e.issueKey)
+    if (e.qtdCenariosQA != null) qtdCenariosTotal += e.qtdCenariosQA
+    if (isDesvio(e)) desvioSeconds += e.timeSpentSeconds
+    if (isTA(e)) taSeconds += e.timeSpentSeconds
+  }
+
+  const projectHours: ProjectHours[] = Array.from(projectMap.entries())
+    .map(([key, seconds]) => ({ key, seconds }))
+    .sort((a, b) => b.seconds - a.seconds)
+
+  return {
+    projectHours,
+    totalIssues: issueSet.size,
+    criticalCount: criticalIssues.size,
+    brokenTestCount: brokenTestIssues.size,
+    qtdCenariosTotal,
+    desvioSeconds,
+    taSeconds,
+  }
+}
+
+// ── Dashboard panel ──────────────────────────────────────────────────────────
+
+function StatCard({
+  icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: React.ReactNode
+  accent?: "red" | "amber" | "violet" | "blue" | "green" | "teal"
+}) {
+  const accentMap: Record<string, string> = {
+    red: "bg-red-500/10 text-red-600 dark:text-red-400",
+    amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    violet: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+    blue: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    green: "bg-green-500/10 text-green-600 dark:text-green-400",
+    teal: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+  }
+  const iconClass = accent ? accentMap[accent] : "bg-neutral-grey-100 text-text-secondary"
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-border-default bg-surface-card p-4 shadow-card">
+      <div className="flex items-center gap-2">
+        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", iconClass)}>
+          {icon}
+        </span>
+        <span className="text-xs font-medium text-text-secondary">{label}</span>
+      </div>
+      <div className="text-2xl font-bold tabular-nums text-text-primary">{value}</div>
+    </div>
+  )
+}
+
+function ProjectBar({ projectHours }: { projectHours: ProjectHours[] }) {
+  if (projectHours.length === 0) return null
+  const max = projectHours[0].seconds
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-border-default bg-surface-card p-4 shadow-card md:col-span-2 lg:col-span-3">
+      <div className="flex items-center gap-2">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+          <BarChart3 className="size-4" />
+        </span>
+        <span className="text-xs font-medium text-text-secondary">Horas por Projeto</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {projectHours.map((p) => (
+          <div key={p.key} className="flex items-center gap-3">
+            <span className="w-16 shrink-0 text-right font-mono text-xs font-medium text-text-primary">
+              {p.key}
+            </span>
+            <div className="flex-1 overflow-hidden rounded-full bg-neutral-grey-100">
+              <div
+                className="h-2 rounded-full bg-brand-primary transition-all"
+                style={{ width: `${Math.round((p.seconds / max) * 100)}%` }}
+              />
+            </div>
+            <span className="w-16 shrink-0 text-xs tabular-nums text-text-secondary">
+              {formatHours(p.seconds)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DashboardPanel({ entries }: { entries: LancamentoRow[] }) {
+  const stats = React.useMemo(() => computeStats(entries), [entries])
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ProjectBar projectHours={stats.projectHours} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <StatCard
+          icon={<Hash className="size-4" />}
+          label="Total de Issues"
+          value={stats.totalIssues}
+          accent="blue"
+        />
+        <StatCard
+          icon={<Flame className="size-4" />}
+          label="Issues Críticas"
+          value={stats.criticalCount}
+          accent="red"
+        />
+        <StatCard
+          icon={<Bug className="size-4" />}
+          label="Broken Test"
+          value={stats.brokenTestCount}
+          accent="amber"
+        />
+        <StatCard
+          icon={<Layers className="size-4" />}
+          label="Cenários Testados"
+          value={stats.qtdCenariosTotal}
+          accent="teal"
+        />
+        <StatCard
+          icon={<TrendingUp className="size-4" />}
+          label="Horas Desvios"
+          value={formatHours(stats.desvioSeconds)}
+          accent="violet"
+        />
+        <StatCard
+          icon={<Bot className="size-4" />}
+          label="Horas TA"
+          value={formatHours(stats.taSeconds)}
+          accent="green"
+        />
+      </div>
+    </div>
+  )
+}
+
+// ── Main section ─────────────────────────────────────────────────────────────
+
 export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLancamentosSectionProps) {
-  const [preset, setPreset] = React.useState<LancamentosPeriodPreset | null>("week")
+  const [preset, setPreset] = React.useState<LancamentosPeriodPreset>("week")
   const [from, setFrom] = React.useState(() => getLancamentosPresetRange("week").from)
   const [to, setTo] = React.useState(() => getLancamentosPresetRange("week").to)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [data, setData] = React.useState<ApiOk | null>(null)
   const [jiraBase, setJiraBase] = React.useState<string | null>(null)
+  const [search, setSearch] = React.useState("")
 
   React.useEffect(() => {
     let cancelled = false
@@ -74,9 +266,7 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
         setJiraBase((prev) => prev ?? String(d.jiraUrl).replace(/\/$/, ""))
       })
       .catch(() => {})
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
   const load = React.useCallback(async () => {
@@ -122,75 +312,40 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
     setTo(r.to)
   }
 
-  function onFromInput(v: string) {
-    setPreset(null)
-    setFrom(v)
-  }
+  const allEntries = data?.entries ?? []
 
-  function onToInput(v: string) {
-    setPreset(null)
-    setTo(v)
-  }
-
-  const todayIso = React.useMemo(() => toIsoLocal(new Date()), [])
+  const filtered = React.useMemo(() => {
+    if (!search.trim()) return allEntries
+    const q = search.trim().toLowerCase()
+    return allEntries.filter(
+      (e) =>
+        e.issueKey.toLowerCase().includes(q) ||
+        (e.summary ?? "").toLowerCase().includes(q),
+    )
+  }, [allEntries, search])
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <p className="text-xs leading-relaxed text-text-secondary">
-        Por defeito listamos <strong className="font-medium text-text-primary">worklogs nativos do Jira</strong> (Work
-        log da issue). Se o tempo existir só no Clockwork (Pro), um administrador MGR pode configurar o token em{" "}
-        <strong className="font-medium text-text-primary">Configurações → Integração Clockwork</strong>; opcionalmente
-        pode existir <strong className="font-medium text-text-primary">CLOCKWORK_API_TOKEN</strong> no servidor como
-        reserva. Esses lançamentos são fundidos aqui e assinalados como Clockwork. Ajuste o intervalo para incluir o dia
-        do registo.
-      </p>
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              ["today", "Hoje"],
-              ["week", "Semana"],
-              ["month", "Mês"],
-              ["lastMonth", "Último mês"],
-            ] as const
-          ).map(([key, label]) => (
-            <Button
-              key={key}
-              type="button"
-              variant={preset === key ? "default" : "outline"}
-              size="sm"
-              onClick={() => applyPreset(key)}
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 text-sm text-text-secondary">
-            <span className="whitespace-nowrap">De</span>
-            <input
-              type="date"
-              value={from}
-              max={to}
-              onChange={(e) => onFromInput(e.target.value)}
-              className="rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-sm text-text-primary"
-            />
-          </label>
-          <label className="flex items-center gap-2 text-sm text-text-secondary">
-            <span className="whitespace-nowrap">Até</span>
-            <input
-              type="date"
-              value={to}
-              min={from}
-              max={todayIso}
-              onChange={(e) => onToInput(e.target.value)}
-              className="rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-sm text-text-primary"
-            />
-          </label>
-          <Button type="button" variant="secondary" size="sm" onClick={() => void load()}>
-            Atualizar
+      {/* Preset filters */}
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            ["today", "Hoje"],
+            ["week", "Semana"],
+            ["month", "Mês Atual"],
+            ["lastMonth", "Mês Anterior"],
+          ] as const
+        ).map(([key, label]) => (
+          <Button
+            key={key}
+            type="button"
+            variant={preset === key ? "default" : "outline"}
+            size="sm"
+            onClick={() => applyPreset(key)}
+          >
+            {label}
           </Button>
-        </div>
+        ))}
       </div>
 
       {loading ? (
@@ -213,27 +368,9 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
             >
               <p className="font-medium text-text-primary">Utilizador Jira não encontrado por e-mail</p>
               <p className="mt-1">
-                A tabela pode mostrar apenas lançamentos vindos da API Clockwork (token no servidor). Associe o mesmo
-                e-mail no Jira para alinhar worklogs nativos.
+                A tabela pode mostrar apenas lançamentos vindos da API Clockwork. Associe o mesmo e-mail no Jira
+                para alinhar worklogs nativos.
               </p>
-            </div>
-          ) : null}
-          {data && data.longSessionCount > 0 ? (
-            <div
-              className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-text-primary"
-              role="status"
-            >
-              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" aria-hidden />
-              <div>
-                <p className="font-medium text-amber-900 dark:text-amber-100">
-                  {data.longSessionCount === 1
-                    ? "Existe 1 lançamento com mais de 8 horas."
-                    : `Existem ${data.longSessionCount} lançamentos com mais de 8 horas.`}
-                </p>
-                <p className="mt-1 text-text-secondary">
-                  Estas linhas estão destacadas na tabela. Revise se o tempo foi registado corretamente.
-                </p>
-              </div>
             </div>
           ) : null}
 
@@ -249,111 +386,126 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
             </p>
           ) : null}
 
-          <div className="rounded-custom border border-border-default bg-surface-card p-4 shadow-card">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-              <p className="text-sm text-text-secondary">Total no período</p>
-              <p className="text-2xl font-semibold tabular-nums text-text-primary">
-                {data ? formatTotalDuration(data.totalSeconds) : "—"}
-              </p>
-            </div>
-            {data?.jiraAuthorDisplayName ? (
-              <p className="mt-2 text-sm text-text-secondary">
-                Utilizador Jira: <span className="font-medium text-text-primary">{data.jiraAuthorDisplayName}</span>
-              </p>
-            ) : null}
-            {data?.includesClockwork && (data.clockworkMergedCount ?? 0) > 0 ? (
-              <p className="mt-2 text-sm text-text-secondary">
-                Inclui{" "}
-                <span className="font-medium text-text-primary">
-                  {data.clockworkMergedCount} lançamento(s) Clockwork
-                </span>{" "}
-                não duplicados face ao Jira.
-              </p>
-            ) : null}
-          </div>
+          {/* Dashboard totals */}
+          {allEntries.length > 0 && <DashboardPanel entries={allEntries} />}
 
-          {!data?.entries.length ? (
-            <EmptyState message="Não há lançamentos neste intervalo (Jira + Clockwork, se configurado)." />
-          ) : (
-            <div className="overflow-x-auto rounded-custom border border-border-default">
-              <table className="w-full min-w-[42rem] border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
-                    <th className="px-3 py-2 font-medium">Issue</th>
-                    <th className="hidden px-3 py-2 font-medium sm:table-cell">Fonte</th>
-                    <th className="px-3 py-2 font-medium">Resumo</th>
-                    <th className="px-3 py-2 font-medium">Data</th>
-                    <th className="px-3 py-2 font-medium">Tempo</th>
-                    <th className="px-3 py-2 font-medium">Comentário</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.entries.map((row) => (
-                    <tr
-                      key={row.id}
-                      className={cn(
-                        "border-b border-border-default last:border-0",
-                        row.isLongSession ? "bg-amber-500/10" : "hover:bg-neutral-grey-50/80 dark:hover:bg-neutral-grey-900/30",
-                      )}
-                    >
-                      <td className="px-3 py-2 align-top font-mono text-xs sm:text-sm">
-                        <div className="flex items-center gap-1.5">
-                          {row.isLongSession ? (
-                            <AlertTriangle
-                              className="size-4 shrink-0 text-amber-600"
-                              aria-label="Lançamento superior a 8 horas"
-                            />
-                          ) : null}
-                          {jiraBase ? (
-                            <a
-                              href={`${jiraBase}/browse/${encodeURIComponent(row.issueKey)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-brand-primary underline-offset-2 hover:underline"
-                            >
-                              {row.issueKey}
-                            </a>
-                          ) : (
-                            row.issueKey
-                          )}
-                        </div>
-                      </td>
-                      <td className="hidden whitespace-nowrap px-3 py-2 align-top text-xs text-text-secondary sm:table-cell">
-                        {row.dataSource === "clockwork" ? (
-                          <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-800 dark:text-violet-200">
-                            Clockwork
-                          </span>
-                        ) : (
-                          <span className="text-text-secondary">Jira</span>
-                        )}
-                      </td>
-                      <td className="max-w-[14rem] px-3 py-2 align-top text-text-primary">
-                        {row.summary ?? "—"}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 align-top text-text-secondary">
-                        {new Date(row.started).toLocaleString("pt-BR", {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 align-top tabular-nums font-medium">
-                        {formatHoursShort(row.hours)}
-                      </td>
-                      <td className="max-w-[18rem] px-3 py-2 align-top text-text-secondary">
-                        {row.comment ? (
-                          <span className="line-clamp-3" title={row.comment}>
-                            {row.comment}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
+          {/* Table */}
+          <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
+            <TableToolbar
+              search={search}
+              onSearchChange={(v) => setSearch(v)}
+              searchPlaceholder="Buscar por Jira ou título…"
+              totalLabel="Total de Lançamentos"
+              totalCount={filtered.length}
+              baseCount={allEntries.length}
+            />
+
+            {filtered.length === 0 ? (
+              <EmptyState message="Nenhum registro encontrado." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
+                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Jira</th>
+                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Projeto</th>
+                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Título</th>
+                      <th className="hidden px-3 py-2 text-xs font-semibold text-text-secondary sm:table-cell">Fonte</th>
+                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Data</th>
+                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Tempo</th>
+                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Comentário</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {filtered.map((row) => {
+                      const alert = alertLevel(row.hours)
+                      return (
+                        <tr
+                          key={row.id}
+                          className={cn(
+                            "border-b border-border-default last:border-0",
+                            alert === "red"
+                              ? "bg-red-500/10"
+                              : alert === "yellow"
+                                ? "bg-amber-500/10"
+                                : "hover:bg-neutral-grey-50/80 dark:hover:bg-neutral-grey-900/30",
+                          )}
+                        >
+                          {/* Jira */}
+                          <td className="px-3 py-2 align-top font-mono text-xs sm:text-sm">
+                            {jiraBase ? (
+                              <a
+                                href={`${jiraBase}/browse/${encodeURIComponent(row.issueKey)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-brand-primary underline-offset-2 hover:underline"
+                              >
+                                {row.issueKey}
+                              </a>
+                            ) : (
+                              row.issueKey
+                            )}
+                          </td>
+                          {/* Projeto */}
+                          <td className="whitespace-nowrap px-3 py-2 align-top text-xs font-medium text-text-secondary">
+                            {row.projectKey || row.issueKey.split("-")[0]}
+                          </td>
+                          {/* Título */}
+                          <td className="max-w-[16rem] px-3 py-2 align-top text-text-primary">
+                            {row.summary ?? "—"}
+                          </td>
+                          {/* Fonte */}
+                          <td className="hidden whitespace-nowrap px-3 py-2 align-top text-xs text-text-secondary sm:table-cell">
+                            {row.dataSource === "clockwork" ? (
+                              <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-800 dark:text-violet-200">
+                                Clockwork
+                              </span>
+                            ) : (
+                              <span className="text-text-secondary">Jira</span>
+                            )}
+                          </td>
+                          {/* Data */}
+                          <td className="whitespace-nowrap px-3 py-2 align-top text-text-secondary">
+                            {new Date(row.started).toLocaleString("pt-BR", {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })}
+                          </td>
+                          {/* Tempo */}
+                          <td className="whitespace-nowrap px-3 py-2 align-top tabular-nums font-medium">
+                            <div className="flex items-center gap-1.5">
+                              {alert === "red" ? (
+                                <AlertTriangle
+                                  className="size-4 shrink-0 text-destructive"
+                                  aria-label="Mais de 10 horas lançadas"
+                                />
+                              ) : alert === "yellow" ? (
+                                <AlertTriangle
+                                  className="size-4 shrink-0 text-amber-500"
+                                  aria-label="Mais de 6 horas lançadas"
+                                />
+                              ) : null}
+                              {formatHoursShort(row.hours)}
+                            </div>
+                          </td>
+                          {/* Comentário */}
+                          <td className="max-w-[18rem] px-3 py-2 align-top text-text-secondary">
+                            {row.comment ? (
+                              <span className="line-clamp-3" title={row.comment}>
+                                {row.comment}
+                              </span>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
