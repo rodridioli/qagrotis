@@ -102,6 +102,7 @@ export async function GET(req: NextRequest) {
       truncatedIssues: false,
       truncatedWorklogs: false,
       noJiraUser: true,
+      jiraBrowseBase: base,
       message:
         "Não foi encontrado um utilizador Jira com o mesmo e-mail deste cadastro (ou o token não tem permissão de pesquisa).",
     })
@@ -126,6 +127,7 @@ export async function GET(req: NextRequest) {
     truncatedIssues,
     truncatedWorklogs,
     noJiraUser: false,
+    jiraBrowseBase: base,
     jiraAuthorDisplayName: jiraUser.displayName ?? null,
   })
 }

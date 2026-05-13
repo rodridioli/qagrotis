@@ -35,6 +35,7 @@ type ApiOk = {
   truncatedIssues: boolean
   truncatedWorklogs: boolean
   noJiraUser: boolean
+  jiraBrowseBase?: string
   message?: string
   jiraAuthorDisplayName?: string | null
 }
@@ -67,7 +68,7 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { jiraUrl?: string } | null) => {
         if (cancelled || !d?.jiraUrl?.trim()) return
-        setJiraBase(String(d.jiraUrl).replace(/\/$/, ""))
+        setJiraBase((prev) => prev ?? String(d.jiraUrl).replace(/\/$/, ""))
       })
       .catch(() => {})
     return () => {
@@ -89,7 +90,11 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
             : "Não foi possível carregar os lançamentos."
         throw new Error(msg)
       }
-      setData(body as ApiOk)
+      const ok = body as ApiOk
+      setData(ok)
+      if (ok.jiraBrowseBase?.trim()) {
+        setJiraBase(ok.jiraBrowseBase.replace(/\/$/, ""))
+      }
     } catch (e) {
       setData(null)
       setError(e instanceof Error ? e.message : "Erro ao carregar.")

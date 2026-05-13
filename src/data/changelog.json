@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.6.27",
+    "commit": "deploy-vercel",
+    "date": "2026-05-13",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "build estável (tsconfig, changelog, types Prisma, EmptyState)",
+      "feat(individual): secção Lançamentos com worklogs Jira",
+      "chore(backup): checkpoint antes de Individual Lançamentos (Jira UI)"
+    ]
+  },
+  {
     "version": "1.6.26",
     "commit": "deploy-vercel",
     "date": "2026-05-13",
