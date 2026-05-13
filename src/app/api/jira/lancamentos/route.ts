@@ -1,10 +1,16 @@
 import { auth } from "@/core/auth"
 import { validateOrigin } from "@/core/security"
 import { buildRole, can } from "@/core/rbac/policy"
+import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
 import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credentials-db"
+import {
+  fetchClockworkWorklogsForEmail,
+  mergeJiraAndClockworkWorklogs,
+} from "@/features/qa/lib/clockwork-worklogs-fetch"
 import {
   fetchWorklogsForAuthorInRange,
   findJiraAccountIdByEmail,
+  resolveTimeZoneForWorklogs,
 } from "@/features/qa/lib/jira-worklogs-fetch"
 import { getActiveQaUsers, resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
 import type { NextRequest } from "next/server"
@@ -26,6 +32,10 @@ function daysBetweenInclusive(from: string, to: string): number {
   return Math.floor((b - a) / (24 * 60 * 60 * 1000)) + 1
 }
 
+function normalizeEmailForClockwork(email: string): string {
+  return email.trim().toLowerCase()
+}
+
 export async function GET(req: NextRequest) {
   const csrfError = validateOrigin(req)
   if (csrfError) return csrfError
@@ -36,7 +46,7 @@ export async function GET(req: NextRequest) {
   }
 
   const role = buildRole(session.user.type, session.user.accessProfile)
-  if (!can(role, "menu.individual")) {
+  if (!can(role, "individual.lancamentos")) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -91,9 +101,54 @@ export async function GET(req: NextRequest) {
   const { jiraUrl, jiraEmail: viewerEmail, apiToken } = resolved
   const base = jiraUrl.replace(/\/$/, "")
   const credentials = Buffer.from(`${viewerEmail}:${apiToken}`).toString("base64")
+  const timeZoneId = resolveTimeZoneForWorklogs(url.searchParams.get("tz"))
+  const clockworkToken = (await getClockworkApiTokenResolved()).trim()
 
   const jiraUser = await findJiraAccountIdByEmail(base, credentials, targetEmail)
-  if (!jiraUser) {
+
+  let jiraEntries: Awaited<ReturnType<typeof fetchWorklogsForAuthorInRange>>["entries"] = []
+  let truncatedIssues = false
+  let truncatedWorklogs = false
+  let jiraAuthorDisplayName: string | null = null
+
+  if (jiraUser) {
+    jiraAuthorDisplayName = jiraUser.displayName ?? null
+    const fetched = await fetchWorklogsForAuthorInRange(
+      base,
+      credentials,
+      jiraUser.accountId,
+      from,
+      to,
+      timeZoneId,
+    )
+    jiraEntries = fetched.entries
+    truncatedIssues = fetched.truncatedIssues
+    truncatedWorklogs = fetched.truncatedWorklogs
+  }
+
+  let clockworkEntries: typeof jiraEntries = []
+  if (clockworkToken) {
+    try {
+      clockworkEntries = await fetchClockworkWorklogsForEmail({
+        token: clockworkToken,
+        emailNorm: normalizeEmailForClockwork(targetEmail),
+        fromIso: from,
+        toIso: to,
+        timeZoneId,
+      })
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[api/jira/lancamentos] Clockwork fetch failed", e)
+      }
+    }
+  }
+
+  const { merged: entries, clockworkAdded } = mergeJiraAndClockworkWorklogs(jiraEntries, clockworkEntries)
+  const totalSeconds = entries.reduce((acc, e) => acc + e.timeSpentSeconds, 0)
+  const longSessionCount = entries.filter((e) => e.isLongSession).length
+  const noJiraUser = !jiraUser
+
+  if (noJiraUser && entries.length === 0) {
     return Response.json({
       source: "jira" as const,
       entries: [] as const,
@@ -103,21 +158,13 @@ export async function GET(req: NextRequest) {
       truncatedWorklogs: false,
       noJiraUser: true,
       jiraBrowseBase: base,
-      message:
-        "Não foi encontrado um utilizador Jira com o mesmo e-mail deste cadastro (ou o token não tem permissão de pesquisa).",
+      includesClockwork: false,
+      clockworkMergedCount: 0,
+      message: clockworkToken
+        ? "Não foi encontrado utilizador Jira com este e-mail e a API Clockwork não devolveu lançamentos no intervalo (confirme o token Pro em Configurações e o e-mail no Clockwork)."
+        : "Não foi encontrado um utilizador Jira com o mesmo e-mail deste cadastro (ou o token não tem permissão de pesquisa). Em Configurações → Integração Clockwork (Administrador MGR) ou CLOCKWORK_API_TOKEN no servidor pode incluir horas só via Clockwork.",
     })
   }
-
-  const { entries, truncatedIssues, truncatedWorklogs } = await fetchWorklogsForAuthorInRange(
-    base,
-    credentials,
-    jiraUser.accountId,
-    from,
-    to,
-  )
-
-  const totalSeconds = entries.reduce((acc, e) => acc + e.timeSpentSeconds, 0)
-  const longSessionCount = entries.filter((e) => e.isLongSession).length
 
   return Response.json({
     source: "jira" as const,
@@ -126,8 +173,10 @@ export async function GET(req: NextRequest) {
     longSessionCount,
     truncatedIssues,
     truncatedWorklogs,
-    noJiraUser: false,
+    noJiraUser,
     jiraBrowseBase: base,
-    jiraAuthorDisplayName: jiraUser.displayName ?? null,
+    jiraAuthorDisplayName,
+    includesClockwork: clockworkAdded > 0,
+    clockworkMergedCount: clockworkAdded,
   })
 }

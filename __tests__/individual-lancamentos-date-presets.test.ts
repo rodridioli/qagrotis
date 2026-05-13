@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { getLancamentosPresetRange, toIsoLocal } from "@/features/individual/lib/individual-lancamentos-date-presets"
+import { calendarDayKeyInTimeZone, resolveTimeZoneForWorklogs } from "@/features/qa/lib/jira-worklogs-fetch"
 
 describe("individual-lancamentos-date-presets", () => {
   it("toIsoLocal formata YYYY-MM-DD em data local", () => {
@@ -31,5 +32,16 @@ describe("individual-lancamentos-date-presets", () => {
     const r = getLancamentosPresetRange("lastMonth", mid)
     expect(r.from).toBe("2026-02-01")
     expect(r.to).toBe("2026-02-28")
+  })
+
+  it("calendarDayKeyInTimeZone: UTC vs America/Sao_Paulo", () => {
+    expect(calendarDayKeyInTimeZone("2026-05-13T02:00:00.000Z", "UTC")).toBe("2026-05-13")
+    expect(calendarDayKeyInTimeZone("2026-05-13T02:00:00.000Z", "America/Sao_Paulo")).toBe("2026-05-12")
+  })
+
+  it("resolveTimeZoneForWorklogs: inválido cai em UTC", () => {
+    expect(resolveTimeZoneForWorklogs("")).toBe("UTC")
+    expect(resolveTimeZoneForWorklogs("Not/A/Real/Zone/Xyz")).toBe("UTC")
+    expect(resolveTimeZoneForWorklogs("America/Sao_Paulo")).toBe("America/Sao_Paulo")
   })
 })

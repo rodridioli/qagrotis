@@ -253,6 +253,15 @@ model UserJiraCredentials {
   updatedAt DateTime @updatedAt
 }
 
+/// Token API Clockwork Pro (registo único por instância). Campo apiToken cifrado como em UserJiraCredentials.
+model ClockworkIntegration {
+  id              String   @id @default("default")
+  apiToken        String
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 // Profile overrides for both mock and created users (name, email, type, photo)
 model UserProfile {
   userId          String    @id

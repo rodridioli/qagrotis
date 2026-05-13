@@ -20,4 +20,6 @@ export const env = {
   get STRIPE_PRICE_ID_PRO() { return get("STRIPE_PRICE_ID_PRO") },
   get NEXT_PUBLIC_APP_URL() { return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000" },
   get ANTHROPIC_API_KEY() { return get("ANTHROPIC_API_KEY") },
+  /** Opcional: Clockwork Pro — lista worklogs por e-mail (api.clockwork.report). Ver .env.example. */
+  get CLOCKWORK_API_TOKEN() { return get("CLOCKWORK_API_TOKEN") },
 } as const

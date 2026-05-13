@@ -27,6 +27,7 @@ export type Capability =
   | "menu.individual"
   // Individual
   | "individual.viewOthers"
+  | "individual.lancamentos"
   // Topbar
   | "topbar.sistemaSelector"
   // Sub-páginas de configurações
@@ -37,6 +38,7 @@ export type Capability =
   | "config.modelosIA"
   | "config.credenciais"
   | "config.jira"
+  | "config.clockwork"
   | "config.meuCadastro"
   // Ações em usuários
   | "users.create"
@@ -187,6 +189,8 @@ const POLICY: Record<Role, RoleConfig> = {
       "users.editProfileFields",
       "equipe.performance.filterByProfile",
       "individual.viewOthers",
+      "individual.lancamentos",
+      "config.clockwork",
     ],
     disabled: [],
     manageableProfiles: ["QA", "UX", "TW", "MGR"],

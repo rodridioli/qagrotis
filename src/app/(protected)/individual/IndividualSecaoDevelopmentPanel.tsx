@@ -16,6 +16,8 @@ interface Props {
   users: IndividualAvatarUser[]
   selectedUserId: string
   isAdministradorMgr?: boolean
+  /** RBAC: só utilizadores com `individual.lancamentos` devem ver a secção. */
+  canAccessLancamentos?: boolean
   showCompletedToast?: boolean
 }
 
@@ -24,6 +26,7 @@ export function IndividualSecaoDevelopmentPanel({
   users,
   selectedUserId,
   isAdministradorMgr = false,
+  canAccessLancamentos = false,
   showCompletedToast = false,
 }: Props) {
   const router = useRouter()
@@ -33,7 +36,7 @@ export function IndividualSecaoDevelopmentPanel({
   const showFeedbacks  = secao === "feedbacks"
   const showConquistas = secao === "conquistas"
   const showProgressao = secao === "progressao"
-  const showLancamentos = secao === "lancamentos"
+  const showLancamentos = secao === "lancamentos" && canAccessLancamentos
 
   return (
     <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-stretch gap-8">

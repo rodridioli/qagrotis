@@ -17,6 +17,8 @@ export type JiraLancamentoEntry = {
   hours: number
   isLongSession: boolean
   comment: string | null
+  /** Presente quando o registo veio da API Clockwork (fundido com Jira). */
+  dataSource?: "jira" | "clockwork"
 }
 
 function jqlDateFromIso(iso: string): string | null {
@@ -48,13 +50,40 @@ export function worklogCommentToPlain(comment: unknown): string | null {
   return null
 }
 
-function dayKeyFromJiraStarted(started: string): string | null {
-  const d = new Date(started)
+/**
+ * Dia civil YYYY-MM-DD do instante `started` (ISO) num fuso IANA.
+ * Deve coincidir com o mesmo critério usado nos presets (data local do utilizador).
+ */
+export function calendarDayKeyInTimeZone(startedIso: string, timeZone: string): string | null {
+  const d = new Date(startedIso)
   if (Number.isNaN(d.getTime())) return null
-  const y = d.getUTCFullYear()
-  const mo = String(d.getUTCMonth() + 1).padStart(2, "0")
-  const da = String(d.getUTCDate()).padStart(2, "0")
-  return `${y}-${mo}-${da}`
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(d)
+    const y = parts.find((p) => p.type === "year")?.value
+    const mo = parts.find((p) => p.type === "month")?.value
+    const da = parts.find((p) => p.type === "day")?.value
+    if (!y || !mo || !da) return null
+    return `${y}-${mo}-${da}`
+  } catch {
+    return null
+  }
+}
+
+/** Valida IANA básico e suporte do motor; fallback UTC. */
+export function resolveTimeZoneForWorklogs(raw: string | null | undefined): string {
+  const t = raw?.trim()
+  if (!t || t.length > 80 || !/^[A-Za-z0-9_/+-]+$/.test(t)) return "UTC"
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: t }).format(new Date())
+    return t
+  } catch {
+    return "UTC"
+  }
 }
 
 function dayInRange(dayKey: string, fromIso: string, toIso: string): boolean {
@@ -103,12 +132,46 @@ export async function findJiraAccountIdByEmail(
   return { accountId: pick.accountId, displayName: pick.displayName }
 }
 
+async function searchIssuesByJql(
+  base: string,
+  credentials: string,
+  jql: string,
+  startAt: number,
+): Promise<{
+  issues: { key: string; fields?: { summary?: string } }[]
+  total: number
+} | null> {
+  const searchUrl = `${base}/rest/api/3/search`
+  const { ok, data, status } = await jiraJson<{
+    issues?: { key: string; fields?: { summary?: string } }[]
+    total?: number
+    startAt?: number
+    maxResults?: number
+  }>(searchUrl, credentials, {
+    method: "POST",
+    body: JSON.stringify({
+      jql,
+      fields: ["summary"],
+      maxResults: SEARCH_PAGE,
+      startAt,
+    }),
+  })
+  if (!ok || !data?.issues) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[jira-worklogs-fetch] search failed", status, data)
+    }
+    return null
+  }
+  return { issues: data.issues, total: data.total ?? data.issues.length }
+}
+
 export async function fetchWorklogsForAuthorInRange(
   base: string,
   credentials: string,
   accountId: string,
   fromIso: string,
   toIso: string,
+  timeZoneId: string,
 ): Promise<{ entries: JiraLancamentoEntry[]; truncatedIssues: boolean; truncatedWorklogs: boolean }> {
   const jFrom = jqlDateFromIso(fromIso)
   const jTo = jqlDateFromIso(toIso)
@@ -117,47 +180,39 @@ export async function fetchWorklogsForAuthorInRange(
   }
 
   const escaped = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-  const jql = `worklogAuthor = "${escaped}" AND worklogDate >= "${jFrom}" AND worklogDate <= "${jTo}" ORDER BY updated DESC`
+  const jqlDated = `worklogAuthor = "${escaped}" AND worklogDate >= "${jFrom}" AND worklogDate <= "${jTo}" ORDER BY updated DESC`
+  const jqlFallback = `worklogAuthor = "${escaped}" ORDER BY updated DESC`
 
   const issueKeys: string[] = []
   const summaries = new Map<string, string | null>()
   let startAt = 0
   let total = 0
 
-  do {
-    const searchUrl = `${base}/rest/api/3/search`
-    const { ok, data, status } = await jiraJson<{
-      issues?: { key: string; fields?: { summary?: string } }[]
-      total?: number
-      startAt?: number
-      maxResults?: number
-    }>(searchUrl, credentials, {
-      method: "POST",
-      body: JSON.stringify({
-        jql,
-        fields: ["summary"],
-        maxResults: SEARCH_PAGE,
-        startAt,
-      }),
-    })
-
-    if (!ok || !data?.issues) {
-      if (process.env.NODE_ENV !== "production") {
-        console.error("[jira-worklogs-fetch] search failed", status, data)
+  const runSearch = async (jql: string, capIssues: number) => {
+    startAt = 0
+    total = 0
+    issueKeys.length = 0
+    summaries.clear()
+    do {
+      const batch = await searchIssuesByJql(base, credentials, jql, startAt)
+      if (!batch) break
+      total = batch.total
+      for (const issue of batch.issues) {
+        if (issueKeys.length >= capIssues) break
+        if (!issueKeys.includes(issue.key)) {
+          issueKeys.push(issue.key)
+          summaries.set(issue.key, issue.fields?.summary ?? null)
+        }
       }
-      break
-    }
+      startAt += batch.issues.length
+      if (issueKeys.length >= capIssues || startAt >= total || batch.issues.length === 0) break
+    } while (true)
+  }
 
-    total = data.total ?? issueKeys.length
-    for (const issue of data.issues) {
-      if (issueKeys.length >= MAX_ISSUES) break
-      issueKeys.push(issue.key)
-      summaries.set(issue.key, issue.fields?.summary ?? null)
-    }
-
-    startAt += data.issues.length
-    if (issueKeys.length >= MAX_ISSUES || startAt >= total || data.issues.length === 0) break
-  } while (true)
+  await runSearch(jqlDated, MAX_ISSUES)
+  if (issueKeys.length === 0) {
+    await runSearch(jqlFallback, Math.min(50, MAX_ISSUES))
+  }
 
   const truncatedIssues = total > issueKeys.length || issueKeys.length >= MAX_ISSUES
 
@@ -186,7 +241,7 @@ export async function fetchWorklogsForAuthorInRange(
         if (w.author?.accountId !== accountId) continue
         const started = w.started
         if (!started || w.timeSpentSeconds == null) continue
-        const day = dayKeyFromJiraStarted(started)
+        const day = calendarDayKeyInTimeZone(started, timeZoneId)
         if (!day || !dayInRange(day, fromIso, toIso)) continue
         entries.push({
           id: `${issueKey}-${w.id}`,
