@@ -53,6 +53,7 @@ type ApiOk = {
   jiraAuthorDisplayName?: string | null
   includesClockwork?: boolean
   clockworkMergedCount?: number
+  brokenTestsOpenedCount?: number
 }
 
 function formatHours(seconds: number): string {
@@ -78,16 +79,35 @@ function alertLevel(hours: number): "red" | "yellow" | null {
 
 type ProjectHours = { key: string; seconds: number }
 
+function normalizePriorityToken(p: string): string {
+  return p
+    .normalize("NFD")
+    .replace(/\p{Mark}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+}
+
+function priorityIsCritical(p: string | null | undefined): boolean {
+  if (!p?.trim()) return false
+  const n = normalizePriorityToken(p)
+  return (
+    n === "critical" ||
+    n === "highest" ||
+    n === "critica" ||
+    n === "alta" ||
+    n.includes("critical") ||
+    n.includes("critica")
+  )
+}
+
 function computeStats(entries: LancamentoRow[]) {
   const projectMap = new Map<string, number>()
   const issueSet = new Set<string>()
   const criticalIssues = new Set<string>()
   const brokenTestIssues = new Set<string>()
-  let qtdCenariosTotal = 0
+  const qtdByIssue = new Map<string, number>()
 
-  const CRITICAL_PRIORITIES = new Set(["Critical", "Highest", "Crítica", "Alta"])
-  const isCritical = (e: LancamentoRow) =>
-    e.priority ? CRITICAL_PRIORITIES.has(e.priority) : false
   const isBrokenTest = (e: LancamentoRow) =>
     (e.issueType ?? "").toLowerCase().includes("broken")
 
@@ -95,9 +115,17 @@ function computeStats(entries: LancamentoRow[]) {
     const pk = e.projectKey || e.issueKey.split("-")[0]
     projectMap.set(pk, (projectMap.get(pk) ?? 0) + e.timeSpentSeconds)
     issueSet.add(e.issueKey)
-    if (isCritical(e)) criticalIssues.add(e.issueKey)
+    if (priorityIsCritical(e.priority)) criticalIssues.add(e.issueKey)
     if (isBrokenTest(e)) brokenTestIssues.add(e.issueKey)
-    if (e.qtdCenariosQA != null) qtdCenariosTotal += e.qtdCenariosQA
+    if (e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)) {
+      const prev = qtdByIssue.get(e.issueKey) ?? 0
+      qtdByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosQA))
+    }
+  }
+
+  let qtdCenariosTotal = 0
+  for (const v of qtdByIssue.values()) {
+    qtdCenariosTotal += v
   }
 
   const projectHours: ProjectHours[] = Array.from(projectMap.entries())
@@ -108,7 +136,7 @@ function computeStats(entries: LancamentoRow[]) {
     projectHours,
     totalIssues: issueSet.size,
     criticalCount: criticalIssues.size,
-    brokenTestCount: brokenTestIssues.size,
+    brokenTestCountFromWorklogs: brokenTestIssues.size,
     qtdCenariosTotal,
   }
 }
@@ -181,8 +209,16 @@ function ProjectBar({ projectHours }: { projectHours: ProjectHours[] }) {
   )
 }
 
-function DashboardPanel({ entries }: { entries: LancamentoRow[] }) {
+function DashboardPanel({
+  entries,
+  brokenTestsOpenedCount,
+}: {
+  entries: LancamentoRow[]
+  brokenTestsOpenedCount?: number
+}) {
   const stats = React.useMemo(() => computeStats(entries), [entries])
+  const retornoDeTestes =
+    brokenTestsOpenedCount != null ? brokenTestsOpenedCount : stats.brokenTestCountFromWorklogs
 
   return (
     <div className="flex flex-col gap-3">
@@ -203,7 +239,7 @@ function DashboardPanel({ entries }: { entries: LancamentoRow[] }) {
         <StatCard
           icon={<Bug className="size-4" />}
           label="Retorno de Testes"
-          value={stats.brokenTestCount}
+          value={retornoDeTestes}
           accent="amber"
         />
         <StatCard
@@ -292,7 +328,8 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
     return allEntries.filter(
       (e) =>
         e.issueKey.toLowerCase().includes(q) ||
-        (e.summary ?? "").toLowerCase().includes(q),
+        (e.summary ?? "").toLowerCase().includes(q) ||
+        (e.priority ?? "").toLowerCase().includes(q),
     )
   }, [allEntries, search])
 
@@ -355,14 +392,19 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
           ) : null}
 
           {/* Dashboard totals */}
-          {allEntries.length > 0 && <DashboardPanel entries={allEntries} />}
+          {allEntries.length > 0 && (
+            <DashboardPanel
+              entries={allEntries}
+              brokenTestsOpenedCount={data?.brokenTestsOpenedCount}
+            />
+          )}
 
           {/* Table */}
           <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
             <TableToolbar
               search={search}
               onSearchChange={(v) => setSearch(v)}
-              searchPlaceholder="Buscar por Jira ou título…"
+              searchPlaceholder="Buscar por Jira, título ou prioridade…"
               totalLabel="Total de Lançamentos"
               totalCount={filtered.length}
               baseCount={allEntries.length}
@@ -372,11 +414,12 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
               <EmptyState message="Nenhum registro encontrado." />
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
+                <table className="w-full min-w-[56rem] border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
                       <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Jira</th>
                       <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Projeto</th>
+                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Prioridade</th>
                       <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Título</th>
                       <th className="hidden px-3 py-2 text-xs font-semibold text-text-secondary sm:table-cell">Fonte</th>
                       <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Data</th>
@@ -417,6 +460,10 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
                           {/* Projeto */}
                           <td className="whitespace-nowrap px-3 py-2 align-top text-xs font-medium text-text-secondary">
                             {row.projectKey || row.issueKey.split("-")[0]}
+                          </td>
+                          {/* Prioridade */}
+                          <td className="whitespace-nowrap px-3 py-2 align-top text-xs text-text-primary">
+                            {row.priority?.trim() ? row.priority : "—"}
                           </td>
                           {/* Título */}
                           <td className="max-w-[16rem] px-3 py-2 align-top text-text-primary">
