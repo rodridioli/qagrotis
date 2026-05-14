@@ -43,6 +43,27 @@ export const Default: Story = {
   },
 }
 
+export const LancamentosLeadingSummary: Story = {
+  name: "leadingSummary (Lançamentos)",
+  render: () => (
+    <div className="rounded-xl border border-border-default bg-surface-card">
+      <TableToolbar
+        search=""
+        onSearchChange={() => {}}
+        searchPlaceholder="Buscar..."
+        baseCount={0}
+        leadingSummary={
+          <span className="text-sm font-medium text-text-primary">
+            Lançamentos: <span className="font-bold">0</span>
+            {" - "}
+            Total de Horas: <span className="font-bold">0 min</span>
+          </span>
+        }
+      />
+    </div>
+  ),
+}
+
 export const SemRegistros: Story = {
   name: "Sem registros (baseCount=0 — altura consistente)",
   render: () => (

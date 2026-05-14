@@ -179,13 +179,20 @@ function StatCard({
 function ProjectBar({ projectHours }: { projectHours: ProjectHours[] }) {
   if (projectHours.length === 0) return null
   const max = projectHours[0].seconds
+  const totalSeconds = projectHours.reduce((acc, p) => acc + p.seconds, 0)
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border-default bg-surface-card p-4 shadow-card md:col-span-2 lg:col-span-3">
-      <div className="flex items-center gap-2">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-          <BarChart3 className="size-4" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+            <BarChart3 className="size-4" />
+          </span>
+          <span className="text-xs font-medium text-text-secondary">Horas por Projeto</span>
+        </div>
+        <span className="text-xs font-medium tabular-nums text-text-secondary">
+          Total:{" "}
+          <span className="font-semibold text-text-primary">{formatHours(totalSeconds)}</span>
         </span>
-        <span className="text-xs font-medium text-text-secondary">Horas por Projeto</span>
       </div>
       <div className="flex flex-col gap-2">
         {projectHours.map((p) => (
@@ -333,6 +340,21 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
     )
   }, [allEntries, search])
 
+  const filteredTotalSeconds = React.useMemo(
+    () => filtered.reduce((acc, e) => acc + e.timeSpentSeconds, 0),
+    [filtered],
+  )
+
+  const toolbarLeadingSummary = (
+    <span className="text-sm font-medium text-text-primary">
+      Lançamentos:{" "}
+      <span className="font-bold">{filtered.length.toLocaleString("pt-BR")}</span>
+      {" - "}
+      Total de Horas:{" "}
+      <span className="font-bold">{formatHours(filteredTotalSeconds)}</span>
+    </span>
+  )
+
   return (
     <div className="flex w-full flex-col gap-6">
       {/* Preset filters */}
@@ -362,11 +384,9 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
         <SectionSpinner label="A carregar lançamentos…" />
       ) : error ? (
         <EmptyState message={`Erro: ${error}`} />
-      ) : data?.noJiraUser && !data.entries.length ? (
-        <EmptyState message="Nenhum registro encontrado" />
-      ) : (
+      ) : data ? (
         <>
-          {data?.noJiraUser && data.entries.length > 0 ? (
+          {data.noJiraUser && data.entries.length > 0 ? (
             <div
               className="rounded-lg border border-border-default bg-surface-card px-4 py-3 text-sm text-text-secondary"
               role="status"
@@ -379,7 +399,7 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
             </div>
           ) : null}
 
-          {data && (data.truncatedIssues || data.truncatedWorklogs) ? (
+          {data.truncatedIssues || data.truncatedWorklogs ? (
             <p className="text-sm text-text-secondary">
               {data.truncatedIssues
                 ? "Lista de issues truncada (limite do servidor). Reduza o intervalo para ver mais."
@@ -395,7 +415,7 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
           {allEntries.length > 0 && (
             <DashboardPanel
               entries={allEntries}
-              brokenTestsOpenedCount={data?.brokenTestsOpenedCount}
+              brokenTestsOpenedCount={data.brokenTestsOpenedCount}
             />
           )}
 
@@ -405,13 +425,12 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
               search={search}
               onSearchChange={(v) => setSearch(v)}
               searchPlaceholder="Buscar por Jira, título ou prioridade…"
-              totalLabel="Total de Lançamentos"
-              totalCount={filtered.length}
+              leadingSummary={toolbarLeadingSummary}
               baseCount={allEntries.length}
             />
 
             {filtered.length === 0 ? (
-              <EmptyState message="Nenhum registro encontrado." />
+              <EmptyState message="Nenhum registro encontrado." className="mx-5 my-8" />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[56rem] border-collapse text-left text-sm">
@@ -522,7 +541,7 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
             )}
           </div>
         </>
-      )}
+      ) : null}
     </div>
   )
 }

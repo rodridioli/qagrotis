@@ -3,38 +3,46 @@
 import React from "react"
 import { Search, SlidersHorizontal } from "lucide-react"
 
-interface TableToolbarProps {
+type TableToolbarBaseProps = {
   search: string
   onSearchChange: (value: string) => void
   searchPlaceholder?: string
   activeFilterCount?: number
   onFilterOpen?: () => void
-  totalLabel: string
-  totalCount: number
   /** Total records before any user-applied search/filter. When 0, hides search and filter controls. */
   baseCount: number
   extra?: React.ReactNode
 }
 
-export function TableToolbar({
-  search,
-  onSearchChange,
-  searchPlaceholder = "Buscar...",
-  activeFilterCount,
-  onFilterOpen,
-  totalLabel,
-  totalCount,
-  baseCount,
-  extra,
-}: TableToolbarProps) {
+export type TableToolbarProps =
+  | (TableToolbarBaseProps & { leadingSummary: React.ReactNode })
+  | (TableToolbarBaseProps & { totalLabel: string; totalCount: number })
+
+export function TableToolbar(props: TableToolbarProps) {
+  const {
+    search,
+    onSearchChange,
+    searchPlaceholder = "Buscar...",
+    activeFilterCount,
+    onFilterOpen,
+    baseCount,
+    extra,
+  } = props
   const showControls = baseCount > 0
+
+  const left =
+    "leadingSummary" in props ? (
+      props.leadingSummary
+    ) : (
+      <span className="text-sm font-medium text-text-primary">
+        {props.totalLabel}:{" "}
+        <span className="font-bold">{props.totalCount.toLocaleString("pt-BR")}</span>
+      </span>
+    )
 
   return (
     <div className="flex h-16 items-center justify-between gap-3 border-b border-border-default px-5">
-      <span className="text-sm font-medium text-text-primary">
-        {totalLabel}:{" "}
-        <span className="font-bold">{totalCount.toLocaleString("pt-BR")}</span>
-      </span>
+      <div className="min-w-0 shrink">{left}</div>
       <div className="flex items-center gap-2">
         {showControls && (
           <>
