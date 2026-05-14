@@ -235,6 +235,7 @@ export async function fetchIssueFieldsForKeys(
 
 /**
  * Conta issues/subtarefas do tipo Broken Test criadas no intervalo com reporter = accountId.
+ * @deprecated Prefer countBrokenTestSubtasksInParentIssues for worklog-scoped counting.
  */
 export async function countBrokenTestsOpenedByReporterInRange(
   base: string,
@@ -283,6 +284,66 @@ export async function countBrokenTestsOpenedByReporterInRange(
   }
 
   return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
+}
+
+/**
+ * Conta subtarefas do tipo Broken Test criadas pelo reporter em issues-pai cujas chaves
+ * estão em parentKeys (os Jiras onde o usuário apontou horas).
+ * Faz chunks de 50 chaves para não exceder o limite da JQL.
+ */
+export async function countBrokenTestSubtasksInParentIssues(
+  base: string,
+  credentials: string,
+  parentKeys: string[],
+  reporterAccountId: string,
+): Promise<number> {
+  const unique = Array.from(
+    new Set(parentKeys.filter((k) => /^[A-Z][A-Z0-9]*-\d+$/i.test(k))),
+  )
+  if (unique.length === 0) return 0
+
+  const escaped = reporterAccountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+  const PARENT_CHUNK = 50
+  const pageSize = 50
+  let total = 0
+
+  for (let i = 0; i < unique.length; i += PARENT_CHUNK) {
+    if (total >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
+    const chunk = unique.slice(i, i + PARENT_CHUNK)
+    const quoted = chunk
+      .map((k) => `"${k.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`)
+      .join(", ")
+    const jql =
+      `issuetype = "Broken Test" AND reporter = "${escaped}" AND parent in (${quoted})`
+
+    let startAt = 0
+    let chunkCount = 0
+
+    try {
+      for (;;) {
+        const { ok, data } = await jiraJson<{
+          issues?: unknown[]
+          total?: number
+        }>(`${base}/rest/api/3/search`, credentials, {
+          method: "POST",
+          body: JSON.stringify({ jql, fields: ["summary"], maxResults: pageSize, startAt }),
+        })
+        if (!ok || !data) break
+        const n = Array.isArray(data.issues) ? data.issues.length : 0
+        if (n === 0) break
+        chunkCount += n
+        const reportedTotal = typeof data.total === "number" ? data.total : chunkCount
+        startAt += n
+        if (startAt >= reportedTotal || chunkCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
+      }
+    } catch {
+      // non-fatal — accumulate what was fetched before the error
+    }
+
+    total += chunkCount
+  }
+
+  return Math.min(total, MAX_BROKEN_TEST_SEARCH_TOTAL)
 }
 
 // ── Custom field discovery ────────────────────────────────────────────────────

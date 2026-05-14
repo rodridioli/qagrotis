@@ -8,7 +8,7 @@ import {
   mergeJiraAndClockworkWorklogs,
 } from "@/features/qa/lib/clockwork-worklogs-fetch"
 import {
-  countBrokenTestsOpenedByReporterInRange,
+  countBrokenTestSubtasksInParentIssues,
   fetchIssueFieldsForKeys,
   fetchWorklogsForAuthorInRange,
   findJiraAccountIdByEmail,
@@ -42,29 +42,27 @@ function normalizeEmailForClockwork(email: string): string {
   return email.trim().toLowerCase()
 }
 
-function needsIssueEnrichment(e: JiraLancamentoEntry): boolean {
-  if (e.dataSource === "clockwork") return true
-  if (!e.summary?.trim()) return true
-  if (!e.priority?.trim()) return true
-  if (!e.issueType?.trim()) return true
-  if (e.qtdCenariosQA == null) return true
-  return false
-}
-
+/**
+ * Mescla um entry com o patch vindo do enrichment (busca direta por key).
+ * O patch tem precedência — vem de uma query `key in (…)` que é mais confiável
+ * do que o campo retornado pela query de worklog JQL.
+ */
 function mergeEntryWithPatch(
   e: JiraLancamentoEntry,
   patch: LancamentoIssueFieldsPatch,
 ): JiraLancamentoEntry {
   return {
     ...e,
-    summary: e.summary?.trim() ? e.summary : patch.summary ?? e.summary,
-    issueType: e.issueType?.trim() ? e.issueType : patch.issueType ?? e.issueType ?? null,
-    priority: e.priority?.trim() ? e.priority : patch.priority ?? e.priority ?? null,
-    labels: e.labels?.length ? e.labels : patch.labels.length ? patch.labels : e.labels ?? [],
+    summary: patch.summary?.trim() ? patch.summary : e.summary?.trim() ? e.summary : null,
+    issueType: patch.issueType?.trim() ? patch.issueType : e.issueType?.trim() ? e.issueType : null,
+    priority: patch.priority?.trim() ? patch.priority : e.priority?.trim() ? e.priority : null,
+    labels: patch.labels.length ? patch.labels : e.labels?.length ? e.labels : [],
     qtdCenariosQA:
-      e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)
-        ? e.qtdCenariosQA
-        : patch.qtdCenariosQA ?? e.qtdCenariosQA ?? null,
+      patch.qtdCenariosQA != null && Number.isFinite(patch.qtdCenariosQA)
+        ? patch.qtdCenariosQA
+        : e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)
+          ? e.qtdCenariosQA
+          : null,
   }
 }
 
@@ -177,25 +175,27 @@ export async function GET(req: NextRequest) {
 
   const { merged: rawEntries, clockworkAdded } = mergeJiraAndClockworkWorklogs(jiraEntries, clockworkEntries)
 
+  // Enriquece TODAS as chaves — o enrichment (busca direta por key) é a fonte
+  // mais confiável para summary, priority, issueType e qtdCenariosQA.
   const keysToEnrich = Array.from(
     new Set(
       rawEntries
-        .filter(needsIssueEnrichment)
         .map((e) => e.issueKey.trim().toUpperCase())
         .filter((k) => JIRA_KEY_PATTERN.test(k)),
     ),
   )
 
+  // Conta Broken Tests criados pelo usuário cujos pais estão nos Jiras com horas apontadas.
   let brokenTestsOpenedCount: number | undefined
-  const brokenPromise = jiraUser
-    ? countBrokenTestsOpenedByReporterInRange(
-        base,
-        credentials,
-        jiraUser.accountId,
-        from,
-        to,
-      ).catch(() => undefined)
-    : Promise.resolve(undefined)
+  const brokenPromise =
+    jiraUser && keysToEnrich.length > 0
+      ? countBrokenTestSubtasksInParentIssues(
+          base,
+          credentials,
+          keysToEnrich,
+          jiraUser.accountId,
+        ).catch(() => undefined)
+      : Promise.resolve(undefined)
 
   const enrichPromise =
     keysToEnrich.length > 0
