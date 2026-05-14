@@ -137,6 +137,48 @@ export async function findJiraAccountIdByEmail(
   return { accountId: pick.accountId, displayName: pick.displayName }
 }
 
+// ── Bulk summary lookup ───────────────────────────────────────────────────────
+
+const SUMMARY_CHUNK = 50
+
+/**
+ * Fetches the `summary` field for a set of issue keys in bulk chunks.
+ * Skips gracefully on any request failure — callers should use the map as
+ * a best-effort enrichment, keeping existing summaries as fallback.
+ */
+export async function fetchIssueSummariesByKeys(
+  base: string,
+  credentials: string,
+  keys: string[],
+): Promise<Map<string, string>> {
+  const unique = Array.from(new Set(keys.map((k) => k.trim().toUpperCase()).filter(Boolean)))
+  const result = new Map<string, string>()
+  for (let i = 0; i < unique.length; i += SUMMARY_CHUNK) {
+    const chunk = unique.slice(i, i + SUMMARY_CHUNK)
+    const quoted = chunk.map((k) => `"${k.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`).join(", ")
+    const jql = `key in (${quoted})`
+    try {
+      const { ok, data } = await jiraJson<{
+        issues?: { key: string; fields?: { summary?: string } }[]
+      }>(`${base}/rest/api/3/search`, credentials, {
+        method: "POST",
+        body: JSON.stringify({ jql, fields: ["summary"], maxResults: SUMMARY_CHUNK }),
+      })
+      if (ok && Array.isArray(data?.issues)) {
+        for (const issue of data.issues) {
+          const s = issue.fields?.summary
+          if (typeof s === "string" && s.trim()) {
+            result.set(issue.key.trim().toUpperCase(), s.trim())
+          }
+        }
+      }
+    } catch {
+      // non-fatal — return what we have so far
+    }
+  }
+  return result
+}
+
 // ── Custom field discovery ────────────────────────────────────────────────────
 // Cache the resolved field ID for the lifetime of the process to avoid
 // repeated GET /rest/api/3/field calls on every request.

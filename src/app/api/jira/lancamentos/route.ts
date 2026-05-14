@@ -8,6 +8,7 @@ import {
   mergeJiraAndClockworkWorklogs,
 } from "@/features/qa/lib/clockwork-worklogs-fetch"
 import {
+  fetchIssueSummariesByKeys,
   fetchWorklogsForAuthorInRange,
   findJiraAccountIdByEmail,
   resolveTimeZoneForWorklogs,
@@ -143,7 +144,29 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const { merged: entries, clockworkAdded } = mergeJiraAndClockworkWorklogs(jiraEntries, clockworkEntries)
+  const { merged: rawEntries, clockworkAdded } = mergeJiraAndClockworkWorklogs(jiraEntries, clockworkEntries)
+
+  // Enrich summaries for Clockwork-only entries (and any others missing a title)
+  // using a bulk Jira search. Failures are non-fatal.
+  let entries = rawEntries
+  const keysNeedingSummary = rawEntries
+    .filter((e) => !e.summary?.trim())
+    .map((e) => e.issueKey)
+  if (keysNeedingSummary.length > 0 && jiraUser) {
+    try {
+      const summaryMap = await fetchIssueSummariesByKeys(base, credentials, keysNeedingSummary)
+      if (summaryMap.size > 0) {
+        entries = rawEntries.map((e) => {
+          if (e.summary?.trim()) return e
+          const s = summaryMap.get(e.issueKey.trim().toUpperCase())
+          return s ? { ...e, summary: s } : e
+        })
+      }
+    } catch {
+      // best-effort only
+    }
+  }
+
   const totalSeconds = entries.reduce((acc, e) => acc + e.timeSpentSeconds, 0)
   const longSessionCount = entries.filter((e) => e.isLongSession).length
   const noJiraUser = !jiraUser
@@ -160,9 +183,7 @@ export async function GET(req: NextRequest) {
       jiraBrowseBase: base,
       includesClockwork: false,
       clockworkMergedCount: 0,
-      message: clockworkToken
-        ? "Não foi encontrado utilizador Jira com este e-mail e a API Clockwork não devolveu lançamentos no intervalo (confirme o token Pro em Configurações e o e-mail no Clockwork)."
-        : "Não foi encontrado um utilizador Jira com o mesmo e-mail deste cadastro (ou o token não tem permissão de pesquisa). Em Configurações → Integração Clockwork (Administrador MGR) ou CLOCKWORK_API_TOKEN no servidor pode incluir horas só via Clockwork.",
+      message: "Nenhum registro encontrado",
     })
   }
 

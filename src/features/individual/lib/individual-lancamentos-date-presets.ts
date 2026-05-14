@@ -1,6 +1,6 @@
 /** Presets de intervalo em data civil local (YYYY-MM-DD). */
 
-export type LancamentosPeriodPreset = "today" | "week" | "month" | "lastMonth"
+export type LancamentosPeriodPreset = "today" | "yesterday" | "week" | "month" | "lastMonth"
 
 function pad(n: number) {
   return String(n).padStart(2, "0")
@@ -16,6 +16,12 @@ export function getLancamentosPresetRange(
 ): { from: string; to: string } {
   if (preset === "today") {
     const t = toIsoLocal(now)
+    return { from: t, to: t }
+  }
+
+  if (preset === "yesterday") {
+    const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+    const t = toIsoLocal(y)
     return { from: t, to: t }
   }
 
