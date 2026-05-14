@@ -164,16 +164,43 @@ function parseQtdCenariosQAFieldValue(raw: unknown): number | null {
   if (raw == null) return null
   if (typeof raw === "number" && Number.isFinite(raw)) return raw
   if (typeof raw === "string") {
-    const n = Number(raw.trim())
+    const t = raw.trim()
+    const n = Number(t.replace(",", "."))
     return Number.isFinite(n) ? n : null
   }
   if (typeof raw === "object") {
-    const o = raw as { value?: unknown }
+    const o = raw as { value?: unknown; name?: unknown; number?: unknown; amount?: unknown }
     if (o.value !== undefined) return parseQtdCenariosQAFieldValue(o.value)
+    if (o.name !== undefined) return parseQtdCenariosQAFieldValue(o.name)
+    if (o.number !== undefined) return parseQtdCenariosQAFieldValue(o.number)
+    if (o.amount !== undefined) return parseQtdCenariosQAFieldValue(o.amount)
   }
   return null
 }
 
+function issueFieldsToLancamentoPatch(
+  fields: IssueFields | undefined,
+  qtdFieldId: string | null,
+): LancamentoIssueFieldsPatch {
+  const f = fields ?? {}
+  const summary = typeof f.summary === "string" && f.summary.trim() ? f.summary.trim() : null
+  const issueType =
+    typeof f.issuetype?.name === "string" && f.issuetype.name.trim() ? f.issuetype.name.trim() : null
+  const priority =
+    typeof f.priority?.name === "string" && f.priority.name.trim() ? f.priority.name.trim() : null
+  const labels = Array.isArray(f.labels) ? (f.labels as string[]) : []
+  let qtdCenariosQA: number | null = null
+  if (qtdFieldId && f[qtdFieldId] != null) {
+    qtdCenariosQA = parseQtdCenariosQAFieldValue(f[qtdFieldId])
+  }
+  return {
+    summary,
+    issueType,
+    priority,
+    labels,
+    qtdCenariosQA,
+  }
+}
 /**
  * Pesquisa em lote fields necessários para a UI de lançamentos (chunks ~50 keys).
  * Falhas são ignoradas por chunk — merge parcial é aceitável.
@@ -205,25 +232,10 @@ export async function fetchIssueFieldsForKeys(
       })
       if (ok && Array.isArray(data?.issues)) {
         for (const issue of data.issues) {
-          const f = issue.fields ?? {}
-          const summary = typeof f.summary === "string" && f.summary.trim() ? f.summary.trim() : null
-          const issueType = typeof f.issuetype?.name === "string" && f.issuetype.name.trim()
-            ? f.issuetype.name.trim()
-            : null
-          const priority =
-            typeof f.priority?.name === "string" && f.priority.name.trim() ? f.priority.name.trim() : null
-          const labels = Array.isArray(f.labels) ? (f.labels as string[]) : []
-          let qtdCenariosQA: number | null = null
-          if (qtdFieldId && f[qtdFieldId] != null) {
-            qtdCenariosQA = parseQtdCenariosQAFieldValue(f[qtdFieldId])
-          }
-          result.set(issue.key.trim().toUpperCase(), {
-            summary,
-            issueType,
-            priority,
-            labels,
-            qtdCenariosQA,
-          })
+          result.set(
+            issue.key.trim().toUpperCase(),
+            issueFieldsToLancamentoPatch(issue.fields, qtdFieldId),
+          )
         }
       }
     } catch {
@@ -231,6 +243,174 @@ export async function fetchIssueFieldsForKeys(
     }
   }
   return result
+}
+
+const MAX_ISSUE_FIELDS_FALLBACK_GET = 72
+const FALLBACK_GET_CONCURRENCY = 10
+
+async function paginateBrokenTestSubtaskCount(base: string, credentials: string, jql: string): Promise<number> {
+  let startAt = 0
+  let chunkCount = 0
+  const pageSize = 50
+
+  try {
+    for (;;) {
+      const { ok, data } = await jiraJson<{
+        issues?: unknown[]
+        total?: number
+      }>(`${base}/rest/api/3/search`, credentials, {
+        method: "POST",
+        body: JSON.stringify({ jql, fields: ["summary"], maxResults: pageSize, startAt }),
+      })
+      if (!ok || !data) break
+      const n = Array.isArray(data.issues) ? data.issues.length : 0
+      if (n === 0) break
+      chunkCount += n
+      const reportedTotal = typeof data.total === "number" ? data.total : chunkCount
+      startAt += n
+      if (startAt >= reportedTotal || chunkCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
+    }
+  } catch {
+    // non-fatal
+  }
+
+  return Math.min(chunkCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
+}
+
+/** Subtarefas Broken Test com parent nos worklogs avaliados. */
+export type BrokenTestSubtaskCounts = {
+  /** Todas subtarefas do tipo Broken Test cujo parent está nos worklogs relevantes. */
+  totalInScope: number
+  /** Subconjunto reportado pela conta avaliada. */
+  createdByReporter: number
+}
+
+/**
+ * Para cada chunks de parent's: conta todas as subtarefas Broken Test e as criadas pelo reporter.
+ */
+export async function brokenTestSubtasksCountsInParents(
+  base: string,
+  credentials: string,
+  parentKeys: string[],
+  reporterAccountId: string | null,
+): Promise<BrokenTestSubtaskCounts> {
+  const unique = Array.from(new Set(parentKeys.filter((k) => /^[A-Z][A-Z0-9]*-\d+$/i.test(k))))
+  if (unique.length === 0) return { totalInScope: 0, createdByReporter: 0 }
+
+  let totalInScope = 0
+  let createdByReporter = 0
+  const PARENT_CHUNK = 50
+  const escapedReporter = reporterAccountId
+    ? reporterAccountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+    : ""
+
+  for (let i = 0; i < unique.length; i += PARENT_CHUNK) {
+    const chunk = unique.slice(i, i + PARENT_CHUNK)
+    const quoted = chunk.map((k) => `"${k.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`).join(", ")
+
+    const baseJql = `issuetype = "Broken Test" AND parent in (${quoted})`
+
+    totalInScope += await paginateBrokenTestSubtaskCount(base, credentials, baseJql)
+
+    if (escapedReporter.length > 0) {
+      const jqlReporter = `${baseJql} AND reporter = "${escapedReporter}"`
+      createdByReporter += await paginateBrokenTestSubtaskCount(base, credentials, jqlReporter)
+    }
+  }
+
+  return {
+    totalInScope: Math.min(totalInScope, MAX_BROKEN_TEST_SEARCH_TOTAL),
+    createdByReporter: Math.min(createdByReporter, MAX_BROKEN_TEST_SEARCH_TOTAL),
+  }
+}
+
+/**
+ * Conta subtarefas do tipo Broken Test criadas pelo reporter em issues-pai cujas chaves
+ * estão em parentKeys (os Jiras onde o usuário apontou horas).
+ * Faz chunks de 50 chaves para não exceder o limite da JQL.
+ */
+export async function countBrokenTestSubtasksInParentIssues(
+  base: string,
+  credentials: string,
+  parentKeys: string[],
+  reporterAccountId: string,
+): Promise<number> {
+  const c = await brokenTestSubtasksCountsInParents(base, credentials, parentKeys, reporterAccountId)
+  return c.createdByReporter
+}
+
+export function mergeLancamentoIssuePatches(
+  prev: LancamentoIssueFieldsPatch | undefined,
+  next: LancamentoIssueFieldsPatch,
+): LancamentoIssueFieldsPatch {
+  return {
+    summary: next.summary?.trim()
+      ? next.summary.trim()
+      : prev?.summary?.trim()
+        ? prev.summary.trim()
+        : null,
+    issueType: next.issueType?.trim()
+      ? next.issueType.trim()
+      : prev?.issueType?.trim()
+        ? prev.issueType.trim()
+        : null,
+    priority: next.priority?.trim()
+      ? next.priority.trim()
+      : prev?.priority?.trim()
+        ? prev.priority.trim()
+        : null,
+    labels: next.labels.length ? next.labels : prev?.labels?.length ? prev.labels : [],
+    qtdCenariosQA:
+      next.qtdCenariosQA != null && Number.isFinite(next.qtdCenariosQA)
+        ? next.qtdCenariosQA
+        : prev?.qtdCenariosQA != null && Number.isFinite(prev.qtdCenariosQA)
+          ? prev.qtdCenariosQA
+          : null,
+  }
+}
+
+/**
+ * GET /issue/{key} para chaves sem resumo ou prioridade após a search em lote (ex.: Clockwork).
+ */
+export async function augmentFieldMapWithGetIssueFallback(
+  base: string,
+  credentials: string,
+  fieldMap: Map<string, LancamentoIssueFieldsPatch>,
+  allKeysUppercase: string[],
+): Promise<void> {
+  const unique = Array.from(new Set(allKeysUppercase.map((k) => k.trim().toUpperCase())))
+  const need = unique
+    .filter((k) => /^[A-Z][A-Z0-9]*-\d+$/i.test(k))
+    .filter((k) => {
+      const p = fieldMap.get(k)
+      if (!p) return true
+      return !p.summary?.trim() || !p.priority?.trim()
+    })
+    .slice(0, MAX_ISSUE_FIELDS_FALLBACK_GET)
+
+  if (need.length === 0) return
+
+  const qtdFieldId = await resolveQtdCenariosQAFieldId(base, credentials)
+  const fieldNames = ["summary", "issuetype", "priority", "labels"]
+  if (qtdFieldId) fieldNames.push(qtdFieldId)
+  const fieldsQuery = fieldNames.join(",")
+
+  for (let i = 0; i < need.length; i += FALLBACK_GET_CONCURRENCY) {
+    const slice = need.slice(i, i + FALLBACK_GET_CONCURRENCY)
+    await Promise.all(
+      slice.map(async (key) => {
+        try {
+          const url = `${base}/rest/api/3/issue/${encodeURIComponent(key)}?fields=${encodeURIComponent(fieldsQuery)}`
+          const { ok, data } = await jiraJson<{ fields?: IssueFields }>(url, credentials)
+          if (!ok || !data?.fields) return
+          const patch = issueFieldsToLancamentoPatch(data.fields, qtdFieldId)
+          fieldMap.set(key, mergeLancamentoIssuePatches(fieldMap.get(key), patch))
+        } catch {
+          // non-fatal
+        }
+      }),
+    )
+  }
 }
 
 /**
@@ -286,75 +466,19 @@ export async function countBrokenTestsOpenedByReporterInRange(
   return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
 }
 
-/**
- * Conta subtarefas do tipo Broken Test criadas pelo reporter em issues-pai cujas chaves
- * estão em parentKeys (os Jiras onde o usuário apontou horas).
- * Faz chunks de 50 chaves para não exceder o limite da JQL.
- */
-export async function countBrokenTestSubtasksInParentIssues(
-  base: string,
-  credentials: string,
-  parentKeys: string[],
-  reporterAccountId: string,
-): Promise<number> {
-  const unique = Array.from(
-    new Set(parentKeys.filter((k) => /^[A-Z][A-Z0-9]*-\d+$/i.test(k))),
-  )
-  if (unique.length === 0) return 0
-
-  const escaped = reporterAccountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-  const PARENT_CHUNK = 50
-  const pageSize = 50
-  let total = 0
-
-  for (let i = 0; i < unique.length; i += PARENT_CHUNK) {
-    if (total >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
-    const chunk = unique.slice(i, i + PARENT_CHUNK)
-    const quoted = chunk
-      .map((k) => `"${k.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`)
-      .join(", ")
-    const jql =
-      `issuetype = "Broken Test" AND reporter = "${escaped}" AND parent in (${quoted})`
-
-    let startAt = 0
-    let chunkCount = 0
-
-    try {
-      for (;;) {
-        const { ok, data } = await jiraJson<{
-          issues?: unknown[]
-          total?: number
-        }>(`${base}/rest/api/3/search`, credentials, {
-          method: "POST",
-          body: JSON.stringify({ jql, fields: ["summary"], maxResults: pageSize, startAt }),
-        })
-        if (!ok || !data) break
-        const n = Array.isArray(data.issues) ? data.issues.length : 0
-        if (n === 0) break
-        chunkCount += n
-        const reportedTotal = typeof data.total === "number" ? data.total : chunkCount
-        startAt += n
-        if (startAt >= reportedTotal || chunkCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
-      }
-    } catch {
-      // non-fatal — accumulate what was fetched before the error
-    }
-
-    total += chunkCount
-  }
-
-  return Math.min(total, MAX_BROKEN_TEST_SEARCH_TOTAL)
-}
-
 // ── Custom field discovery ────────────────────────────────────────────────────
 // Cache the resolved field ID for the lifetime of the process to avoid
 // repeated GET /rest/api/3/field calls on every request.
+/** Override com ID fixo (`customfield_123`), útil quando o nome no Jira diverge do padrão. */
+const QTD_ENV_FIELD_ID = process.env.JIRA_QTD_CENARIOS_QA_FIELD_ID?.trim()
+
 let cachedQtdCenariosQAFieldId: string | null | undefined = undefined
 
-async function resolveQtdCenariosQAFieldId(
+export async function resolveQtdCenariosQAFieldId(
   base: string,
   credentials: string,
 ): Promise<string | null> {
+  if (QTD_ENV_FIELD_ID) return QTD_ENV_FIELD_ID
   if (cachedQtdCenariosQAFieldId !== undefined) return cachedQtdCenariosQAFieldId
 
   try {
@@ -366,8 +490,13 @@ async function resolveQtdCenariosQAFieldId(
       cachedQtdCenariosQAFieldId = null
       return null
     }
-    const needle = /qtd\.?\s*cen[aá]rios\s*qa/i
-    const found = data.find((f) => needle.test(f.name))
+    const patterns = [
+      /qtd\.?\s*cen[aá]rios\s*qa\b/i,
+      /\bqta\.?\s*cen[aá]rios\s*qa\b/i,
+      /\bcen[aá]rios\s*qa\b/i,
+      /\bqa\s*cen[aá]rios\b/i,
+    ]
+    const found = data.find((f) => patterns.some((re) => re.test(f.name)))
     cachedQtdCenariosQAFieldId = found?.id ?? null
   } catch {
     cachedQtdCenariosQAFieldId = null
@@ -471,14 +600,8 @@ export async function fetchWorklogsForAuthorInRange(
   for (const issueKey of issueKeys) {
     if (entries.length >= MAX_WORKLOGS_TOTAL) break
     const fields = issueFieldsMap.get(issueKey) ?? {}
+    const patch = issueFieldsToLancamentoPatch(fields, qtdFieldId)
     const projectKey = issueKey.split("-")[0] ?? issueKey
-    const issueType = (fields.issuetype?.name as string | undefined) ?? null
-    const priority = (fields.priority?.name as string | undefined) ?? null
-    const labels = Array.isArray(fields.labels) ? (fields.labels as string[]) : []
-    let qtdCenariosQA: number | null = null
-    if (qtdFieldId && fields[qtdFieldId] != null) {
-      qtdCenariosQA = parseQtdCenariosQAFieldValue(fields[qtdFieldId])
-    }
 
     let wlStart = 0
     const wlUrlBase = `${base}/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog`
@@ -507,11 +630,11 @@ export async function fetchWorklogsForAuthorInRange(
           id: `${issueKey}-${w.id}`,
           issueKey,
           projectKey,
-          summary: (fields.summary as string | undefined) ?? null,
-          issueType,
-          priority,
-          labels,
-          qtdCenariosQA,
+          summary: patch.summary,
+          issueType: patch.issueType,
+          priority: patch.priority,
+          labels: patch.labels,
+          qtdCenariosQA: patch.qtdCenariosQA,
           started,
           timeSpentSeconds: w.timeSpentSeconds,
           hours: Math.round((w.timeSpentSeconds / 3600) * 100) / 100,

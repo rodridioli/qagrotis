@@ -53,7 +53,10 @@ type ApiOk = {
   jiraAuthorDisplayName?: string | null
   includesClockwork?: boolean
   clockworkMergedCount?: number
+  /** Alias legado: mesmo que `brokenTestsCreatedByUser`. */
   brokenTestsOpenedCount?: number
+  brokenTestSubtasksTotalInScope?: number
+  brokenTestsCreatedByUser?: number
 }
 
 function formatHours(seconds: number): string {
@@ -93,11 +96,15 @@ function priorityIsCritical(p: string | null | undefined): boolean {
   const n = normalizePriorityToken(p)
   return (
     n === "critical" ||
+    n === "critico" ||
     n === "highest" ||
     n === "critica" ||
     n === "alta" ||
+    n === "blocker" ||
+    n === "imediato" ||
     n.includes("critical") ||
-    n.includes("critica")
+    n.includes("critica") ||
+    n.includes("critico")
   )
 }
 
@@ -218,14 +225,33 @@ function ProjectBar({ projectHours }: { projectHours: ProjectHours[] }) {
 
 function DashboardPanel({
   entries,
+  brokenTestSubtasksTotalInScope,
+  brokenTestsCreatedByUser,
   brokenTestsOpenedCount,
 }: {
   entries: LancamentoRow[]
+  brokenTestSubtasksTotalInScope?: number
+  brokenTestsCreatedByUser?: number
   brokenTestsOpenedCount?: number
 }) {
   const stats = React.useMemo(() => computeStats(entries), [entries])
-  const retornoDeTestes =
-    brokenTestsOpenedCount != null ? brokenTestsOpenedCount : stats.brokenTestCountFromWorklogs
+
+  const retornoValor =
+    brokenTestSubtasksTotalInScope !== undefined ? (
+      <div className="flex flex-col gap-0.5 leading-tight">
+        <span className="tabular-nums">{brokenTestSubtasksTotalInScope}</span>
+        <span className="text-xs font-medium text-text-secondary">
+          {(brokenTestsCreatedByUser ??
+            brokenTestsOpenedCount ??
+            0).toLocaleString("pt-BR")}{" "}
+          criadas pelo utilizador selecionado
+        </span>
+      </div>
+    ) : brokenTestsOpenedCount != null ? (
+      brokenTestsOpenedCount
+    ) : (
+      stats.brokenTestCountFromWorklogs
+    )
 
   return (
     <div className="flex flex-col gap-3">
@@ -243,12 +269,7 @@ function DashboardPanel({
           value={stats.criticalCount}
           accent="red"
         />
-        <StatCard
-          icon={<Bug className="size-4" />}
-          label="Retorno de Testes"
-          value={retornoDeTestes}
-          accent="amber"
-        />
+        <StatCard icon={<Bug className="size-4" />} label="Retorno de Testes" value={retornoValor} accent="amber" />
         <StatCard
           icon={<Layers className="size-4" />}
           label="Testes Realizados"
@@ -415,6 +436,8 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
           {allEntries.length > 0 && (
             <DashboardPanel
               entries={allEntries}
+              brokenTestSubtasksTotalInScope={data.brokenTestSubtasksTotalInScope}
+              brokenTestsCreatedByUser={data.brokenTestsCreatedByUser}
               brokenTestsOpenedCount={data.brokenTestsOpenedCount}
             />
           )}
