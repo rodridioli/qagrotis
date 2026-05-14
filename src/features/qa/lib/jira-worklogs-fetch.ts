@@ -139,11 +139,55 @@ export async function findJiraAccountIdByEmail(
 
 /** Fields Jira search/issue — declarado cedo para `fetchIssueFieldsForKeys`. */
 type IssueFields = {
-  summary?: string
+  summary?: unknown
   issuetype?: { name?: string }
-  priority?: { name?: string }
+  priority?: unknown
   labels?: string[]
   [key: string]: unknown
+}
+
+function summaryFromIssueField(raw: unknown): string | null {
+  if (typeof raw === "string") {
+    const t = raw.trim()
+    return t.length ? t : null
+  }
+  const plain = adfToPlain(raw).trim()
+  return plain.length ? plain : null
+}
+
+function priorityNameFromIssueField(raw: unknown): string | null {
+  if (raw == null) return null
+  if (typeof raw === "string") {
+    const t = raw.trim()
+    return t.length ? t : null
+  }
+  if (typeof raw === "object") {
+    const o = raw as { name?: unknown; displayName?: unknown }
+    if (typeof o.name === "string" && o.name.trim()) return o.name.trim()
+    if (typeof o.displayName === "string" && o.displayName.trim()) return o.displayName.trim()
+  }
+  return null
+}
+
+/**
+ * Frase JQL de issuetype(s) para regressão de testes. Override: JIRA_BROKEN_TEST_ISSUE_TYPES="Broken Test,Teste Quebrado"
+ */
+function brokenTestIssuetypeClauseJql(): string {
+  const raw = process.env.JIRA_BROKEN_TEST_ISSUE_TYPES?.trim()
+  const parts = raw
+    ? raw
+        .split(/[,|]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : []
+  const names = parts.length > 0 ? parts : ["Broken Test"]
+  const unique = [...new Set(names)]
+
+  function quoteName(name: string): string {
+    return `"${name.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
+  }
+  if (unique.length === 1) return `issuetype = ${quoteName(unique[0]!)}`
+  return `issuetype in (${unique.map((n) => quoteName(n)).join(", ")})`
 }
 
 // ── Bulk issue fields (summary, tipo, prioridade, Qtd. Cenários QA) ────────────
@@ -183,11 +227,10 @@ function issueFieldsToLancamentoPatch(
   qtdFieldId: string | null,
 ): LancamentoIssueFieldsPatch {
   const f = fields ?? {}
-  const summary = typeof f.summary === "string" && f.summary.trim() ? f.summary.trim() : null
+  const summary = summaryFromIssueField(f.summary)
   const issueType =
     typeof f.issuetype?.name === "string" && f.issuetype.name.trim() ? f.issuetype.name.trim() : null
-  const priority =
-    typeof f.priority?.name === "string" && f.priority.name.trim() ? f.priority.name.trim() : null
+  const priority = priorityNameFromIssueField(f.priority)
   const labels = Array.isArray(f.labels) ? (f.labels as string[]) : []
   let qtdCenariosQA: number | null = null
   if (qtdFieldId && f[qtdFieldId] != null) {
@@ -308,7 +351,7 @@ export async function brokenTestSubtasksCountsInParents(
     const chunk = unique.slice(i, i + PARENT_CHUNK)
     const quoted = chunk.map((k) => `"${k.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`).join(", ")
 
-    const baseJql = `issuetype = "Broken Test" AND parent in (${quoted})`
+    const baseJql = `${brokenTestIssuetypeClauseJql()} AND parent in (${quoted})`
 
     totalInScope += await paginateBrokenTestSubtaskCount(base, credentials, baseJql)
 
@@ -378,29 +421,34 @@ export async function augmentFieldMapWithGetIssueFallback(
   fieldMap: Map<string, LancamentoIssueFieldsPatch>,
   allKeysUppercase: string[],
 ): Promise<void> {
+  const qtdFieldId = await resolveQtdCenariosQAFieldId(base, credentials)
+
   const unique = Array.from(new Set(allKeysUppercase.map((k) => k.trim().toUpperCase())))
   const need = unique
     .filter((k) => /^[A-Z][A-Z0-9]*-\d+$/i.test(k))
     .filter((k) => {
       const p = fieldMap.get(k)
       if (!p) return true
-      return !p.summary?.trim() || !p.priority?.trim()
+      const missMeta = !p.summary?.trim() || !p.priority?.trim()
+      const missQtd =
+        qtdFieldId != null &&
+        (p.qtdCenariosQA == null || !Number.isFinite(p.qtdCenariosQA))
+      return missMeta || missQtd
     })
     .slice(0, MAX_ISSUE_FIELDS_FALLBACK_GET)
 
   if (need.length === 0) return
 
-  const qtdFieldId = await resolveQtdCenariosQAFieldId(base, credentials)
   const fieldNames = ["summary", "issuetype", "priority", "labels"]
   if (qtdFieldId) fieldNames.push(qtdFieldId)
-  const fieldsQuery = fieldNames.join(",")
+  const fieldsComma = fieldNames.join(",")
 
   for (let i = 0; i < need.length; i += FALLBACK_GET_CONCURRENCY) {
     const slice = need.slice(i, i + FALLBACK_GET_CONCURRENCY)
     await Promise.all(
       slice.map(async (key) => {
         try {
-          const url = `${base}/rest/api/3/issue/${encodeURIComponent(key)}?fields=${encodeURIComponent(fieldsQuery)}`
+          const url = `${base}/rest/api/3/issue/${encodeURIComponent(key)}?fields=${fieldsComma}`
           const { ok, data } = await jiraJson<{ fields?: IssueFields }>(url, credentials)
           if (!ok || !data?.fields) return
           const patch = issueFieldsToLancamentoPatch(data.fields, qtdFieldId)
