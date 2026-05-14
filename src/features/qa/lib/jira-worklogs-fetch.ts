@@ -137,46 +137,152 @@ export async function findJiraAccountIdByEmail(
   return { accountId: pick.accountId, displayName: pick.displayName }
 }
 
-// ── Bulk summary lookup ───────────────────────────────────────────────────────
+/** Fields Jira search/issue — declarado cedo para `fetchIssueFieldsForKeys`. */
+type IssueFields = {
+  summary?: string
+  issuetype?: { name?: string }
+  priority?: { name?: string }
+  labels?: string[]
+  [key: string]: unknown
+}
 
-const SUMMARY_CHUNK = 50
+// ── Bulk issue fields (summary, tipo, prioridade, Qtd. Cenários QA) ────────────
+
+const SEARCH_KEY_CHUNK = 50
+const MAX_BROKEN_TEST_SEARCH_TOTAL = 500
+
+/** Patch aplicável por issue key (uppercase) para enriquecer linhas Clockwork ou incompletas. */
+export type LancamentoIssueFieldsPatch = {
+  summary: string | null
+  issueType: string | null
+  priority: string | null
+  labels: string[]
+  qtdCenariosQA: number | null
+}
+
+function parseQtdCenariosQAFieldValue(raw: unknown): number | null {
+  if (raw == null) return null
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw
+  if (typeof raw === "string") {
+    const n = Number(raw.trim())
+    return Number.isFinite(n) ? n : null
+  }
+  if (typeof raw === "object") {
+    const o = raw as { value?: unknown }
+    if (o.value !== undefined) return parseQtdCenariosQAFieldValue(o.value)
+  }
+  return null
+}
 
 /**
- * Fetches the `summary` field for a set of issue keys in bulk chunks.
- * Skips gracefully on any request failure — callers should use the map as
- * a best-effort enrichment, keeping existing summaries as fallback.
+ * Pesquisa em lote fields necessários para a UI de lançamentos (chunks ~50 keys).
+ * Falhas são ignoradas por chunk — merge parcial é aceitável.
  */
-export async function fetchIssueSummariesByKeys(
+export async function fetchIssueFieldsForKeys(
   base: string,
   credentials: string,
   keys: string[],
-): Promise<Map<string, string>> {
-  const unique = Array.from(new Set(keys.map((k) => k.trim().toUpperCase()).filter(Boolean)))
-  const result = new Map<string, string>()
-  for (let i = 0; i < unique.length; i += SUMMARY_CHUNK) {
-    const chunk = unique.slice(i, i + SUMMARY_CHUNK)
+): Promise<Map<string, LancamentoIssueFieldsPatch>> {
+  const unique = Array.from(new Set(keys.map((k) => k.trim().toUpperCase()).filter((k) => /^[A-Z][A-Z0-9]*-\d+$/i.test(k))))
+  const qtdFieldId = await resolveQtdCenariosQAFieldId(base, credentials)
+  const baseFields = ["summary", "issuetype", "priority", "labels"]
+  const fieldsParam = qtdFieldId ? [...baseFields, qtdFieldId] : baseFields
+
+  const result = new Map<string, LancamentoIssueFieldsPatch>()
+  for (let i = 0; i < unique.length; i += SEARCH_KEY_CHUNK) {
+    const chunk = unique.slice(i, i + SEARCH_KEY_CHUNK)
     const quoted = chunk.map((k) => `"${k.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`).join(", ")
     const jql = `key in (${quoted})`
     try {
       const { ok, data } = await jiraJson<{
-        issues?: { key: string; fields?: { summary?: string } }[]
+        issues?: {
+          key: string
+          fields?: IssueFields
+        }[]
       }>(`${base}/rest/api/3/search`, credentials, {
         method: "POST",
-        body: JSON.stringify({ jql, fields: ["summary"], maxResults: SUMMARY_CHUNK }),
+        body: JSON.stringify({ jql, fields: fieldsParam, maxResults: SEARCH_KEY_CHUNK }),
       })
       if (ok && Array.isArray(data?.issues)) {
         for (const issue of data.issues) {
-          const s = issue.fields?.summary
-          if (typeof s === "string" && s.trim()) {
-            result.set(issue.key.trim().toUpperCase(), s.trim())
+          const f = issue.fields ?? {}
+          const summary = typeof f.summary === "string" && f.summary.trim() ? f.summary.trim() : null
+          const issueType = typeof f.issuetype?.name === "string" && f.issuetype.name.trim()
+            ? f.issuetype.name.trim()
+            : null
+          const priority =
+            typeof f.priority?.name === "string" && f.priority.name.trim() ? f.priority.name.trim() : null
+          const labels = Array.isArray(f.labels) ? (f.labels as string[]) : []
+          let qtdCenariosQA: number | null = null
+          if (qtdFieldId && f[qtdFieldId] != null) {
+            qtdCenariosQA = parseQtdCenariosQAFieldValue(f[qtdFieldId])
           }
+          result.set(issue.key.trim().toUpperCase(), {
+            summary,
+            issueType,
+            priority,
+            labels,
+            qtdCenariosQA,
+          })
         }
       }
     } catch {
-      // non-fatal — return what we have so far
+      // non-fatal
     }
   }
   return result
+}
+
+/**
+ * Conta issues/subtarefas do tipo Broken Test criadas no intervalo com reporter = accountId.
+ */
+export async function countBrokenTestsOpenedByReporterInRange(
+  base: string,
+  credentials: string,
+  accountId: string,
+  fromIso: string,
+  toIso: string,
+): Promise<number> {
+  const jFrom = jqlDateFromIso(fromIso)
+  const jTo = jqlDateFromIso(toIso)
+  if (!jFrom || !jTo) return 0
+
+  const escaped = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+  const jql =
+    `reporter = "${escaped}" AND issuetype = "Broken Test" ` +
+    `AND created >= "${jFrom}" AND created <= "${jTo}"`
+
+  let fetchedCount = 0
+  let startAt = 0
+  const pageSize = 50
+
+  try {
+    for (;;) {
+      const { ok, data } = await jiraJson<{
+        issues?: unknown[]
+        total?: number
+      }>(`${base}/rest/api/3/search`, credentials, {
+        method: "POST",
+        body: JSON.stringify({
+          jql,
+          fields: ["summary"],
+          maxResults: pageSize,
+          startAt,
+        }),
+      })
+      if (!ok || !data) break
+      const n = Array.isArray(data.issues) ? data.issues.length : 0
+      if (n === 0) break
+      fetchedCount += n
+      const reportedTotal = typeof data.total === "number" ? data.total : fetchedCount
+      startAt += n
+      if (startAt >= reportedTotal || fetchedCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
+    }
+  } catch {
+    return fetchedCount
+  }
+
+  return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
 }
 
 // ── Custom field discovery ────────────────────────────────────────────────────
@@ -210,14 +316,6 @@ async function resolveQtdCenariosQAFieldId(
 }
 
 // ── Issue search ──────────────────────────────────────────────────────────────
-
-type IssueFields = {
-  summary?: string
-  issuetype?: { name?: string }
-  priority?: { name?: string }
-  labels?: string[]
-  [key: string]: unknown
-}
 
 async function searchIssuesByJql(
   base: string,
@@ -318,9 +416,7 @@ export async function fetchWorklogsForAuthorInRange(
     const labels = Array.isArray(fields.labels) ? (fields.labels as string[]) : []
     let qtdCenariosQA: number | null = null
     if (qtdFieldId && fields[qtdFieldId] != null) {
-      const raw = fields[qtdFieldId]
-      const parsed = typeof raw === "number" ? raw : Number(raw)
-      if (Number.isFinite(parsed)) qtdCenariosQA = parsed
+      qtdCenariosQA = parseQtdCenariosQAFieldValue(fields[qtdFieldId])
     }
 
     let wlStart = 0

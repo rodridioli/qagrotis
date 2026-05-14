@@ -8,16 +8,21 @@ import {
   mergeJiraAndClockworkWorklogs,
 } from "@/features/qa/lib/clockwork-worklogs-fetch"
 import {
-  fetchIssueSummariesByKeys,
+  countBrokenTestsOpenedByReporterInRange,
+  fetchIssueFieldsForKeys,
   fetchWorklogsForAuthorInRange,
   findJiraAccountIdByEmail,
   resolveTimeZoneForWorklogs,
+  type JiraLancamentoEntry,
+  type LancamentoIssueFieldsPatch,
 } from "@/features/qa/lib/jira-worklogs-fetch"
 import { getActiveQaUsers, resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
 import type { NextRequest } from "next/server"
 
 const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/
 const MAX_RANGE_DAYS = 92
+
+const JIRA_KEY_PATTERN = /^[A-Z][A-Z0-9]*-\d+$/i
 
 function parseIsoDay(s: string | null): string | null {
   if (!s?.trim()) return null
@@ -35,6 +40,32 @@ function daysBetweenInclusive(from: string, to: string): number {
 
 function normalizeEmailForClockwork(email: string): string {
   return email.trim().toLowerCase()
+}
+
+function needsIssueEnrichment(e: JiraLancamentoEntry): boolean {
+  if (e.dataSource === "clockwork") return true
+  if (!e.summary?.trim()) return true
+  if (!e.priority?.trim()) return true
+  if (!e.issueType?.trim()) return true
+  if (e.qtdCenariosQA == null) return true
+  return false
+}
+
+function mergeEntryWithPatch(
+  e: JiraLancamentoEntry,
+  patch: LancamentoIssueFieldsPatch,
+): JiraLancamentoEntry {
+  return {
+    ...e,
+    summary: e.summary?.trim() ? e.summary : patch.summary ?? e.summary,
+    issueType: e.issueType?.trim() ? e.issueType : patch.issueType ?? e.issueType ?? null,
+    priority: e.priority?.trim() ? e.priority : patch.priority ?? e.priority ?? null,
+    labels: e.labels?.length ? e.labels : patch.labels.length ? patch.labels : e.labels ?? [],
+    qtdCenariosQA:
+      e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)
+        ? e.qtdCenariosQA
+        : patch.qtdCenariosQA ?? e.qtdCenariosQA ?? null,
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -146,25 +177,42 @@ export async function GET(req: NextRequest) {
 
   const { merged: rawEntries, clockworkAdded } = mergeJiraAndClockworkWorklogs(jiraEntries, clockworkEntries)
 
-  // Enrich summaries for Clockwork-only entries (and any others missing a title)
-  // using a bulk Jira search. Failures are non-fatal.
+  const keysToEnrich = Array.from(
+    new Set(
+      rawEntries
+        .filter(needsIssueEnrichment)
+        .map((e) => e.issueKey.trim().toUpperCase())
+        .filter((k) => JIRA_KEY_PATTERN.test(k)),
+    ),
+  )
+
+  let brokenTestsOpenedCount: number | undefined
+  const brokenPromise = jiraUser
+    ? countBrokenTestsOpenedByReporterInRange(
+        base,
+        credentials,
+        jiraUser.accountId,
+        from,
+        to,
+      ).catch(() => undefined)
+    : Promise.resolve(undefined)
+
+  const enrichPromise =
+    keysToEnrich.length > 0
+      ? fetchIssueFieldsForKeys(base, credentials, keysToEnrich).catch(
+          () => new Map<string, LancamentoIssueFieldsPatch>(),
+        )
+      : Promise.resolve(new Map<string, LancamentoIssueFieldsPatch>())
+
+  const [fieldMap, brokenResult] = await Promise.all([enrichPromise, brokenPromise])
+  brokenTestsOpenedCount = brokenResult
+
   let entries = rawEntries
-  const keysNeedingSummary = rawEntries
-    .filter((e) => !e.summary?.trim())
-    .map((e) => e.issueKey)
-  if (keysNeedingSummary.length > 0 && jiraUser) {
-    try {
-      const summaryMap = await fetchIssueSummariesByKeys(base, credentials, keysNeedingSummary)
-      if (summaryMap.size > 0) {
-        entries = rawEntries.map((e) => {
-          if (e.summary?.trim()) return e
-          const s = summaryMap.get(e.issueKey.trim().toUpperCase())
-          return s ? { ...e, summary: s } : e
-        })
-      }
-    } catch {
-      // best-effort only
-    }
+  if (fieldMap.size > 0) {
+    entries = rawEntries.map((e) => {
+      const patch = fieldMap.get(e.issueKey.trim().toUpperCase())
+      return patch ? mergeEntryWithPatch(e, patch) : e
+    })
   }
 
   const totalSeconds = entries.reduce((acc, e) => acc + e.timeSpentSeconds, 0)
@@ -199,5 +247,6 @@ export async function GET(req: NextRequest) {
     jiraAuthorDisplayName,
     includesClockwork: clockworkAdded > 0,
     clockworkMergedCount: clockworkAdded,
+    ...(brokenTestsOpenedCount !== undefined ? { brokenTestsOpenedCount } : {}),
   })
 }
