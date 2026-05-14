@@ -13,6 +13,12 @@ describe("individual-lancamentos-date-presets", () => {
     expect(r).toEqual({ from: "2026-01-15", to: "2026-01-15" })
   })
 
+  it("yesterday: from e to iguais ao dia civil anterior", () => {
+    const fixed = new Date(2026, 0, 15, 14, 30, 0)
+    const r = getLancamentosPresetRange("yesterday", fixed)
+    expect(r).toEqual({ from: "2026-01-14", to: "2026-01-14" })
+  })
+
   it("week: segunda a domingo da semana, to não passa de hoje", () => {
     const wed = new Date(2026, 0, 14, 12, 0, 0)
     const r = getLancamentosPresetRange("week", wed)

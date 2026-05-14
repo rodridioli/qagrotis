@@ -4,14 +4,10 @@ import * as React from "react"
 import {
   AlertTriangle,
   BarChart3,
-  Bot,
   Bug,
-  Clock,
   Flame,
   Hash,
   Layers,
-  TrendingUp,
-  Zap,
 } from "lucide-react"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -88,20 +84,12 @@ function computeStats(entries: LancamentoRow[]) {
   const criticalIssues = new Set<string>()
   const brokenTestIssues = new Set<string>()
   let qtdCenariosTotal = 0
-  let desvioSeconds = 0
-  let taSeconds = 0
 
   const CRITICAL_PRIORITIES = new Set(["Critical", "Highest", "Crítica", "Alta"])
   const isCritical = (e: LancamentoRow) =>
     e.priority ? CRITICAL_PRIORITIES.has(e.priority) : false
   const isBrokenTest = (e: LancamentoRow) =>
     (e.issueType ?? "").toLowerCase().includes("broken")
-  const isDesvio = (e: LancamentoRow) =>
-    (e.labels ?? []).some((l) => l.toLowerCase() === "desvio") ||
-    (e.issueType ?? "").toLowerCase() === "desvio"
-  const isTA = (e: LancamentoRow) =>
-    (e.labels ?? []).some((l) => l.toUpperCase() === "TA") ||
-    (e.issueType ?? "").toLowerCase().includes("automatizado")
 
   for (const e of entries) {
     const pk = e.projectKey || e.issueKey.split("-")[0]
@@ -110,8 +98,6 @@ function computeStats(entries: LancamentoRow[]) {
     if (isCritical(e)) criticalIssues.add(e.issueKey)
     if (isBrokenTest(e)) brokenTestIssues.add(e.issueKey)
     if (e.qtdCenariosQA != null) qtdCenariosTotal += e.qtdCenariosQA
-    if (isDesvio(e)) desvioSeconds += e.timeSpentSeconds
-    if (isTA(e)) taSeconds += e.timeSpentSeconds
   }
 
   const projectHours: ProjectHours[] = Array.from(projectMap.entries())
@@ -124,8 +110,6 @@ function computeStats(entries: LancamentoRow[]) {
     criticalCount: criticalIssues.size,
     brokenTestCount: brokenTestIssues.size,
     qtdCenariosTotal,
-    desvioSeconds,
-    taSeconds,
   }
 }
 
@@ -203,42 +187,30 @@ function DashboardPanel({ entries }: { entries: LancamentoRow[] }) {
   return (
     <div className="flex flex-col gap-3">
       <ProjectBar projectHours={stats.projectHours} />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
         <StatCard
           icon={<Hash className="size-4" />}
-          label="Total de Issues"
+          label="Total de Jiras"
           value={stats.totalIssues}
           accent="blue"
         />
         <StatCard
           icon={<Flame className="size-4" />}
-          label="Issues Críticas"
+          label="Jiras críticos"
           value={stats.criticalCount}
           accent="red"
         />
         <StatCard
           icon={<Bug className="size-4" />}
-          label="Broken Test"
+          label="Retorno de Testes"
           value={stats.brokenTestCount}
           accent="amber"
         />
         <StatCard
           icon={<Layers className="size-4" />}
-          label="Cenários Testados"
+          label="Testes Realizados"
           value={stats.qtdCenariosTotal}
           accent="teal"
-        />
-        <StatCard
-          icon={<TrendingUp className="size-4" />}
-          label="Horas Desvios"
-          value={formatHours(stats.desvioSeconds)}
-          accent="violet"
-        />
-        <StatCard
-          icon={<Bot className="size-4" />}
-          label="Horas TA"
-          value={formatHours(stats.taSeconds)}
-          accent="green"
         />
       </div>
     </div>
@@ -331,6 +303,7 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
         {(
           [
             ["today", "Hoje"],
+            ["yesterday", "Ontem"],
             ["week", "Semana"],
             ["month", "Mês Atual"],
             ["lastMonth", "Mês Anterior"],
@@ -353,12 +326,7 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
       ) : error ? (
         <EmptyState message={`Erro: ${error}`} />
       ) : data?.noJiraUser && !data.entries.length ? (
-        <EmptyState
-          message={
-            data.message ??
-            "Não foi encontrado utilizador Jira com o mesmo e-mail deste cadastro."
-          }
-        />
+        <EmptyState message="Nenhum registro encontrado" />
       ) : (
         <>
           {data?.noJiraUser && data.entries.length > 0 ? (
@@ -438,12 +406,12 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
                                 href={`${jiraBase}/browse/${encodeURIComponent(row.issueKey)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-brand-primary underline-offset-2 hover:underline"
+                                className="font-semibold text-brand-primary underline-offset-2 hover:underline"
                               >
                                 {row.issueKey}
                               </a>
                             ) : (
-                              row.issueKey
+                              <span className="font-semibold">{row.issueKey}</span>
                             )}
                           </td>
                           {/* Projeto */}
