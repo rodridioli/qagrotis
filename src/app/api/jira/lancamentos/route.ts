@@ -8,11 +8,13 @@ import {
   mergeJiraAndClockworkWorklogs,
 } from "@/features/qa/lib/clockwork-worklogs-fetch"
 import {
-  countBrokenTestSubtasksInParentIssues,
+  augmentFieldMapWithGetIssueFallback,
+  brokenTestSubtasksCountsInParents,
   fetchIssueFieldsForKeys,
   fetchWorklogsForAuthorInRange,
   findJiraAccountIdByEmail,
   resolveTimeZoneForWorklogs,
+  type BrokenTestSubtaskCounts,
   type JiraLancamentoEntry,
   type LancamentoIssueFieldsPatch,
 } from "@/features/qa/lib/jira-worklogs-fetch"
@@ -185,30 +187,31 @@ export async function GET(req: NextRequest) {
     ),
   )
 
-  // Conta Broken Tests criados pelo usuário cujos pais estão nos Jiras com horas apontadas.
-  let brokenTestsOpenedCount: number | undefined
-  const brokenPromise =
-    jiraUser && keysToEnrich.length > 0
-      ? countBrokenTestSubtasksInParentIssues(
-          base,
-          credentials,
-          keysToEnrich,
-          jiraUser.accountId,
-        ).catch(() => undefined)
+  const brokenCountsPromise =
+    keysToEnrich.length > 0
+      ? brokenTestSubtasksCountsInParents(base, credentials, keysToEnrich, jiraUser?.accountId ?? null).catch(
+          (e) => {
+            if (process.env.NODE_ENV !== "production") {
+              console.error("[api/jira/lancamentos] Broken Test counts failed", e)
+            }
+            return { totalInScope: 0, createdByReporter: 0 } satisfies BrokenTestSubtaskCounts
+          },
+        )
       : Promise.resolve(undefined)
 
   const enrichPromise =
     keysToEnrich.length > 0
-      ? fetchIssueFieldsForKeys(base, credentials, keysToEnrich).catch(
-          () => new Map<string, LancamentoIssueFieldsPatch>(),
-        )
+      ? fetchIssueFieldsForKeys(base, credentials, keysToEnrich).catch(() => new Map<string, LancamentoIssueFieldsPatch>())
       : Promise.resolve(new Map<string, LancamentoIssueFieldsPatch>())
 
-  const [fieldMap, brokenResult] = await Promise.all([enrichPromise, brokenPromise])
-  brokenTestsOpenedCount = brokenResult
+  const [fieldMap, brokenCounts] = await Promise.all([enrichPromise, brokenCountsPromise])
+
+  if (keysToEnrich.length > 0) {
+    await augmentFieldMapWithGetIssueFallback(base, credentials, fieldMap, keysToEnrich)
+  }
 
   let entries = rawEntries
-  if (fieldMap.size > 0) {
+  if (keysToEnrich.length > 0) {
     entries = rawEntries.map((e) => {
       const patch = fieldMap.get(e.issueKey.trim().toUpperCase())
       return patch ? mergeEntryWithPatch(e, patch) : e
@@ -247,6 +250,12 @@ export async function GET(req: NextRequest) {
     jiraAuthorDisplayName,
     includesClockwork: clockworkAdded > 0,
     clockworkMergedCount: clockworkAdded,
-    ...(brokenTestsOpenedCount !== undefined ? { brokenTestsOpenedCount } : {}),
+    ...(brokenCounts
+      ? {
+          brokenTestSubtasksTotalInScope: brokenCounts.totalInScope,
+          brokenTestsCreatedByUser: brokenCounts.createdByReporter,
+          brokenTestsOpenedCount: brokenCounts.createdByReporter,
+        }
+      : {}),
   })
 }
