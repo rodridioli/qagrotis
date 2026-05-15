@@ -90,13 +90,13 @@ export function IndividualSecaoDevelopmentPanel({
             <IndividualActiveUserAvatarStrip secao={secao} users={visibleUsers} selectedUserId={selectedUserId} />
           </div>
           {showLancamentos && (
-            <>
+            <div className="flex shrink-0 items-center" style={{ gap: "calc(var(--spacing) * 2)" }}>
               <Select
                 value={accessProfileFilter}
                 onValueChange={(v) => handleAccessProfileChange(v as AccessProfileFilter)}
                 aria-label="Perfil de Acesso"
               >
-                <SelectTrigger className="w-36 shrink-0">
+                <SelectTrigger className="w-36">
                   <SelectValue>
                     {ACCESS_PROFILE_OPTIONS.find((o) => o.value === accessProfileFilter)?.label ?? "Todos"}
                   </SelectValue>
@@ -114,7 +114,7 @@ export function IndividualSecaoDevelopmentPanel({
                 onValueChange={(v) => handlePresetChange(v as LancamentosPeriodPreset)}
                 aria-label="Período"
               >
-                <SelectTrigger className="w-44 shrink-0">
+                <SelectTrigger className="w-44">
                   <SelectValue>{getLancamentosPresetLabel(lancamentosPreset)}</SelectValue>
                 </SelectTrigger>
                 <SelectPopup>
@@ -125,7 +125,7 @@ export function IndividualSecaoDevelopmentPanel({
                   ))}
                 </SelectPopup>
               </Select>
-            </>
+            </div>
           )}
           {showAvaliacoes ? (
             <Button
