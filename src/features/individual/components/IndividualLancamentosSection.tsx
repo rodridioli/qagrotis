@@ -229,22 +229,23 @@ function StatCard({
   )
 }
 
-// ── Pie chart ────────────────────────────────────────────────────────────────
+// ── Stacked bar chart ────────────────────────────────────────────────────────
 
-const PIE_COLORS = [
+const BAR_COLORS = [
   "var(--color-brand-primary)",
   "var(--color-secondary-500)",
-  "#f59e0b", // badge-warning fallback
-  "#3b82f6", // badge-info fallback
-  "#10b981", // badge-success fallback
+  "#f59e0b",
+  "#3b82f6",
+  "#10b981",
   "#8b5cf6",
   "#ec4899",
   "#06b6d4",
 ]
 
-function ProjectPieChart({ projectHours }: { projectHours: ProjectHours[] }) {
+function ProjectStackedBar({ projectHours }: { projectHours: ProjectHours[] }) {
   if (projectHours.length === 0) return null
   const totalSeconds = projectHours.reduce((acc, p) => acc + p.seconds, 0)
+  if (totalSeconds === 0) return null
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-border-default bg-surface-card p-5 shadow-card">
@@ -254,79 +255,40 @@ function ProjectPieChart({ projectHours }: { projectHours: ProjectHours[] }) {
         </span>
         <p className="text-sm font-medium text-text-secondary">Horas por Projeto</p>
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
-        {/* SVG Pie */}
-        <PieSvg slices={projectHours} total={totalSeconds} />
-        {/* Legend */}
-        <div className="flex flex-col gap-1.5 min-w-0">
-          {projectHours.map((p, i) => (
-            <div key={p.key} className="flex items-center gap-2 text-xs">
-              <span
-                className="size-3 shrink-0 rounded-sm"
-                style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
-              />
-              <span className="truncate font-medium text-text-primary" title={p.name ?? p.key}>
-                {p.name ?? p.key}
-              </span>
-              <span className="shrink-0 tabular-nums text-text-secondary">
-                {formatDurationHMin(p.seconds)}
-              </span>
-              <span className="shrink-0 tabular-nums text-text-secondary">
-                ({totalSeconds > 0 ? Math.round((p.seconds / totalSeconds) * 100) : 0}%)
-              </span>
-            </div>
-          ))}
-        </div>
+      {/* Stacked bar */}
+      <div className="flex h-7 w-full overflow-hidden rounded-md" aria-hidden>
+        {projectHours.map((p, i) => (
+          <div
+            key={p.key}
+            title={`${p.name ?? p.key}: ${formatDurationHMin(p.seconds)} (${Math.round((p.seconds / totalSeconds) * 100)}%)`}
+            style={{
+              width: `${(p.seconds / totalSeconds) * 100}%`,
+              backgroundColor: BAR_COLORS[i % BAR_COLORS.length],
+            }}
+          />
+        ))}
+      </div>
+      {/* Legend */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+        {projectHours.map((p, i) => (
+          <div key={p.key} className="flex items-center gap-1.5 text-xs">
+            <span
+              className="size-3 shrink-0 rounded-sm"
+              style={{ backgroundColor: BAR_COLORS[i % BAR_COLORS.length] }}
+            />
+            <span className="font-medium text-text-primary" title={p.name ?? p.key}>
+              {p.name ?? p.key}
+            </span>
+            <span className="tabular-nums text-text-secondary">
+              {formatDurationHMin(p.seconds)}
+            </span>
+            <span className="tabular-nums text-text-secondary">
+              ({Math.round((p.seconds / totalSeconds) * 100)}%)
+            </span>
+          </div>
+        ))}
       </div>
     </div>
-  )
-}
-
-function PieSvg({ slices, total }: { slices: ProjectHours[]; total: number }) {
-  if (total === 0) return null
-  const SIZE = 160
-  const R = 60
-  const cx = SIZE / 2
-  const cy = SIZE / 2
-
-  let cumulativeAngle = -Math.PI / 2
-  const paths = slices.map((s, i) => {
-    const fraction = s.seconds / total
-    const startAngle = cumulativeAngle
-    const sweepAngle = fraction * 2 * Math.PI
-    cumulativeAngle += sweepAngle
-    const endAngle = cumulativeAngle
-
-    const x1 = cx + R * Math.cos(startAngle)
-    const y1 = cy + R * Math.sin(startAngle)
-    const x2 = cx + R * Math.cos(endAngle)
-    const y2 = cy + R * Math.sin(endAngle)
-    const largeArc = sweepAngle > Math.PI ? 1 : 0
-    const d =
-      slices.length === 1
-        ? `M ${cx} ${cy - R} A ${R} ${R} 0 1 1 ${cx - 0.001} ${cy - R} Z`
-        : `M ${cx} ${cy} L ${x1} ${y1} A ${R} ${R} 0 ${largeArc} 1 ${x2} ${y2} Z`
-    return (
-      <path
-        key={s.key}
-        d={d}
-        fill={PIE_COLORS[i % PIE_COLORS.length]}
-        stroke="var(--color-surface-card, white)"
-        strokeWidth={2}
-      />
-    )
-  })
-
-  return (
-    <svg
-      width={SIZE}
-      height={SIZE}
-      viewBox={`0 0 ${SIZE} ${SIZE}`}
-      className="shrink-0"
-      aria-hidden
-    >
-      {paths}
-    </svg>
   )
 }
 
@@ -357,7 +319,7 @@ function DashboardPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="grid gap-3 md:grid-cols-2">
-        <ProjectPieChart projectHours={stats.projectHours} />
+        <ProjectStackedBar projectHours={stats.projectHours} />
         <div className="rounded-xl border border-border-default bg-surface-card p-5 shadow-card">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">

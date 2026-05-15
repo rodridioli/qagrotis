@@ -67,14 +67,16 @@ export function IndividualSecaoDevelopmentPanel({
     return users.filter((u) => u.accessProfile === accessProfileFilter)
   }, [users, accessProfileFilter])
 
-  React.useEffect(() => {
-    if (!showLancamentos) return
-    if (visibleUsers.length === 0) return
-    const ids = new Set(visibleUsers.map((u) => u.id))
-    if (!ids.has(selectedUserId)) {
-      router.replace(`/individual/lancamentos?userId=${encodeURIComponent(visibleUsers[0]!.id)}`)
+  function handleAccessProfileChange(value: AccessProfileFilter) {
+    const newVisible =
+      value === "all" ? users : users.filter((u) => u.accessProfile === value)
+    setAccessProfileFilter(value)
+    if (newVisible.length > 0 && !newVisible.some((u) => u.id === selectedUserId)) {
+      router.replace(
+        `/individual/lancamentos?userId=${encodeURIComponent(newVisible[0]!.id)}`,
+      )
     }
-  }, [visibleUsers, selectedUserId, showLancamentos, router])
+  }
 
   function handlePresetChange(p: LancamentosPeriodPreset) {
     setLancamentosPreset(p)
@@ -91,7 +93,7 @@ export function IndividualSecaoDevelopmentPanel({
             <>
               <Select
                 value={accessProfileFilter}
-                onValueChange={(v) => setAccessProfileFilter(v as AccessProfileFilter)}
+                onValueChange={(v) => handleAccessProfileChange(v as AccessProfileFilter)}
                 aria-label="Perfil de Acesso"
               >
                 <SelectTrigger className="w-36 shrink-0">
