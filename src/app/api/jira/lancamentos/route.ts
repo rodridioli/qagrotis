@@ -65,6 +65,7 @@ function mergeEntryWithPatch(
         : e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)
           ? e.qtdCenariosQA
           : null,
+    projectName: patch.projectName?.trim() ? patch.projectName : e.projectName?.trim() ? e.projectName : null,
   }
 }
 

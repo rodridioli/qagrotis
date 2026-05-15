@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   BarChart3,
   Bug,
+  Clock,
   Flame,
   Hash,
   Layers,
@@ -44,6 +45,7 @@ type LancamentoRow = {
   id: string
   issueKey: string
   projectKey: string
+  projectName?: string | null
   summary: string | null
   issueType?: string | null
   priority?: string | null
@@ -76,17 +78,10 @@ type ApiOk = {
   brokenTestsCreatedByUser?: number
 }
 
-function formatHours(seconds: number): string {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  if (h === 0) return `${m} min`
-  if (m === 0) return `${h} h`
-  return `${h} h ${m} min`
-}
-
-function formatHoursShort(hours: number): string {
-  if (hours === Math.floor(hours)) return `${hours} h`
-  return `${hours.toFixed(2)} h`
+function formatDurationHMin(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600)
+  const m = Math.floor((totalSeconds % 3600) / 60)
+  return `${String(h).padStart(2, "0")}h${String(m).padStart(2, "0")}min`
 }
 
 function alertLevel(hours: number): "red" | "yellow" | null {
@@ -97,7 +92,7 @@ function alertLevel(hours: number): "red" | "yellow" | null {
 
 // ── Dashboard stats ─────────────────────────────────────────────────────────
 
-type ProjectHours = { key: string; seconds: number }
+type ProjectHours = { key: string; name: string | null; seconds: number }
 
 function normalizePriorityToken(p: string): string {
   return p
@@ -127,6 +122,7 @@ function priorityIsCritical(p: string | null | undefined): boolean {
 
 function computeStats(entries: LancamentoRow[]) {
   const projectMap = new Map<string, number>()
+  const projectNameMap = new Map<string, string>()
   const issueSet = new Set<string>()
   const criticalIssues = new Set<string>()
   const brokenTestIssues = new Set<string>()
@@ -138,6 +134,9 @@ function computeStats(entries: LancamentoRow[]) {
   for (const e of entries) {
     const pk = e.projectKey || e.issueKey.split("-")[0]
     projectMap.set(pk, (projectMap.get(pk) ?? 0) + e.timeSpentSeconds)
+    if (e.projectName?.trim() && !projectNameMap.has(pk)) {
+      projectNameMap.set(pk, e.projectName.trim())
+    }
     issueSet.add(e.issueKey)
     if (priorityIsCritical(e.priority)) criticalIssues.add(e.issueKey)
     if (isBrokenTest(e)) brokenTestIssues.add(e.issueKey)
@@ -153,7 +152,7 @@ function computeStats(entries: LancamentoRow[]) {
   }
 
   const projectHours: ProjectHours[] = Array.from(projectMap.entries())
-    .map(([key, seconds]) => ({ key, seconds }))
+    .map(([key, seconds]) => ({ key, name: projectNameMap.get(key) ?? null, seconds }))
     .sort((a, b) => b.seconds - a.seconds)
 
   return {
@@ -203,25 +202,19 @@ function StatCard({
 function ProjectBar({ projectHours }: { projectHours: ProjectHours[] }) {
   if (projectHours.length === 0) return null
   const max = projectHours[0].seconds
-  const totalSeconds = projectHours.reduce((acc, p) => acc + p.seconds, 0)
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border-default bg-surface-card p-5 shadow-card md:col-span-2 lg:col-span-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-            <BarChart3 className="size-5" />
-          </span>
-          <div>
-            <p className="text-sm text-text-secondary">Horas por Projeto</p>
-            <p className="text-2xl font-bold tabular-nums text-text-primary">{formatHours(totalSeconds)}</p>
-          </div>
-        </div>
+    <div className="flex flex-col gap-3 rounded-xl border border-border-default bg-surface-card p-5 shadow-card">
+      <div className="flex items-center gap-3">
+        <span className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+          <BarChart3 className="size-5" />
+        </span>
+        <p className="text-sm font-medium text-text-secondary">Horas por Projeto</p>
       </div>
       <div className="flex flex-col gap-2">
         {projectHours.map((p) => (
           <div key={p.key} className="flex items-center gap-3">
-            <span className="w-16 shrink-0 text-right font-mono text-xs font-medium text-text-primary">
-              {p.key}
+            <span className="w-36 shrink-0 truncate text-right text-xs font-medium text-text-primary" title={p.name ?? p.key}>
+              {p.name ?? p.key}
             </span>
             <div className="flex-1 overflow-hidden rounded-full bg-neutral-grey-100">
               <div
@@ -229,8 +222,8 @@ function ProjectBar({ projectHours }: { projectHours: ProjectHours[] }) {
                 style={{ width: `${Math.round((p.seconds / max) * 100)}%` }}
               />
             </div>
-            <span className="w-16 shrink-0 text-xs tabular-nums text-text-secondary">
-              {formatHours(p.seconds)}
+            <span className="w-20 shrink-0 text-xs tabular-nums text-text-secondary">
+              {formatDurationHMin(p.seconds)}
             </span>
           </div>
         ))}
@@ -255,9 +248,29 @@ function DashboardPanel({
   const retornoValor =
     brokenTestsCreatedByUser ?? brokenTestsOpenedCount ?? stats.brokenTestCountFromWorklogs
 
+  const totalSeconds = React.useMemo(
+    () => entries.reduce((acc, e) => acc + e.timeSpentSeconds, 0),
+    [entries],
+  )
+
   return (
     <div className="flex flex-col gap-3">
-      <ProjectBar projectHours={stats.projectHours} />
+      <div className="grid gap-3 md:grid-cols-2">
+        <ProjectBar projectHours={stats.projectHours} />
+        <div className="rounded-xl border border-border-default bg-surface-card p-5 shadow-card">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm text-text-secondary">Total de Horas Lançadas</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-text-primary">
+                {formatDurationHMin(totalSeconds)}
+              </p>
+            </div>
+            <span className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+              <Clock className="size-5" aria-hidden />
+            </span>
+          </div>
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
         <StatCard icon={Hash}   label="Total de Jiras"      value={stats.totalIssues}          iconVariant="info" />
         <StatCard icon={Flame}  label="Jiras críticos"      value={stats.criticalCount}        iconVariant="destructive" />
@@ -381,7 +394,7 @@ export function IndividualLancamentosSection({
       <span className="font-bold">{filtered.length.toLocaleString("pt-BR")}</span>
       {" / "}
       Total de Horas:{" "}
-      <span className="font-bold">{formatHours(filteredTotalSeconds)}</span>
+      <span className="font-bold">{formatDurationHMin(filteredTotalSeconds)}</span>
     </span>
   )
 
@@ -466,16 +479,16 @@ export function IndividualLancamentosSection({
               <div className="overflow-x-auto">
                 <table className="qagrotis-table-row-hover-muted w-full min-w-[64rem] border-collapse text-left text-sm">
                   <thead>
-                    <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
-                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Jira</th>
-                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Tipo</th>
-                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Projeto</th>
-                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Prioridade</th>
-                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Título</th>
-                      <th className="hidden px-3 py-3 text-xs font-semibold text-text-secondary sm:table-cell sm:px-4">Fonte</th>
-                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Data</th>
-                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Tempo</th>
-                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Comentário</th>
+                    <tr className="border-b border-border-default bg-neutral-grey-50">
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Jira</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Tipo</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Projeto</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Prioridade</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Título</th>
+                      <th className="hidden px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:table-cell sm:px-4">Fonte</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Data</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Tempo</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Comentário</th>
                       <th className="w-10 px-3 py-3 sm:px-4">
                         <span className="sr-only">Alertas</span>
                       </th>
@@ -487,41 +500,41 @@ export function IndividualLancamentosSection({
                       return (
                         <tr
                           key={row.id}
-                          className="border-b border-border-default last:border-0"
+                          className="border-b border-border-default last:border-b-0 transition-colors"
                         >
                           {/* Jira */}
-                          <td className="px-3 py-3 font-mono text-xs sm:px-4 sm:text-sm">
+                          <td className="whitespace-nowrap px-3 py-3 sm:px-4">
                             {jiraBase ? (
                               <a
                                 href={`${jiraBase}/browse/${encodeURIComponent(row.issueKey)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="font-semibold text-brand-primary underline-offset-2 hover:underline"
+                                className="font-semibold text-brand-primary tabular-nums hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
                               >
                                 {row.issueKey}
                               </a>
                             ) : (
-                              <span className="font-semibold">{row.issueKey}</span>
+                              <span className="font-semibold tabular-nums text-text-primary">{row.issueKey}</span>
                             )}
                           </td>
                           {/* Tipo */}
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-text-secondary sm:px-4">
+                          <td className="whitespace-nowrap px-3 py-3 text-sm text-text-secondary sm:px-4">
                             {row.issueType?.trim() ? row.issueType : "—"}
                           </td>
                           {/* Projeto */}
-                          <td className="whitespace-nowrap px-3 py-3 text-xs font-medium text-text-secondary sm:px-4">
-                            {row.projectKey || row.issueKey.split("-")[0]}
+                          <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-text-primary sm:px-4">
+                            {row.projectName?.trim() || row.projectKey || row.issueKey.split("-")[0]}
                           </td>
                           {/* Prioridade */}
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-text-primary sm:px-4">
+                          <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary sm:px-4">
                             {row.priority?.trim() ? row.priority : "—"}
                           </td>
                           {/* Título */}
-                          <td className="max-w-[16rem] px-3 py-3 text-text-primary sm:px-4">
+                          <td className="max-w-[16rem] px-3 py-3 text-sm text-text-primary sm:px-4">
                             {row.summary ?? "—"}
                           </td>
                           {/* Fonte */}
-                          <td className="hidden whitespace-nowrap px-3 py-3 text-xs text-text-secondary sm:table-cell sm:px-4">
+                          <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-text-secondary sm:table-cell sm:px-4">
                             {row.dataSource === "clockwork" ? (
                               <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-800 dark:text-violet-200">
                                 Clockwork
@@ -531,18 +544,18 @@ export function IndividualLancamentosSection({
                             )}
                           </td>
                           {/* Data */}
-                          <td className="whitespace-nowrap px-3 py-3 text-text-secondary sm:px-4">
+                          <td className="whitespace-nowrap px-3 py-3 text-sm tabular-nums text-text-primary sm:px-4">
                             {new Date(row.started).toLocaleString("pt-BR", {
                               dateStyle: "short",
                               timeStyle: "short",
                             })}
                           </td>
                           {/* Tempo */}
-                          <td className="whitespace-nowrap px-3 py-3 tabular-nums font-medium sm:px-4">
-                            {formatHoursShort(row.hours)}
+                          <td className="whitespace-nowrap px-3 py-3 text-sm tabular-nums font-medium text-text-primary sm:px-4">
+                            {formatDurationHMin(row.timeSpentSeconds)}
                           </td>
                           {/* Comentário */}
-                          <td className="max-w-[18rem] px-3 py-3 text-text-secondary sm:px-4">
+                          <td className="max-w-[18rem] px-3 py-3 text-sm text-text-secondary sm:px-4">
                             {row.comment ? (
                               <span className="line-clamp-3" title={row.comment}>
                                 {row.comment}

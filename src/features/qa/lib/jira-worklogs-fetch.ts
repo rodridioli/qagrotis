@@ -12,6 +12,7 @@ export type JiraLancamentoEntry = {
   id: string
   issueKey: string
   projectKey: string
+  projectName?: string | null
   summary: string | null
   issueType?: string | null
   priority?: string | null
@@ -143,6 +144,7 @@ type IssueFields = {
   issuetype?: { name?: string }
   priority?: unknown
   labels?: string[]
+  project?: { name?: string; key?: string }
   [key: string]: unknown
 }
 
@@ -202,6 +204,7 @@ export type LancamentoIssueFieldsPatch = {
   priority: string | null
   labels: string[]
   qtdCenariosQA: number | null
+  projectName: string | null
 }
 
 function parseQtdCenariosQAFieldValue(raw: unknown): number | null {
@@ -232,6 +235,8 @@ function issueFieldsToLancamentoPatch(
     typeof f.issuetype?.name === "string" && f.issuetype.name.trim() ? f.issuetype.name.trim() : null
   const priority = priorityNameFromIssueField(f.priority)
   const labels = Array.isArray(f.labels) ? (f.labels as string[]) : []
+  const projectName =
+    typeof f.project?.name === "string" && f.project.name.trim() ? f.project.name.trim() : null
   let qtdCenariosQA: number | null = null
   if (qtdFieldId && f[qtdFieldId] != null) {
     qtdCenariosQA = parseQtdCenariosQAFieldValue(f[qtdFieldId])
@@ -242,6 +247,7 @@ function issueFieldsToLancamentoPatch(
     priority,
     labels,
     qtdCenariosQA,
+    projectName,
   }
 }
 /**
@@ -255,7 +261,7 @@ export async function fetchIssueFieldsForKeys(
 ): Promise<Map<string, LancamentoIssueFieldsPatch>> {
   const unique = Array.from(new Set(keys.map((k) => k.trim().toUpperCase()).filter((k) => /^[A-Z][A-Z0-9]*-\d+$/i.test(k))))
   const qtdFieldId = await resolveQtdCenariosQAFieldId(base, credentials)
-  const baseFields = ["summary", "issuetype", "priority", "labels"]
+  const baseFields = ["summary", "issuetype", "priority", "labels", "project"]
   const fieldsParam = qtdFieldId ? [...baseFields, qtdFieldId] : baseFields
 
   const result = new Map<string, LancamentoIssueFieldsPatch>()
@@ -409,6 +415,11 @@ export function mergeLancamentoIssuePatches(
         : prev?.qtdCenariosQA != null && Number.isFinite(prev.qtdCenariosQA)
           ? prev.qtdCenariosQA
           : null,
+    projectName: next.projectName?.trim()
+      ? next.projectName.trim()
+      : prev?.projectName?.trim()
+        ? prev.projectName.trim()
+        : null,
   }
 }
 
@@ -439,7 +450,7 @@ export async function augmentFieldMapWithGetIssueFallback(
 
   if (need.length === 0) return
 
-  const fieldNames = ["summary", "issuetype", "priority", "labels"]
+  const fieldNames = ["summary", "issuetype", "priority", "labels", "project"]
   if (qtdFieldId) fieldNames.push(qtdFieldId)
   const fieldsComma = fieldNames.join(",")
 
