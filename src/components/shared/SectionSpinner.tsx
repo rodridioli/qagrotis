@@ -7,37 +7,33 @@ interface SectionSpinnerProps {
   className?: string
   /** Altura mínima do container. Padrão: min-h-[12rem] */
   minHeight?: string
+  /** Tamanho do spinner. Padrão: "md" */
+  size?: "sm" | "md" | "lg"
 }
 
-/**
- * Spinner padronizado para estados de loading dentro de seções e cards.
- * Use para substituir `<p>Carregando…</p>` em blocos de conteúdo assíncronos.
- *
- * Para overlays fullscreen use `LoadingOverlay`.
- * Para spinners inline em botões use `Loader2` do lucide-react.
- *
- * @example
- * {loading ? <SectionSpinner /> : <Content />}
- */
 export function SectionSpinner({
   label = "Carregando…",
   className,
   minHeight = "min-h-[12rem]",
+  size = "md",
 }: SectionSpinnerProps) {
+  const spinnerCls = cn(
+    "animate-spin rounded-full border-brand-primary/20 border-t-brand-primary",
+    size === "sm" && "size-4 border-2",
+    size === "md" && "size-5 border-[3px]",
+    size === "lg" && "size-8 border-4",
+  )
   return (
     <div
       role="status"
       aria-label={label}
       className={cn(
-        "flex items-center justify-center gap-2.5 py-12",
+        "flex flex-col items-center justify-center gap-2.5 py-12",
         minHeight,
         className,
       )}
     >
-      <span
-        className="size-5 animate-spin rounded-full border-[3px] border-brand-primary/20 border-t-brand-primary"
-        aria-hidden="true"
-      />
+      <span className={spinnerCls} aria-hidden="true" />
       <p className="text-sm text-text-secondary">{label}</p>
     </div>
   )

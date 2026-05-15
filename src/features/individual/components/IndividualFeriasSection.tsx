@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { Pencil, Trash2 } from "lucide-react"
+import { Check, Loader2, MoreVertical, Pencil, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -11,9 +12,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
+import { TableToolbar } from "@/components/shared/TableToolbar"
+import { FeriasSituacaoBadge, type FeriasSituacao } from "@/components/shared/StatusBadge"
 import {
   listIndividualFerias,
   createIndividualFerias,
@@ -22,7 +38,13 @@ import {
   type IndividualFeriasRow,
 } from "@/features/individual/actions/individual-ferias"
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type SituacaoFiltro = "ativas" | "planejada" | "em_andamento" | "concluida" | "todas"
+
+type RowWithSituacao = IndividualFeriasRow & { situacao: FeriasSituacao }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatIsoToBr(iso: string): string {
   const [y, m, d] = iso.split("-")
@@ -40,13 +62,48 @@ function formatCodigo(codigo: number): string {
   return `FER-${String(codigo).padStart(3, "0")}`
 }
 
-// ── exposed handle (used by IndividualSecaoDevelopmentPanel toolbar button) ───
+function computeSituacao(inicioIso: string, dias: number): FeriasSituacao {
+  const now = new Date()
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const [y, m, d] = inicioIso.split("-").map(Number)
+  const inicioUtc = Date.UTC(y!, m! - 1, d!)
+  const retornoUtc = inicioUtc + dias * 86400000
+  if (inicioUtc > todayUtc) return "planejada"
+  if (retornoUtc > todayUtc) return "em_andamento"
+  return "concluida"
+}
+
+function matchesSituacaoFiltro(situacao: FeriasSituacao, filtro: SituacaoFiltro): boolean {
+  if (filtro === "todas") return true
+  if (filtro === "ativas") return situacao === "planejada" || situacao === "em_andamento"
+  return situacao === filtro
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((n) => n[0]?.toUpperCase() ?? "")
+    .join("")
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const SITUACAO_OPTIONS: { value: SituacaoFiltro; label: string }[] = [
+  { value: "ativas",       label: "Planejadas e Em andamento" },
+  { value: "planejada",    label: "Planejada" },
+  { value: "em_andamento", label: "Em andamento" },
+  { value: "concluida",    label: "Concluída" },
+  { value: "todas",        label: "Todas" },
+]
+
+// ── Handle type ───────────────────────────────────────────────────────────────
 
 export interface IndividualFeriasSectionHandle {
   openAdd: () => void
 }
 
-// ── component ─────────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
   evaluatedUserId: string
@@ -65,6 +122,10 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
     const [rows, setRows] = React.useState<IndividualFeriasRow[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
+    const [search, setSearch] = React.useState("")
+    const [situacaoFiltro, setSituacaoFiltro] = React.useState<SituacaoFiltro>("ativas")
+    const [filterOpen, setFilterOpen] = React.useState(false)
+    const [filterDraft, setFilterDraft] = React.useState<SituacaoFiltro>("ativas")
 
     // Modal state
     const [modalOpen, setModalOpen] = React.useState(false)
@@ -145,16 +206,42 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
       void refetch()
     }
 
+    const rowsWithSituacao = React.useMemo<RowWithSituacao[]>(
+      () => rows.map((r) => ({ ...r, situacao: computeSituacao(r.inicioIso, r.dias) })),
+      [rows],
+    )
+
+    const filtered = React.useMemo<RowWithSituacao[]>(() => {
+      return rowsWithSituacao.filter((r) => {
+        if (!matchesSituacaoFiltro(r.situacao, situacaoFiltro)) return false
+        if (!search.trim()) return true
+        const q = search.trim().toLowerCase()
+        return (
+          formatCodigo(r.codigo).toLowerCase().includes(q) ||
+          formatIsoToBr(r.inicioIso).includes(q) ||
+          (r.evaluatedUser?.name ?? "").toLowerCase().includes(q)
+        )
+      })
+    }, [rowsWithSituacao, situacaoFiltro, search])
+
+    const activeFilterCount = situacaoFiltro !== "ativas" ? 1 : 0
+
     return (
       <div className="flex w-full flex-col gap-4">
         <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
-          {/* Toolbar */}
-          <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
-            <p className="text-sm font-medium text-text-secondary">
-              Total de férias:{" "}
-              <span className="font-semibold text-text-primary">{loading ? "—" : rows.length}</span>
-            </p>
-          </div>
+          <TableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Buscar por usuário…"
+            totalLabel="Total de férias"
+            totalCount={rows.length}
+            baseCount={rows.length}
+            activeFilterCount={activeFilterCount}
+            onFilterOpen={() => {
+              setFilterDraft(situacaoFiltro)
+              setFilterOpen(true)
+            }}
+          />
 
           {error ? (
             <div className="mx-4 my-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -163,62 +250,102 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
           ) : null}
 
           {loading ? (
-            <SectionSpinner />
-          ) : rows.length === 0 ? (
+            <SectionSpinner label="Carregando…" size="lg" />
+          ) : filtered.length === 0 ? (
             <EmptyState message="Nenhum registro encontrado." />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[36rem] border-collapse text-sm">
+              <table className="qagrotis-table-row-hover-muted w-full min-w-[52rem] border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-border-default bg-surface-raised">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Início</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Dias</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Retorno</th>
+                  <tr className="border-b border-border-default bg-neutral-grey-50">
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Usuário</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Código</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Início</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Dias</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Retorno</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Situação</th>
                     {canWrite && (
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-text-secondary">Ações</th>
+                      <th className="w-12 px-2 py-3 text-center text-xs font-semibold text-text-secondary sm:px-3">
+                        <span className="sr-only">Ações</span>
+                      </th>
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border-default">
-                  {rows.map((row) => {
+                <tbody>
+                  {filtered.map((row) => {
                     const retornoIso = calcRetornoIso(row.inicioIso, row.dias)
+                    const userName = row.evaluatedUser?.name ?? "Usuário"
+                    const initials = getInitials(userName)
                     return (
-                      <tr key={row.id} className="hover:bg-surface-raised/50">
-                        <td className="whitespace-nowrap px-4 py-3 font-mono text-sm font-medium text-text-primary tabular-nums">
-                          {formatCodigo(row.codigo)}
+                      <tr key={row.id} className="border-b border-border-default last:border-b-0 transition-colors">
+                        {/* Usuário */}
+                        <td className="whitespace-nowrap px-3 py-3 sm:px-4">
+                          <div className="flex items-center gap-2.5">
+                            <Avatar size="sm">
+                              {row.evaluatedUser?.photoPath ? (
+                                <AvatarImage src={row.evaluatedUser.photoPath} alt={userName} />
+                              ) : null}
+                              <AvatarFallback>{initials}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm text-text-primary">{userName}</span>
+                          </div>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-text-primary tabular-nums">
+                        {/* Código */}
+                        <td className="whitespace-nowrap px-3 py-3 sm:px-4">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(row)}
+                            className="cursor-pointer font-mono font-semibold text-brand-primary tabular-nums hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
+                            aria-label={`Abrir férias ${formatCodigo(row.codigo)}`}
+                          >
+                            {formatCodigo(row.codigo)}
+                          </button>
+                        </td>
+                        {/* Início */}
+                        <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary tabular-nums sm:px-4">
                           {formatIsoToBr(row.inicioIso)}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-text-primary tabular-nums">
+                        {/* Dias */}
+                        <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary tabular-nums sm:px-4">
                           {row.dias}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-text-primary tabular-nums">
+                        {/* Retorno */}
+                        <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary tabular-nums sm:px-4">
                           {formatIsoToBr(retornoIso)}
                         </td>
+                        {/* Situação */}
+                        <td className="px-3 py-3 sm:px-4">
+                          <FeriasSituacaoBadge situacao={row.situacao} />
+                        </td>
+                        {/* Ações */}
                         {canWrite && (
-                          <td className="whitespace-nowrap px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Editar"
-                                onClick={() => openEdit(row)}
+                          <td className="px-2 py-3 text-center sm:px-3">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={
+                                  <button
+                                    type="button"
+                                    aria-label="Mais ações"
+                                    className="inline-flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+                                  />
+                                }
                               >
-                                <Pencil className="size-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Excluir"
-                                onClick={() => { setDeleteRow(row); setDeleteOpen(true) }}
-                              >
-                                <Trash2 className="size-4 text-destructive" />
-                              </Button>
-                            </div>
+                                <MoreVertical className="size-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" side="bottom">
+                                <DropdownMenuItem onClick={() => openEdit(row)}>
+                                  <Pencil className="size-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onClick={() => { setDeleteRow(row); setDeleteOpen(true) }}
+                                >
+                                  <Trash2 className="size-4" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </td>
                         )}
                       </tr>
@@ -229,6 +356,71 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
             </div>
           )}
         </div>
+
+        {/* Filter dialog */}
+        <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+          <DialogContent showCloseButton className="sm:max-w-xs">
+            <DialogHeader>
+              <DialogTitle>Filtros</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 py-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary">Situação</label>
+                <Select
+                  value={filterDraft}
+                  onValueChange={(v) => setFilterDraft(v as SituacaoFiltro)}
+                  aria-label="Filtrar por situação"
+                >
+                  <SelectTrigger>
+                    <SelectValue>
+                      {SITUACAO_OPTIONS.find((o) => o.value === filterDraft)?.label}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectPopup>
+                    {SITUACAO_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectPopup>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setSituacaoFiltro("ativas")
+                  setFilterDraft("ativas")
+                  setFilterOpen(false)
+                }}
+              >
+                Limpar filtros
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => setFilterOpen(false)}
+              >
+                <X className="size-4 shrink-0" />
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                className="gap-1.5"
+                onClick={() => {
+                  setSituacaoFiltro(filterDraft)
+                  setFilterOpen(false)
+                }}
+              >
+                <Check className="size-4 shrink-0" />
+                Filtrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Create / Edit modal */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
@@ -248,6 +440,7 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
                   value={form.inicioIso}
                   onChange={(e) => setForm((f) => ({ ...f, inicioIso: e.target.value }))}
                   className="flex h-9 w-full rounded-lg border border-border-default bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                  style={{ colorScheme: "light" }}
                 />
               </div>
 
@@ -273,11 +466,33 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => setModalOpen(false)}
+                disabled={saving}
+              >
+                <X className="size-4 shrink-0" />
                 Cancelar
               </Button>
-              <Button type="button" onClick={() => void handleSave()} disabled={saving}>
-                {saving ? "Salvando…" : editingRow ? "Salvar" : "Cadastrar"}
+              <Button
+                type="button"
+                className="gap-1.5"
+                onClick={() => void handleSave()}
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="size-4 shrink-0 animate-spin" />
+                    Salvando…
+                  </>
+                ) : (
+                  <>
+                    <Check className="size-4 shrink-0" />
+                    Salvar
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -295,5 +510,5 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
         />
       </div>
     )
-  }
+  },
 )
