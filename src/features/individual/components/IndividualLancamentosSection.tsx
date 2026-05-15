@@ -316,14 +316,16 @@ function DashboardPanel({
     stats.brokenTestCountFromWorklogs
 
   return (
-    <div className="flex flex-col gap-3">
-      <ProjectStackedBar projectHours={stats.projectHours} />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
-        <StatCard icon={Hash}   label="Total de Jiras"      value={stats.totalIssues}      iconVariant="info" />
-        <StatCard icon={Flame}  label="Jiras críticos"      value={stats.criticalCount}    iconVariant="destructive" />
+    <div className="grid gap-3 md:grid-cols-2">
+      {/* Coluna esquerda: 2×2 stat cards */}
+      <div className="grid grid-cols-2 gap-3">
         <StatCard icon={Bug}    label="Retorno de Testes"   value={retornoValor}           iconVariant="warning" />
         <StatCard icon={Layers} label="Testes Realizados"   value={stats.qtdCenariosTotal} iconVariant="brand" />
+        <StatCard icon={Hash}   label="Total de Jiras"      value={stats.totalIssues}      iconVariant="info" />
+        <StatCard icon={Flame}  label="Jiras críticos"      value={stats.criticalCount}    iconVariant="destructive" />
       </div>
+      {/* Coluna direita: barra de horas */}
+      <ProjectStackedBar projectHours={stats.projectHours} />
     </div>
   )
 }
@@ -563,7 +565,9 @@ export function IndividualLancamentosSection({
                           </td>
                           {/* Título */}
                           <td className="max-w-[16rem] px-3 py-3 text-sm text-text-primary sm:px-4">
-                            {row.summary ?? "—"}
+                            <span className="block truncate" title={row.summary ?? undefined}>
+                              {row.summary ?? "—"}
+                            </span>
                           </td>
                           {/* Data */}
                           <td className="whitespace-nowrap px-3 py-3 text-sm tabular-nums text-text-primary sm:px-4">
@@ -578,13 +582,9 @@ export function IndividualLancamentosSection({
                           </td>
                           {/* Comentário */}
                           <td className="max-w-[18rem] px-3 py-3 text-sm text-text-secondary sm:px-4">
-                            {row.comment ? (
-                              <span className="line-clamp-3" title={row.comment}>
-                                {row.comment}
-                              </span>
-                            ) : (
-                              "—"
-                            )}
+                            <span className="block truncate" title={row.comment ?? undefined}>
+                              {row.comment ?? "—"}
+                            </span>
                           </td>
                           {/* Situação */}
                           <td className="px-3 py-3 sm:px-4">
