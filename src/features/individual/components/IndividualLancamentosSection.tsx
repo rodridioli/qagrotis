@@ -342,6 +342,8 @@ export function IndividualLancamentosSection({
   const preset = isControlled ? presetProp : presetInternal
   const [from, setFrom] = React.useState(() => getLancamentosPresetRange("week").from)
   const [to, setTo] = React.useState(() => getLancamentosPresetRange("week").to)
+  // Tracks whether the "anteriormente" two-phase refinement is in progress
+  const [anteriormenteRefining, setAnteriormenteRefining] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [data, setData] = React.useState<ApiOk | null>(null)
@@ -351,6 +353,7 @@ export function IndividualLancamentosSection({
   React.useEffect(() => {
     if (presetProp === undefined) return
     const r = getLancamentosPresetRange(presetProp)
+    setAnteriormenteRefining(false)
     setFrom(r.from)
     setTo(r.to)
   }, [presetProp])
@@ -387,17 +390,35 @@ export function IndividualLancamentosSection({
         throw new Error(msg)
       }
       const ok = body as ApiOk
+
+      // "Anteriormente": fase 1 — 14 dias. Refina para o dia mais recente com entradas.
+      if (preset === "anteriormente" && !anteriormenteRefining && from !== to) {
+        const maxDate = ok.entries?.reduce((max, e) => {
+          const d = e.started?.slice(0, 10) ?? ""
+          return d > max ? d : max
+        }, "") ?? ""
+        if (maxDate) {
+          setAnteriormenteRefining(true)
+          setFrom(maxDate)
+          setTo(maxDate)
+          // The useEffect on [load] will trigger the second fetch automatically.
+          return
+        }
+      }
+      setAnteriormenteRefining(false)
+
       setData(ok)
       if (ok.jiraBrowseBase?.trim()) {
         setJiraBase(ok.jiraBrowseBase.replace(/\/$/, ""))
       }
     } catch (e) {
+      setAnteriormenteRefining(false)
       setData(null)
       setError(e instanceof Error ? e.message : "Erro ao carregar.")
     } finally {
       setLoading(false)
     }
-  }, [evaluatedUserId, from, to])
+  }, [evaluatedUserId, from, to, preset, anteriormenteRefining])
 
   React.useEffect(() => {
     void load()
@@ -407,6 +428,7 @@ export function IndividualLancamentosSection({
     const r = getLancamentosPresetRange(p)
     if (!isControlled) setPresetInternal(p)
     onPresetChange?.(p)
+    setAnteriormenteRefining(false)
     setFrom(r.from)
     setTo(r.to)
   }
@@ -459,7 +481,7 @@ export function IndividualLancamentosSection({
       )}
 
       {loading ? (
-        <SectionSpinner label="A carregar lançamentos…" />
+        <SectionSpinner size="lg" />
       ) : error ? (
         <EmptyState message={`Erro: ${error}`} />
       ) : data ? (
@@ -589,7 +611,7 @@ export function IndividualLancamentosSection({
                           <td className="px-3 py-3 text-center sm:px-4">
                             <TooltipProvider>
                               <Tooltip>
-                                <TooltipTrigger className="flex items-center justify-center">
+                                <TooltipTrigger className="flex w-full items-center justify-center">
                                   {excesso ? (
                                     <AlertTriangle
                                       className="size-4 shrink-0 text-amber-500"

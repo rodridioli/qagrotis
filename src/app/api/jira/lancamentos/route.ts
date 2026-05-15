@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
       : Promise.resolve(new Map<string, LancamentoIssueFieldsPatch>())
 
   const reporterCountPromise = jiraUser
-    ? countReporterIssuesByTypes(base, credentials, jiraUser.accountId).catch(() => 0)
+    ? countReporterIssuesByTypes(base, credentials, jiraUser.accountId, from, to).catch(() => 0)
     : Promise.resolve(0)
 
   const [fieldMap, brokenCounts, reporterBrokenTestIssueCount] = await Promise.all([
