@@ -290,7 +290,7 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
                               {formatCodigo(row.codigo)}
                             </button>
                           ) : (
-                            <span className="font-semibold text-brand-primary tabular-nums">
+                            <span className="font-semibold tabular-nums text-text-primary">
                               {formatCodigo(row.codigo)}
                             </span>
                           )}

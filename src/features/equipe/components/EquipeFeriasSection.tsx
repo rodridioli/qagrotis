@@ -178,7 +178,7 @@ export function EquipeFeriasSection() {
                   return (
                     <tr key={row.id} className="border-b border-border-default last:border-b-0 transition-colors">
                       <td className="whitespace-nowrap px-3 py-3 sm:px-4">
-                        <span className="font-semibold text-brand-primary tabular-nums">
+                        <span className="font-semibold tabular-nums text-text-primary">
                           {formatCodigo(row.codigo)}
                         </span>
                       </td>
