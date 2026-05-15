@@ -12,15 +12,32 @@ import {
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { TableToolbar } from "@/components/shared/TableToolbar"
-import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/core/utils"
 import {
   getLancamentosPresetRange,
   type LancamentosPeriodPreset,
 } from "@/features/individual/lib/individual-lancamentos-date-presets"
 
+const PRESET_OPTIONS: { value: LancamentosPeriodPreset; label: string }[] = [
+  { value: "today",     label: "Hoje" },
+  { value: "yesterday", label: "Ontem" },
+  { value: "week",      label: "Semana" },
+  { value: "month",     label: "Mês Atual" },
+  { value: "lastMonth", label: "Mês Anterior" },
+]
+
 export interface IndividualLancamentosSectionProps {
   evaluatedUserId: string
+  /** Controlado externamente (ex.: IndividualSecaoDevelopmentPanel). Quando fornecido, omite o Select interno. */
+  preset?: LancamentosPeriodPreset
+  onPresetChange?: (p: LancamentosPeriodPreset) => void
 }
 
 type LancamentoRow = {
@@ -151,34 +168,34 @@ function computeStats(entries: LancamentoRow[]) {
 // ── Dashboard panel ──────────────────────────────────────────────────────────
 
 function StatCard({
-  icon,
+  icon: Icon,
   label,
   value,
-  accent,
+  iconVariant,
 }: {
-  icon: React.ReactNode
+  icon: React.ElementType
   label: string
   value: React.ReactNode
-  accent?: "red" | "amber" | "violet" | "blue" | "green" | "teal"
+  iconVariant: "brand" | "info" | "warning" | "destructive"
 }) {
-  const accentMap: Record<string, string> = {
-    red: "bg-red-500/10 text-red-600 dark:text-red-400",
-    amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    violet: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-    blue: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-    green: "bg-green-500/10 text-green-600 dark:text-green-400",
-    teal: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
-  }
-  const iconClass = accent ? accentMap[accent] : "bg-neutral-grey-100 text-text-secondary"
+  const iconCls = cn(
+    "hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg",
+    iconVariant === "brand"       && "bg-brand-primary/10 text-brand-primary",
+    iconVariant === "info"        && "bg-badge-info/10 text-badge-info-text",
+    iconVariant === "warning"     && "bg-badge-warning/10 text-badge-warning-text",
+    iconVariant === "destructive" && "bg-destructive/10 text-destructive",
+  )
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-border-default bg-surface-card p-4 shadow-card">
-      <div className="flex items-center gap-2">
-        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", iconClass)}>
-          {icon}
-        </span>
-        <span className="text-xs font-medium text-text-secondary">{label}</span>
+    <div className="rounded-xl bg-surface-card p-5 shadow-card">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm text-text-secondary">{label}</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-text-primary">{value}</p>
+        </div>
+        <div className={iconCls}>
+          <Icon className="size-5" aria-hidden />
+        </div>
       </div>
-      <div className="text-2xl font-bold tabular-nums text-text-primary">{value}</div>
     </div>
   )
 }
@@ -237,45 +254,16 @@ function DashboardPanel({
   const stats = React.useMemo(() => computeStats(entries), [entries])
 
   const retornoValor =
-    brokenTestSubtasksTotalInScope !== undefined ? (
-      <div className="flex flex-col gap-0.5 leading-tight">
-        <span className="tabular-nums">{brokenTestSubtasksTotalInScope}</span>
-        <span className="text-xs font-medium text-text-secondary">
-          {(brokenTestsCreatedByUser ??
-            brokenTestsOpenedCount ??
-            0).toLocaleString("pt-BR")}{" "}
-          criadas pelo utilizador selecionado
-        </span>
-      </div>
-    ) : brokenTestsOpenedCount != null ? (
-      brokenTestsOpenedCount
-    ) : (
-      stats.brokenTestCountFromWorklogs
-    )
+    brokenTestsCreatedByUser ?? brokenTestsOpenedCount ?? stats.brokenTestCountFromWorklogs
 
   return (
     <div className="flex flex-col gap-3">
       <ProjectBar projectHours={stats.projectHours} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
-        <StatCard
-          icon={<Hash className="size-4" />}
-          label="Total de Jiras"
-          value={stats.totalIssues}
-          accent="blue"
-        />
-        <StatCard
-          icon={<Flame className="size-4" />}
-          label="Jiras críticos"
-          value={stats.criticalCount}
-          accent="red"
-        />
-        <StatCard icon={<Bug className="size-4" />} label="Retorno de Testes" value={retornoValor} accent="amber" />
-        <StatCard
-          icon={<Layers className="size-4" />}
-          label="Testes Realizados"
-          value={stats.qtdCenariosTotal}
-          accent="teal"
-        />
+        <StatCard icon={Hash}   label="Total de Jiras"      value={stats.totalIssues}          iconVariant="info" />
+        <StatCard icon={Flame}  label="Jiras críticos"      value={stats.criticalCount}        iconVariant="destructive" />
+        <StatCard icon={Bug}    label="Retorno de Testes"   value={retornoValor}               iconVariant="warning" />
+        <StatCard icon={Layers} label="Testes Realizados"   value={stats.qtdCenariosTotal}     iconVariant="brand" />
       </div>
     </div>
   )
@@ -283,8 +271,14 @@ function DashboardPanel({
 
 // ── Main section ─────────────────────────────────────────────────────────────
 
-export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLancamentosSectionProps) {
-  const [preset, setPreset] = React.useState<LancamentosPeriodPreset>("week")
+export function IndividualLancamentosSection({
+  evaluatedUserId,
+  preset: presetProp,
+  onPresetChange,
+}: IndividualLancamentosSectionProps) {
+  const isControlled = presetProp !== undefined
+  const [presetInternal, setPresetInternal] = React.useState<LancamentosPeriodPreset>("week")
+  const preset = isControlled ? presetProp : presetInternal
   const [from, setFrom] = React.useState(() => getLancamentosPresetRange("week").from)
   const [to, setTo] = React.useState(() => getLancamentosPresetRange("week").to)
   const [loading, setLoading] = React.useState(true)
@@ -292,6 +286,13 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
   const [data, setData] = React.useState<ApiOk | null>(null)
   const [jiraBase, setJiraBase] = React.useState<string | null>(null)
   const [search, setSearch] = React.useState("")
+
+  React.useEffect(() => {
+    if (presetProp === undefined) return
+    const r = getLancamentosPresetRange(presetProp)
+    setFrom(r.from)
+    setTo(r.to)
+  }, [presetProp])
 
   React.useEffect(() => {
     let cancelled = false
@@ -343,7 +344,8 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
 
   function applyPreset(p: LancamentosPeriodPreset) {
     const r = getLancamentosPresetRange(p)
-    setPreset(p)
+    if (!isControlled) setPresetInternal(p)
+    onPresetChange?.(p)
     setFrom(r.from)
     setTo(r.to)
   }
@@ -370,7 +372,7 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
     <span className="text-sm font-medium text-text-primary">
       Lançamentos:{" "}
       <span className="font-bold">{filtered.length.toLocaleString("pt-BR")}</span>
-      {" - "}
+      {" / "}
       Total de Horas:{" "}
       <span className="font-bold">{formatHours(filteredTotalSeconds)}</span>
     </span>
@@ -378,28 +380,27 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
 
   return (
     <div className="flex w-full flex-col gap-6">
-      {/* Preset filters */}
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            ["today", "Hoje"],
-            ["yesterday", "Ontem"],
-            ["week", "Semana"],
-            ["month", "Mês Atual"],
-            ["lastMonth", "Mês Anterior"],
-          ] as const
-        ).map(([key, label]) => (
-          <Button
-            key={key}
-            type="button"
-            variant={preset === key ? "default" : "outline"}
-            size="sm"
-            onClick={() => applyPreset(key)}
+      {/* Preset filter — só visível no modo autônomo (sem parent controlando) */}
+      {!isControlled && (
+        <div className="flex items-center gap-3">
+          <Select
+            value={preset}
+            onValueChange={(v) => applyPreset(v as LancamentosPeriodPreset)}
+            aria-label="Período"
           >
-            {label}
-          </Button>
-        ))}
-      </div>
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectPopup>
+              {PRESET_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        </div>
+      )}
 
       {loading ? (
         <SectionSpinner label="A carregar lançamentos…" />
@@ -456,17 +457,17 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
               <EmptyState message="Nenhum registro encontrado." className="mx-5 my-8" />
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[56rem] border-collapse text-left text-sm">
+                <table className="qagrotis-table-row-hover-muted w-full min-w-[56rem] border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
-                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Jira</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Projeto</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Prioridade</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Título</th>
-                      <th className="hidden px-3 py-2 text-xs font-semibold text-text-secondary sm:table-cell">Fonte</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Data</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Tempo</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-text-secondary">Comentário</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Jira</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Projeto</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Prioridade</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Título</th>
+                      <th className="hidden px-3 py-3 text-xs font-semibold text-text-secondary sm:table-cell sm:px-4">Fonte</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Data</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Tempo</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Comentário</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -485,7 +486,7 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
                           )}
                         >
                           {/* Jira */}
-                          <td className="px-3 py-2 align-top font-mono text-xs sm:text-sm">
+                          <td className="px-3 py-3 align-top font-mono text-xs sm:px-4 sm:text-sm">
                             {jiraBase ? (
                               <a
                                 href={`${jiraBase}/browse/${encodeURIComponent(row.issueKey)}`}
@@ -500,19 +501,19 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
                             )}
                           </td>
                           {/* Projeto */}
-                          <td className="whitespace-nowrap px-3 py-2 align-top text-xs font-medium text-text-secondary">
+                          <td className="whitespace-nowrap px-3 py-3 align-top text-xs font-medium text-text-secondary sm:px-4">
                             {row.projectKey || row.issueKey.split("-")[0]}
                           </td>
                           {/* Prioridade */}
-                          <td className="whitespace-nowrap px-3 py-2 align-top text-xs text-text-primary">
+                          <td className="whitespace-nowrap px-3 py-3 align-top text-xs text-text-primary sm:px-4">
                             {row.priority?.trim() ? row.priority : "—"}
                           </td>
                           {/* Título */}
-                          <td className="max-w-[16rem] px-3 py-2 align-top text-text-primary">
+                          <td className="max-w-[16rem] px-3 py-3 align-top text-text-primary sm:px-4">
                             {row.summary ?? "—"}
                           </td>
                           {/* Fonte */}
-                          <td className="hidden whitespace-nowrap px-3 py-2 align-top text-xs text-text-secondary sm:table-cell">
+                          <td className="hidden whitespace-nowrap px-3 py-3 align-top text-xs text-text-secondary sm:table-cell sm:px-4">
                             {row.dataSource === "clockwork" ? (
                               <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-800 dark:text-violet-200">
                                 Clockwork
@@ -522,14 +523,14 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
                             )}
                           </td>
                           {/* Data */}
-                          <td className="whitespace-nowrap px-3 py-2 align-top text-text-secondary">
+                          <td className="whitespace-nowrap px-3 py-3 align-top text-text-secondary sm:px-4">
                             {new Date(row.started).toLocaleString("pt-BR", {
                               dateStyle: "short",
                               timeStyle: "short",
                             })}
                           </td>
                           {/* Tempo */}
-                          <td className="whitespace-nowrap px-3 py-2 align-top tabular-nums font-medium">
+                          <td className="whitespace-nowrap px-3 py-3 align-top tabular-nums font-medium sm:px-4">
                             <div className="flex items-center gap-1.5">
                               {alert === "red" ? (
                                 <AlertTriangle
@@ -546,7 +547,7 @@ export function IndividualLancamentosSection({ evaluatedUserId }: IndividualLanc
                             </div>
                           </td>
                           {/* Comentário */}
-                          <td className="max-w-[18rem] px-3 py-2 align-top text-text-secondary">
+                          <td className="max-w-[18rem] px-3 py-3 align-top text-text-secondary sm:px-4">
                             {row.comment ? (
                               <span className="line-clamp-3" title={row.comment}>
                                 {row.comment}
