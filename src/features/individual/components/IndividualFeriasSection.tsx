@@ -107,6 +107,7 @@ export interface IndividualFeriasSectionHandle {
 interface Props {
   evaluatedUserId: string
   canWrite: boolean
+  defaultSituacaoFiltro?: SituacaoFiltro
 }
 
 interface FormState {
@@ -117,14 +118,14 @@ interface FormState {
 const EMPTY_FORM: FormState = { inicioIso: "", dias: "" }
 
 export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionHandle, Props>(
-  function IndividualFeriasSection({ evaluatedUserId, canWrite }, ref) {
+  function IndividualFeriasSection({ evaluatedUserId, canWrite, defaultSituacaoFiltro = "ativas" }, ref) {
     const [rows, setRows] = React.useState<IndividualFeriasRow[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [search, setSearch] = React.useState("")
-    const [situacaoFiltro, setSituacaoFiltro] = React.useState<SituacaoFiltro>("ativas")
+    const [situacaoFiltro, setSituacaoFiltro] = React.useState<SituacaoFiltro>(defaultSituacaoFiltro)
     const [filterOpen, setFilterOpen] = React.useState(false)
-    const [filterDraft, setFilterDraft] = React.useState<SituacaoFiltro>("ativas")
+    const [filterDraft, setFilterDraft] = React.useState<SituacaoFiltro>(defaultSituacaoFiltro)
 
     // Modal state
     const [modalOpen, setModalOpen] = React.useState(false)
@@ -223,7 +224,7 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
       })
     }, [rowsWithSituacao, situacaoFiltro, search])
 
-    const activeFilterCount = situacaoFiltro !== "ativas" ? 1 : 0
+    const activeFilterCount = situacaoFiltro !== defaultSituacaoFiltro ? 1 : 0
 
     return (
       <div className="flex w-full flex-col gap-4">
@@ -279,14 +280,20 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
                       <tr key={row.id} className="border-b border-border-default last:border-b-0 transition-colors">
                         {/* Código */}
                         <td className="whitespace-nowrap px-3 py-3 sm:px-4">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(row)}
-                            className="cursor-pointer font-semibold text-brand-primary tabular-nums hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
-                            aria-label={`Abrir férias ${formatCodigo(row.codigo)}`}
-                          >
-                            {formatCodigo(row.codigo)}
-                          </button>
+                          {canWrite ? (
+                            <button
+                              type="button"
+                              onClick={() => openEdit(row)}
+                              className="cursor-pointer font-semibold text-brand-primary tabular-nums hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
+                              aria-label={`Abrir férias ${formatCodigo(row.codigo)}`}
+                            >
+                              {formatCodigo(row.codigo)}
+                            </button>
+                          ) : (
+                            <span className="font-semibold text-brand-primary tabular-nums">
+                              {formatCodigo(row.codigo)}
+                            </span>
+                          )}
                         </td>
                         {/* Usuário */}
                         <td className="whitespace-nowrap px-3 py-3 sm:px-4">
@@ -390,8 +397,8 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
                 type="button"
                 variant="ghost"
                 onClick={() => {
-                  setSituacaoFiltro("ativas")
-                  setFilterDraft("ativas")
+                  setSituacaoFiltro(defaultSituacaoFiltro)
+                  setFilterDraft(defaultSituacaoFiltro)
                   setFilterOpen(false)
                 }}
               >

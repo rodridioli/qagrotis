@@ -15,6 +15,7 @@ import { getLocalCalendarDayStartEndMs, localDayBoundsToIsoFilter } from "@/lib/
 import { EquipeAniversarioCard } from "@/features/equipe/components/EquipeAniversarioCard"
 import { EquipeHorariosTable } from "@/features/equipe/components/EquipeHorariosTable"
 import { EquipeChaptersSection } from "@/features/equipe/components/EquipeChaptersSection"
+import { EquipeFeriasSection } from "@/features/equipe/components/EquipeFeriasSection"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import {
@@ -450,7 +451,9 @@ const aniversariantesPorMes = useMemo(() => {
 
       {activeTab === "chapters" && <EquipeChaptersSection isAdmin={isAdmin} />}
 
-      {(activeTab === "ferias" || activeTab === "ausencias" || activeTab === "metas") && (
+      {activeTab === "ferias" && <EquipeFeriasSection />}
+
+      {(activeTab === "ausencias" || activeTab === "metas") && (
         <div className="flex items-center justify-center py-16">
           <p className="text-sm text-text-secondary">Em desenvolvimento.</p>
         </div>

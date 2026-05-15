@@ -97,7 +97,7 @@ export default async function IndividualSecaoPage({
       ) : secao === "progressao" ? (
         <MinhasProgressoesSection />
       ) : secao === "ferias" ? (
-        <IndividualFeriasSection evaluatedUserId={session.user.id} canWrite={false} />
+        <IndividualFeriasSection evaluatedUserId={session.user.id} canWrite={false} defaultSituacaoFiltro="todas" />
       ) : secao === "lancamentos" ? (
         <IndividualLancamentosSection evaluatedUserId={session.user.id} />
       ) : (

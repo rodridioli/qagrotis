@@ -93,7 +93,7 @@ export async function listIndividualFerias(
     const [rows, allUsers] = await Promise.all([
       prisma.individualFerias.findMany({
         where: { evaluatedUserId },
-        orderBy: [{ inicio: "asc" }],
+        orderBy: [{ inicio: "desc" }],
         select: { id: true, codigo: true, inicio: true, dias: true },
       }) as Promise<{ id: string; codigo: number; inicio: Date; dias: number }[]>,
       getActiveQaUsers(),
@@ -111,6 +111,38 @@ export async function listIndividualFerias(
     }))
   } catch (e) {
     console.error("[listIndividualFerias]", e)
+    throw new Error(evalPrismaMessage(e, "Não foi possível carregar as férias."))
+  }
+}
+
+export async function listAllFerias(): Promise<IndividualFeriasRow[]> {
+  const session = await requireSession()
+  if (!session) throw new Error("Não autorizado.")
+  await ensureIndividualFeriasTable()
+  assertFeriasModelReady()
+
+  try {
+    const [rows, allUsers] = await Promise.all([
+      prisma.individualFerias.findMany({
+        orderBy: [{ inicio: "desc" }],
+        select: { id: true, codigo: true, inicio: true, dias: true, evaluatedUserId: true },
+      }) as Promise<{ id: string; codigo: number; inicio: Date; dias: number; evaluatedUserId: string }[]>,
+      getActiveQaUsers(),
+    ])
+
+    return rows.map((row) => {
+      const user = allUsers.find((u) => u.id === row.evaluatedUserId)
+      const evaluatedUser = { name: user?.name ?? "Usuário", photoPath: user?.photoPath ?? null }
+      return {
+        id: row.id,
+        codigo: row.codigo,
+        inicioIso: inicioToIso(row.inicio),
+        dias: row.dias,
+        evaluatedUser,
+      }
+    })
+  } catch (e) {
+    console.error("[listAllFerias]", e)
     throw new Error(evalPrismaMessage(e, "Não foi possível carregar as férias."))
   }
 }
