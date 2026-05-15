@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
 import {
@@ -30,6 +30,11 @@ const AVATAR_SIZE = 44
 export function IndividualActiveUserAvatarStrip({ secao, users, selectedUserId }: Props) {
   const router = useRouter()
   const [optimisticId, setOptimisticId] = useState(selectedUserId)
+
+  // Sync when the parent changes the selected user (e.g. profile filter change)
+  useEffect(() => {
+    setOptimisticId(selectedUserId)
+  }, [selectedUserId])
 
   function select(id: string) {
     if (id === optimisticId) return
