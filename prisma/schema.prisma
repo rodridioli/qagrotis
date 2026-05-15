@@ -494,3 +494,17 @@ model UserBadge {
   @@unique([userId, badgeId])
   @@index([userId])
 }
+
+model IndividualFerias {
+  id               String   @id @default(cuid())
+  evaluatedUserId  String
+  createdByUserId  String
+  codigo           Int
+  inicio           DateTime
+  dias             Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([evaluatedUserId, codigo])
+  @@index([evaluatedUserId])
+}

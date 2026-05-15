@@ -15,6 +15,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredClassificacao?: boolean
   __qagrotisEnsuredNotificationTables?: boolean
   __qagrotisEnsuredCenarioSuiteRelations?: boolean
+  __qagrotisEnsuredIndividualFerias?: boolean
   __qagrotisEnsuredClienteTable?: boolean
 }
 
@@ -491,5 +492,37 @@ export async function ensureCenarioSuiteRelationColumns(): Promise<void> {
     g.__qagrotisEnsuredCenarioSuiteRelations = true
   } catch (e) {
     console.error("[prisma-schema-ensure] Cenario/Suite relation columns", e)
+  }
+}
+
+/**
+ * Garante tabela de férias individuais (Individual / MGR).
+ * DDL idempotente — cria a tabela se não existir (Vercel/Neon sem `migrate deploy`).
+ */
+export async function ensureIndividualFeriasTable(): Promise<void> {
+  if (g.__qagrotisEnsuredIndividualFerias) return
+  try {
+    await prisma.$executeRawUnsafe(`
+CREATE TABLE IF NOT EXISTS "IndividualFerias" (
+    "id" TEXT NOT NULL,
+    "evaluatedUserId" TEXT NOT NULL,
+    "createdByUserId" TEXT NOT NULL,
+    "codigo" INTEGER NOT NULL,
+    "inicio" TIMESTAMP(3) NOT NULL,
+    "dias" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "IndividualFerias_pkey" PRIMARY KEY ("id")
+);`)
+    await prisma.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IndividualFerias_evaluatedUserId_codigo_key" ON "IndividualFerias"("evaluatedUserId", "codigo")`
+    )
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "IndividualFerias_evaluatedUserId_idx" ON "IndividualFerias"("evaluatedUserId")`
+    )
+    g.__qagrotisEnsuredIndividualFerias = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] IndividualFerias", e)
+    throw e
   }
 }

@@ -11,6 +11,7 @@ import { MinhasFeedbacksSection } from "@/features/individual/components/MinhasF
 import { ConquistasSection } from "@/features/individual/components/ConquistasSection"
 import { MinhasProgressoesSection } from "@/features/individual/components/MinhasProgressoesSection"
 import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
+import { IndividualFeriasSection } from "@/features/individual/components/IndividualFeriasSection"
 import { individualSectionLabel, isIndividualSectionSlug } from "@/features/individual/lib/individual-sections"
 
 export async function generateMetadata({
@@ -95,6 +96,8 @@ export default async function IndividualSecaoPage({
         <ConquistasSection />
       ) : secao === "progressao" ? (
         <MinhasProgressoesSection />
+      ) : secao === "ferias" ? (
+        <IndividualFeriasSection evaluatedUserId={session.user.id} canWrite={false} />
       ) : secao === "lancamentos" ? (
         <IndividualLancamentosSection evaluatedUserId={session.user.id} />
       ) : (

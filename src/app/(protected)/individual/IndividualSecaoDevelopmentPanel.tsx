@@ -22,6 +22,7 @@ import { IndividualFeedbacksSection } from "@/features/individual/components/Ind
 import { ConquistasSection } from "@/features/individual/components/ConquistasSection"
 import { ProgressaoSection, type ProgressaoSectionHandle } from "@/features/individual/components/ProgressaoSection"
 import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
+import { IndividualFeriasSection, type IndividualFeriasSectionHandle } from "@/features/individual/components/IndividualFeriasSection"
 
 type AccessProfileFilter = "all" | "QA" | "UX" | "TW" | "MGR"
 
@@ -53,6 +54,7 @@ export function IndividualSecaoDevelopmentPanel({
 }: Props) {
   const router = useRouter()
   const progressaoRef = React.useRef<ProgressaoSectionHandle>(null)
+  const feriasRef = React.useRef<IndividualFeriasSectionHandle>(null)
   const [lancamentosPreset, setLancamentosPreset] = React.useState<LancamentosPeriodPreset>("week")
   const [accessProfileFilter, setAccessProfileFilter] = React.useState<AccessProfileFilter>("all")
   const [pendingUserId, setPendingUserId] = React.useState<string | null>(null)
@@ -70,6 +72,7 @@ export function IndividualSecaoDevelopmentPanel({
 
   const showAvaliacoes = secao === "avaliacoes"
   const showFeedbacks  = secao === "feedbacks"
+  const showFerias     = secao === "ferias"
   const showConquistas = secao === "conquistas"
   const showProgressao = secao === "progressao"
   const showLancamentos = secao === "lancamentos" && canAccessLancamentos
@@ -175,6 +178,16 @@ export function IndividualSecaoDevelopmentPanel({
               Adicionar Progressão
             </Button>
           ) : null}
+          {showFerias && isAdministradorMgr ? (
+            <Button
+              type="button"
+              className="shrink-0 gap-2"
+              onClick={() => feriasRef.current?.openAdd()}
+            >
+              <Plus className="size-4" aria-hidden />
+              Adicionar Férias
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -193,6 +206,12 @@ export function IndividualSecaoDevelopmentPanel({
         <ConquistasSection evaluatedUserId={selectedUserId} />
       ) : showProgressao ? (
         <ProgressaoSection ref={progressaoRef} evaluatedUserId={selectedUserId} />
+      ) : showFerias ? (
+        <IndividualFeriasSection
+          ref={feriasRef}
+          evaluatedUserId={selectedUserId}
+          canWrite={isAdministradorMgr}
+        />
       ) : showLancamentos ? (
         <IndividualLancamentosSection
           evaluatedUserId={effectiveUserId}
