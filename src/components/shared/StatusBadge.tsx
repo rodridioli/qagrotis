@@ -184,6 +184,22 @@ function ProgressaoRegimeBadge({ regime }: { regime: string }) {
   return badge(colorClass, labels[regime] ?? regime)
 }
 
+type FeriasSituacao = "planejada" | "em_andamento" | "concluida"
+
+function FeriasSituacaoBadge({ situacao }: { situacao: FeriasSituacao }) {
+  const styles: Record<FeriasSituacao, string> = {
+    planejada:    "border-badge-info/30 bg-badge-info/10 text-badge-info-text",
+    em_andamento: "border-badge-orange/30 bg-badge-orange/10 text-badge-orange-text",
+    concluida:    "border-border-default bg-neutral-grey-50 text-text-secondary",
+  }
+  const labels: Record<FeriasSituacao, string> = {
+    planejada:    "Planejada",
+    em_andamento: "Em andamento",
+    concluida:    "Concluída",
+  }
+  return badge(styles[situacao], labels[situacao])
+}
+
 export {
   StatusBadge,
   ResultadoBadge,
@@ -200,5 +216,6 @@ export {
   FeedbackTipoBadge,
   ProgressaoTipoBadge,
   ProgressaoRegimeBadge,
+  FeriasSituacaoBadge,
 }
-export type { CenarioTipo, SuiteTipo, SuiteSituacao, ChangelogTag, ResultadoTipo, AvaliacaoSituacaoUi }
+export type { CenarioTipo, SuiteTipo, SuiteSituacao, ChangelogTag, ResultadoTipo, AvaliacaoSituacaoUi, FeriasSituacao }

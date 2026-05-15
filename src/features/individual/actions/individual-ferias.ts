@@ -15,6 +15,7 @@ export interface IndividualFeriasRow {
   codigo: number
   inicioIso: string // "YYYY-MM-DD"
   dias: number
+  evaluatedUser: { name: string; photoPath: string | null }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -89,17 +90,24 @@ export async function listIndividualFerias(
   assertFeriasModelReady()
 
   try {
-    const rows = (await prisma.individualFerias.findMany({
-      where: { evaluatedUserId },
-      orderBy: [{ codigo: "desc" }],
-      select: { id: true, codigo: true, inicio: true, dias: true },
-    })) as { id: string; codigo: number; inicio: Date; dias: number }[]
+    const [rows, allUsers] = await Promise.all([
+      prisma.individualFerias.findMany({
+        where: { evaluatedUserId },
+        orderBy: [{ inicio: "asc" }],
+        select: { id: true, codigo: true, inicio: true, dias: true },
+      }) as Promise<{ id: string; codigo: number; inicio: Date; dias: number }[]>,
+      getActiveQaUsers(),
+    ])
+
+    const user = allUsers.find((u) => u.id === evaluatedUserId)
+    const evaluatedUser = { name: user?.name ?? "Usuário", photoPath: user?.photoPath ?? null }
 
     return rows.map((row) => ({
       id: row.id,
       codigo: row.codigo,
       inicioIso: inicioToIso(row.inicio),
       dias: row.dias,
+      evaluatedUser,
     }))
   } catch (e) {
     console.error("[listIndividualFerias]", e)

@@ -304,7 +304,7 @@ function ProgressaoModal({ open, onOpenChange, evaluatedUserId, editRow, onSucce
           </Button>
           <Button type="submit" form="progressao-form" className="gap-1.5" disabled={saving}>
             <Check className="size-4 shrink-0" />
-            {saving ? "Salvando…" : editRow ? "Salvar" : "Adicionar"}
+            {saving ? "Salvando…" : "Salvar"}
           </Button>
         </DialogFooter>
       </DialogContent>
