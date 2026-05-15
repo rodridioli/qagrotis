@@ -83,7 +83,7 @@ export function IndividualSecaoDevelopmentPanel({
     const newVisible =
       value === "all" ? users : users.filter((u) => u.accessProfile === value)
     setAccessProfileFilter(value)
-    if (newVisible.length > 0 && !newVisible.some((u) => u.id === selectedUserId)) {
+    if (newVisible.length > 0) {
       const firstId = newVisible[0]!.id
       setPendingUserId(firstId)
       router.replace(

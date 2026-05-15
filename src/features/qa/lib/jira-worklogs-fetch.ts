@@ -530,17 +530,11 @@ export async function countBrokenTestsOpenedByReporterInRange(
  * criadas dentro do intervalo [fromIso, toIso]. Usa paginação segura.
  * Tipos configuráveis via env JIRA_BROKEN_TEST_ISSUE_TYPES (csv). "Erro Teste" é sempre incluído.
  */
-export async function countReporterIssuesByTypesInRange(
+export async function countReporterIssuesByTypes(
   base: string,
   credentials: string,
   accountId: string,
-  fromIso: string,
-  toIso: string,
 ): Promise<number> {
-  const jFrom = jqlDateFromIso(fromIso)
-  const jTo = jqlDateFromIso(toIso)
-  if (!jFrom || !jTo) return 0
-
   // Collect issue type names: defaults + "Erro Teste" always included
   const raw = process.env.JIRA_BROKEN_TEST_ISSUE_TYPES?.trim()
   const fromEnv = raw
@@ -558,9 +552,7 @@ export async function countReporterIssuesByTypesInRange(
       : `issuetype in (${allNames.map((n) => quoteName(n)).join(", ")})`
 
   const escapedAccount = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-  const jql =
-    `reporter = "${escapedAccount}" AND ${issuetypeClause} ` +
-    `AND created >= "${jFrom}" AND created <= "${jTo}"`
+  const jql = `reporter = "${escapedAccount}" AND ${issuetypeClause}`
 
   let fetchedCount = 0
   let startAt = 0

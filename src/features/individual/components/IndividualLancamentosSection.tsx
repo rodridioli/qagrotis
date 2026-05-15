@@ -253,9 +253,9 @@ function ProjectStackedBar({ projectHours }: { projectHours: ProjectHours[] }) {
           <BarChart3 className="size-5" />
         </span>
         <p className="text-sm font-medium text-text-secondary">
-          Horas por Projeto{" "}
+          Total horas:{" "}
           <span className="font-semibold text-text-primary">
-            / Total: {formatDurationHMin(totalSeconds)}
+            {formatDurationHMin(totalSeconds)}
           </span>
         </p>
       </div>
@@ -423,8 +423,7 @@ export function IndividualLancamentosSection({
     return groupedEntries.filter(
       (e) =>
         e.issueKey.toLowerCase().includes(q) ||
-        (e.summary ?? "").toLowerCase().includes(q) ||
-        (e.priority ?? "").toLowerCase().includes(q),
+        (e.summary ?? "").toLowerCase().includes(q),
     )
   }, [groupedEntries, search])
 
@@ -505,7 +504,7 @@ export function IndividualLancamentosSection({
             <TableToolbar
               search={search}
               onSearchChange={(v) => setSearch(v)}
-              searchPlaceholder="Buscar por Jira, título ou prioridade…"
+              searchPlaceholder="Buscar por Jira ou título…"
               leadingSummary={toolbarLeadingSummary}
               baseCount={groupedEntries.length}
             />
@@ -587,7 +586,7 @@ export function IndividualLancamentosSection({
                             </span>
                           </td>
                           {/* Situação */}
-                          <td className="px-3 py-3 sm:px-4">
+                          <td className="px-3 py-3 text-center sm:px-4">
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger className="flex items-center justify-center">
