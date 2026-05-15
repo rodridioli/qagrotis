@@ -2,6 +2,18 @@
 
 export type LancamentosPeriodPreset = "today" | "yesterday" | "week" | "month" | "lastMonth"
 
+export const LANCAMENTOS_PRESET_OPTIONS: { value: LancamentosPeriodPreset; label: string }[] = [
+  { value: "today",     label: "Hoje" },
+  { value: "yesterday", label: "Ontem" },
+  { value: "week",      label: "Semana" },
+  { value: "month",     label: "Mês Atual" },
+  { value: "lastMonth", label: "Mês Anterior" },
+]
+
+export function getLancamentosPresetLabel(preset: LancamentosPeriodPreset): string {
+  return LANCAMENTOS_PRESET_OPTIONS.find((o) => o.value === preset)?.label ?? "Semana"
+}
+
 function pad(n: number) {
   return String(n).padStart(2, "0")
 }

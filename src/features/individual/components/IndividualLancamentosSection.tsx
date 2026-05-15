@@ -19,19 +19,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/core/utils"
 import {
+  getLancamentosPresetLabel,
   getLancamentosPresetRange,
+  LANCAMENTOS_PRESET_OPTIONS,
   type LancamentosPeriodPreset,
 } from "@/features/individual/lib/individual-lancamentos-date-presets"
-
-const PRESET_OPTIONS: { value: LancamentosPeriodPreset; label: string }[] = [
-  { value: "today",     label: "Hoje" },
-  { value: "yesterday", label: "Ontem" },
-  { value: "week",      label: "Semana" },
-  { value: "month",     label: "Mês Atual" },
-  { value: "lastMonth", label: "Mês Anterior" },
-]
 
 export interface IndividualLancamentosSectionProps {
   evaluatedUserId: string
@@ -205,18 +205,17 @@ function ProjectBar({ projectHours }: { projectHours: ProjectHours[] }) {
   const max = projectHours[0].seconds
   const totalSeconds = projectHours.reduce((acc, p) => acc + p.seconds, 0)
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-border-default bg-surface-card p-4 shadow-card md:col-span-2 lg:col-span-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-            <BarChart3 className="size-4" />
+    <div className="flex flex-col gap-3 rounded-xl border border-border-default bg-surface-card p-5 shadow-card md:col-span-2 lg:col-span-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+            <BarChart3 className="size-5" />
           </span>
-          <span className="text-xs font-medium text-text-secondary">Horas por Projeto</span>
+          <div>
+            <p className="text-sm text-text-secondary">Horas por Projeto</p>
+            <p className="text-2xl font-bold tabular-nums text-text-primary">{formatHours(totalSeconds)}</p>
+          </div>
         </div>
-        <span className="text-xs font-medium tabular-nums text-text-secondary">
-          Total:{" "}
-          <span className="font-semibold text-text-primary">{formatHours(totalSeconds)}</span>
-        </span>
       </div>
       <div className="flex flex-col gap-2">
         {projectHours.map((p) => (
@@ -368,6 +367,14 @@ export function IndividualLancamentosSection({
     [filtered],
   )
 
+  const hoursByIssue = React.useMemo(() => {
+    const map = new Map<string, number>()
+    for (const e of filtered) {
+      map.set(e.issueKey, (map.get(e.issueKey) ?? 0) + e.hours)
+    }
+    return map
+  }, [filtered])
+
   const toolbarLeadingSummary = (
     <span className="text-sm font-medium text-text-primary">
       Lançamentos:{" "}
@@ -389,10 +396,10 @@ export function IndividualLancamentosSection({
             aria-label="Período"
           >
             <SelectTrigger className="w-44">
-              <SelectValue />
+              <SelectValue>{getLancamentosPresetLabel(preset)}</SelectValue>
             </SelectTrigger>
             <SelectPopup>
-              {PRESET_OPTIONS.map((o) => (
+              {LANCAMENTOS_PRESET_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={o.value}>
                   {o.label}
                 </SelectItem>
@@ -457,10 +464,11 @@ export function IndividualLancamentosSection({
               <EmptyState message="Nenhum registro encontrado." className="mx-5 my-8" />
             ) : (
               <div className="overflow-x-auto">
-                <table className="qagrotis-table-row-hover-muted w-full min-w-[56rem] border-collapse text-left text-sm">
+                <table className="qagrotis-table-row-hover-muted w-full min-w-[64rem] border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50 dark:bg-neutral-grey-900/40">
                       <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Jira</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Tipo</th>
                       <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Projeto</th>
                       <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Prioridade</th>
                       <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Título</th>
@@ -468,25 +476,21 @@ export function IndividualLancamentosSection({
                       <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Data</th>
                       <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Tempo</th>
                       <th className="px-3 py-3 text-xs font-semibold text-text-secondary sm:px-4">Comentário</th>
+                      <th className="w-10 px-3 py-3 sm:px-4">
+                        <span className="sr-only">Alertas</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.map((row) => {
-                      const alert = alertLevel(row.hours)
+                      const issueExcesso = (hoursByIssue.get(row.issueKey) ?? 0) > 8
                       return (
                         <tr
                           key={row.id}
-                          className={cn(
-                            "border-b border-border-default last:border-0",
-                            alert === "red"
-                              ? "bg-red-500/10"
-                              : alert === "yellow"
-                                ? "bg-amber-500/10"
-                                : "hover:bg-neutral-grey-50/80 dark:hover:bg-neutral-grey-900/30",
-                          )}
+                          className="border-b border-border-default last:border-0"
                         >
                           {/* Jira */}
-                          <td className="px-3 py-3 align-top font-mono text-xs sm:px-4 sm:text-sm">
+                          <td className="px-3 py-3 font-mono text-xs sm:px-4 sm:text-sm">
                             {jiraBase ? (
                               <a
                                 href={`${jiraBase}/browse/${encodeURIComponent(row.issueKey)}`}
@@ -500,20 +504,24 @@ export function IndividualLancamentosSection({
                               <span className="font-semibold">{row.issueKey}</span>
                             )}
                           </td>
+                          {/* Tipo */}
+                          <td className="whitespace-nowrap px-3 py-3 text-xs text-text-secondary sm:px-4">
+                            {row.issueType?.trim() ? row.issueType : "—"}
+                          </td>
                           {/* Projeto */}
-                          <td className="whitespace-nowrap px-3 py-3 align-top text-xs font-medium text-text-secondary sm:px-4">
+                          <td className="whitespace-nowrap px-3 py-3 text-xs font-medium text-text-secondary sm:px-4">
                             {row.projectKey || row.issueKey.split("-")[0]}
                           </td>
                           {/* Prioridade */}
-                          <td className="whitespace-nowrap px-3 py-3 align-top text-xs text-text-primary sm:px-4">
+                          <td className="whitespace-nowrap px-3 py-3 text-xs text-text-primary sm:px-4">
                             {row.priority?.trim() ? row.priority : "—"}
                           </td>
                           {/* Título */}
-                          <td className="max-w-[16rem] px-3 py-3 align-top text-text-primary sm:px-4">
+                          <td className="max-w-[16rem] px-3 py-3 text-text-primary sm:px-4">
                             {row.summary ?? "—"}
                           </td>
                           {/* Fonte */}
-                          <td className="hidden whitespace-nowrap px-3 py-3 align-top text-xs text-text-secondary sm:table-cell sm:px-4">
+                          <td className="hidden whitespace-nowrap px-3 py-3 text-xs text-text-secondary sm:table-cell sm:px-4">
                             {row.dataSource === "clockwork" ? (
                               <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-800 dark:text-violet-200">
                                 Clockwork
@@ -523,31 +531,18 @@ export function IndividualLancamentosSection({
                             )}
                           </td>
                           {/* Data */}
-                          <td className="whitespace-nowrap px-3 py-3 align-top text-text-secondary sm:px-4">
+                          <td className="whitespace-nowrap px-3 py-3 text-text-secondary sm:px-4">
                             {new Date(row.started).toLocaleString("pt-BR", {
                               dateStyle: "short",
                               timeStyle: "short",
                             })}
                           </td>
                           {/* Tempo */}
-                          <td className="whitespace-nowrap px-3 py-3 align-top tabular-nums font-medium sm:px-4">
-                            <div className="flex items-center gap-1.5">
-                              {alert === "red" ? (
-                                <AlertTriangle
-                                  className="size-4 shrink-0 text-destructive"
-                                  aria-label="Mais de 10 horas lançadas"
-                                />
-                              ) : alert === "yellow" ? (
-                                <AlertTriangle
-                                  className="size-4 shrink-0 text-amber-500"
-                                  aria-label="Mais de 6 horas lançadas"
-                                />
-                              ) : null}
-                              {formatHoursShort(row.hours)}
-                            </div>
+                          <td className="whitespace-nowrap px-3 py-3 tabular-nums font-medium sm:px-4">
+                            {formatHoursShort(row.hours)}
                           </td>
                           {/* Comentário */}
-                          <td className="max-w-[18rem] px-3 py-3 align-top text-text-secondary sm:px-4">
+                          <td className="max-w-[18rem] px-3 py-3 text-text-secondary sm:px-4">
                             {row.comment ? (
                               <span className="line-clamp-3" title={row.comment}>
                                 {row.comment}
@@ -555,6 +550,22 @@ export function IndividualLancamentosSection({
                             ) : (
                               "—"
                             )}
+                          </td>
+                          {/* Alertas */}
+                          <td className="px-3 py-3 sm:px-4">
+                            {issueExcesso ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger className="flex items-center justify-center">
+                                    <AlertTriangle
+                                      className="size-4 shrink-0 text-amber-500"
+                                      aria-label="Excesso de horas"
+                                    />
+                                  </TooltipTrigger>
+                                  <TooltipContent>Excesso de horas.</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : null}
                           </td>
                         </tr>
                       )

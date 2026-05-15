@@ -530,7 +530,9 @@
 
   /* Alinhamento central e padding horizontal consistente */
   .qagrotis-table-row-hover td,
-  .qagrotis-table-row-hover th {
+  .qagrotis-table-row-hover th,
+  .qagrotis-table-row-hover-muted td,
+  .qagrotis-table-row-hover-muted th {
     vertical-align: middle;
     /* py-3 (12px) é o padrão, mas em tr fixo ele age como respiro mínimo */
   }

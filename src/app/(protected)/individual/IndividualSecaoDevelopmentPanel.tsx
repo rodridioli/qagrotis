@@ -11,7 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { type LancamentosPeriodPreset } from "@/features/individual/lib/individual-lancamentos-date-presets"
+import {
+  getLancamentosPresetLabel,
+  LANCAMENTOS_PRESET_OPTIONS,
+  type LancamentosPeriodPreset,
+} from "@/features/individual/lib/individual-lancamentos-date-presets"
 import { IndividualActiveUserAvatarStrip, type IndividualAvatarUser } from "./IndividualActiveUserAvatarStrip"
 import { IndividualAvaliacoesSection } from "@/features/individual/components/IndividualAvaliacoesSection"
 import { IndividualFeedbacksSection } from "@/features/individual/components/IndividualFeedbacksSection"
@@ -19,13 +23,6 @@ import { ConquistasSection } from "@/features/individual/components/ConquistasSe
 import { ProgressaoSection, type ProgressaoSectionHandle } from "@/features/individual/components/ProgressaoSection"
 import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
 
-const PRESET_OPTIONS: { value: LancamentosPeriodPreset; label: string }[] = [
-  { value: "today",     label: "Hoje" },
-  { value: "yesterday", label: "Ontem" },
-  { value: "week",      label: "Semana" },
-  { value: "month",     label: "Mês Atual" },
-  { value: "lastMonth", label: "Mês Anterior" },
-]
 
 interface Props {
   secao: string
@@ -73,10 +70,10 @@ export function IndividualSecaoDevelopmentPanel({
               aria-label="Período"
             >
               <SelectTrigger className="w-44 shrink-0">
-                <SelectValue />
+                <SelectValue>{getLancamentosPresetLabel(lancamentosPreset)}</SelectValue>
               </SelectTrigger>
               <SelectPopup>
-                {PRESET_OPTIONS.map((o) => (
+                {LANCAMENTOS_PRESET_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
                     {o.label}
                   </SelectItem>
