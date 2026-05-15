@@ -6,7 +6,6 @@ import {
   BarChart3,
   Bug,
   CheckCircle2,
-  Clock,
   Flame,
   Hash,
   Layers,
@@ -311,29 +310,9 @@ function DashboardPanel({
     brokenTestsOpenedCount ??
     stats.brokenTestCountFromWorklogs
 
-  const totalSeconds = React.useMemo(
-    () => entries.reduce((acc, e) => acc + e.timeSpentSeconds, 0),
-    [entries],
-  )
-
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid gap-3 md:grid-cols-2">
-        <ProjectStackedBar projectHours={stats.projectHours} />
-        <div className="rounded-xl border border-border-default bg-surface-card p-5 shadow-card">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-sm text-text-secondary">Total de Horas Lançadas</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-text-primary">
-                {formatDurationHMin(totalSeconds)}
-              </p>
-            </div>
-            <span className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-              <Clock className="size-5" aria-hidden />
-            </span>
-          </div>
-        </div>
-      </div>
+      <ProjectStackedBar projectHours={stats.projectHours} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
         <StatCard icon={Hash}   label="Total de Jiras"      value={stats.totalIssues}      iconVariant="info" />
         <StatCard icon={Flame}  label="Jiras críticos"      value={stats.criticalCount}    iconVariant="destructive" />
