@@ -90,11 +90,10 @@ function getInitials(name: string): string {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SITUACAO_OPTIONS: { value: SituacaoFiltro; label: string }[] = [
-  { value: "ativas",       label: "Planejadas e Em andamento" },
+  { value: "todas",        label: "Todas" },
   { value: "planejada",    label: "Planejada" },
   { value: "em_andamento", label: "Em andamento" },
   { value: "concluida",    label: "Concluída" },
-  { value: "todas",        label: "Todas" },
 ]
 
 // ── Handle type ───────────────────────────────────────────────────────────────
@@ -258,8 +257,8 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
               <table className="qagrotis-table-row-hover-muted w-full min-w-[52rem] border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Usuário</th>
                     <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Código</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Usuário</th>
                     <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Início</th>
                     <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Dias</th>
                     <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Retorno</th>
@@ -278,6 +277,17 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
                     const initials = getInitials(userName)
                     return (
                       <tr key={row.id} className="border-b border-border-default last:border-b-0 transition-colors">
+                        {/* Código */}
+                        <td className="whitespace-nowrap px-3 py-3 sm:px-4">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(row)}
+                            className="cursor-pointer font-semibold text-brand-primary tabular-nums hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
+                            aria-label={`Abrir férias ${formatCodigo(row.codigo)}`}
+                          >
+                            {formatCodigo(row.codigo)}
+                          </button>
+                        </td>
                         {/* Usuário */}
                         <td className="whitespace-nowrap px-3 py-3 sm:px-4">
                           <div className="flex items-center gap-2.5">
@@ -289,17 +299,6 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
                             </Avatar>
                             <span className="text-sm text-text-primary">{userName}</span>
                           </div>
-                        </td>
-                        {/* Código */}
-                        <td className="whitespace-nowrap px-3 py-3 sm:px-4">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(row)}
-                            className="cursor-pointer font-mono font-semibold text-brand-primary tabular-nums hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
-                            aria-label={`Abrir férias ${formatCodigo(row.codigo)}`}
-                          >
-                            {formatCodigo(row.codigo)}
-                          </button>
                         </td>
                         {/* Início */}
                         <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary tabular-nums sm:px-4">
@@ -359,7 +358,7 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
 
         {/* Filter dialog */}
         <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
-          <DialogContent showCloseButton className="sm:max-w-xs">
+          <DialogContent showCloseButton className="sm:max-w-sm">
             <DialogHeader>
               <DialogTitle>Filtros</DialogTitle>
             </DialogHeader>
@@ -373,7 +372,7 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
                 >
                   <SelectTrigger>
                     <SelectValue>
-                      {SITUACAO_OPTIONS.find((o) => o.value === filterDraft)?.label}
+                      {SITUACAO_OPTIONS.find((o) => o.value === filterDraft)?.label ?? "Selecione..."}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectPopup>
@@ -439,7 +438,7 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
                   type="date"
                   value={form.inicioIso}
                   onChange={(e) => setForm((f) => ({ ...f, inicioIso: e.target.value }))}
-                  className="flex h-9 w-full rounded-lg border border-border-default bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                  className="h-9 w-full rounded-lg border border-border-default bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                   style={{ colorScheme: "light" }}
                 />
               </div>
@@ -454,7 +453,7 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
                   min={1}
                   value={form.dias}
                   onChange={(e) => setForm((f) => ({ ...f, dias: e.target.value }))}
-                  className="flex h-9 w-full rounded-lg border border-border-default bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                  className="h-9 w-full rounded-lg border border-border-default bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                 />
               </div>
 
