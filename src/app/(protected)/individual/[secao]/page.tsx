@@ -73,7 +73,7 @@ export default async function IndividualSecaoPage({
     session.user.type === "Administrador" && session.user.accessProfile === "MGR"
 
   const avatarUsers = serializeRscProps(
-    activeUsers.map((u) => ({ id: u.id, name: u.name, photoPath: u.photoPath, email: u.email })),
+    activeUsers.map((u) => ({ id: u.id, name: u.name, photoPath: u.photoPath, email: u.email, accessProfile: u.accessProfile ?? null })),
   )
 
   return (

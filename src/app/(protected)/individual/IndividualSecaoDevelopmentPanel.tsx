@@ -23,6 +23,15 @@ import { ConquistasSection } from "@/features/individual/components/ConquistasSe
 import { ProgressaoSection, type ProgressaoSectionHandle } from "@/features/individual/components/ProgressaoSection"
 import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
 
+type AccessProfileFilter = "all" | "QA" | "UX" | "TW" | "MGR"
+
+const ACCESS_PROFILE_OPTIONS: { value: AccessProfileFilter; label: string }[] = [
+  { value: "all", label: "Todos" },
+  { value: "QA",  label: "QA" },
+  { value: "UX",  label: "UX" },
+  { value: "TW",  label: "TW" },
+  { value: "MGR", label: "Manager" },
+]
 
 interface Props {
   secao: string
@@ -45,12 +54,27 @@ export function IndividualSecaoDevelopmentPanel({
   const router = useRouter()
   const progressaoRef = React.useRef<ProgressaoSectionHandle>(null)
   const [lancamentosPreset, setLancamentosPreset] = React.useState<LancamentosPeriodPreset>("week")
+  const [accessProfileFilter, setAccessProfileFilter] = React.useState<AccessProfileFilter>("all")
 
   const showAvaliacoes = secao === "avaliacoes"
   const showFeedbacks  = secao === "feedbacks"
   const showConquistas = secao === "conquistas"
   const showProgressao = secao === "progressao"
   const showLancamentos = secao === "lancamentos" && canAccessLancamentos
+
+  const visibleUsers = React.useMemo(() => {
+    if (accessProfileFilter === "all") return users
+    return users.filter((u) => u.accessProfile === accessProfileFilter)
+  }, [users, accessProfileFilter])
+
+  React.useEffect(() => {
+    if (!showLancamentos) return
+    if (visibleUsers.length === 0) return
+    const ids = new Set(visibleUsers.map((u) => u.id))
+    if (!ids.has(selectedUserId)) {
+      router.replace(`/individual/lancamentos?userId=${encodeURIComponent(visibleUsers[0]!.id)}`)
+    }
+  }, [visibleUsers, selectedUserId, showLancamentos, router])
 
   function handlePresetChange(p: LancamentosPeriodPreset) {
     setLancamentosPreset(p)
@@ -61,25 +85,45 @@ export function IndividualSecaoDevelopmentPanel({
       {users.length > 0 ? (
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <IndividualActiveUserAvatarStrip secao={secao} users={users} selectedUserId={selectedUserId} />
+            <IndividualActiveUserAvatarStrip secao={secao} users={visibleUsers} selectedUserId={selectedUserId} />
           </div>
           {showLancamentos && (
-            <Select
-              value={lancamentosPreset}
-              onValueChange={(v) => handlePresetChange(v as LancamentosPeriodPreset)}
-              aria-label="Período"
-            >
-              <SelectTrigger className="w-44 shrink-0">
-                <SelectValue>{getLancamentosPresetLabel(lancamentosPreset)}</SelectValue>
-              </SelectTrigger>
-              <SelectPopup>
-                {LANCAMENTOS_PRESET_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectPopup>
-            </Select>
+            <>
+              <Select
+                value={accessProfileFilter}
+                onValueChange={(v) => setAccessProfileFilter(v as AccessProfileFilter)}
+                aria-label="Perfil de Acesso"
+              >
+                <SelectTrigger className="w-36 shrink-0">
+                  <SelectValue>
+                    {ACCESS_PROFILE_OPTIONS.find((o) => o.value === accessProfileFilter)?.label ?? "Todos"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectPopup>
+                  {ACCESS_PROFILE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+              <Select
+                value={lancamentosPreset}
+                onValueChange={(v) => handlePresetChange(v as LancamentosPeriodPreset)}
+                aria-label="Período"
+              >
+                <SelectTrigger className="w-44 shrink-0">
+                  <SelectValue>{getLancamentosPresetLabel(lancamentosPreset)}</SelectValue>
+                </SelectTrigger>
+                <SelectPopup>
+                  {LANCAMENTOS_PRESET_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            </>
           )}
           {showAvaliacoes ? (
             <Button

@@ -525,6 +525,76 @@ export async function countBrokenTestsOpenedByReporterInRange(
   return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
 }
 
+/**
+ * Conta issues onde reporter = accountId e issuetype ∈ {Broken Test, Erro Teste, …}
+ * criadas dentro do intervalo [fromIso, toIso]. Usa paginação segura.
+ * Tipos configuráveis via env JIRA_BROKEN_TEST_ISSUE_TYPES (csv). "Erro Teste" é sempre incluído.
+ */
+export async function countReporterIssuesByTypesInRange(
+  base: string,
+  credentials: string,
+  accountId: string,
+  fromIso: string,
+  toIso: string,
+): Promise<number> {
+  const jFrom = jqlDateFromIso(fromIso)
+  const jTo = jqlDateFromIso(toIso)
+  if (!jFrom || !jTo) return 0
+
+  // Collect issue type names: defaults + "Erro Teste" always included
+  const raw = process.env.JIRA_BROKEN_TEST_ISSUE_TYPES?.trim()
+  const fromEnv = raw
+    ? raw.split(/[,|]/).map((s) => s.trim()).filter(Boolean)
+    : []
+  const baseNames = fromEnv.length > 0 ? fromEnv : ["Broken Test"]
+  const allNames = [...new Set([...baseNames, "Erro Teste"])]
+
+  function quoteName(name: string): string {
+    return `"${name.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
+  }
+  const issuetypeClause =
+    allNames.length === 1
+      ? `issuetype = ${quoteName(allNames[0]!)}`
+      : `issuetype in (${allNames.map((n) => quoteName(n)).join(", ")})`
+
+  const escapedAccount = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+  const jql =
+    `reporter = "${escapedAccount}" AND ${issuetypeClause} ` +
+    `AND created >= "${jFrom}" AND created <= "${jTo}"`
+
+  let fetchedCount = 0
+  let startAt = 0
+  const pageSize = 50
+
+  try {
+    for (;;) {
+      const { ok, data } = await jiraJson<{
+        issues?: unknown[]
+        total?: number
+      }>(`${base}/rest/api/3/search`, credentials, {
+        method: "POST",
+        body: JSON.stringify({
+          jql,
+          fields: ["summary"],
+          maxResults: pageSize,
+          startAt,
+        }),
+      })
+      if (!ok || !data) break
+      const n = Array.isArray(data.issues) ? data.issues.length : 0
+      if (n === 0) break
+      fetchedCount += n
+      const reportedTotal = typeof data.total === "number" ? data.total : fetchedCount
+      startAt += n
+      if (startAt >= reportedTotal || fetchedCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
+    }
+  } catch {
+    return fetchedCount
+  }
+
+  return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
+}
+
 // ── Custom field discovery ────────────────────────────────────────────────────
 // Cache the resolved field ID for the lifetime of the process to avoid
 // repeated GET /rest/api/3/field calls on every request.

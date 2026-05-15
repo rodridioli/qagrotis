@@ -10,6 +10,7 @@ import {
 import {
   augmentFieldMapWithGetIssueFallback,
   brokenTestSubtasksCountsInParents,
+  countReporterIssuesByTypesInRange,
   fetchIssueFieldsForKeys,
   fetchWorklogsForAuthorInRange,
   findJiraAccountIdByEmail,
@@ -205,7 +206,15 @@ export async function GET(req: NextRequest) {
       ? fetchIssueFieldsForKeys(base, credentials, keysToEnrich).catch(() => new Map<string, LancamentoIssueFieldsPatch>())
       : Promise.resolve(new Map<string, LancamentoIssueFieldsPatch>())
 
-  const [fieldMap, brokenCounts] = await Promise.all([enrichPromise, brokenCountsPromise])
+  const reporterCountPromise = jiraUser
+    ? countReporterIssuesByTypesInRange(base, credentials, jiraUser.accountId, from, to).catch(() => 0)
+    : Promise.resolve(0)
+
+  const [fieldMap, brokenCounts, reporterBrokenTestIssueCount] = await Promise.all([
+    enrichPromise,
+    brokenCountsPromise,
+    reporterCountPromise,
+  ])
 
   if (keysToEnrich.length > 0) {
     await augmentFieldMapWithGetIssueFallback(base, credentials, fieldMap, keysToEnrich)
@@ -235,6 +244,7 @@ export async function GET(req: NextRequest) {
       jiraBrowseBase: base,
       includesClockwork: false,
       clockworkMergedCount: 0,
+      reporterBrokenTestIssueCount: 0,
       message: "Nenhum registro encontrado",
     })
   }
@@ -251,6 +261,7 @@ export async function GET(req: NextRequest) {
     jiraAuthorDisplayName,
     includesClockwork: clockworkAdded > 0,
     clockworkMergedCount: clockworkAdded,
+    reporterBrokenTestIssueCount,
     ...(brokenCounts
       ? {
           brokenTestSubtasksTotalInScope: brokenCounts.totalInScope,

@@ -16,6 +16,7 @@ export interface IndividualAvatarUser {
   name: string
   photoPath: string | null
   email?: string
+  accessProfile?: "QA" | "UX" | "TW" | "MGR" | null
 }
 
 interface Props {

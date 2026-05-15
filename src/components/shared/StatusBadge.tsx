@@ -60,6 +60,31 @@ function UserTipoBadge({ tipo }: { tipo: string }) {
   return badge(colorClass, tipo)
 }
 
+function JiraPriorityBadge({ priority }: { priority: string | null | undefined }) {
+  if (!priority?.trim()) return <span className="text-text-secondary">—</span>
+  const norm = priority.trim().normalize("NFD").replace(/\p{Mark}/gu, "").toLowerCase()
+  let colorClass: string
+  if (
+    norm === "critical" || norm === "critico" || norm === "critica" ||
+    norm === "highest" || norm === "blocker" || norm === "imediato" ||
+    norm.includes("critical") || norm.includes("critica") || norm.includes("critico")
+  ) {
+    colorClass = "border-destructive/30 bg-destructive/10 text-destructive"
+  } else if (norm === "high" || norm === "alta" || norm.includes("alta") || norm.includes("high")) {
+    colorClass = "border-badge-warning/40 bg-badge-warning/10 text-badge-warning-text"
+  } else if (norm === "medium" || norm === "media" || norm === "média" || norm.includes("medium") || norm.includes("media")) {
+    colorClass = "border-badge-info/30 bg-badge-info/10 text-badge-info-text"
+  } else if (
+    norm === "low" || norm === "lowest" || norm === "baixa" || norm === "minor" ||
+    norm.includes("baixa") || norm.includes("low")
+  ) {
+    colorClass = "border-badge-success/30 bg-badge-success/10 text-badge-success-text"
+  } else {
+    colorClass = "border-secondary-500/30 bg-secondary-500/10 text-secondary-600"
+  }
+  return badge(colorClass, priority.trim())
+}
+
 function PriorityBadge({ priority }: { priority: string }) {
   const colorClass =
     priority === "Crítica"
@@ -168,6 +193,7 @@ export {
   AutomacaoBadge,
   UserTipoBadge,
   PriorityBadge,
+  JiraPriorityBadge,
   ChangelogTagBadge,
   AvaliacaoSituacaoBadge,
   AvaliacaoPeriodoBadge,

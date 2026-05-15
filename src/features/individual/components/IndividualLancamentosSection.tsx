@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   BarChart3,
   Bug,
+  CheckCircle2,
   Clock,
   Flame,
   Hash,
@@ -13,6 +14,7 @@ import {
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { TableToolbar } from "@/components/shared/TableToolbar"
+import { JiraPriorityBadge } from "@/components/shared/StatusBadge"
 import {
   Select,
   SelectItem,
@@ -76,6 +78,7 @@ type ApiOk = {
   brokenTestsOpenedCount?: number
   brokenTestSubtasksTotalInScope?: number
   brokenTestsCreatedByUser?: number
+  reporterBrokenTestIssueCount?: number
 }
 
 function formatDurationHMin(totalSeconds: number): string {
@@ -84,10 +87,37 @@ function formatDurationHMin(totalSeconds: number): string {
   return `${String(h).padStart(2, "0")}h${String(m).padStart(2, "0")}min`
 }
 
-function alertLevel(hours: number): "red" | "yellow" | null {
-  if (hours > 10) return "red"
-  if (hours > 6) return "yellow"
-  return null
+// ── Grouping ─────────────────────────────────────────────────────────────────
+
+/** Agrupa entradas por issueKey, somando tempo e juntando comentários únicos. */
+function groupByIssueKey(entries: LancamentoRow[]): LancamentoRow[] {
+  const map = new Map<string, LancamentoRow[]>()
+  for (const e of entries) {
+    const key = e.issueKey.toUpperCase()
+    const group = map.get(key)
+    if (group) {
+      group.push(e)
+    } else {
+      map.set(key, [e])
+    }
+  }
+
+  const grouped: LancamentoRow[] = []
+  for (const group of map.values()) {
+    // Use the most-recent worklog as source of truth for metadata
+    const sorted = [...group].sort((a, b) => b.started.localeCompare(a.started))
+    const latest = sorted[0]!
+    const totalSeconds = group.reduce((acc, e) => acc + e.timeSpentSeconds, 0)
+    const uniqueComments = [...new Set(group.map((e) => e.comment).filter((c): c is string => !!c?.trim()))]
+    grouped.push({
+      ...latest,
+      id: `group-${latest.issueKey.toUpperCase()}`,
+      timeSpentSeconds: totalSeconds,
+      hours: totalSeconds / 3600,
+      comment: uniqueComments.join("; ") || null,
+    })
+  }
+  return grouped
 }
 
 // ── Dashboard stats ─────────────────────────────────────────────────────────
@@ -199,9 +229,23 @@ function StatCard({
   )
 }
 
-function ProjectBar({ projectHours }: { projectHours: ProjectHours[] }) {
+// ── Pie chart ────────────────────────────────────────────────────────────────
+
+const PIE_COLORS = [
+  "var(--color-brand-primary)",
+  "var(--color-secondary-500)",
+  "#f59e0b", // badge-warning fallback
+  "#3b82f6", // badge-info fallback
+  "#10b981", // badge-success fallback
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+]
+
+function ProjectPieChart({ projectHours }: { projectHours: ProjectHours[] }) {
   if (projectHours.length === 0) return null
-  const max = projectHours[0].seconds
+  const totalSeconds = projectHours.reduce((acc, p) => acc + p.seconds, 0)
+
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-border-default bg-surface-card p-5 shadow-card">
       <div className="flex items-center gap-3">
@@ -210,43 +254,100 @@ function ProjectBar({ projectHours }: { projectHours: ProjectHours[] }) {
         </span>
         <p className="text-sm font-medium text-text-secondary">Horas por Projeto</p>
       </div>
-      <div className="flex flex-col gap-2">
-        {projectHours.map((p) => (
-          <div key={p.key} className="flex items-center gap-3">
-            <span className="w-36 shrink-0 truncate text-right text-xs font-medium text-text-primary" title={p.name ?? p.key}>
-              {p.name ?? p.key}
-            </span>
-            <div className="flex-1 overflow-hidden rounded-full bg-neutral-grey-100">
-              <div
-                className="h-2 rounded-full bg-brand-primary transition-all"
-                style={{ width: `${Math.round((p.seconds / max) * 100)}%` }}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
+        {/* SVG Pie */}
+        <PieSvg slices={projectHours} total={totalSeconds} />
+        {/* Legend */}
+        <div className="flex flex-col gap-1.5 min-w-0">
+          {projectHours.map((p, i) => (
+            <div key={p.key} className="flex items-center gap-2 text-xs">
+              <span
+                className="size-3 shrink-0 rounded-sm"
+                style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
               />
+              <span className="truncate font-medium text-text-primary" title={p.name ?? p.key}>
+                {p.name ?? p.key}
+              </span>
+              <span className="shrink-0 tabular-nums text-text-secondary">
+                {formatDurationHMin(p.seconds)}
+              </span>
+              <span className="shrink-0 tabular-nums text-text-secondary">
+                ({totalSeconds > 0 ? Math.round((p.seconds / totalSeconds) * 100) : 0}%)
+              </span>
             </div>
-            <span className="w-20 shrink-0 text-xs tabular-nums text-text-secondary">
-              {formatDurationHMin(p.seconds)}
-            </span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   )
 }
 
+function PieSvg({ slices, total }: { slices: ProjectHours[]; total: number }) {
+  if (total === 0) return null
+  const SIZE = 160
+  const R = 60
+  const cx = SIZE / 2
+  const cy = SIZE / 2
+
+  let cumulativeAngle = -Math.PI / 2
+  const paths = slices.map((s, i) => {
+    const fraction = s.seconds / total
+    const startAngle = cumulativeAngle
+    const sweepAngle = fraction * 2 * Math.PI
+    cumulativeAngle += sweepAngle
+    const endAngle = cumulativeAngle
+
+    const x1 = cx + R * Math.cos(startAngle)
+    const y1 = cy + R * Math.sin(startAngle)
+    const x2 = cx + R * Math.cos(endAngle)
+    const y2 = cy + R * Math.sin(endAngle)
+    const largeArc = sweepAngle > Math.PI ? 1 : 0
+    const d =
+      slices.length === 1
+        ? `M ${cx} ${cy - R} A ${R} ${R} 0 1 1 ${cx - 0.001} ${cy - R} Z`
+        : `M ${cx} ${cy} L ${x1} ${y1} A ${R} ${R} 0 ${largeArc} 1 ${x2} ${y2} Z`
+    return (
+      <path
+        key={s.key}
+        d={d}
+        fill={PIE_COLORS[i % PIE_COLORS.length]}
+        stroke="var(--color-surface-card, white)"
+        strokeWidth={2}
+      />
+    )
+  })
+
+  return (
+    <svg
+      width={SIZE}
+      height={SIZE}
+      viewBox={`0 0 ${SIZE} ${SIZE}`}
+      className="shrink-0"
+      aria-hidden
+    >
+      {paths}
+    </svg>
+  )
+}
+
 function DashboardPanel({
   entries,
-  brokenTestSubtasksTotalInScope,
   brokenTestsCreatedByUser,
   brokenTestsOpenedCount,
+  reporterBrokenTestIssueCount,
 }: {
   entries: LancamentoRow[]
-  brokenTestSubtasksTotalInScope?: number
   brokenTestsCreatedByUser?: number
   brokenTestsOpenedCount?: number
+  reporterBrokenTestIssueCount?: number
 }) {
   const stats = React.useMemo(() => computeStats(entries), [entries])
 
   const retornoValor =
-    brokenTestsCreatedByUser ?? brokenTestsOpenedCount ?? stats.brokenTestCountFromWorklogs
+    reporterBrokenTestIssueCount ??
+    brokenTestsCreatedByUser ??
+    brokenTestsOpenedCount ??
+    stats.brokenTestCountFromWorklogs
 
   const totalSeconds = React.useMemo(
     () => entries.reduce((acc, e) => acc + e.timeSpentSeconds, 0),
@@ -256,7 +357,7 @@ function DashboardPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="grid gap-3 md:grid-cols-2">
-        <ProjectBar projectHours={stats.projectHours} />
+        <ProjectPieChart projectHours={stats.projectHours} />
         <div className="rounded-xl border border-border-default bg-surface-card p-5 shadow-card">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -272,10 +373,10 @@ function DashboardPanel({
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
-        <StatCard icon={Hash}   label="Total de Jiras"      value={stats.totalIssues}          iconVariant="info" />
-        <StatCard icon={Flame}  label="Jiras críticos"      value={stats.criticalCount}        iconVariant="destructive" />
-        <StatCard icon={Bug}    label="Retorno de Testes"   value={retornoValor}               iconVariant="warning" />
-        <StatCard icon={Layers} label="Testes Realizados"   value={stats.qtdCenariosTotal}     iconVariant="brand" />
+        <StatCard icon={Hash}   label="Total de Jiras"      value={stats.totalIssues}      iconVariant="info" />
+        <StatCard icon={Flame}  label="Jiras críticos"      value={stats.criticalCount}    iconVariant="destructive" />
+        <StatCard icon={Bug}    label="Retorno de Testes"   value={retornoValor}           iconVariant="warning" />
+        <StatCard icon={Layers} label="Testes Realizados"   value={stats.qtdCenariosTotal} iconVariant="brand" />
       </div>
     </div>
   )
@@ -364,29 +465,25 @@ export function IndividualLancamentosSection({
 
   const allEntries = data?.entries ?? []
 
+  // Group raw entries by issueKey — dashboard uses allEntries (unmerged),
+  // table and toolbar use grouped entries.
+  const groupedEntries = React.useMemo(() => groupByIssueKey(allEntries), [allEntries])
+
   const filtered = React.useMemo(() => {
-    if (!search.trim()) return allEntries
+    if (!search.trim()) return groupedEntries
     const q = search.trim().toLowerCase()
-    return allEntries.filter(
+    return groupedEntries.filter(
       (e) =>
         e.issueKey.toLowerCase().includes(q) ||
         (e.summary ?? "").toLowerCase().includes(q) ||
         (e.priority ?? "").toLowerCase().includes(q),
     )
-  }, [allEntries, search])
+  }, [groupedEntries, search])
 
   const filteredTotalSeconds = React.useMemo(
     () => filtered.reduce((acc, e) => acc + e.timeSpentSeconds, 0),
     [filtered],
   )
-
-  const hoursByIssue = React.useMemo(() => {
-    const map = new Map<string, number>()
-    for (const e of filtered) {
-      map.set(e.issueKey, (map.get(e.issueKey) ?? 0) + e.hours)
-    }
-    return map
-  }, [filtered])
 
   const toolbarLeadingSummary = (
     <span className="text-sm font-medium text-text-primary">
@@ -453,13 +550,13 @@ export function IndividualLancamentosSection({
             </p>
           ) : null}
 
-          {/* Dashboard totals */}
+          {/* Dashboard totals — use raw allEntries so project aggregation is accurate */}
           {allEntries.length > 0 && (
             <DashboardPanel
               entries={allEntries}
-              brokenTestSubtasksTotalInScope={data.brokenTestSubtasksTotalInScope}
               brokenTestsCreatedByUser={data.brokenTestsCreatedByUser}
               brokenTestsOpenedCount={data.brokenTestsOpenedCount}
+              reporterBrokenTestIssueCount={data.reporterBrokenTestIssueCount}
             />
           )}
 
@@ -470,14 +567,14 @@ export function IndividualLancamentosSection({
               onSearchChange={(v) => setSearch(v)}
               searchPlaceholder="Buscar por Jira, título ou prioridade…"
               leadingSummary={toolbarLeadingSummary}
-              baseCount={allEntries.length}
+              baseCount={groupedEntries.length}
             />
 
             {filtered.length === 0 ? (
               <EmptyState message="Nenhum registro encontrado." className="mx-5 my-8" />
             ) : (
               <div className="overflow-x-auto">
-                <table className="qagrotis-table-row-hover-muted w-full min-w-[64rem] border-collapse text-left text-sm">
+                <table className="qagrotis-table-row-hover-muted w-full min-w-[56rem] border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50">
                       <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Jira</th>
@@ -485,18 +582,15 @@ export function IndividualLancamentosSection({
                       <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Projeto</th>
                       <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Prioridade</th>
                       <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Título</th>
-                      <th className="hidden px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:table-cell sm:px-4">Fonte</th>
                       <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Data</th>
                       <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Tempo</th>
                       <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Comentário</th>
-                      <th className="w-10 px-3 py-3 sm:px-4">
-                        <span className="sr-only">Alertas</span>
-                      </th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Situação</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.map((row) => {
-                      const issueExcesso = (hoursByIssue.get(row.issueKey) ?? 0) > 8
+                      const excesso = row.timeSpentSeconds / 3600 > 8
                       return (
                         <tr
                           key={row.id}
@@ -526,22 +620,12 @@ export function IndividualLancamentosSection({
                             {row.projectName?.trim() || row.projectKey || row.issueKey.split("-")[0]}
                           </td>
                           {/* Prioridade */}
-                          <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary sm:px-4">
-                            {row.priority?.trim() ? row.priority : "—"}
+                          <td className="whitespace-nowrap px-3 py-3 sm:px-4">
+                            <JiraPriorityBadge priority={row.priority} />
                           </td>
                           {/* Título */}
                           <td className="max-w-[16rem] px-3 py-3 text-sm text-text-primary sm:px-4">
                             {row.summary ?? "—"}
-                          </td>
-                          {/* Fonte */}
-                          <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-text-secondary sm:table-cell sm:px-4">
-                            {row.dataSource === "clockwork" ? (
-                              <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-800 dark:text-violet-200">
-                                Clockwork
-                              </span>
-                            ) : (
-                              <span className="text-text-secondary">Jira</span>
-                            )}
                           </td>
                           {/* Data */}
                           <td className="whitespace-nowrap px-3 py-3 text-sm tabular-nums text-text-primary sm:px-4">
@@ -564,21 +648,28 @@ export function IndividualLancamentosSection({
                               "—"
                             )}
                           </td>
-                          {/* Alertas */}
+                          {/* Situação */}
                           <td className="px-3 py-3 sm:px-4">
-                            {issueExcesso ? (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger className="flex items-center justify-center">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger className="flex items-center justify-center">
+                                  {excesso ? (
                                     <AlertTriangle
                                       className="size-4 shrink-0 text-amber-500"
                                       aria-label="Excesso de horas"
                                     />
-                                  </TooltipTrigger>
-                                  <TooltipContent>Excesso de horas.</TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            ) : null}
+                                  ) : (
+                                    <CheckCircle2
+                                      className="size-4 shrink-0 text-badge-success-text"
+                                      aria-label="Dentro do limite"
+                                    />
+                                  )}
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {excesso ? "Excesso de horas (> 8h nesta atividade)." : "Dentro do limite de 8h."}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </td>
                         </tr>
                       )
