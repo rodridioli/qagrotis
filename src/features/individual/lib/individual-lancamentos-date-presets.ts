@@ -1,13 +1,13 @@
 /** Presets de intervalo em data civil local (YYYY-MM-DD). */
 
-export type LancamentosPeriodPreset = "today" | "yesterday" | "week" | "month" | "lastMonth"
+export type LancamentosPeriodPreset = "today" | "anteriormente" | "week" | "month" | "lastMonth"
 
 export const LANCAMENTOS_PRESET_OPTIONS: { value: LancamentosPeriodPreset; label: string }[] = [
-  { value: "today",     label: "Hoje" },
-  { value: "yesterday", label: "Ontem" },
-  { value: "week",      label: "Semana" },
-  { value: "month",     label: "Mês Atual" },
-  { value: "lastMonth", label: "Mês Anterior" },
+  { value: "today",          label: "Hoje" },
+  { value: "anteriormente",  label: "Anteriormente" },
+  { value: "week",           label: "Semana" },
+  { value: "month",          label: "Mês Atual" },
+  { value: "lastMonth",      label: "Mês Anterior" },
 ]
 
 export function getLancamentosPresetLabel(preset: LancamentosPeriodPreset): string {
@@ -31,10 +31,12 @@ export function getLancamentosPresetRange(
     return { from: t, to: t }
   }
 
-  if (preset === "yesterday") {
-    const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
-    const t = toIsoLocal(y)
-    return { from: t, to: t }
+  if (preset === "anteriormente") {
+    // Returns a 14-day window ending yesterday; the component refines to the
+    // most-recent day with entries via a second fetch.
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+    const twoWeeksAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 15)
+    return { from: toIsoLocal(twoWeeksAgo), to: toIsoLocal(yesterday) }
   }
 
   if (preset === "week") {

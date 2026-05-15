@@ -534,6 +534,8 @@ export async function countReporterIssuesByTypes(
   base: string,
   credentials: string,
   accountId: string,
+  fromIso: string,
+  toIso: string,
 ): Promise<number> {
   // Collect issue type names: defaults + "Erro Teste" always included
   const raw = process.env.JIRA_BROKEN_TEST_ISSUE_TYPES?.trim()
@@ -551,8 +553,13 @@ export async function countReporterIssuesByTypes(
       ? `issuetype = ${quoteName(allNames[0]!)}`
       : `issuetype in (${allNames.map((n) => quoteName(n)).join(", ")})`
 
+  // toNextDay = toIso + 1 day, used for the exclusive upper bound on created
+  const toDate = new Date(toIso + "T00:00:00Z")
+  toDate.setUTCDate(toDate.getUTCDate() + 1)
+  const toNextDay = toDate.toISOString().slice(0, 10)
+
   const escapedAccount = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-  const jql = `reporter = "${escapedAccount}" AND ${issuetypeClause}`
+  const jql = `reporter = "${escapedAccount}" AND ${issuetypeClause} AND status != "Cancelado" AND created >= "${fromIso}" AND created < "${toNextDay}"`
 
   let fetchedCount = 0
   let startAt = 0
