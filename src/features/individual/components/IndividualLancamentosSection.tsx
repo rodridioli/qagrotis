@@ -252,7 +252,12 @@ function ProjectStackedBar({ projectHours }: { projectHours: ProjectHours[] }) {
         <span className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
           <BarChart3 className="size-5" />
         </span>
-        <p className="text-sm font-medium text-text-secondary">Horas por Projeto</p>
+        <p className="text-sm font-medium text-text-secondary">
+          Horas por Projeto{" "}
+          <span className="font-semibold text-text-primary">
+            / Total: {formatDurationHMin(totalSeconds)}
+          </span>
+        </p>
       </div>
       {/* Stacked bar */}
       <div className="flex h-7 w-full overflow-hidden rounded-md" aria-hidden>
@@ -421,18 +426,10 @@ export function IndividualLancamentosSection({
     )
   }, [groupedEntries, search])
 
-  const filteredTotalSeconds = React.useMemo(
-    () => filtered.reduce((acc, e) => acc + e.timeSpentSeconds, 0),
-    [filtered],
-  )
-
   const toolbarLeadingSummary = (
     <span className="text-sm font-medium text-text-primary">
       Lançamentos:{" "}
       <span className="font-bold">{filtered.length.toLocaleString("pt-BR")}</span>
-      {" / "}
-      Total de Horas:{" "}
-      <span className="font-bold">{formatDurationHMin(filteredTotalSeconds)}</span>
     </span>
   )
 

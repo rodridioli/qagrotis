@@ -55,6 +55,18 @@ export function IndividualSecaoDevelopmentPanel({
   const progressaoRef = React.useRef<ProgressaoSectionHandle>(null)
   const [lancamentosPreset, setLancamentosPreset] = React.useState<LancamentosPeriodPreset>("week")
   const [accessProfileFilter, setAccessProfileFilter] = React.useState<AccessProfileFilter>("all")
+  const [pendingUserId, setPendingUserId] = React.useState<string | null>(null)
+
+  // Optimistic effective user: reflects the navigation target immediately,
+  // before the server-rendered prop catches up.
+  const effectiveUserId = pendingUserId ?? selectedUserId
+
+  // Clear pending once the server prop confirms the navigation completed.
+  React.useEffect(() => {
+    if (pendingUserId !== null && selectedUserId === pendingUserId) {
+      setPendingUserId(null)
+    }
+  }, [selectedUserId, pendingUserId])
 
   const showAvaliacoes = secao === "avaliacoes"
   const showFeedbacks  = secao === "feedbacks"
@@ -72,8 +84,10 @@ export function IndividualSecaoDevelopmentPanel({
       value === "all" ? users : users.filter((u) => u.accessProfile === value)
     setAccessProfileFilter(value)
     if (newVisible.length > 0 && !newVisible.some((u) => u.id === selectedUserId)) {
+      const firstId = newVisible[0]!.id
+      setPendingUserId(firstId)
       router.replace(
-        `/individual/lancamentos?userId=${encodeURIComponent(newVisible[0]!.id)}`,
+        `/individual/lancamentos?userId=${encodeURIComponent(firstId)}`,
       )
     }
   }
@@ -87,7 +101,7 @@ export function IndividualSecaoDevelopmentPanel({
       {users.length > 0 ? (
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <IndividualActiveUserAvatarStrip secao={secao} users={visibleUsers} selectedUserId={selectedUserId} />
+            <IndividualActiveUserAvatarStrip secao={secao} users={visibleUsers} selectedUserId={effectiveUserId} />
           </div>
           {showLancamentos && (
             <div className="flex shrink-0 items-center" style={{ gap: "calc(var(--spacing) * 2)" }}>
@@ -181,7 +195,7 @@ export function IndividualSecaoDevelopmentPanel({
         <ProgressaoSection ref={progressaoRef} evaluatedUserId={selectedUserId} />
       ) : showLancamentos ? (
         <IndividualLancamentosSection
-          evaluatedUserId={selectedUserId}
+          evaluatedUserId={effectiveUserId}
           preset={lancamentosPreset}
           onPresetChange={handlePresetChange}
         />
