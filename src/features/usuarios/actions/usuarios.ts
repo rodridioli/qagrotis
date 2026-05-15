@@ -530,11 +530,11 @@ export async function criarQaUser(data: {
       emergencyContact: data.emergencyContact ?? null,
       instagram:        data.instagram ?? null,
       linkedin:         data.linkedin ?? null,
-      education:        (data.education ?? []) as Prisma.InputJsonValue,
-      courses:          (data.courses ?? []) as Prisma.InputJsonValue,
-      languages:        (data.languages ?? []) as Prisma.InputJsonValue,
-      certifications:   (data.certifications ?? []) as Prisma.InputJsonValue,
-      careerHistory:    (data.careerHistory ?? []) as Prisma.InputJsonValue,
+      education:        data.education      != null ? (data.education      as Prisma.InputJsonValue) : Prisma.JsonNull,
+      courses:          data.courses        != null ? (data.courses        as Prisma.InputJsonValue) : Prisma.JsonNull,
+      languages:        data.languages      != null ? (data.languages      as Prisma.InputJsonValue) : Prisma.JsonNull,
+      certifications:   data.certifications != null ? (data.certifications as Prisma.InputJsonValue) : Prisma.JsonNull,
+      careerHistory:    data.careerHistory  != null ? (data.careerHistory  as Prisma.InputJsonValue) : Prisma.JsonNull,
     }
 
     // Validação MGR + Administrador

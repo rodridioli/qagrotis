@@ -46,6 +46,16 @@ function checkEducation(education: unknown, types: string[], titleKeywords: stri
   return hasEducationType(education, types) || hasEducationTitleKeyword(education, titleKeywords)
 }
 
+// Prefers the source with actual data over an empty array default.
+// Falls back to the other source when primary is empty/absent.
+function pickJsonArray(primary: unknown, fallback: unknown): unknown[] {
+  if (Array.isArray(primary) && primary.length > 0) return primary as unknown[]
+  if (Array.isArray(fallback) && fallback.length > 0) return fallback as unknown[]
+  if (Array.isArray(primary)) return primary as unknown[]
+  if (Array.isArray(fallback)) return fallback as unknown[]
+  return []
+}
+
 // Returns the 0-based index of the highest non-Portuguese language level, or -1 if none.
 function bestNonPortugueseLanguageLevel(languages: unknown): number {
   if (!Array.isArray(languages)) return -1
@@ -102,10 +112,10 @@ export async function listUserBadges(targetUserId?: string): Promise<ListUserBad
   const admissaoDate = oldestAdmissao[0]?.data ?? null
   const tenureMonths = admissaoDate ? monthsBetween(admissaoDate, now) : 0
 
-  const education     = profile?.education     ?? createdUser?.education     ?? []
-  const courses       = (profile?.courses       ?? createdUser?.courses       ?? []) as unknown[]
-  const certifications = (profile?.certifications ?? createdUser?.certifications ?? []) as unknown[]
-  const languages     = (profile?.languages     ?? createdUser?.languages     ?? []) as unknown[]
+  const education      = pickJsonArray(profile?.education,      createdUser?.education)
+  const courses        = pickJsonArray(profile?.courses,        createdUser?.courses)
+  const certifications = pickJsonArray(profile?.certifications, createdUser?.certifications)
+  const languages      = pickJsonArray(profile?.languages,      createdUser?.languages)
 
   const hasGraduacao  = checkEducation(education, ["Graduação"],    ["bacharel", "licenciatura", "gradua"])
   const hasPosGrad    = checkEducation(education, ["Pós-Graduação"], ["pós", "pos-", "especializ", "mba", "lato sensu"])
