@@ -530,13 +530,20 @@ export async function countBrokenTestsOpenedByReporterInRange(
  * criadas dentro do intervalo [fromIso, toIso]. Usa paginação segura.
  * Tipos configuráveis via env JIRA_BROKEN_TEST_ISSUE_TYPES (csv). "Erro Teste" é sempre incluído.
  */
+export type ReporterIssueCountResult = {
+  count: number
+  jql: string
+  jiraStatus: number | null
+  jiraError: string | null
+}
+
 export async function countReporterIssuesByTypes(
   base: string,
   credentials: string,
   accountId: string,
   fromIso: string,
   toIso: string,
-): Promise<number> {
+): Promise<ReporterIssueCountResult> {
   const raw = process.env.JIRA_BROKEN_TEST_ISSUE_TYPES?.trim()
   const fromEnv = raw
     ? raw.split(/[,|]/).map((s) => s.trim()).filter(Boolean)
@@ -559,11 +566,11 @@ export async function countReporterIssuesByTypes(
   const escapedAccount = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
   const jql = `reporter = "${escapedAccount}" AND ${issuetypeClause} AND status != "Cancelado" AND created >= "${fromIso}" AND created < "${toNextDay}"`
 
-  console.log("[countReporterIssuesByTypes] jql:", jql)
-
   let fetchedCount = 0
   let startAt = 0
   const pageSize = 50
+  let lastStatus: number | null = null
+  let lastError: string | null = null
 
   try {
     for (;;) {
@@ -579,8 +586,9 @@ export async function countReporterIssuesByTypes(
           startAt,
         }),
       })
+      lastStatus = status
       if (!ok || !data) {
-        console.error("[countReporterIssuesByTypes] Jira search failed", { status, jql, body: text?.slice(0, 400) })
+        lastError = text?.slice(0, 500) ?? null
         break
       }
       const n = Array.isArray(data.issues) ? data.issues.length : 0
@@ -591,12 +599,16 @@ export async function countReporterIssuesByTypes(
       if (startAt >= reportedTotal || fetchedCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
     }
   } catch (err) {
-    console.error("[countReporterIssuesByTypes] unexpected error", err)
-    return fetchedCount
+    lastError = String(err)
+    return { count: fetchedCount, jql, jiraStatus: lastStatus, jiraError: lastError }
   }
 
-  console.log("[countReporterIssuesByTypes] result:", fetchedCount)
-  return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
+  return {
+    count: Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL),
+    jql,
+    jiraStatus: lastStatus,
+    jiraError: lastError,
+  }
 }
 
 // ── Custom field discovery ────────────────────────────────────────────────────
