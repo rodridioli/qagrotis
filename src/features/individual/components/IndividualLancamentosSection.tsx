@@ -309,10 +309,12 @@ function DashboardPanel({
 }) {
   const stats = React.useMemo(() => computeStats(entries), [entries])
 
+  // API-based counts return 0 (not null) even when the JQL finds nothing,
+  // so ?? would stop at 0 and never reach the worklog-based count.
+  // Use || to treat 0 as falsy, falling through to brokenTestCountFromWorklogs
+  // which correctly counts distinct Broken Test issue keys from enriched entries.
   const retornoValor =
-    reporterBrokenTestIssueCount ??
-    brokenTestsCreatedByUser ??
-    brokenTestsOpenedCount ??
+    (reporterBrokenTestIssueCount || brokenTestsCreatedByUser || brokenTestsOpenedCount) ||
     stats.brokenTestCountFromWorklogs
 
   return (
