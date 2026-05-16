@@ -44,6 +44,7 @@ export type Capability =
   | "users.create"
   | "users.editProfileFields" // Tipo, Perfil, Cargo, Horários, Formato, Dias
   // Equipe
+  | "equipe.performance"
   | "equipe.performance.filterByProfile"
   | "equipe.lancamentos"
 
@@ -98,6 +99,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.clientes",
       "config.credenciais",
       "users.create",
+      "equipe.performance",
       "equipe.lancamentos",
     ],
     disabled: [],
@@ -128,6 +130,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.atualizacoes",
       "config.usuarios",
       "users.create",
+      "equipe.performance",
       "equipe.lancamentos",
     ],
     disabled: ["menu.documentos"],
@@ -158,6 +161,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.atualizacoes",
       "config.usuarios",
       "users.create",
+      "equipe.performance",
       "equipe.lancamentos",
     ],
     disabled: ["menu.documentos"],
@@ -185,6 +189,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.jira",
       "users.create",
       "users.editProfileFields",
+      "equipe.performance",
       "equipe.performance.filterByProfile",
       "equipe.lancamentos",
       "individual.viewOthers",

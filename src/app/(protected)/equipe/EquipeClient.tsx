@@ -37,6 +37,7 @@ interface Props {
   userAccessProfile: AccessProfileId
   canFilterByProfile: boolean
   canAccessEquipeLancamentos: boolean
+  canAccessEquipePerformance: boolean
   initialTab?: TabId
 }
 
@@ -199,17 +200,21 @@ export default function EquipeClient({
   userAccessProfile,
   canFilterByProfile,
   canAccessEquipeLancamentos,
-  initialTab = "performance",
+  canAccessEquipePerformance,
+  initialTab = "chapters",
 }: Props) {
-  const safeInitialTab: TabId =
-    initialTab === "lancamentos" && !canAccessEquipeLancamentos ? "performance" : initialTab
-  const [activeTab, setActiveTab] = useState<TabId>(safeInitialTab)
+  function safeTab(tab: TabId): TabId {
+    if (tab === "lancamentos" && !canAccessEquipeLancamentos) return canAccessEquipePerformance ? "performance" : "chapters"
+    if (tab === "performance" && !canAccessEquipePerformance) return "chapters"
+    return tab
+  }
+
+  const [activeTab, setActiveTab] = useState<TabId>(safeTab(initialTab))
 
   useEffect(() => {
-    const safe: TabId =
-      initialTab === "lancamentos" && !canAccessEquipeLancamentos ? "performance" : initialTab
-    setActiveTab(safe)
-  }, [initialTab, canAccessEquipeLancamentos])
+    setActiveTab(safeTab(initialTab))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab, canAccessEquipeLancamentos, canAccessEquipePerformance])
   const [filterOpen, setFilterOpen] = useState(false)
   const [selectedProfile, setSelectedProfile] = useState<AccessProfileId>(userAccessProfile)
 
