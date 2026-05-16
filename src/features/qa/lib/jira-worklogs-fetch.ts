@@ -138,6 +138,36 @@ export async function findJiraAccountIdByEmail(
   return { accountId: pick.accountId, displayName: pick.displayName }
 }
 
+/**
+ * Procura todos os accountIds em Jira que correspondem a um nome de exibição.
+ * Útil quando a privacidade de e-mail oculta o vínculo email→accountId — o nome
+ * é uma busca alternativa que casa com o campo `reporter` das issues.
+ *
+ * Retorna match exato primeiro (case-insensitive); na ausência, prefixo/substring.
+ */
+export async function findJiraAccountIdsByDisplayName(
+  base: string,
+  credentials: string,
+  displayName: string,
+): Promise<{ accountId: string; displayName: string; emailAddress?: string }[]> {
+  const name = displayName.trim()
+  if (!name) return []
+  const url = `${base}/rest/api/3/user/search?query=${encodeURIComponent(name)}&maxResults=20`
+  const { ok, data } = await jiraJson<{ accountId: string; displayName?: string; emailAddress?: string }[]>(
+    url,
+    credentials,
+  )
+  if (!ok || !Array.isArray(data)) return []
+  const lower = name.toLowerCase()
+  const exact = data.filter((u) => (u.displayName ?? "").trim().toLowerCase() === lower)
+  const pool = exact.length > 0 ? exact : data
+  return pool
+    .filter((u): u is { accountId: string; displayName: string; emailAddress?: string } =>
+      typeof u.accountId === "string" && u.accountId.length > 0,
+    )
+    .map((u) => ({ accountId: u.accountId, displayName: u.displayName ?? "", emailAddress: u.emailAddress }))
+}
+
 /** Fields Jira search/issue — declarado cedo para `fetchIssueFieldsForKeys`. */
 type IssueFields = {
   summary?: unknown
@@ -530,6 +560,14 @@ export async function countBrokenTestsOpenedByReporterInRange(
  * criadas dentro do intervalo [fromIso, toIso]. Usa paginação segura.
  * Tipos configuráveis via env JIRA_BROKEN_TEST_ISSUE_TYPES (csv). "Erro Teste" é sempre incluído.
  */
+export type ReporterCountDiagnostics = {
+  count: number
+  /** Tentativas de JQL feitas, em ordem, com status HTTP e contagem retornada. */
+  attempts: { jql: string; httpStatus: number; count: number }[]
+  /** Lista de accountIds tentados (do email + da busca por nome). */
+  accountIdsTried: string[]
+}
+
 export async function countReporterIssuesByTypes(
   base: string,
   credentials: string,
@@ -537,7 +575,7 @@ export async function countReporterIssuesByTypes(
   fromIso: string,
   toIso: string,
   displayName?: string,
-): Promise<number> {
+): Promise<ReporterCountDiagnostics> {
   const raw = process.env.JIRA_BROKEN_TEST_ISSUE_TYPES?.trim()
   const fromEnv = raw
     ? raw.split(/[,|]/).map((s) => s.trim()).filter(Boolean)
@@ -552,25 +590,33 @@ export async function countReporterIssuesByTypes(
       ? `issuetype = ${quoteName(allNames[0]!)}`
       : `issuetype in (${allNames.map((n) => quoteName(n)).join(", ")})`
 
-  // toNextDay = toIso + 1 day, used for the exclusive upper bound on created
-  const toDate = new Date(toIso + "T00:00:00Z")
-  toDate.setUTCDate(toDate.getUTCDate() + 1)
-  const toNextDay = toDate.toISOString().slice(0, 10)
+  // Use the end of `toIso`'s month as the exclusive upper bound — matches the
+  // Jira UI filter (`created < first-day-of-next-month`) and avoids missing
+  // issues created today due to timezone skew between server and Jira.
+  const [yStr, mStr] = toIso.split("-")
+  const year = Number(yStr)
+  const monthIdx = Number(mStr) - 1 // 0-based
+  const nextMonth = new Date(Date.UTC(year, monthIdx + 1, 1))
+  const upperExclusive = nextMonth.toISOString().slice(0, 10)
 
-  async function runJql(reporter: string): Promise<number> {
-    const jql = `reporter = ${reporter} AND ${issuetypeClause} AND status != "Cancelado" AND created >= "${fromIso}" AND created < "${toNextDay}"`
+  const attempts: ReporterCountDiagnostics["attempts"] = []
+
+  async function runJql(reporterClause: string): Promise<number> {
+    const jql = `${reporterClause} AND ${issuetypeClause} AND status != "Cancelado" AND created >= "${fromIso}" AND created < "${upperExclusive}"`
     let fetchedCount = 0
     let startAt = 0
+    let lastStatus = 0
     const pageSize = 50
     try {
       for (;;) {
-        const { ok, data } = await jiraJson<{
+        const { ok, status, data } = await jiraJson<{
           issues?: unknown[]
           total?: number
         }>(`${base}/rest/api/3/search`, credentials, {
           method: "POST",
           body: JSON.stringify({ jql, fields: ["summary"], maxResults: pageSize, startAt }),
         })
+        lastStatus = status
         if (!ok || !data) break
         const n = Array.isArray(data.issues) ? data.issues.length : 0
         if (n === 0) break
@@ -580,30 +626,53 @@ export async function countReporterIssuesByTypes(
         if (startAt >= reportedTotal || fetchedCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
       }
     } catch {
-      return fetchedCount
+      // swallow
     }
-    return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
+    const capped = Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
+    attempts.push({ jql, httpStatus: lastStatus, count: capped })
+    return capped
   }
 
+  // Collect candidate accountIds: from the email lookup + from a name-based
+  // Jira user search (to recover the right user when emails are hidden).
+  const accountIdsTried: string[] = []
+  const candidateIds = new Set<string>()
   if (accountId.trim()) {
-    const escapedId = `"${accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
-    const countById = await runJql(escapedId)
-    if (countById > 0) return countById
+    candidateIds.add(accountId.trim())
+    accountIdsTried.push(accountId.trim())
+  }
+  if (displayName?.trim()) {
+    const byName = await findJiraAccountIdsByDisplayName(base, credentials, displayName.trim())
+    for (const u of byName) {
+      if (!candidateIds.has(u.accountId)) {
+        candidateIds.add(u.accountId)
+        accountIdsTried.push(u.accountId)
+      }
+    }
   }
 
-  // accountId may not match the reporter field when:
-  //  - the user only logs via Clockwork (no native Jira worklogs); or
-  //  - Jira hides the email by privacy, so findJiraAccountIdByEmail picked
-  //    the wrong user entirely.
-  // Fall back to display name (matches what Jira's own UI filter uses,
-  // e.g. reporter = "Andressa Trotz") — sourced from our own DB to avoid
-  // propagating a wrong Jira user lookup.
+  // Single combined query covering all candidate accountIds — the most
+  // efficient and unambiguous way to count.
+  if (candidateIds.size > 0) {
+    const ids = Array.from(candidateIds)
+      .map((id) => `"${id.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`)
+      .join(", ")
+    const clause = ids.includes(",") ? `reporter in (${ids})` : `reporter = ${ids}`
+    const count = await runJql(clause)
+    if (count > 0) {
+      return { count, attempts, accountIdsTried }
+    }
+  }
+
+  // Last resort: try reporter = "Display Name" — Jira Cloud JQL accepts this
+  // when the name is unique. Matches exactly what the Jira UI filter sends.
   if (displayName?.trim()) {
     const escapedName = `"${displayName.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
-    return runJql(escapedName)
+    const count = await runJql(`reporter = ${escapedName}`)
+    return { count, attempts, accountIdsTried }
   }
 
-  return 0
+  return { count: 0, attempts, accountIdsTried }
 }
 
 // ── Custom field discovery ────────────────────────────────────────────────────

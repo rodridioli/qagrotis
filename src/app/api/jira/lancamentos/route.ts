@@ -18,6 +18,7 @@ import {
   type BrokenTestSubtaskCounts,
   type JiraLancamentoEntry,
   type LancamentoIssueFieldsPatch,
+  type ReporterCountDiagnostics,
 } from "@/features/qa/lib/jira-worklogs-fetch"
 import { getActiveQaUsers, resolveEmailForQaUserId, resolveNameForQaUserId } from "@/features/usuarios/actions/usuarios"
 import type { NextRequest } from "next/server"
@@ -226,17 +227,25 @@ export async function GET(req: NextRequest) {
   // emails by privacy, findJiraAccountIdByEmail may pick the wrong user, so
   // its displayName would also be wrong. Our DB name is the source of truth.
   const reporterNameFallback = targetName?.trim() || jiraUser?.displayName?.trim() || undefined
-  const reporterCountPromise: Promise<number> = jiraUser
-    ? countReporterIssuesByTypes(base, credentials, jiraUser.accountId, reporterCountFrom, to, reporterNameFallback).catch(() => 0)
-    : targetName?.trim()
-      ? countReporterIssuesByTypes(base, credentials, "", reporterCountFrom, to, targetName.trim()).catch(() => 0)
-      : Promise.resolve(0)
+  const emptyDiagnostics: ReporterCountDiagnostics = { count: 0, attempts: [], accountIdsTried: [] }
+  const reporterCountPromise: Promise<ReporterCountDiagnostics> =
+    jiraUser || reporterNameFallback
+      ? countReporterIssuesByTypes(
+          base,
+          credentials,
+          jiraUser?.accountId ?? "",
+          reporterCountFrom,
+          to,
+          reporterNameFallback,
+        ).catch(() => emptyDiagnostics)
+      : Promise.resolve(emptyDiagnostics)
 
-  const [fieldMap, brokenCounts, reporterBrokenTestIssueCount] = await Promise.all([
+  const [fieldMap, brokenCounts, reporterDiagnostics] = await Promise.all([
     enrichPromise,
     brokenCountsPromise,
     reporterCountPromise,
   ])
+  const reporterBrokenTestIssueCount = reporterDiagnostics.count
 
   if (keysToEnrich.length > 0) {
     await augmentFieldMapWithGetIssueFallback(base, credentials, fieldMap, keysToEnrich)
@@ -254,6 +263,19 @@ export async function GET(req: NextRequest) {
   const longSessionCount = entries.filter((e) => e.isLongSession).length
   const noJiraUser = !jiraUser
 
+  const _debug = {
+    targetEmail,
+    targetName,
+    jiraUserFound: !!jiraUser,
+    jiraAccountIdFromEmail: jiraUser?.accountId ?? null,
+    jiraDisplayNameFromEmail: jiraUser?.displayName ?? null,
+    reporterCountFrom,
+    reporterCountTo: to,
+    reporterBrokenTestIssueCount,
+    reporterAccountIdsTried: reporterDiagnostics.accountIdsTried,
+    reporterAttempts: reporterDiagnostics.attempts,
+  }
+
   if (noJiraUser && entries.length === 0) {
     return Response.json({
       source: "jira" as const,
@@ -268,6 +290,7 @@ export async function GET(req: NextRequest) {
       clockworkMergedCount: 0,
       reporterBrokenTestIssueCount: 0,
       message: "Nenhum registro encontrado",
+      _debug,
     })
   }
 
@@ -284,6 +307,7 @@ export async function GET(req: NextRequest) {
     includesClockwork: clockworkAdded > 0,
     clockworkMergedCount: clockworkAdded,
     reporterBrokenTestIssueCount,
+    _debug,
     ...(brokenCounts
       ? {
           brokenTestSubtasksTotalInScope: brokenCounts.totalInScope,
