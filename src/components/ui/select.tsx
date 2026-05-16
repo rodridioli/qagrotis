@@ -68,7 +68,7 @@ function SelectPopup({
 }: SelectPrimitive.Popup.Props) {
   return (
     <SelectPrimitive.Portal>
-      <SelectPrimitive.Positioner sideOffset={4} className="z-200">
+      <SelectPrimitive.Positioner sideOffset={4} className="z-200" alignItemToTrigger={false}>
         <SelectPrimitive.Popup
           data-slot="select-popup"
           className={cn(
@@ -133,7 +133,7 @@ function SelectPopupSearchable({
 }: SelectPopupSearchableProps) {
   return (
     <SelectPrimitive.Portal>
-      <SelectPrimitive.Positioner sideOffset={4} className="z-200">
+      <SelectPrimitive.Positioner sideOffset={4} className="z-200" alignItemToTrigger={false}>
         <SelectPrimitive.Popup
           data-slot="select-popup"
           className={cn(

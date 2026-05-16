@@ -599,20 +599,4 @@
   animation: badge-spark-pulse 0.55s 0.42s ease-out forwards;
 }
 
-/* base-ui aligns the popup to the selected item by default, which can push
-   the first items above the viewport when the last item is selected.
-   Removing max-height from both the Positioner (:has) and the Popup, then
-   hiding the scrollbar, keeps all options visible without a scrollbar. */
-:has(> [data-slot="select-popup"]) {
-  max-height: none !important;
-}
-[data-slot="select-popup"] {
-  max-height: none !important;
-}
-[data-slot="select-popup"] [role="listbox"] {
-  scrollbar-width: none;
-}
-[data-slot="select-popup"] [role="listbox"]::-webkit-scrollbar {
-  display: none;
-}
 

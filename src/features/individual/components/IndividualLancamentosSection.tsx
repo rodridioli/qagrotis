@@ -298,23 +298,27 @@ function ProjectStackedBar({ projectHours }: { projectHours: ProjectHours[] }) {
 
 function DashboardPanel({
   entries,
+  brokenTestSubtasksTotalInScope,
   brokenTestsCreatedByUser,
   brokenTestsOpenedCount,
   reporterBrokenTestIssueCount,
 }: {
   entries: LancamentoRow[]
+  brokenTestSubtasksTotalInScope?: number
   brokenTestsCreatedByUser?: number
   brokenTestsOpenedCount?: number
   reporterBrokenTestIssueCount?: number
 }) {
   const stats = React.useMemo(() => computeStats(entries), [entries])
 
-  // API-based counts return 0 (not null) even when the JQL finds nothing,
-  // so ?? would stop at 0 and never reach the worklog-based count.
-  // Use || to treat 0 as falsy, falling through to brokenTestCountFromWorklogs
-  // which correctly counts distinct Broken Test issue keys from enriched entries.
+  // All API counts return 0 (not null/undefined) when nothing is found, so
+  // use || to fall through zeros. Prefer the total-in-scope subtask count
+  // (broken tests under parent issues) as the most reliable metric.
   const retornoValor =
-    (reporterBrokenTestIssueCount || brokenTestsCreatedByUser || brokenTestsOpenedCount) ||
+    brokenTestSubtasksTotalInScope ||
+    reporterBrokenTestIssueCount ||
+    brokenTestsCreatedByUser ||
+    brokenTestsOpenedCount ||
     stats.brokenTestCountFromWorklogs
 
   return (
@@ -517,6 +521,7 @@ export function IndividualLancamentosSection({
           {allEntries.length > 0 && (
             <DashboardPanel
               entries={allEntries}
+              brokenTestSubtasksTotalInScope={data.brokenTestSubtasksTotalInScope}
               brokenTestsCreatedByUser={data.brokenTestsCreatedByUser}
               brokenTestsOpenedCount={data.brokenTestsOpenedCount}
               reporterBrokenTestIssueCount={data.reporterBrokenTestIssueCount}
