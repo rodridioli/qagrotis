@@ -79,7 +79,7 @@ function SelectPopup({
           )}
           {...props}
         >
-          <SelectPrimitive.List className="p-1">{children}</SelectPrimitive.List>
+          <SelectPrimitive.List className="p-1 ![max-height:none] ![overflow:visible]">{children}</SelectPrimitive.List>
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>
     </SelectPrimitive.Portal>
