@@ -347,19 +347,33 @@ const aniversariantesPorMes = useMemo(() => {
               </SelectPopup>
             </Select>
           )}
-          <button
-            type="button"
-            onClick={handleOpenFilter}
-            aria-label="Abrir filtros"
-            className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100"
-          >
-            <SlidersHorizontal className="size-4" />
-            {activeFilterCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-brand-primary text-primary-foreground text-xs font-bold">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+          {canFilterByProfile ? (
+            <button
+              type="button"
+              onClick={handleOpenFilter}
+              aria-label="Abrir filtros"
+              className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100"
+            >
+              <SlidersHorizontal className="size-4" />
+              {activeFilterCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-brand-primary text-primary-foreground text-xs font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          ) : (
+            <Select
+              value={applied.periodo}
+              onValueChange={(v) => v && setApplied({ periodo: v })}
+            >
+              <SelectTrigger className="h-9 w-40" aria-label="Período">
+                {PERIODOS.find((p) => p.value === applied.periodo)?.label ?? applied.periodo}
+              </SelectTrigger>
+              <SelectPopup>
+                {PERIODOS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+              </SelectPopup>
+            </Select>
+          )}
         </div>
       )}
 
