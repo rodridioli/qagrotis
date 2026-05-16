@@ -300,12 +300,14 @@ export async function fetchIssueFieldsForKeys(
     const quoted = chunk.map((k) => `"${k.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`).join(", ")
     const jql = `key in (${quoted})`
     try {
+      // New /search/jql endpoint (legacy /search is 410 Gone since May 2025).
+      // Uses nextPageToken cursor pagination; for ≤50 keys, a single page suffices.
       const { ok, data } = await jiraJson<{
         issues?: {
           key: string
           fields?: IssueFields
         }[]
-      }>(`${base}/rest/api/3/search`, credentials, {
+      }>(`${base}/rest/api/3/search/jql`, credentials, {
         method: "POST",
         body: JSON.stringify({ jql, fields: fieldsParam, maxResults: SEARCH_KEY_CHUNK }),
       })
@@ -328,32 +330,20 @@ const MAX_ISSUE_FIELDS_FALLBACK_GET = 72
 const FALLBACK_GET_CONCURRENCY = 10
 
 async function paginateBrokenTestSubtaskCount(base: string, credentials: string, jql: string): Promise<number> {
-  let startAt = 0
-  let chunkCount = 0
-  const pageSize = 50
-
+  // New API: /search/approximate-count (the old /search is 410 Gone since May 2025).
   try {
-    for (;;) {
-      const { ok, data } = await jiraJson<{
-        issues?: unknown[]
-        total?: number
-      }>(`${base}/rest/api/3/search`, credentials, {
-        method: "POST",
-        body: JSON.stringify({ jql, fields: ["summary"], maxResults: pageSize, startAt }),
-      })
-      if (!ok || !data) break
-      const n = Array.isArray(data.issues) ? data.issues.length : 0
-      if (n === 0) break
-      chunkCount += n
-      const reportedTotal = typeof data.total === "number" ? data.total : chunkCount
-      startAt += n
-      if (startAt >= reportedTotal || chunkCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
+    const { ok, data } = await jiraJson<{ count?: number }>(
+      `${base}/rest/api/3/search/approximate-count`,
+      credentials,
+      { method: "POST", body: JSON.stringify({ jql }) },
+    )
+    if (ok && typeof data?.count === "number") {
+      return Math.min(data.count, MAX_BROKEN_TEST_SEARCH_TOTAL)
     }
   } catch {
     // non-fatal
   }
-
-  return Math.min(chunkCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
+  return 0
 }
 
 /** Subtarefas Broken Test com parent nos worklogs avaliados. */
@@ -522,37 +512,19 @@ export async function countBrokenTestsOpenedByReporterInRange(
     `reporter = "${escaped}" AND issuetype = "Broken Test" ` +
     `AND created >= "${jFrom}" AND created <= "${jTo}"`
 
-  let fetchedCount = 0
-  let startAt = 0
-  const pageSize = 50
-
   try {
-    for (;;) {
-      const { ok, data } = await jiraJson<{
-        issues?: unknown[]
-        total?: number
-      }>(`${base}/rest/api/3/search`, credentials, {
-        method: "POST",
-        body: JSON.stringify({
-          jql,
-          fields: ["summary"],
-          maxResults: pageSize,
-          startAt,
-        }),
-      })
-      if (!ok || !data) break
-      const n = Array.isArray(data.issues) ? data.issues.length : 0
-      if (n === 0) break
-      fetchedCount += n
-      const reportedTotal = typeof data.total === "number" ? data.total : fetchedCount
-      startAt += n
-      if (startAt >= reportedTotal || fetchedCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
+    const { ok, data } = await jiraJson<{ count?: number }>(
+      `${base}/rest/api/3/search/approximate-count`,
+      credentials,
+      { method: "POST", body: JSON.stringify({ jql }) },
+    )
+    if (ok && typeof data?.count === "number") {
+      return Math.min(data.count, MAX_BROKEN_TEST_SEARCH_TOTAL)
     }
   } catch {
-    return fetchedCount
+    // non-fatal
   }
-
-  return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
+  return 0
 }
 
 /**
@@ -603,33 +575,16 @@ export async function countReporterIssuesByTypes(
 
   async function runJql(reporterClause: string): Promise<number> {
     const jql = `${reporterClause} AND ${issuetypeClause} AND status != "Cancelado" AND created >= "${fromIso}" AND created < "${upperExclusive}"`
-    let fetchedCount = 0
-    let startAt = 0
-    let lastStatus = 0
-    const pageSize = 50
-    try {
-      for (;;) {
-        const { ok, status, data } = await jiraJson<{
-          issues?: unknown[]
-          total?: number
-        }>(`${base}/rest/api/3/search`, credentials, {
-          method: "POST",
-          body: JSON.stringify({ jql, fields: ["summary"], maxResults: pageSize, startAt }),
-        })
-        lastStatus = status
-        if (!ok || !data) break
-        const n = Array.isArray(data.issues) ? data.issues.length : 0
-        if (n === 0) break
-        fetchedCount += n
-        const reportedTotal = typeof data.total === "number" ? data.total : fetchedCount
-        startAt += n
-        if (startAt >= reportedTotal || fetchedCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
-      }
-    } catch {
-      // swallow
-    }
-    const capped = Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
-    attempts.push({ jql, httpStatus: lastStatus, count: capped })
+    // New API (post May 2025): /search/approximate-count returns just a count.
+    // The legacy /search endpoint returns 410 Gone.
+    const { ok, status, data } = await jiraJson<{ count?: number }>(
+      `${base}/rest/api/3/search/approximate-count`,
+      credentials,
+      { method: "POST", body: JSON.stringify({ jql }) },
+    )
+    const count = ok && typeof data?.count === "number" ? data.count : 0
+    const capped = Math.min(count, MAX_BROKEN_TEST_SEARCH_TOTAL)
+    attempts.push({ jql, httpStatus: status, count: capped })
     return capped
   }
 
@@ -720,26 +675,29 @@ async function searchIssuesByJql(
   base: string,
   credentials: string,
   jql: string,
-  startAt: number,
+  nextPageToken: string | null,
   extraFields: string[],
 ): Promise<{
   issues: { key: string; fields?: IssueFields }[]
-  total: number
+  nextPageToken: string | null
+  isLast: boolean
 } | null> {
-  const searchUrl = `${base}/rest/api/3/search`
+  // New /search/jql endpoint (legacy /search is 410 Gone since May 2025).
+  // Cursor pagination via nextPageToken; response no longer carries `total`.
+  const searchUrl = `${base}/rest/api/3/search/jql`
+  const body: Record<string, unknown> = {
+    jql,
+    fields: ["summary", "issuetype", "priority", "labels", ...extraFields],
+    maxResults: SEARCH_PAGE,
+  }
+  if (nextPageToken) body.nextPageToken = nextPageToken
   const { ok, data, status } = await jiraJson<{
     issues?: { key: string; fields?: IssueFields }[]
-    total?: number
-    startAt?: number
-    maxResults?: number
+    nextPageToken?: string
+    isLast?: boolean
   }>(searchUrl, credentials, {
     method: "POST",
-    body: JSON.stringify({
-      jql,
-      fields: ["summary", "issuetype", "priority", "labels", ...extraFields],
-      maxResults: SEARCH_PAGE,
-      startAt,
-    }),
+    body: JSON.stringify(body),
   })
   if (!ok || !data?.issues) {
     if (process.env.NODE_ENV !== "production") {
@@ -747,7 +705,11 @@ async function searchIssuesByJql(
     }
     return null
   }
-  return { issues: data.issues, total: data.total ?? data.issues.length }
+  return {
+    issues: data.issues,
+    nextPageToken: typeof data.nextPageToken === "string" ? data.nextPageToken : null,
+    isLast: data.isLast === true || !data.nextPageToken,
+  }
 }
 
 export async function fetchWorklogsForAuthorInRange(
@@ -773,18 +735,16 @@ export async function fetchWorklogsForAuthorInRange(
 
   const issueKeys: string[] = []
   const issueFieldsMap = new Map<string, IssueFields>()
-  let startAt = 0
-  let total = 0
+  let lastBatchWasLast = true
 
   const runSearch = async (jql: string, capIssues: number) => {
-    startAt = 0
-    total = 0
     issueKeys.length = 0
     issueFieldsMap.clear()
+    let token: string | null = null
+    lastBatchWasLast = true
     do {
-      const batch = await searchIssuesByJql(base, credentials, jql, startAt, extraFields)
+      const batch = await searchIssuesByJql(base, credentials, jql, token, extraFields)
       if (!batch) break
-      total = batch.total
       for (const issue of batch.issues) {
         if (issueKeys.length >= capIssues) break
         if (!issueKeys.includes(issue.key)) {
@@ -792,8 +752,9 @@ export async function fetchWorklogsForAuthorInRange(
           issueFieldsMap.set(issue.key, issue.fields ?? {})
         }
       }
-      startAt += batch.issues.length
-      if (issueKeys.length >= capIssues || startAt >= total || batch.issues.length === 0) break
+      token = batch.nextPageToken
+      lastBatchWasLast = batch.isLast
+      if (issueKeys.length >= capIssues || batch.isLast || !token || batch.issues.length === 0) break
     } while (true)
   }
 
@@ -802,7 +763,7 @@ export async function fetchWorklogsForAuthorInRange(
     await runSearch(jqlFallback, Math.min(50, MAX_ISSUES))
   }
 
-  const truncatedIssues = total > issueKeys.length || issueKeys.length >= MAX_ISSUES
+  const truncatedIssues = !lastBatchWasLast || issueKeys.length >= MAX_ISSUES
 
   const entries: JiraLancamentoEntry[] = []
 
