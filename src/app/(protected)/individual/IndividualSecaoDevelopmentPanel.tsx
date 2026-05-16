@@ -23,6 +23,7 @@ import { ConquistasSection } from "@/features/individual/components/ConquistasSe
 import { ProgressaoSection, type ProgressaoSectionHandle } from "@/features/individual/components/ProgressaoSection"
 import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
 import { IndividualFeriasSection, type IndividualFeriasSectionHandle } from "@/features/individual/components/IndividualFeriasSection"
+import { IndividualAusenciasSection } from "@/features/individual/components/IndividualAusenciasSection"
 
 type AccessProfileFilter = "all" | "QA" | "UX" | "TW" | "MGR"
 
@@ -70,11 +71,12 @@ export function IndividualSecaoDevelopmentPanel({
     }
   }, [selectedUserId, pendingUserId])
 
-  const showAvaliacoes = secao === "avaliacoes"
-  const showFeedbacks  = secao === "feedbacks"
-  const showFerias     = secao === "ferias"
-  const showConquistas = secao === "conquistas"
-  const showProgressao = secao === "progressao"
+  const showAvaliacoes  = secao === "avaliacoes"
+  const showFeedbacks   = secao === "feedbacks"
+  const showFerias      = secao === "ferias"
+  const showConquistas  = secao === "conquistas"
+  const showProgressao  = secao === "progressao"
+  const showAusencias   = secao === "ausencias"
   const showLancamentos = secao === "lancamentos" && canAccessLancamentos
 
   const visibleUsers = React.useMemo(() => {
@@ -209,6 +211,11 @@ export function IndividualSecaoDevelopmentPanel({
       ) : showFerias ? (
         <IndividualFeriasSection
           ref={feriasRef}
+          evaluatedUserId={selectedUserId}
+          canWrite={isAdministradorMgr}
+        />
+      ) : showAusencias ? (
+        <IndividualAusenciasSection
           evaluatedUserId={selectedUserId}
           canWrite={isAdministradorMgr}
         />

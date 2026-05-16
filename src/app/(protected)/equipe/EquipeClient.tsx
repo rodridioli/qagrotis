@@ -13,6 +13,7 @@ import { EquipeAniversarioCard } from "@/features/equipe/components/EquipeAniver
 import { EquipeHorariosTable } from "@/features/equipe/components/EquipeHorariosTable"
 import { EquipeChaptersSection } from "@/features/equipe/components/EquipeChaptersSection"
 import { EquipeFeriasSection } from "@/features/equipe/components/EquipeFeriasSection"
+import { EquipeAusenciasSection } from "@/features/equipe/components/EquipeAusenciasSection"
 import { EquipeLancamentosSection } from "@/features/equipe/components/EquipeLancamentosSection"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -373,7 +374,9 @@ const aniversariantesPorMes = useMemo(() => {
 
       {activeTab === "ferias" && <EquipeFeriasSection />}
 
-      {(activeTab === "ausencias" || activeTab === "metas") && (
+      {activeTab === "ausencias" && <EquipeAusenciasSection />}
+
+      {activeTab === "metas" && (
         <div className="flex items-center justify-center py-16">
           <p className="text-sm text-text-secondary">Em desenvolvimento.</p>
         </div>
