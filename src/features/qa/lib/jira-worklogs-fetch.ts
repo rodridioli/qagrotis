@@ -530,20 +530,14 @@ export async function countBrokenTestsOpenedByReporterInRange(
  * criadas dentro do intervalo [fromIso, toIso]. Usa paginação segura.
  * Tipos configuráveis via env JIRA_BROKEN_TEST_ISSUE_TYPES (csv). "Erro Teste" é sempre incluído.
  */
-export type ReporterIssueCountResult = {
-  count: number
-  jql: string
-  jiraStatus: number | null
-  jiraError: string | null
-}
-
 export async function countReporterIssuesByTypes(
   base: string,
   credentials: string,
   accountId: string,
   fromIso: string,
   toIso: string,
-): Promise<ReporterIssueCountResult> {
+  displayName?: string,
+): Promise<number> {
   const raw = process.env.JIRA_BROKEN_TEST_ISSUE_TYPES?.trim()
   const fromEnv = raw
     ? raw.split(/[,|]/).map((s) => s.trim()).filter(Boolean)
@@ -563,52 +557,47 @@ export async function countReporterIssuesByTypes(
   toDate.setUTCDate(toDate.getUTCDate() + 1)
   const toNextDay = toDate.toISOString().slice(0, 10)
 
-  const escapedAccount = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-  const jql = `reporter = "${escapedAccount}" AND ${issuetypeClause} AND status != "Cancelado" AND created >= "${fromIso}" AND created < "${toNextDay}"`
-
-  let fetchedCount = 0
-  let startAt = 0
-  const pageSize = 50
-  let lastStatus: number | null = null
-  let lastError: string | null = null
-
-  try {
-    for (;;) {
-      const { ok, data, status, text } = await jiraJson<{
-        issues?: unknown[]
-        total?: number
-      }>(`${base}/rest/api/3/search`, credentials, {
-        method: "POST",
-        body: JSON.stringify({
-          jql,
-          fields: ["summary"],
-          maxResults: pageSize,
-          startAt,
-        }),
-      })
-      lastStatus = status
-      if (!ok || !data) {
-        lastError = text?.slice(0, 500) ?? null
-        break
+  async function runJql(reporter: string): Promise<number> {
+    const jql = `reporter = ${reporter} AND ${issuetypeClause} AND status != "Cancelado" AND created >= "${fromIso}" AND created < "${toNextDay}"`
+    let fetchedCount = 0
+    let startAt = 0
+    const pageSize = 50
+    try {
+      for (;;) {
+        const { ok, data } = await jiraJson<{
+          issues?: unknown[]
+          total?: number
+        }>(`${base}/rest/api/3/search`, credentials, {
+          method: "POST",
+          body: JSON.stringify({ jql, fields: ["summary"], maxResults: pageSize, startAt }),
+        })
+        if (!ok || !data) break
+        const n = Array.isArray(data.issues) ? data.issues.length : 0
+        if (n === 0) break
+        fetchedCount += n
+        const reportedTotal = typeof data.total === "number" ? data.total : fetchedCount
+        startAt += n
+        if (startAt >= reportedTotal || fetchedCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
       }
-      const n = Array.isArray(data.issues) ? data.issues.length : 0
-      if (n === 0) break
-      fetchedCount += n
-      const reportedTotal = typeof data.total === "number" ? data.total : fetchedCount
-      startAt += n
-      if (startAt >= reportedTotal || fetchedCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
+    } catch {
+      return fetchedCount
     }
-  } catch (err) {
-    lastError = String(err)
-    return { count: fetchedCount, jql, jiraStatus: lastStatus, jiraError: lastError }
+    return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
   }
 
-  return {
-    count: Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL),
-    jql,
-    jiraStatus: lastStatus,
-    jiraError: lastError,
+  const escapedId = `"${accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
+  const countById = await runJql(escapedId)
+  if (countById > 0) return countById
+
+  // accountId may not match the reporter field when the user only logs via
+  // Clockwork (no native Jira worklogs). Fall back to display name, which
+  // is what Jira's own UI filter uses (e.g. reporter = "Roger").
+  if (displayName?.trim()) {
+    const escapedName = `"${displayName.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
+    return runJql(escapedName)
   }
+
+  return 0
 }
 
 // ── Custom field discovery ────────────────────────────────────────────────────

@@ -18,7 +18,6 @@ import {
   type BrokenTestSubtaskCounts,
   type JiraLancamentoEntry,
   type LancamentoIssueFieldsPatch,
-  type ReporterIssueCountResult,
 } from "@/features/qa/lib/jira-worklogs-fetch"
 import { getActiveQaUsers, resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
 import type { NextRequest } from "next/server"
@@ -220,21 +219,15 @@ export async function GET(req: NextRequest) {
   // not just the worklog window. "Semana" (May 11–16) should still count
   // all Broken Tests created in May, just like the Jira monthly filter does.
   const reporterCountFrom = `${to.slice(0, 7)}-01` // first day of `to`'s month
-  const reporterCountPromise: Promise<ReporterIssueCountResult> = jiraUser
-    ? countReporterIssuesByTypes(base, credentials, jiraUser.accountId, reporterCountFrom, to).catch((err) => ({
-        count: 0,
-        jql: "",
-        jiraStatus: null,
-        jiraError: String(err),
-      }))
-    : Promise.resolve({ count: 0, jql: "skipped — jiraUser not found", jiraStatus: null, jiraError: null })
+  const reporterCountPromise: Promise<number> = jiraUser
+    ? countReporterIssuesByTypes(base, credentials, jiraUser.accountId, reporterCountFrom, to, jiraUser.displayName ?? undefined).catch(() => 0)
+    : Promise.resolve(0)
 
-  const [fieldMap, brokenCounts, reporterCountResult] = await Promise.all([
+  const [fieldMap, brokenCounts, reporterBrokenTestIssueCount] = await Promise.all([
     enrichPromise,
     brokenCountsPromise,
     reporterCountPromise,
   ])
-  const reporterBrokenTestIssueCount = reporterCountResult.count
 
   if (keysToEnrich.length > 0) {
     await augmentFieldMapWithGetIssueFallback(base, credentials, fieldMap, keysToEnrich)
@@ -252,17 +245,6 @@ export async function GET(req: NextRequest) {
   const longSessionCount = entries.filter((e) => e.isLongSession).length
   const noJiraUser = !jiraUser
 
-  const _debug = {
-    jiraUserFound: !!jiraUser,
-    jiraAccountId: jiraUser?.accountId ?? null,
-    jiraDisplayName: jiraUser?.displayName ?? null,
-    targetEmail,
-    reporterCountJql: reporterCountResult.jql,
-    reporterCountHttpStatus: reporterCountResult.jiraStatus,
-    reporterCountJiraError: reporterCountResult.jiraError,
-    reporterBrokenTestIssueCount,
-  }
-
   if (noJiraUser && entries.length === 0) {
     return Response.json({
       source: "jira" as const,
@@ -277,7 +259,6 @@ export async function GET(req: NextRequest) {
       clockworkMergedCount: 0,
       reporterBrokenTestIssueCount: 0,
       message: "Nenhum registro encontrado",
-      _debug,
     })
   }
 
@@ -294,7 +275,6 @@ export async function GET(req: NextRequest) {
     includesClockwork: clockworkAdded > 0,
     clockworkMergedCount: clockworkAdded,
     reporterBrokenTestIssueCount,
-    _debug,
     ...(brokenCounts
       ? {
           brokenTestSubtasksTotalInScope: brokenCounts.totalInScope,
