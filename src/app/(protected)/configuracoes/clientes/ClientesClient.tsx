@@ -407,7 +407,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                           {c.active ? (
                             <button type="button" onClick={() => openEditarCliente(c)} className="text-brand-primary hover:underline">{c.id}</button>
                           ) : (
-                            <span>{c.id}</span>
+                            <span className="text-text-primary">{c.id}</span>
                           )}
                         </td>
                         <td className="bg-surface-card px-4 py-3 font-medium text-text-primary truncate" title={c.nomeFantasia}>{c.nomeFantasia}</td>

@@ -10,7 +10,6 @@ import { MinhasAvaliacoesSection } from "@/features/individual/components/Minhas
 import { MinhasFeedbacksSection } from "@/features/individual/components/MinhasFeedbacksSection"
 import { ConquistasSection } from "@/features/individual/components/ConquistasSection"
 import { MinhasProgressoesSection } from "@/features/individual/components/MinhasProgressoesSection"
-import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
 import { IndividualFeriasSection } from "@/features/individual/components/IndividualFeriasSection"
 import { individualSectionLabel, isIndividualSectionSlug } from "@/features/individual/lib/individual-sections"
 
@@ -40,11 +39,9 @@ export default async function IndividualSecaoPage({
   const role = buildRole(session.user.type, session.user.accessProfile)
   if (!can(role, "menu.individual")) redirect("/dashboard")
 
-  if (secao === "lancamentos" && !can(role, "individual.lancamentos")) {
-    notFound()
-  }
+  if (secao === "lancamentos") notFound()
 
-  const canAccessLancamentos = can(role, "individual.lancamentos")
+  const canAccessLancamentos = false
   const canViewOthers = can(role, "individual.viewOthers")
   const { userId: requestedUserId, completed } = await searchParams
   const showCompletedToast = completed === "1"
@@ -98,8 +95,6 @@ export default async function IndividualSecaoPage({
         <MinhasProgressoesSection />
       ) : secao === "ferias" ? (
         <IndividualFeriasSection evaluatedUserId={session.user.id} canWrite={false} defaultSituacaoFiltro="todas" />
-      ) : secao === "lancamentos" ? (
-        <IndividualLancamentosSection evaluatedUserId={session.user.id} />
       ) : (
         <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center justify-center py-16">
           <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>

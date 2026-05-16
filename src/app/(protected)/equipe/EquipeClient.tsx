@@ -16,6 +16,7 @@ import { EquipeAniversarioCard } from "@/features/equipe/components/EquipeAniver
 import { EquipeHorariosTable } from "@/features/equipe/components/EquipeHorariosTable"
 import { EquipeChaptersSection } from "@/features/equipe/components/EquipeChaptersSection"
 import { EquipeFeriasSection } from "@/features/equipe/components/EquipeFeriasSection"
+import { EquipeLancamentosSection } from "@/features/equipe/components/EquipeLancamentosSection"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import {
@@ -35,6 +36,7 @@ interface Props {
   isAdmin: boolean
   userAccessProfile: AccessProfileId
   canFilterByProfile: boolean
+  canAccessEquipeLancamentos: boolean
   initialTab?: TabId
 }
 
@@ -53,6 +55,7 @@ const PROFILE_LABEL: Record<AccessProfileId, string> = {
 }
 
 type TabId =
+  | "lancamentos"
   | "performance"
   | "chapters"
   | "horarios"
@@ -195,13 +198,18 @@ export default function EquipeClient({
   isAdmin,
   userAccessProfile,
   canFilterByProfile,
+  canAccessEquipeLancamentos,
   initialTab = "performance",
 }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>(initialTab)
+  const safeInitialTab: TabId =
+    initialTab === "lancamentos" && !canAccessEquipeLancamentos ? "performance" : initialTab
+  const [activeTab, setActiveTab] = useState<TabId>(safeInitialTab)
 
   useEffect(() => {
-    setActiveTab(initialTab)
-  }, [initialTab])
+    const safe: TabId =
+      initialTab === "lancamentos" && !canAccessEquipeLancamentos ? "performance" : initialTab
+    setActiveTab(safe)
+  }, [initialTab, canAccessEquipeLancamentos])
   const [filterOpen, setFilterOpen] = useState(false)
   const [selectedProfile, setSelectedProfile] = useState<AccessProfileId>(userAccessProfile)
 
@@ -447,6 +455,13 @@ const aniversariantesPorMes = useMemo(() => {
             <EquipeHorariosTable rows={comHorario} />
           )}
         </div>
+      )}
+
+      {activeTab === "lancamentos" && canAccessEquipeLancamentos && (
+        <EquipeLancamentosSection
+          userAccessProfile={userAccessProfile}
+          canFilterByProfile={canFilterByProfile}
+        />
       )}
 
       {activeTab === "chapters" && <EquipeChaptersSection isAdmin={isAdmin} />}

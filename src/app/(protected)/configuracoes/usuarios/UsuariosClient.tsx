@@ -433,7 +433,7 @@ export default function UsuariosClient({
                           {u.active && (isAdmin || isSelf) ? (
                             <Link href={`/configuracoes/usuarios/${u.id}/editar`} className="text-brand-primary hover:underline">{u.id}</Link>
                           ) : (
-                            <span>{u.id}</span>
+                            <span className="text-text-primary">{u.id}</span>
                           )}
                         </td>
                         <td className="min-w-0 bg-surface-card px-4 py-3">

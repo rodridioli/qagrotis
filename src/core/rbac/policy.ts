@@ -45,6 +45,7 @@ export type Capability =
   | "users.editProfileFields" // Tipo, Perfil, Cargo, Horários, Formato, Dias
   // Equipe
   | "equipe.performance.filterByProfile"
+  | "equipe.lancamentos"
 
 /** Itens visíveis-mas-desabilitados (aparecem cinzas no menu). */
 export type DisabledItem = Capability
@@ -73,7 +74,6 @@ const POLICY: Record<Role, RoleConfig> = {
       "topbar.sistemaSelector",
       "config.clientes",
       "config.credenciais",
-      "config.jira",
       "config.meuCadastro",
     ],
     disabled: [],
@@ -97,8 +97,8 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.modulos",
       "config.clientes",
       "config.credenciais",
-      "config.jira",
       "users.create",
+      "equipe.lancamentos",
     ],
     disabled: [],
     manageableProfiles: ["QA"],
@@ -113,7 +113,6 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.individual",
       "menu.configuracoes",
       "menu.atualizacoes",
-      "config.jira",
       "config.meuCadastro",
     ],
     disabled: ["menu.documentos"],
@@ -128,8 +127,8 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.configuracoes",
       "menu.atualizacoes",
       "config.usuarios",
-      "config.jira",
       "users.create",
+      "equipe.lancamentos",
     ],
     disabled: ["menu.documentos"],
     manageableProfiles: ["UX"],
@@ -144,7 +143,6 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.individual",
       "menu.configuracoes",
       "menu.atualizacoes",
-      "config.jira",
       "config.meuCadastro",
     ],
     disabled: ["menu.documentos"],
@@ -159,8 +157,8 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.configuracoes",
       "menu.atualizacoes",
       "config.usuarios",
-      "config.jira",
       "users.create",
+      "equipe.lancamentos",
     ],
     disabled: ["menu.documentos"],
     manageableProfiles: ["TW"],
@@ -188,8 +186,8 @@ const POLICY: Record<Role, RoleConfig> = {
       "users.create",
       "users.editProfileFields",
       "equipe.performance.filterByProfile",
+      "equipe.lancamentos",
       "individual.viewOthers",
-      "individual.lancamentos",
       "config.clockwork",
     ],
     disabled: [],

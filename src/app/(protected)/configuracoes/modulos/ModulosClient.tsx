@@ -359,7 +359,7 @@ export default function ModulosClient({ initialModulos: initialModulosParam, ini
                         {m.active && isAdmin ? (
                           <button type="button" onClick={() => openEditarModulo(m)} className="text-brand-primary hover:underline">{m.id}</button>
                         ) : (
-                          <span>{m.id}</span>
+                          <span className="text-text-primary">{m.id}</span>
                         )}
                       </td>
                       <td className="bg-surface-card px-4 py-3 font-medium text-text-primary truncate" title={m.name}>{m.name}</td>

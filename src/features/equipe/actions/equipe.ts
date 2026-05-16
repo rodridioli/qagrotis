@@ -531,6 +531,57 @@ export async function getEquipeListagemCadastro(): Promise<{
   }
 }
 
+export interface EquipeMembroLancamentos {
+  userId: string
+  name: string
+  accessProfile: string | null
+}
+
+/**
+ * Lista membros ativos para o seletor de usuário na tab Lançamentos do Equipe.
+ * Quando accessProfile é passado, filtra apenas usuários daquele perfil.
+ */
+export async function getEquipeMembrosParaLancamentos(
+  accessProfile?: string | null,
+): Promise<EquipeMembroLancamentos[]> {
+  await requireSession()
+  try {
+    const [inactiveRecords, profiles, createdUsers] = await Promise.all([
+      prisma.inactiveUser.findMany({ select: { userId: true } }),
+      prisma.userProfile.findMany({
+        select: { userId: true, name: true, email: true, accessProfile: true },
+      }),
+      prisma.createdUser.findMany({
+        select: { id: true, name: true, email: true, accessProfile: true },
+      }),
+    ])
+
+    const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
+    const profileMap = new Map(profiles.map((p) => [p.userId, p]))
+
+    const byEmail = new Map<string, EquipeMembroLancamentos>()
+
+    for (const u of createdUsers) {
+      if (inactiveIds.has(u.id)) continue
+      const p = profileMap.get(u.id)
+      const email = (p?.email ?? u.email).trim()
+      if (!email) continue
+      const profile = p?.accessProfile ?? u.accessProfile ?? null
+      byEmail.set(email, { userId: u.id, name: p?.name ?? u.name ?? email, accessProfile: profile })
+    }
+
+    let result = [...byEmail.values()]
+    if (accessProfile) {
+      result = result.filter((u) => u.accessProfile === accessProfile)
+    }
+
+    return result.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+  } catch (e) {
+    console.error("[getEquipeMembrosParaLancamentos]", e)
+    return []
+  }
+}
+
 export async function getSistemasEModulos(): Promise<{
   sistemas: string[]
   modulosPorSistema: Record<string, string[]>

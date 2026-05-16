@@ -132,7 +132,7 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
     const [editingRow, setEditingRow] = React.useState<IndividualFeriasRow | null>(null)
     const [form, setForm] = React.useState<FormState>(EMPTY_FORM)
     const [saving, setSaving] = React.useState(false)
-    const [formError, setFormError] = React.useState<string | null>(null)
+    const [fieldErrors, setFieldErrors] = React.useState<{ inicioIso?: boolean; dias?: boolean }>({})
 
     // Delete state
     const [deleteOpen, setDeleteOpen] = React.useState(false)
@@ -142,7 +142,7 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
       openAdd: () => {
         setEditingRow(null)
         setForm(EMPTY_FORM)
-        setFormError(null)
+        setFieldErrors({})
         setModalOpen(true)
       },
     }))
@@ -168,25 +168,30 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
     function openEdit(row: IndividualFeriasRow) {
       setEditingRow(row)
       setForm({ inicioIso: row.inicioIso, dias: String(row.dias) })
-      setFormError(null)
+      setFieldErrors({})
       setModalOpen(true)
     }
 
     async function handleSave() {
-      setFormError(null)
-      if (!form.inicioIso) { setFormError("Início das Férias é obrigatório."); return }
       const dias = parseInt(form.dias, 10)
-      if (!form.dias || isNaN(dias) || dias < 1) { setFormError("Dias de Férias deve ser no mínimo 1."); return }
-
+      const e: typeof fieldErrors = {}
+      if (!form.inicioIso) e.inicioIso = true
+      if (!form.dias || isNaN(dias) || dias < 1) e.dias = true
+      if (Object.keys(e).length > 0) {
+        setFieldErrors(e)
+        toast.error("Preencha todos os campos obrigatórios.")
+        return
+      }
+      setFieldErrors({})
       setSaving(true)
       try {
         if (editingRow) {
           const res = await updateIndividualFerias({ id: editingRow.id, inicioIso: form.inicioIso, dias })
-          if ("error" in res && res.error) { setFormError(res.error); return }
+          if ("error" in res && res.error) { toast.error(res.error); return }
           toast.success("Férias atualizadas com sucesso.")
         } else {
           const res = await createIndividualFerias({ evaluatedUserId, inicioIso: form.inicioIso, dias })
-          if ("error" in res) { setFormError(res.error); return }
+          if ("error" in res) { toast.error(res.error); return }
           toast.success("Férias cadastradas com sucesso.")
         }
         setModalOpen(false)
@@ -444,8 +449,8 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
                   id="ferias-inicio"
                   type="date"
                   value={form.inicioIso}
-                  onChange={(e) => setForm((f) => ({ ...f, inicioIso: e.target.value }))}
-                  className="h-9 w-full rounded-lg border border-border-default bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                  onChange={(e) => { setForm((f) => ({ ...f, inicioIso: e.target.value })); setFieldErrors((p) => ({ ...p, inicioIso: false })) }}
+                  className={`h-9 w-full rounded-lg border bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${fieldErrors.inicioIso ? "border-destructive" : "border-border-default"}`}
                   style={{ colorScheme: "light" }}
                 />
               </div>
@@ -459,16 +464,11 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
                   type="number"
                   min={1}
                   value={form.dias}
-                  onChange={(e) => setForm((f) => ({ ...f, dias: e.target.value }))}
-                  className="h-9 w-full rounded-lg border border-border-default bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                  onChange={(e) => { setForm((f) => ({ ...f, dias: e.target.value })); setFieldErrors((p) => ({ ...p, dias: false })) }}
+                  className={`h-9 w-full rounded-lg border bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${fieldErrors.dias ? "border-destructive" : "border-border-default"}`}
                 />
               </div>
 
-              {formError && (
-                <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                  {formError}
-                </p>
-              )}
             </div>
 
             <DialogFooter>

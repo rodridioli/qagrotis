@@ -1,6 +1,6 @@
 import { auth } from "@/core/auth"
 import { validateOrigin } from "@/core/security"
-import { buildRole, can } from "@/core/rbac/policy"
+import { buildRole, can, manageableProfiles } from "@/core/rbac/policy"
 import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
 import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credentials-db"
 import {
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
   }
 
   const role = buildRole(session.user.type, session.user.accessProfile)
-  if (!can(role, "individual.lancamentos")) {
+  if (!can(role, "equipe.lancamentos")) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -106,15 +106,24 @@ export async function GET(req: NextRequest) {
   let targetUserId = session.user.id
   const requested = url.searchParams.get("userId")?.trim()
   const canViewOthers = can(role, "individual.viewOthers")
+  const canViewTeamLancamentos = can(role, "equipe.lancamentos")
 
   if (requested && requested !== session.user.id) {
-    if (!canViewOthers) {
+    if (!canViewOthers && !canViewTeamLancamentos) {
       return Response.json({ error: "Forbidden" }, { status: 403 })
     }
     const active = await getActiveQaUsers()
-    const allowed = new Set(active.map((u) => u.id))
-    if (!allowed.has(requested)) {
+    const target = active.find((u) => u.id === requested)
+    if (!target) {
       return Response.json({ error: "Utilizador não encontrado ou inativo." }, { status: 403 })
+    }
+    // MGR (canViewOthers) pode ver qualquer usuário ativo.
+    // Outros admins com equipe.lancamentos só podem ver usuários dos seus perfis gerenciáveis.
+    if (!canViewOthers) {
+      const allowed = manageableProfiles(role)
+      if (!target.accessProfile || !allowed.includes(target.accessProfile as "QA" | "UX" | "TW" | "MGR")) {
+        return Response.json({ error: "Forbidden" }, { status: 403 })
+      }
     }
     targetUserId = requested
   }

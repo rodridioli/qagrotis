@@ -861,8 +861,8 @@ export default function EditarCenarioClient({
             {deps.length === 0 ? (
               <EmptyState message="Nenhuma dependência adicionada." className="mx-5 mb-5 mt-0" />
             ) : (
-              <div className="min-w-0 overflow-x-auto">
-                <table className="qagrotis-table-row-hover w-full min-w-[44rem] table-fixed text-sm">
+              <div className="min-w-0">
+                <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50">
                       <th className="w-24 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>

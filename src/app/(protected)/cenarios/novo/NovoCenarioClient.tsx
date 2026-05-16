@@ -817,8 +817,8 @@ export default function NovoCenarioClient({
             {deps.length === 0 ? (
               <EmptyState message="Nenhuma dependência adicionada." className="mx-5 mb-5 mt-0" />
             ) : (
-              <div className="min-w-0 overflow-x-auto">
-                <table className="qagrotis-table-row-hover w-full min-w-[48rem] table-fixed text-sm">
+              <div className="min-w-0">
+                <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
                   <colgroup>
                     <col className="w-24" /><col /><col className="w-24" /><col className="w-28" /><col className="w-28" /><col className="w-10" />
                   </colgroup>

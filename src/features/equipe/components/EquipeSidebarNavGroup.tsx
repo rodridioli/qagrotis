@@ -10,9 +10,10 @@ import { EQUIPE_NAV_ENTRIES } from "@/features/equipe/components/equipeNavEntrie
 export interface EquipeSidebarNavGroupProps {
   collapsed: boolean
   onNavigate?: (href: string) => void
+  canAccessLancamentos?: boolean
 }
 
-export function EquipeSidebarNavGroup({ collapsed, onNavigate }: EquipeSidebarNavGroupProps) {
+export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamentos = false }: EquipeSidebarNavGroupProps) {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -115,7 +116,7 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate }: EquipeSidebarNa
       {open ? (
         <nav id="equipe-sidebar-subnav" aria-label="Secções Equipe" className="ml-2 border-l border-border-default pl-2">
           <ul className="flex flex-col gap-0.5">
-            {EQUIPE_NAV_ENTRIES.map(({ id, label, icon: Icon }) => {
+            {EQUIPE_NAV_ENTRIES.filter((e) => e.id !== "lancamentos" || canAccessLancamentos).map(({ id, label, icon: Icon }) => {
               const href = `/equipe?tab=${id}`
               const active = parentActive && activeTabId === id
               return (

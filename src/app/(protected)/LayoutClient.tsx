@@ -124,12 +124,12 @@ interface SidebarProps {
   hasCenario: boolean
   hasIntegracoes: boolean
   role: Role
-  canAccessLancamentos: boolean
+  canAccessEquipeLancamentos: boolean
   /** Navegação com transição (mantém overlay de carregamento até a rota resolver). */
   onNavigate?: (href: string) => void
 }
 
-const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, role, canAccessLancamentos, onNavigate }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, role, canAccessEquipeLancamentos, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -244,7 +244,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                       </div>
                     }
                   >
-                    <EquipeSidebarNavGroup collapsed={collapsed} onNavigate={onNavigate} />
+                    <EquipeSidebarNavGroup collapsed={collapsed} onNavigate={onNavigate} canAccessLancamentos={canAccessEquipeLancamentos} />
                   </Suspense>
                 )
               }
@@ -283,7 +283,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                     <IndividualSidebarNavGroup
                       collapsed={collapsed}
                       onNavigate={onNavigate}
-                      canAccessLancamentos={canAccessLancamentos}
+                      canAccessLancamentos={false}
                     />
                   </Suspense>
                 )
@@ -648,7 +648,7 @@ export default function LayoutClient({
   const pathname = usePathname()
   const { data: session } = useSession()
   const role: Role = buildRole(session?.user?.type, session?.user?.accessProfile)
-  const canAccessLancamentos = can(role, "individual.lancamentos")
+  const canAccessEquipeLancamentos = can(role, "equipe.lancamentos")
   const accessProfile: AccessProfile = (session?.user?.accessProfile as AccessProfile) ?? "QA"
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -794,7 +794,7 @@ export default function LayoutClient({
           hasCenario={hasCenario}
           hasIntegracoes={integracoes.length > 0}
           role={role}
-          canAccessLancamentos={canAccessLancamentos}
+          canAccessEquipeLancamentos={canAccessEquipeLancamentos}
           onNavigate={handleNavigate}
         />
         <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />

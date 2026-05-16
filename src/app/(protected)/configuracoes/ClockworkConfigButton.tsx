@@ -118,16 +118,14 @@ export default function ClockworkConfigButton() {
                 aria-invalid={!!fieldErrors.token}
               />
               <p className="text-xs text-text-secondary">
-                Criar em Jira:{" "}
                 <a
                   href="https://docs.herocoders.com/clockwork/use-the-clockwork-api"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-brand-primary underline"
                 >
-                  Apps → Clockwork → API tokens
+                  Gerar API: Clockwork
                 </a>
-                .
               </p>
             </div>
           </div>
