@@ -559,13 +559,15 @@ export async function countReporterIssuesByTypes(
   const escapedAccount = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
   const jql = `reporter = "${escapedAccount}" AND ${issuetypeClause} AND status != "Cancelado" AND created >= "${fromIso}" AND created < "${toNextDay}"`
 
+  console.log("[countReporterIssuesByTypes] jql:", jql)
+
   let fetchedCount = 0
   let startAt = 0
   const pageSize = 50
 
   try {
     for (;;) {
-      const { ok, data } = await jiraJson<{
+      const { ok, data, status, text } = await jiraJson<{
         issues?: unknown[]
         total?: number
       }>(`${base}/rest/api/3/search`, credentials, {
@@ -577,7 +579,10 @@ export async function countReporterIssuesByTypes(
           startAt,
         }),
       })
-      if (!ok || !data) break
+      if (!ok || !data) {
+        console.error("[countReporterIssuesByTypes] Jira search failed", { status, jql, body: text?.slice(0, 400) })
+        break
+      }
       const n = Array.isArray(data.issues) ? data.issues.length : 0
       if (n === 0) break
       fetchedCount += n
@@ -585,10 +590,12 @@ export async function countReporterIssuesByTypes(
       startAt += n
       if (startAt >= reportedTotal || fetchedCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
     }
-  } catch {
+  } catch (err) {
+    console.error("[countReporterIssuesByTypes] unexpected error", err)
     return fetchedCount
   }
 
+  console.log("[countReporterIssuesByTypes] result:", fetchedCount)
   return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
 }
 
