@@ -535,6 +535,7 @@ export interface EquipeMembroLancamentos {
   userId: string
   name: string
   accessProfile: string | null
+  photoPath: string | null
 }
 
 /**
@@ -549,10 +550,10 @@ export async function getEquipeMembrosParaLancamentos(
     const [inactiveRecords, profiles, createdUsers] = await Promise.all([
       prisma.inactiveUser.findMany({ select: { userId: true } }),
       prisma.userProfile.findMany({
-        select: { userId: true, name: true, email: true, accessProfile: true },
+        select: { userId: true, name: true, email: true, accessProfile: true, photoPath: true },
       }),
       prisma.createdUser.findMany({
-        select: { id: true, name: true, email: true, accessProfile: true },
+        select: { id: true, name: true, email: true, accessProfile: true, photoPath: true },
       }),
     ])
 
@@ -567,7 +568,8 @@ export async function getEquipeMembrosParaLancamentos(
       const email = (p?.email ?? u.email).trim()
       if (!email) continue
       const profile = p?.accessProfile ?? u.accessProfile ?? null
-      byEmail.set(email, { userId: u.id, name: p?.name ?? u.name ?? email, accessProfile: profile })
+      const photoPath = p?.photoPath ?? u.photoPath ?? null
+      byEmail.set(email, { userId: u.id, name: p?.name ?? u.name ?? email, accessProfile: profile, photoPath })
     }
 
     let result = [...byEmail.values()]

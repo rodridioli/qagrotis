@@ -8,9 +8,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
+import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
+import {
+  getLancamentosPresetLabel,
+  LANCAMENTOS_PRESET_OPTIONS,
+  type LancamentosPeriodPreset,
+} from "@/features/individual/lib/individual-lancamentos-date-presets"
+import { cn } from "@/core/utils"
 import {
   getEquipeMembrosParaLancamentos,
   type EquipeMembroLancamentos,
@@ -25,6 +38,8 @@ const PROFILE_OPTIONS: { value: AccessProfileId; label: string }[] = [
   { value: "MGR", label: "Manager" },
 ]
 
+const AVATAR_SIZE = 44
+
 interface Props {
   userAccessProfile: AccessProfileId
   canFilterByProfile: boolean
@@ -35,15 +50,16 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
   const [membros, setMembros] = React.useState<EquipeMembroLancamentos[]>([])
   const [loading, setLoading] = React.useState(true)
   const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
+  const [preset, setPreset] = React.useState<LancamentosPeriodPreset>("week")
 
   React.useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setSelectedUserId(null)
     const profile = canFilterByProfile ? profileFilter : userAccessProfile
     getEquipeMembrosParaLancamentos(profile).then((data) => {
       if (!cancelled) {
         setMembros(data)
+        setSelectedUserId(data[0]?.userId ?? null)
         setLoading(false)
       }
     })
@@ -52,53 +68,92 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        {canFilterByProfile && (
+      <div className="flex items-center justify-between gap-4">
+        {/* Avatar strip */}
+        <div className="min-w-0 flex-1">
+          {loading ? (
+            <SectionSpinner />
+          ) : membros.length === 0 ? (
+            <EmptyState message="Nenhum membro encontrado neste perfil." />
+          ) : (
+            <TooltipProvider delay={0} closeDelay={0}>
+              <div
+                className="flex w-full flex-wrap items-center justify-start gap-y-2 pl-2"
+                role="toolbar"
+                aria-label="Selecionar membro para visualizar lançamentos"
+              >
+                {membros.map((m, idx) => {
+                  const selected = m.userId === selectedUserId
+                  return (
+                    <Tooltip key={m.userId}>
+                      <TooltipTrigger
+                        render={
+                          <button
+                            type="button"
+                            aria-current={selected ? "true" : undefined}
+                            aria-label={`${m.name}${selected ? " (selecionado)" : ""}`}
+                            onClick={() => setSelectedUserId(m.userId)}
+                            className={cn(
+                              "relative rounded-full border-[3px] border-surface-card bg-surface-card shadow-sm duration-100 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 motion-reduce:transition-none",
+                              selected
+                                ? "z-20 border-brand-primary ring-2 ring-brand-primary/35"
+                                : "z-10 hover:z-30 hover:ring-1 hover:ring-brand-primary/25",
+                            )}
+                            style={{ marginLeft: idx === 0 ? 0 : -12 }}
+                          />
+                        }
+                      >
+                        <UserAvatar name={m.name} photoPath={m.photoPath ?? null} size={AVATAR_SIZE} />
+                      </TooltipTrigger>
+                      <TooltipContent>{m.name}</TooltipContent>
+                    </Tooltip>
+                  )
+                })}
+              </div>
+            </TooltipProvider>
+          )}
+        </div>
+
+        {/* Right-side selects */}
+        <div className="flex shrink-0 items-center gap-2">
+          {canFilterByProfile && (
+            <Select
+              value={profileFilter}
+              onValueChange={(v) => v && setProfileFilter(v as AccessProfileId)}
+            >
+              <SelectTrigger className="w-36" aria-label="Filtrar por perfil">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectPopup>
+                {PROFILE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          )}
+
           <Select
-            value={profileFilter}
-            onValueChange={(v) => v && setProfileFilter(v as AccessProfileId)}
+            value={preset}
+            onValueChange={(v) => v && setPreset(v as LancamentosPeriodPreset)}
           >
-            <SelectTrigger className="w-40" aria-label="Filtrar por perfil">
-              <SelectValue />
+            <SelectTrigger className="w-44" aria-label="Período">
+              <SelectValue>{getLancamentosPresetLabel(preset)}</SelectValue>
             </SelectTrigger>
             <SelectPopup>
-              {PROFILE_OPTIONS.map((o) => (
+              {LANCAMENTOS_PRESET_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
               ))}
             </SelectPopup>
           </Select>
-        )}
-
-        <Select
-          value={selectedUserId ?? ""}
-          onValueChange={(v) => setSelectedUserId(v || null)}
-          disabled={loading || membros.length === 0}
-        >
-          <SelectTrigger className="w-56" aria-label="Selecionar membro">
-            <SelectValue placeholder="Selecionar membro…" />
-          </SelectTrigger>
-          <SelectPopup>
-            {membros.map((m) => (
-              <SelectItem key={m.userId} value={m.userId}>{m.name}</SelectItem>
-            ))}
-          </SelectPopup>
-        </Select>
-
-        {loading && <SectionSpinner />}
+        </div>
       </div>
 
-      {!loading && membros.length === 0 && (
-        <EmptyState message="Nenhum membro encontrado neste perfil." />
-      )}
-
-      {!loading && membros.length > 0 && !selectedUserId && (
-        <EmptyState
-          message="Selecione um membro acima para visualizar os lançamentos."
+      {!loading && selectedUserId && (
+        <IndividualLancamentosSection
+          evaluatedUserId={selectedUserId}
+          preset={preset}
+          onPresetChange={setPreset}
         />
-      )}
-
-      {selectedUserId && (
-        <IndividualLancamentosSection evaluatedUserId={selectedUserId} />
       )}
     </div>
   )
