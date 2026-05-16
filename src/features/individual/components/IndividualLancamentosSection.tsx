@@ -481,7 +481,7 @@ export function IndividualLancamentosSection({
       )}
 
       {loading ? (
-        <SectionSpinner size="lg" />
+        <SectionSpinner />
       ) : error ? (
         <EmptyState message={`Erro: ${error}`} />
       ) : data ? (
