@@ -536,6 +536,7 @@ export async function countReporterIssuesByTypes(
   accountId: string,
   fromIso: string,
   toIso: string,
+  displayName?: string,
 ): Promise<number> {
   const raw = process.env.JIRA_BROKEN_TEST_ISSUE_TYPES?.trim()
   const fromEnv = raw
@@ -556,47 +557,47 @@ export async function countReporterIssuesByTypes(
   toDate.setUTCDate(toDate.getUTCDate() + 1)
   const toNextDay = toDate.toISOString().slice(0, 10)
 
-  const escapedAccount = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-  const jql = `reporter = "${escapedAccount}" AND ${issuetypeClause} AND status != "Cancelado" AND created >= "${fromIso}" AND created < "${toNextDay}"`
-
-  console.log("[countReporterIssuesByTypes] jql:", jql)
-
-  let fetchedCount = 0
-  let startAt = 0
-  const pageSize = 50
-
-  try {
-    for (;;) {
-      const { ok, data, status, text } = await jiraJson<{
-        issues?: unknown[]
-        total?: number
-      }>(`${base}/rest/api/3/search`, credentials, {
-        method: "POST",
-        body: JSON.stringify({
-          jql,
-          fields: ["summary"],
-          maxResults: pageSize,
-          startAt,
-        }),
-      })
-      if (!ok || !data) {
-        console.error("[countReporterIssuesByTypes] Jira search failed", { status, jql, body: text?.slice(0, 400) })
-        break
+  async function runJql(reporter: string): Promise<number> {
+    const jql = `reporter = ${reporter} AND ${issuetypeClause} AND status != "Cancelado" AND created >= "${fromIso}" AND created < "${toNextDay}"`
+    let fetchedCount = 0
+    let startAt = 0
+    const pageSize = 50
+    try {
+      for (;;) {
+        const { ok, data } = await jiraJson<{
+          issues?: unknown[]
+          total?: number
+        }>(`${base}/rest/api/3/search`, credentials, {
+          method: "POST",
+          body: JSON.stringify({ jql, fields: ["summary"], maxResults: pageSize, startAt }),
+        })
+        if (!ok || !data) break
+        const n = Array.isArray(data.issues) ? data.issues.length : 0
+        if (n === 0) break
+        fetchedCount += n
+        const reportedTotal = typeof data.total === "number" ? data.total : fetchedCount
+        startAt += n
+        if (startAt >= reportedTotal || fetchedCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
       }
-      const n = Array.isArray(data.issues) ? data.issues.length : 0
-      if (n === 0) break
-      fetchedCount += n
-      const reportedTotal = typeof data.total === "number" ? data.total : fetchedCount
-      startAt += n
-      if (startAt >= reportedTotal || fetchedCount >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
+    } catch {
+      return fetchedCount
     }
-  } catch (err) {
-    console.error("[countReporterIssuesByTypes] unexpected error", err)
-    return fetchedCount
+    return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
   }
 
-  console.log("[countReporterIssuesByTypes] result:", fetchedCount)
-  return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
+  const escapedId = `"${accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
+  const countById = await runJql(escapedId)
+  if (countById > 0) return countById
+
+  // accountId may not match the reporter field when the user only logs via
+  // Clockwork (no native Jira worklogs). Fall back to display name, which
+  // is what Jira's own UI filter uses (e.g. reporter = "Roger").
+  if (displayName?.trim()) {
+    const escapedName = `"${displayName.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
+    return runJql(escapedName)
+  }
+
+  return 0
 }
 
 // ── Custom field discovery ────────────────────────────────────────────────────
