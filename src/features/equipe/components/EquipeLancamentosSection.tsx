@@ -55,6 +55,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
   React.useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setSelectedUserId(null)
     const profile = canFilterByProfile ? profileFilter : userAccessProfile
     getEquipeMembrosParaLancamentos(profile).then((data) => {
       if (!cancelled) {
@@ -68,14 +69,11 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Barra de controles — sempre visível */}
       <div className="flex items-center justify-between gap-4">
-        {/* Avatar strip */}
+        {/* Avatar strip — só renderiza quando carregado */}
         <div className="min-w-0 flex-1">
-          {loading ? (
-            <SectionSpinner />
-          ) : membros.length === 0 ? (
-            <EmptyState message="Nenhum membro encontrado neste perfil." />
-          ) : (
+          {!loading && membros.length > 0 && (
             <TooltipProvider delay={0} closeDelay={0}>
               <div
                 className="flex w-full flex-wrap items-center justify-start gap-y-2 pl-2"
@@ -114,7 +112,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
           )}
         </div>
 
-        {/* Right-side selects */}
+        {/* Selects — sempre visíveis */}
         <div className="flex shrink-0 items-center gap-2">
           {canFilterByProfile && (
             <Select
@@ -148,13 +146,18 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
         </div>
       </div>
 
-      {!loading && selectedUserId && (
+      {/* Área de conteúdo */}
+      {loading ? (
+        <SectionSpinner minHeight="min-h-[20rem]" />
+      ) : membros.length === 0 ? (
+        <EmptyState message="Nenhum membro encontrado neste perfil." />
+      ) : selectedUserId ? (
         <IndividualLancamentosSection
           evaluatedUserId={selectedUserId}
           preset={preset}
           onPresetChange={setPreset}
         />
-      )}
+      ) : null}
     </div>
   )
 }

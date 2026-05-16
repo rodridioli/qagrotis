@@ -255,7 +255,7 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
           ) : null}
 
           {loading ? (
-            <SectionSpinner label="Carregando…" size="lg" />
+            <SectionSpinner />
           ) : filtered.length === 0 ? (
             <EmptyState message="Nenhum registro encontrado." />
           ) : (

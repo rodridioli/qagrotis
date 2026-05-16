@@ -7,7 +7,7 @@ interface SectionSpinnerProps {
   className?: string
   /** Altura mínima do container. Padrão: min-h-[12rem] */
   minHeight?: string
-  /** Tamanho do spinner. Padrão: "md" */
+  /** Tamanho do spinner. Padrão: "lg" */
   size?: "sm" | "md" | "lg"
 }
 
@@ -15,7 +15,7 @@ export function SectionSpinner({
   label = "Carregando…",
   className,
   minHeight = "min-h-[12rem]",
-  size = "md",
+  size = "lg",
 }: SectionSpinnerProps) {
   const spinnerCls = cn(
     "animate-spin rounded-full border-brand-primary/20 border-t-brand-primary",
