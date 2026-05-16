@@ -3,6 +3,7 @@
 import React from "react"
 import { UserAvatar, cargoLabel } from "@/features/equipe/components/EquipePerformanceCard"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { TableToolbar } from "@/components/shared/TableToolbar"
 import type { EquipeUsuarioCadastro } from "@/features/equipe/actions/equipe"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -41,12 +42,27 @@ function FormatoCell({ u }: { u: EquipeUsuarioCadastro }) {
  * Tabela mobile-first: rolagem horizontal em telas estreitas; ordem das linhas definida no servidor.
  */
 export function EquipeHorariosTable({ rows }: EquipeHorariosTableProps) {
+  const [search, setSearch] = React.useState("")
+
   if (rows.length === 0) {
     return <EmptyState message="Nenhum usuário com horário de entrada e saída preenchidos." />
   }
 
+  const filtered = search.trim()
+    ? rows.filter((u) => u.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : rows
+
   return (
-    <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
+    <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
+      <TableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar por nome…"
+        totalLabel="Total usuários"
+        totalCount={rows.length}
+        baseCount={rows.length}
+      />
+      <div className="overflow-x-auto">
       <table className="qagrotis-table-row-hover-muted w-full min-w-[320px] text-sm">
         <thead>
           <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -68,7 +84,7 @@ export function EquipeHorariosTable({ rows }: EquipeHorariosTableProps) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((u) => (
+          {filtered.map((u) => (
             <tr
               key={u.userId}
               className="border-b border-border-default last:border-b-0 transition-colors"
@@ -93,8 +109,16 @@ export function EquipeHorariosTable({ rows }: EquipeHorariosTableProps) {
               </td>
             </tr>
           ))}
+          {filtered.length === 0 && (
+            <tr>
+              <td colSpan={5} className="px-4 py-10 text-center text-sm text-text-secondary">
+                Nenhum usuário encontrado para "{search}".
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }

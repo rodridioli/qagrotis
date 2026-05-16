@@ -599,3 +599,13 @@
   animation: badge-spark-pulse 0.55s 0.42s ease-out forwards;
 }
 
+/* base-ui sets --available-height as an inline style via JS, so !important
+   is required to override the max-height it derives from that variable. */
+[data-slot="select-popup"] {
+  max-height: none !important;
+}
+[data-slot="select-popup"] [role="listbox"] {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
