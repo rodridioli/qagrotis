@@ -19,7 +19,7 @@ import {
   type JiraLancamentoEntry,
   type LancamentoIssueFieldsPatch,
 } from "@/features/qa/lib/jira-worklogs-fetch"
-import { getActiveQaUsers, resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
+import { getActiveQaUsers, resolveEmailForQaUserId, resolveNameForQaUserId } from "@/features/usuarios/actions/usuarios"
 import type { NextRequest } from "next/server"
 
 const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -128,7 +128,10 @@ export async function GET(req: NextRequest) {
     targetUserId = requested
   }
 
-  const targetEmail = await resolveEmailForQaUserId(targetUserId)
+  const [targetEmail, targetName] = await Promise.all([
+    resolveEmailForQaUserId(targetUserId),
+    resolveNameForQaUserId(targetUserId),
+  ])
   if (!targetEmail) {
     return Response.json({ error: "Não foi possível resolver o e-mail deste cadastro." }, { status: 400 })
   }
@@ -219,9 +222,15 @@ export async function GET(req: NextRequest) {
   // not just the worklog window. "Semana" (May 11–16) should still count
   // all Broken Tests created in May, just like the Jira monthly filter does.
   const reporterCountFrom = `${to.slice(0, 7)}-01` // first day of `to`'s month
+  // Prefer the name from our own DB over Jira's displayName — when Jira hides
+  // emails by privacy, findJiraAccountIdByEmail may pick the wrong user, so
+  // its displayName would also be wrong. Our DB name is the source of truth.
+  const reporterNameFallback = targetName?.trim() || jiraUser?.displayName?.trim() || undefined
   const reporterCountPromise: Promise<number> = jiraUser
-    ? countReporterIssuesByTypes(base, credentials, jiraUser.accountId, reporterCountFrom, to, jiraUser.displayName ?? undefined).catch(() => 0)
-    : Promise.resolve(0)
+    ? countReporterIssuesByTypes(base, credentials, jiraUser.accountId, reporterCountFrom, to, reporterNameFallback).catch(() => 0)
+    : targetName?.trim()
+      ? countReporterIssuesByTypes(base, credentials, "", reporterCountFrom, to, targetName.trim()).catch(() => 0)
+      : Promise.resolve(0)
 
   const [fieldMap, brokenCounts, reporterBrokenTestIssueCount] = await Promise.all([
     enrichPromise,

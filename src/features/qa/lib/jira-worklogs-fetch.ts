@@ -585,13 +585,19 @@ export async function countReporterIssuesByTypes(
     return Math.min(fetchedCount, MAX_BROKEN_TEST_SEARCH_TOTAL)
   }
 
-  const escapedId = `"${accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
-  const countById = await runJql(escapedId)
-  if (countById > 0) return countById
+  if (accountId.trim()) {
+    const escapedId = `"${accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
+    const countById = await runJql(escapedId)
+    if (countById > 0) return countById
+  }
 
-  // accountId may not match the reporter field when the user only logs via
-  // Clockwork (no native Jira worklogs). Fall back to display name, which
-  // is what Jira's own UI filter uses (e.g. reporter = "Roger").
+  // accountId may not match the reporter field when:
+  //  - the user only logs via Clockwork (no native Jira worklogs); or
+  //  - Jira hides the email by privacy, so findJiraAccountIdByEmail picked
+  //    the wrong user entirely.
+  // Fall back to display name (matches what Jira's own UI filter uses,
+  // e.g. reporter = "Andressa Trotz") — sourced from our own DB to avoid
+  // propagating a wrong Jira user lookup.
   if (displayName?.trim()) {
     const escapedName = `"${displayName.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
     return runJql(escapedName)
