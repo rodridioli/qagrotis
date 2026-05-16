@@ -410,7 +410,7 @@ export default function IntegracoesClient({ initialIntegracoes: initialIntegraco
                             {item.id}
                           </button>
                         ) : (
-                          <span>{item.id}</span>
+                          <span className="text-text-primary">{item.id}</span>
                         )}
                       </td>
                       <td className="bg-surface-card px-4 py-3 truncate capitalize text-text-primary" title={item.provider}>

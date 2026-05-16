@@ -352,7 +352,7 @@ const showBulkActions = !filters.apenasInativos
                             {s.id}
                           </Link>
                         ) : (
-                          <span>{s.id}</span>
+                          <span className="text-text-primary">{s.id}</span>
                         )}
                       </td>
                       <td className="bg-surface-card px-4 py-3 truncate font-medium text-text-primary" title={s.suiteName}>{s.suiteName}</td>

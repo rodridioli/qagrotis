@@ -345,7 +345,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                           {s.active && isAdmin ? (
                             <button type="button" onClick={() => openEditarSistema(s)} className="text-brand-primary hover:underline">{s.id}</button>
                           ) : (
-                            <span>{s.id}</span>
+                            <span className="text-text-primary">{s.id}</span>
                           )}
                         </td>
                         <td className="bg-surface-card px-4 py-3 font-medium text-text-primary truncate" title={s.name}>{s.name}</td>

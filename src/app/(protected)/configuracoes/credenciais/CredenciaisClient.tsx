@@ -265,7 +265,7 @@ export function CredenciaisClient({ initialCredenciais, isAdmin }: Props) {
                     <tr key={c.id} className="border-b border-border-default last:border-0 transition-colors">
                       <td className="bg-surface-card px-4 py-3 font-medium whitespace-nowrap">
                         {apenasInativos ? (
-                          <span className="text-text-secondary">{c.id}</span>
+                          <span className="text-text-primary">{c.id}</span>
                         ) : (
                           <button
                             type="button"

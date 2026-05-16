@@ -40,11 +40,9 @@ export default async function IndividualSecaoPage({
   const role = buildRole(session.user.type, session.user.accessProfile)
   if (!can(role, "menu.individual")) redirect("/dashboard")
 
-  if (secao === "lancamentos" && !can(role, "individual.lancamentos")) {
-    notFound()
-  }
+  if (secao === "lancamentos") notFound()
 
-  const canAccessLancamentos = can(role, "individual.lancamentos")
+  const canAccessLancamentos = false
   const canViewOthers = can(role, "individual.viewOthers")
   const { userId: requestedUserId, completed } = await searchParams
   const showCompletedToast = completed === "1"

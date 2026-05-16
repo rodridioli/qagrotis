@@ -483,7 +483,7 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
                             {c.id}
                           </Link>
                         ) : (
-                          <span className="font-medium">{c.id}</span>
+                          <span className="font-medium text-text-primary">{c.id}</span>
                         )}
                       </td>
                       <td className="min-w-0 bg-surface-card px-4 py-3">
