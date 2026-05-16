@@ -537,13 +537,11 @@ export async function countReporterIssuesByTypes(
   fromIso: string,
   toIso: string,
 ): Promise<number> {
-  // Collect issue type names: defaults + "Erro Teste" always included
   const raw = process.env.JIRA_BROKEN_TEST_ISSUE_TYPES?.trim()
   const fromEnv = raw
     ? raw.split(/[,|]/).map((s) => s.trim()).filter(Boolean)
     : []
-  const baseNames = fromEnv.length > 0 ? fromEnv : ["Broken Test"]
-  const allNames = [...new Set([...baseNames, "Erro Teste"])]
+  const allNames = [...new Set(fromEnv.length > 0 ? fromEnv : ["Broken Test"])]
 
   function quoteName(name: string): string {
     return `"${name.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
