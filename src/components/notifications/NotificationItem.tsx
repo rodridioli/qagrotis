@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MessageSquare, ClipboardCheck, TrendingUp, Trophy } from "lucide-react"
+import { MessageSquare, ClipboardCheck, TrendingUp, Trophy, CalendarOff } from "lucide-react"
 import { cn } from "@/core/utils"
 import { formatNotificationTime } from "@/lib/notification-time"
 import type { NotificationData, NotificationType } from "@/core/actions/notifications"
@@ -10,10 +10,11 @@ const TYPE_CONFIG: Record<NotificationType, {
   icon: React.ComponentType<{ className?: string }>
   bgClass: string
 }> = {
-  FEEDBACK:   { icon: MessageSquare,  bgClass: "bg-[var(--badge-info)]" },
-  EVALUATION: { icon: ClipboardCheck, bgClass: "bg-brand-primary" },
-  PROGRESSION:{ icon: TrendingUp,     bgClass: "bg-[var(--badge-orange)]" },
-  ACHIEVEMENT:{ icon: Trophy,         bgClass: "bg-[var(--badge-warning)]" },
+  FEEDBACK:        { icon: MessageSquare,  bgClass: "bg-[var(--badge-info)]" },
+  EVALUATION:      { icon: ClipboardCheck, bgClass: "bg-brand-primary" },
+  PROGRESSION:     { icon: TrendingUp,     bgClass: "bg-[var(--badge-orange)]" },
+  ACHIEVEMENT:     { icon: Trophy,         bgClass: "bg-[var(--badge-warning)]" },
+  ABSENCE_REQUEST: { icon: CalendarOff,    bgClass: "bg-[var(--badge-info)]" },
 }
 
 interface NotificationItemProps {
