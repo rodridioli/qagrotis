@@ -17,6 +17,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredCenarioSuiteRelations?: boolean
   __qagrotisEnsuredIndividualFerias?: boolean
   __qagrotisEnsuredClienteTable?: boolean
+  __qagrotisEnsuredIndividualAusencias?: boolean
 }
 
 /**
@@ -523,6 +524,66 @@ CREATE TABLE IF NOT EXISTS "IndividualFerias" (
     g.__qagrotisEnsuredIndividualFerias = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualFerias", e)
+    throw e
+  }
+}
+
+/**
+ * Garante tabela de ausências individuais (Individual / MGR).
+ * DDL idempotente — cria enums, tabela e índices se não existirem.
+ */
+export async function ensureIndividualAusenciasTable(): Promise<void> {
+  if (g.__qagrotisEnsuredIndividualAusencias) return
+  try {
+    await prisma.$executeRawUnsafe(`
+DO $$ BEGIN
+    CREATE TYPE "AusenciaTipo" AS ENUM ('FALTA', 'BANCO_HORAS', 'ATESTADO', 'OUTRO');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+`)
+    await prisma.$executeRawUnsafe(`
+DO $$ BEGIN
+    CREATE TYPE "AusenciaSituacao" AS ENUM ('PENDENTE', 'APROVADA', 'RECUSADA');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+`)
+    await prisma.$executeRawUnsafe(`
+ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'ABSENCE_REQUEST';
+`)
+    await prisma.$executeRawUnsafe(`
+CREATE TABLE IF NOT EXISTS "IndividualAusencias" (
+    "id" TEXT NOT NULL,
+    "evaluatedUserId" TEXT NOT NULL,
+    "createdByUserId" TEXT NOT NULL,
+    "codigo" INTEGER NOT NULL,
+    "tipo" "AusenciaTipo" NOT NULL,
+    "data" TIMESTAMP(3) NOT NULL,
+    "diaInteiro" BOOLEAN NOT NULL,
+    "horaInicio" TEXT,
+    "horaFim" TEXT,
+    "justificativa" TEXT NOT NULL,
+    "situacao" "AusenciaSituacao" NOT NULL DEFAULT 'PENDENTE',
+    "motivoRecusa" TEXT,
+    "aprovadoPorId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "IndividualAusencias_pkey" PRIMARY KEY ("id")
+);
+`)
+    await prisma.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IndividualAusencias_evaluatedUserId_codigo_key" ON "IndividualAusencias"("evaluatedUserId", "codigo")`
+    )
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "IndividualAusencias_evaluatedUserId_idx" ON "IndividualAusencias"("evaluatedUserId")`
+    )
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "IndividualAusencias_situacao_idx" ON "IndividualAusencias"("situacao")`
+    )
+    g.__qagrotisEnsuredIndividualAusencias = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] IndividualAusencias", e)
     throw e
   }
 }

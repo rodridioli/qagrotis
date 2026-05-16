@@ -469,6 +469,22 @@ enum NotificationType {
   EVALUATION
   PROGRESSION
   ACHIEVEMENT
+  ABSENCE_REQUEST
+}
+
+// ── Ausências ──────────────────────────────────────────────────────────────────
+
+enum AusenciaTipo {
+  FALTA
+  BANCO_HORAS
+  ATESTADO
+  OUTRO
+}
+
+enum AusenciaSituacao {
+  PENDENTE
+  APROVADA
+  RECUSADA
 }
 
 model Notification {
@@ -507,4 +523,26 @@ model IndividualFerias {
 
   @@unique([evaluatedUserId, codigo])
   @@index([evaluatedUserId])
+}
+
+model IndividualAusencias {
+  id              String           @id @default(cuid())
+  evaluatedUserId String
+  createdByUserId String
+  codigo          Int
+  tipo            AusenciaTipo
+  data            DateTime
+  diaInteiro      Boolean
+  horaInicio      String?
+  horaFim         String?
+  justificativa   String
+  situacao        AusenciaSituacao @default(PENDENTE)
+  motivoRecusa    String?
+  aprovadoPorId   String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([evaluatedUserId, codigo])
+  @@index([evaluatedUserId])
+  @@index([situacao])
 }

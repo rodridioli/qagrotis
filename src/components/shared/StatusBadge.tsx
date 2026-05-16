@@ -200,6 +200,60 @@ function FeriasSituacaoBadge({ situacao }: { situacao: FeriasSituacao }) {
   return badge(styles[situacao], labels[situacao])
 }
 
+// ── Ausências ────────────────────────────────────────────────────────────────
+
+type AusenciaSituacao = "PENDENTE" | "APROVADA" | "RECUSADA"
+type AusenciaTipo = "FALTA" | "BANCO_HORAS" | "ATESTADO" | "OUTRO"
+
+function AusenciaSituacaoBadge({
+  situacao,
+  onClick,
+}: {
+  situacao: AusenciaSituacao
+  onClick?: () => void
+}) {
+  const styles: Record<AusenciaSituacao, string> = {
+    PENDENTE: "border-badge-warning/30 bg-badge-warning/10 text-badge-warning-text",
+    APROVADA: "border-badge-success/30 bg-badge-success/10 text-badge-success-text",
+    RECUSADA: "border-destructive/30 bg-destructive/10 text-destructive",
+  }
+  const labels: Record<AusenciaSituacao, string> = {
+    PENDENTE: "Pendente",
+    APROVADA: "Aprovada",
+    RECUSADA: "Recusada",
+  }
+  const isClickable = onClick != null && situacao === "RECUSADA"
+  if (isClickable) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label="Ver motivo da recusa"
+        className={cn(BASE, styles[situacao], "cursor-pointer transition-opacity hover:opacity-80")}
+      >
+        {labels[situacao]}
+      </button>
+    )
+  }
+  return <span className={cn(BASE, styles[situacao])}>{labels[situacao]}</span>
+}
+
+function AusenciaTipoBadge({ tipo }: { tipo: AusenciaTipo }) {
+  const styles: Record<AusenciaTipo, string> = {
+    FALTA:       "border-destructive/30 bg-destructive/10 text-destructive",
+    BANCO_HORAS: "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
+    ATESTADO:    "border-badge-warning/30 bg-badge-warning/10 text-badge-warning-text",
+    OUTRO:       "border-border-default bg-neutral-grey-50 text-text-secondary",
+  }
+  const labels: Record<AusenciaTipo, string> = {
+    FALTA:       "Falta",
+    BANCO_HORAS: "Banco de horas",
+    ATESTADO:    "Atestado",
+    OUTRO:       "Outro",
+  }
+  return badge(styles[tipo], labels[tipo])
+}
+
 export {
   StatusBadge,
   ResultadoBadge,
@@ -217,5 +271,7 @@ export {
   ProgressaoTipoBadge,
   ProgressaoRegimeBadge,
   FeriasSituacaoBadge,
+  AusenciaSituacaoBadge,
+  AusenciaTipoBadge,
 }
-export type { CenarioTipo, SuiteTipo, SuiteSituacao, ChangelogTag, ResultadoTipo, AvaliacaoSituacaoUi, FeriasSituacao }
+export type { CenarioTipo, SuiteTipo, SuiteSituacao, ChangelogTag, ResultadoTipo, AvaliacaoSituacaoUi, FeriasSituacao, AusenciaSituacao, AusenciaTipo }

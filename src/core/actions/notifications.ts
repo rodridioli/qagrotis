@@ -5,7 +5,7 @@ import { prisma } from "@/core/prisma"
 import { requireSession } from "@/core/session"
 import { ensureNotificationTables } from "@/core/prisma-schema-ensure"
 
-export type NotificationType = "FEEDBACK" | "EVALUATION" | "PROGRESSION" | "ACHIEVEMENT"
+export type NotificationType = "FEEDBACK" | "EVALUATION" | "PROGRESSION" | "ACHIEVEMENT" | "ABSENCE_REQUEST"
 
 export type NotificationData = {
   id: string
@@ -75,7 +75,7 @@ export async function deleteAllNotifications(): Promise<{ error?: string }> {
 
 const createSchema = z.object({
   userId: z.string().min(1).max(128),
-  type: z.enum(["FEEDBACK", "EVALUATION", "PROGRESSION", "ACHIEVEMENT"]),
+  type: z.enum(["FEEDBACK", "EVALUATION", "PROGRESSION", "ACHIEVEMENT", "ABSENCE_REQUEST"]),
   title: z.string().min(1).max(255),
   message: z.string().min(1).max(1000),
   link: z.string().startsWith("/").max(500).nullable(),
