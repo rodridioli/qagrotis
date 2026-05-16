@@ -68,7 +68,11 @@ function SelectPopup({
 }: SelectPrimitive.Popup.Props) {
   return (
     <SelectPrimitive.Portal>
-      <SelectPrimitive.Positioner sideOffset={4} className="z-200">
+      <SelectPrimitive.Positioner
+        sideOffset={4}
+        className="z-200"
+        style={{ "--available-height": "none" } as React.CSSProperties}
+      >
         <SelectPrimitive.Popup
           data-slot="select-popup"
           className={cn(
