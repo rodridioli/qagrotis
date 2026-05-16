@@ -133,9 +133,8 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
               <label className="text-sm font-medium text-text-primary">API Token {!hasStoredToken && <span className="text-destructive">*</span>}</label>
               <Input type="password" placeholder={hasStoredToken ? "Deixe em branco para manter o token atual" : "••••••••••••••••••••"} value={token} onChange={(e) => { setToken(e.target.value); setFieldErrors(p => ({ ...p, token: false })) }} aria-invalid={!!fieldErrors.token} />
               <p className="text-xs text-text-secondary">
-                Gere em{" "}
                 <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener noreferrer" className="text-brand-primary underline">
-                  id.atlassian.com
+                  Gerar API: Atlassian
                 </a>
               </p>
             </div>

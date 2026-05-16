@@ -80,7 +80,39 @@ export async function deleteUserJiraCredentials(userId: string): Promise<void> {
 }
 
 /**
- * Resolve credenciais a partir do BD do usuário (com fallback para cookies legados).
+ * Retorna credenciais Jira do primeiro utilizador Administrador:MGR que as tenha configuradas.
+ * Usado como fallback quando o utilizador corrente não tem credenciais próprias.
+ */
+export async function getMgrJiraCredentials(): Promise<StoredJiraCredentials | null> {
+  try {
+    const [profileOverrides, baseUsers] = await Promise.all([
+      prisma.userProfile.findMany({
+        where: { type: "Administrador", accessProfile: "MGR" },
+        select: { userId: true },
+      }),
+      prisma.createdUser.findMany({
+        where: { type: "Administrador", accessProfile: "MGR" },
+        select: { id: true },
+      }),
+    ])
+    const mgrIds = Array.from(
+      new Set([...profileOverrides.map((p) => p.userId), ...baseUsers.map((u) => u.id)]),
+    )
+    if (mgrIds.length === 0) return null
+    const row = await prisma.userJiraCredentials.findFirst({
+      where: { userId: { in: mgrIds } },
+      select: { jiraUrl: true, jiraEmail: true, apiToken: true },
+    })
+    if (!row) return null
+    return { jiraUrl: row.jiraUrl, jiraEmail: row.jiraEmail, apiToken: decryptField(row.apiToken) }
+  } catch (e) {
+    if (process.env.NODE_ENV !== "production") console.error("[jira-credentials-db] getMgrJiraCredentials:", e)
+    return null
+  }
+}
+
+/**
+ * Resolve credenciais a partir do BD do utilizador (com fallback para cookies legados e depois MGR).
  * NÃO confia no body/form da requisição: dados controlados pelo cliente são ignorados
  * para impedir SSRF lateral via `jiraUrl`.
  */
@@ -96,9 +128,14 @@ export async function resolveJiraCredentialsForRequest(
   const jiraUrl = stored?.jiraUrl || legacy?.jiraUrl || ""
   const jiraEmail = stored?.jiraEmail || legacy?.jiraEmail || ""
   const apiToken = stored?.apiToken || legacy?.apiToken || ""
-  if (!jiraUrl || !jiraEmail || !apiToken) return null
-  if (!isAllowedJiraUrl(jiraUrl)) return null
-  return { jiraUrl, jiraEmail, apiToken }
+  if (jiraUrl && jiraEmail && apiToken && isAllowedJiraUrl(jiraUrl)) {
+    return { jiraUrl, jiraEmail, apiToken }
+  }
+  // Fallback: credenciais do Administrador:MGR (configuração global da aplicação)
+  const mgr = await getMgrJiraCredentials()
+  if (!mgr) return null
+  if (!isAllowedJiraUrl(mgr.jiraUrl)) return null
+  return mgr
 }
 
 /** Valida que a URL do Jira é HTTPS e não aponta para hosts internos/privados. */

@@ -8,6 +8,7 @@ import {
   upsertUserJiraCredentials,
 } from "@/features/qa/lib/jira-credentials-db"
 import { validateOrigin } from "@/core/security"
+import { buildRole, can } from "@/core/rbac/policy"
 
 const LEGACY_JIRA_COOKIES = ["jira_url", "jira_email", "jira_token"] as const
 
@@ -61,12 +62,14 @@ export async function GET() {
   }
 }
 
-// POST — grava integração Jira do próprio usuário (PostgreSQL), com fallback para cookies se a migração não existir
+// POST — grava integração Jira (apenas Administrador:MGR)
 export async function POST(req: NextRequest) {
   const csrfError = validateOrigin(req)
   if (csrfError) return csrfError
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
+  const role = buildRole(session.user.type, session.user.accessProfile)
+  if (!can(role, "config.jira")) return new Response("Forbidden", { status: 403 })
 
   let body: { jiraUrl?: string; jiraEmail?: string; jiraToken?: string }
   try {
@@ -123,12 +126,14 @@ export async function POST(req: NextRequest) {
   return Response.json({ success: true })
 }
 
-// DELETE — remove integração do próprio usuário
+// DELETE — remove integração Jira (apenas Administrador:MGR)
 export async function DELETE(req: NextRequest) {
   const csrfError = validateOrigin(req)
   if (csrfError) return csrfError
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
+  const role = buildRole(session.user.type, session.user.accessProfile)
+  if (!can(role, "config.jira")) return new Response("Forbidden", { status: 403 })
 
   await deleteUserJiraCredentials(session.user.id)
   await clearLegacyCookiesOnce()
