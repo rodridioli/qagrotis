@@ -2,9 +2,6 @@
 
 import React, { useState, useMemo, useEffect } from "react"
 import {
-  SlidersHorizontal, X, Check, RotateCcw,
-} from "lucide-react"
-import {
   getPerformanceData,
   getEquipeListagemCadastro,
   type UserPerformanceData,
@@ -22,11 +19,6 @@ import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import {
   Select, SelectTrigger, SelectPopup, SelectItem,
 } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogFooter, DialogClose,
-} from "@/components/ui/dialog"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -133,67 +125,9 @@ function getDateRange(periodo: string): { dataInicio?: string; dataFim?: string 
   }
 }
 
-// ── Filter Modal ─────────────────────────────────────────────────────────────
-
-function FilterModal({
-  open, onOpenChange,
-  pending, draft, onDraftChange, onApply, onReset,
-}: {
-  open: boolean
-  onOpenChange: (v: boolean) => void
-  pending: boolean
-  draft: { periodo: string }
-  onDraftChange: (v: { periodo: string }) => void
-  onApply: () => void
-  onReset: () => void
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Filtros</DialogTitle>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-4 py-2">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">Período</label>
-            <Select value={draft.periodo} onValueChange={(v) => onDraftChange({ periodo: v ?? "mes-atual" })}>
-              <SelectTrigger className="w-full">
-                <span className="truncate">
-                  {PERIODOS.find((p) => p.value === draft.periodo)?.label ?? draft.periodo}
-                </span>
-              </SelectTrigger>
-              <SelectPopup>
-                {PERIODOS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-              </SelectPopup>
-            </Select>
-          </div>
-        </div>
-
-        <DialogFooter showCloseButton={false}>
-          <DialogClose render={<Button variant="ghost" onClick={onReset} />}>
-            <RotateCcw className="size-4 shrink-0" />
-            Limpar filtros
-          </DialogClose>
-          <div className="flex gap-2">
-            <DialogClose render={<Button variant="outline" />}>
-              <X className="size-4 shrink-0" />
-              Cancelar
-            </DialogClose>
-            <Button onClick={() => { onApply(); onOpenChange(false) }} disabled={pending}>
-              <Check className="size-4 shrink-0" />
-              {pending ? "Aplicando…" : "Aplicar"}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 // ── Main component ───────────────────────────────────────────────────────────
 
-const DEFAULT_FILTERS = { periodo: "mes-atual" }
+const DEFAULT_PERIODO = "mes-atual"
 
 export default function EquipeClient({
   isAdmin,
@@ -215,11 +149,8 @@ export default function EquipeClient({
     setActiveTab(safeTab(initialTab))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTab, canAccessEquipeLancamentos, canAccessEquipePerformance])
-  const [filterOpen, setFilterOpen] = useState(false)
   const [selectedProfile, setSelectedProfile] = useState<AccessProfileId>(userAccessProfile)
-
-  const [draft, setDraft] = useState(DEFAULT_FILTERS)
-  const [applied, setApplied] = useState(DEFAULT_FILTERS)
+  const [periodo, setPeriodo] = useState(DEFAULT_PERIODO)
 
   const [users, setUsers] = useState<UserPerformanceData[]>([])
   const [performanceLoading, setPerformanceLoading] = useState(true)
@@ -229,10 +160,6 @@ export default function EquipeClient({
   const [comHorario, setComHorario] = useState<EquipeUsuarioCadastro[]>([])
   const [cadastroLoading, setCadastroLoading] = useState(false)
   const [cadastroError, setCadastroError] = useState<string | null>(null)
-
-  const activeFilterCount = [
-    applied.periodo !== "mes-atual",
-  ].filter(Boolean).length
 
 const aniversariantesPorMes = useMemo(() => {
     const byMonth = new Map<number, EquipeUsuarioCadastro[]>()
@@ -259,7 +186,7 @@ const aniversariantesPorMes = useMemo(() => {
 
   useEffect(() => {
     if (activeTab !== "performance") return
-    const { dataInicio, dataFim } = getDateRange(applied.periodo)
+    const { dataInicio, dataFim } = getDateRange(periodo)
     let cancelled = false
     queueMicrotask(() => {
       if (cancelled) return
@@ -285,7 +212,7 @@ const aniversariantesPorMes = useMemo(() => {
     return () => {
       cancelled = true
     }
-  }, [applied, activeTab])
+  }, [periodo, activeTab])
 
   useEffect(() => {
     if (activeTab !== "aniversarios" && activeTab !== "horarios") return
@@ -317,21 +244,6 @@ const aniversariantesPorMes = useMemo(() => {
     }
   }, [activeTab])
 
-  function handleOpenFilter() {
-    setDraft(applied)
-    setFilterOpen(true)
-  }
-
-  function handleApply() {
-    setApplied(draft)
-  }
-
-  function handleReset() {
-    setDraft(DEFAULT_FILTERS)
-    setApplied(DEFAULT_FILTERS)
-    setFilterOpen(false)
-  }
-
   return (
     <div className="space-y-5">
       {/* Performance-specific controls */}
@@ -352,49 +264,23 @@ const aniversariantesPorMes = useMemo(() => {
               </SelectPopup>
             </Select>
           )}
-          {canFilterByProfile ? (
-            <button
-              type="button"
-              onClick={handleOpenFilter}
-              aria-label="Abrir filtros"
-              className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100"
-            >
-              <SlidersHorizontal className="size-4" />
-              {activeFilterCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-brand-primary text-primary-foreground text-xs font-bold">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-          ) : (
-            <Select
-              value={applied.periodo}
-              onValueChange={(v) => v && setApplied({ periodo: v })}
-            >
-              <SelectTrigger className="h-9 w-40" aria-label="Período">
-                {PERIODOS.find((p) => p.value === applied.periodo)?.label ?? applied.periodo}
-              </SelectTrigger>
-              <SelectPopup>
-                {PERIODOS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-              </SelectPopup>
-            </Select>
-          )}
+          <Select
+            value={periodo}
+            onValueChange={(v) => v && setPeriodo(v)}
+          >
+            <SelectTrigger className="h-9 w-40" aria-label="Período">
+              {PERIODOS.find((p) => p.value === periodo)?.label ?? periodo}
+            </SelectTrigger>
+            <SelectPopup>
+              {PERIODOS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+            </SelectPopup>
+          </Select>
         </div>
       )}
 
       {/* ── Performance ── */}
       {activeTab === "performance" && (
         <div className="space-y-4">
-          <FilterModal
-            open={filterOpen}
-            onOpenChange={setFilterOpen}
-            pending={performanceLoading}
-            draft={draft}
-            onDraftChange={setDraft}
-            onApply={handleApply}
-            onReset={handleReset}
-          />
-
           {performanceLoading ? (
             <SectionSpinner minHeight="min-h-[16rem]" />
           ) : performanceError ? (
