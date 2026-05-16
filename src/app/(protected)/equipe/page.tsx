@@ -28,14 +28,19 @@ export default async function EquipePage({
   const userAccessProfile = (session?.user?.accessProfile ?? "QA") as AccessProfile
   const canFilterByProfile = can(role, "equipe.performance.filterByProfile")
   const canAccessEquipeLancamentos = can(role, "equipe.lancamentos")
+  const canAccessEquipePerformance = can(role, "equipe.performance")
 
   // Protege acesso direto via URL para roles sem permissão
   if (tab === "lancamentos" && !canAccessEquipeLancamentos) {
-    redirect("/equipe?tab=performance")
+    redirect("/equipe?tab=chapters")
+  }
+  if (tab === "performance" && !canAccessEquipePerformance) {
+    redirect("/equipe?tab=chapters")
   }
 
+  const defaultTab: EquipeTabId = canAccessEquipePerformance ? "performance" : "chapters"
   const initialTab: EquipeTabId =
-    tab && (EQUIPE_TAB_IDS as readonly string[]).includes(tab) ? (tab as EquipeTabId) : "performance"
+    tab && (EQUIPE_TAB_IDS as readonly string[]).includes(tab) ? (tab as EquipeTabId) : defaultTab
 
   return (
     <EquipeClient
@@ -43,6 +48,7 @@ export default async function EquipePage({
       userAccessProfile={serializeRscProps(userAccessProfile)}
       canFilterByProfile={serializeRscProps(canFilterByProfile)}
       canAccessEquipeLancamentos={serializeRscProps(canAccessEquipeLancamentos)}
+      canAccessEquipePerformance={serializeRscProps(canAccessEquipePerformance)}
       initialTab={initialTab}
     />
   )
