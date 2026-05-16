@@ -18,8 +18,9 @@ import {
   type BrokenTestSubtaskCounts,
   type JiraLancamentoEntry,
   type LancamentoIssueFieldsPatch,
+  type ReporterCountDiagnostics,
 } from "@/features/qa/lib/jira-worklogs-fetch"
-import { getActiveQaUsers, resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
+import { getActiveQaUsers, resolveEmailForQaUserId, resolveNameForQaUserId } from "@/features/usuarios/actions/usuarios"
 import type { NextRequest } from "next/server"
 
 const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -128,7 +129,10 @@ export async function GET(req: NextRequest) {
     targetUserId = requested
   }
 
-  const targetEmail = await resolveEmailForQaUserId(targetUserId)
+  const [targetEmail, targetName] = await Promise.all([
+    resolveEmailForQaUserId(targetUserId),
+    resolveNameForQaUserId(targetUserId),
+  ])
   if (!targetEmail) {
     return Response.json({ error: "Não foi possível resolver o e-mail deste cadastro." }, { status: 400 })
   }
@@ -219,15 +223,29 @@ export async function GET(req: NextRequest) {
   // not just the worklog window. "Semana" (May 11–16) should still count
   // all Broken Tests created in May, just like the Jira monthly filter does.
   const reporterCountFrom = `${to.slice(0, 7)}-01` // first day of `to`'s month
-  const reporterCountPromise: Promise<number> = jiraUser
-    ? countReporterIssuesByTypes(base, credentials, jiraUser.accountId, reporterCountFrom, to, jiraUser.displayName ?? undefined).catch(() => 0)
-    : Promise.resolve(0)
+  // Prefer the name from our own DB over Jira's displayName — when Jira hides
+  // emails by privacy, findJiraAccountIdByEmail may pick the wrong user, so
+  // its displayName would also be wrong. Our DB name is the source of truth.
+  const reporterNameFallback = targetName?.trim() || jiraUser?.displayName?.trim() || undefined
+  const emptyDiagnostics: ReporterCountDiagnostics = { count: 0, attempts: [], accountIdsTried: [] }
+  const reporterCountPromise: Promise<ReporterCountDiagnostics> =
+    jiraUser || reporterNameFallback
+      ? countReporterIssuesByTypes(
+          base,
+          credentials,
+          jiraUser?.accountId ?? "",
+          reporterCountFrom,
+          to,
+          reporterNameFallback,
+        ).catch(() => emptyDiagnostics)
+      : Promise.resolve(emptyDiagnostics)
 
-  const [fieldMap, brokenCounts, reporterBrokenTestIssueCount] = await Promise.all([
+  const [fieldMap, brokenCounts, reporterDiagnostics] = await Promise.all([
     enrichPromise,
     brokenCountsPromise,
     reporterCountPromise,
   ])
+  const reporterBrokenTestIssueCount = reporterDiagnostics.count
 
   if (keysToEnrich.length > 0) {
     await augmentFieldMapWithGetIssueFallback(base, credentials, fieldMap, keysToEnrich)
@@ -245,6 +263,19 @@ export async function GET(req: NextRequest) {
   const longSessionCount = entries.filter((e) => e.isLongSession).length
   const noJiraUser = !jiraUser
 
+  const _debug = {
+    targetEmail,
+    targetName,
+    jiraUserFound: !!jiraUser,
+    jiraAccountIdFromEmail: jiraUser?.accountId ?? null,
+    jiraDisplayNameFromEmail: jiraUser?.displayName ?? null,
+    reporterCountFrom,
+    reporterCountTo: to,
+    reporterBrokenTestIssueCount,
+    reporterAccountIdsTried: reporterDiagnostics.accountIdsTried,
+    reporterAttempts: reporterDiagnostics.attempts,
+  }
+
   if (noJiraUser && entries.length === 0) {
     return Response.json({
       source: "jira" as const,
@@ -259,6 +290,7 @@ export async function GET(req: NextRequest) {
       clockworkMergedCount: 0,
       reporterBrokenTestIssueCount: 0,
       message: "Nenhum registro encontrado",
+      _debug,
     })
   }
 
@@ -275,6 +307,7 @@ export async function GET(req: NextRequest) {
     includesClockwork: clockworkAdded > 0,
     clockworkMergedCount: clockworkAdded,
     reporterBrokenTestIssueCount,
+    _debug,
     ...(brokenCounts
       ? {
           brokenTestSubtasksTotalInScope: brokenCounts.totalInScope,

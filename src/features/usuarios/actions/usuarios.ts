@@ -235,6 +235,15 @@ export async function resolveEmailForQaUserId(id: string): Promise<string | null
   return null
 }
 
+/** Nome de exibição para um cadastro QA — usado para casar com `displayName` do Jira. */
+export async function resolveNameForQaUserId(id: string): Promise<string | null> {
+  const row = await prisma.createdUser.findUnique({ where: { id }, select: { name: true } })
+  if (row?.name?.trim()) return row.name.trim()
+  const auth = await prisma.user.findUnique({ where: { id }, select: { name: true } })
+  if (auth?.name?.trim()) return auth.name.trim()
+  return null
+}
+
 /** Outro cadastro (CreatedUser ou OAuth) com o mesmo e-mail já ativo — reativação geraria duplicidade. */
 async function hasActiveOtherWithSameEmail(excludeUserId: string, emailNorm: string): Promise<boolean> {
   // Run all three queries in parallel to avoid sequential round-trips
