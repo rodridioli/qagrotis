@@ -148,6 +148,7 @@ export async function GET(req: NextRequest) {
   const clockworkToken = (await getClockworkApiTokenResolved()).trim()
 
   const jiraUser = await findJiraAccountIdByEmail(base, credentials, targetEmail)
+  console.log("[lancamentos] jiraUser lookup", { targetEmail, found: !!jiraUser, accountId: jiraUser?.accountId, displayName: jiraUser?.displayName })
 
   let jiraEntries: Awaited<ReturnType<typeof fetchWorklogsForAuthorInRange>>["entries"] = []
   let truncatedIssues = false
@@ -220,7 +221,10 @@ export async function GET(req: NextRequest) {
   // all Broken Tests created in May, just like the Jira monthly filter does.
   const reporterCountFrom = `${to.slice(0, 7)}-01` // first day of `to`'s month
   const reporterCountPromise = jiraUser
-    ? countReporterIssuesByTypes(base, credentials, jiraUser.accountId, reporterCountFrom, to).catch(() => 0)
+    ? countReporterIssuesByTypes(base, credentials, jiraUser.accountId, reporterCountFrom, to).catch((err) => {
+        console.error("[lancamentos] countReporterIssuesByTypes threw", err)
+        return 0
+      })
     : Promise.resolve(0)
 
   const [fieldMap, brokenCounts, reporterBrokenTestIssueCount] = await Promise.all([
