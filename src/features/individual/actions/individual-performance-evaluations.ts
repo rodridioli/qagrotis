@@ -82,11 +82,11 @@ function evalPrismaMessage(e: unknown, fallback: string): string {
 export async function listIndividualPerformanceEvaluations(
   evaluatedUserId: string,
 ): Promise<IndividualPerformanceEvaluationListRow[]> {
-  await requireMgrPerformanceAccess()
-  await assertEvaluatedUserInScope(evaluatedUserId)
-  await ensureIndividualPerformanceEvaluationTable()
-
   try {
+    await requireMgrPerformanceAccess()
+    await assertEvaluatedUserInScope(evaluatedUserId)
+    await ensureIndividualPerformanceEvaluationTable()
+
     const rows = (await prisma.individualPerformanceEvaluation.findMany({
       where: { evaluatedUserId },
       orderBy: [{ codigo: "desc" }],
@@ -119,7 +119,7 @@ export async function listIndividualPerformanceEvaluations(
     }))
   } catch (e) {
     console.error("[listIndividualPerformanceEvaluations]", e)
-    throw new Error(evalPrismaMessage(e, "Não foi possível carregar as avaliações."))
+    return []
   }
 }
 
@@ -138,12 +138,12 @@ export interface IndividualPerformanceEvaluationDetail {
 export async function getIndividualPerformanceEvaluation(
   id: string,
 ): Promise<IndividualPerformanceEvaluationDetail | null> {
-  await requireMgrPerformanceAccess()
-  const r = idSchema.safeParse(id)
-  if (!r.success) return null
-  await ensureIndividualPerformanceEvaluationTable()
-
   try {
+    await requireMgrPerformanceAccess()
+    const r = idSchema.safeParse(id)
+    if (!r.success) return null
+    await ensureIndividualPerformanceEvaluationTable()
+
     const row = await prisma.individualPerformanceEvaluation.findUnique({
       where: { id },
     })
@@ -376,10 +376,10 @@ export async function updateIndividualPerformanceEvaluation(
  * Não requer `individual.viewOthers` — restrito ao próprio userId da sessão.
  */
 export async function listMyCompletedEvaluations(): Promise<IndividualPerformanceEvaluationListRow[]> {
-  const session = await requireSession()
-  await ensureIndividualPerformanceEvaluationTable()
-
   try {
+    const session = await requireSession()
+    await ensureIndividualPerformanceEvaluationTable()
+
     const rows = (await prisma.individualPerformanceEvaluation.findMany({
       where: { evaluatedUserId: session.user.id, status: "CONCLUIDA" },
       orderBy: [{ codigo: "desc" }],
@@ -412,7 +412,7 @@ export async function listMyCompletedEvaluations(): Promise<IndividualPerformanc
     }))
   } catch (e) {
     console.error("[listMyCompletedEvaluations]", e)
-    throw new Error(evalPrismaMessage(e, "Não foi possível carregar as avaliações."))
+    return []
   }
 }
 
@@ -423,12 +423,12 @@ export async function listMyCompletedEvaluations(): Promise<IndividualPerformanc
 export async function getMyCompletedEvaluation(
   id: string,
 ): Promise<IndividualPerformanceEvaluationDetail | null> {
-  const session = await requireSession()
-  const r = idSchema.safeParse(id)
-  if (!r.success) return null
-  await ensureIndividualPerformanceEvaluationTable()
-
   try {
+    const session = await requireSession()
+    const r = idSchema.safeParse(id)
+    if (!r.success) return null
+    await ensureIndividualPerformanceEvaluationTable()
+
     const row = await prisma.individualPerformanceEvaluation.findUnique({ where: { id } })
     if (!row) return null
     if (row.evaluatedUserId !== session.user.id) return null

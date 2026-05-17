@@ -203,15 +203,15 @@ async function requireViewAusenciaAccess(evaluatedUserId: string): Promise<{ can
 export async function listIndividualAusencias(
   evaluatedUserId: string,
 ): Promise<IndividualAusenciasRow[]> {
-  const idR = idSchema.safeParse(evaluatedUserId)
-  if (!idR.success) throw new Error("Usuário inválido.")
-
-  const { canViewOthers } = await requireViewAusenciaAccess(evaluatedUserId)
-
-  await ensureIndividualAusenciasTable()
-
   try {
+    const idR = idSchema.safeParse(evaluatedUserId)
+    if (!idR.success) return []
+
+    const { canViewOthers } = await requireViewAusenciaAccess(evaluatedUserId)
+
+    await ensureIndividualAusenciasTable()
     assertAusenciasModelReady()
+
     const [rows, allUsers] = await Promise.all([
       (prisma.individualAusencias.findMany as Function)({
         where: {
@@ -270,18 +270,16 @@ export async function listIndividualAusencias(
     }))
   } catch (e) {
     console.error("[listIndividualAusencias]", e)
-    throw new Error(evalPrismaMessage(e, "Não foi possível carregar as ausências."))
+    return []
   }
 }
 
 export async function listAllAusenciasAprovadas(): Promise<IndividualAusenciasRow[]> {
-  const session = await requireSession()
-  if (!session) throw new Error("Não autorizado.")
-
-  await ensureIndividualAusenciasTable()
-
   try {
+    await requireSession()
+    await ensureIndividualAusenciasTable()
     assertAusenciasModelReady()
+
     const [rows, allUsers] = await Promise.all([
       (prisma.individualAusencias.findMany as Function)({
         where: { situacao: "APROVADA" },
@@ -334,7 +332,7 @@ export async function listAllAusenciasAprovadas(): Promise<IndividualAusenciasRo
     })
   } catch (e) {
     console.error("[listAllAusenciasAprovadas]", e)
-    throw new Error(evalPrismaMessage(e, "Não foi possível carregar as ausências."))
+    return []
   }
 }
 

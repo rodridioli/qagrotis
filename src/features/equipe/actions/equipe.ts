@@ -545,8 +545,8 @@ export interface EquipeMembroLancamentos {
 export async function getEquipeMembrosParaLancamentos(
   accessProfile?: string | null,
 ): Promise<EquipeMembroLancamentos[]> {
-  await requireSession()
   try {
+    await requireSession()
     const [inactiveRecords, profiles, createdUsers] = await Promise.all([
       prisma.inactiveUser.findMany({ select: { userId: true } }),
       prisma.userProfile.findMany({
