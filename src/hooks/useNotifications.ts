@@ -9,7 +9,13 @@ export function useNotifications() {
 
   return useQuery({
     queryKey: ["notifications", session?.user?.id],
-    queryFn: () => getUnreadNotifications(),
+    queryFn: async () => {
+      try {
+        return await getUnreadNotifications()
+      } catch {
+        return []
+      }
+    },
     enabled: !!session?.user?.id,
     refetchInterval: 30_000,
     refetchOnMount: true,

@@ -209,9 +209,9 @@ export async function listIndividualAusencias(
   const { canViewOthers } = await requireViewAusenciaAccess(evaluatedUserId)
 
   await ensureIndividualAusenciasTable()
-  assertAusenciasModelReady()
 
   try {
+    assertAusenciasModelReady()
     const [rows, allUsers] = await Promise.all([
       (prisma.individualAusencias.findMany as Function)({
         where: {
@@ -279,9 +279,9 @@ export async function listAllAusenciasAprovadas(): Promise<IndividualAusenciasRo
   if (!session) throw new Error("Não autorizado.")
 
   await ensureIndividualAusenciasTable()
-  assertAusenciasModelReady()
 
   try {
+    assertAusenciasModelReady()
     const [rows, allUsers] = await Promise.all([
       (prisma.individualAusencias.findMany as Function)({
         where: { situacao: "APROVADA" },

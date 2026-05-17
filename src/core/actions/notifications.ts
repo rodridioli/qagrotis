@@ -35,7 +35,7 @@ export async function getUnreadNotifications(): Promise<NotificationData[]> {
     }))
   } catch (e) {
     console.error("[getUnreadNotifications] ERRO:", e)
-    throw e
+    return []
   }
 }
 
