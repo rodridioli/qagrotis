@@ -341,23 +341,20 @@ export const IndividualAusenciasSection = React.forwardRef<
 
   return (
     <div className="flex w-full flex-col gap-4">
-      {/* Header button for non-MGR */}
-      {!canWrite && (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            className="gap-2"
-            onClick={() => {
-              setEditingRow(null)
-              setForm(EMPTY_FORM)
-              setFieldErrors({})
-              setModalOpen(true)
-            }}
-          >
-            + Informar ausência
-          </Button>
-        </div>
-      )}
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          className="gap-2"
+          onClick={() => {
+            setEditingRow(null)
+            setForm(EMPTY_FORM)
+            setFieldErrors({})
+            setModalOpen(true)
+          }}
+        >
+          + Informar ausência
+        </Button>
+      </div>
 
       <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
         <TableToolbar
