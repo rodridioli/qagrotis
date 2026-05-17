@@ -448,7 +448,6 @@ CREATE TABLE IF NOT EXISTS "UserBadge" (
     g.__qagrotisEnsuredNotificationTables = true
   } catch (e) {
     console.error("[prisma-schema-ensure] Notification/UserBadge tables", e)
-    throw e
   }
 }
 
@@ -584,6 +583,5 @@ CREATE TABLE IF NOT EXISTS "IndividualAusencias" (
     g.__qagrotisEnsuredIndividualAusencias = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualAusencias", e)
-    throw e
   }
 }
