@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, Loader2, MoreVertical, Trash2, X } from "lucide-react"
+import { Check, Loader2, MoreVertical, Plus, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -341,23 +341,21 @@ export const IndividualAusenciasSection = React.forwardRef<
 
   return (
     <div className="flex w-full flex-col gap-4">
-      {/* Header button for non-MGR */}
-      {!canWrite && (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            className="gap-2"
-            onClick={() => {
-              setEditingRow(null)
-              setForm(EMPTY_FORM)
-              setFieldErrors({})
-              setModalOpen(true)
-            }}
-          >
-            + Informar ausência
-          </Button>
-        </div>
-      )}
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          className="gap-2"
+          onClick={() => {
+            setEditingRow(null)
+            setForm(EMPTY_FORM)
+            setFieldErrors({})
+            setModalOpen(true)
+          }}
+        >
+          <Plus className="size-4" aria-hidden />
+          Adicionar Ausência
+        </Button>
+      </div>
 
       <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
         <TableToolbar

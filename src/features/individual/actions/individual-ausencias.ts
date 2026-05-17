@@ -271,6 +271,7 @@ export async function createIndividualAusencias(
     })) as { codigo: number }[]
     const nextCodigo = existing.length > 0 ? (existing[0]?.codigo ?? 0) + 1 : 1
 
+    const isMgr = role === "Administrador:MGR"
     const row = (await (prisma.individualAusencias.create as Function)({
       data: {
         evaluatedUserId: data.evaluatedUserId,
@@ -282,38 +283,40 @@ export async function createIndividualAusencias(
         horaInicio: data.diaInteiro ? null : (data.horaInicio ?? null),
         horaFim: data.diaInteiro ? null : (data.horaFim ?? null),
         justificativa: data.justificativa,
-        situacao: "PENDENTE",
+        situacao: isMgr ? "APROVADA" : "PENDENTE",
       },
       select: { id: true },
     })) as { id: string }
 
-    // Notify all Administrador:MGR users
-    try {
-      const mgrUsers = await prisma.createdUser.findMany({
-        where: { type: "Administrador", accessProfile: "MGR" },
-        select: { id: true },
-      })
-      const solicitanteUser = await prisma.createdUser.findUnique({
-        where: { id: session.user.id },
-        select: { name: true },
-      })
-      const nomesSolicitante = solicitanteUser?.name ?? session.user.name ?? "Usuário"
-      const dataFormatada = formatDataPtBr(data.dataIso)
-      const tipoFormatado = tipoLabel(data.tipo)
+    // Administrador:MGR já aprova automaticamente — sem notificação necessária
+    if (!isMgr) {
+      try {
+        const mgrUsers = await prisma.createdUser.findMany({
+          where: { type: "Administrador", accessProfile: "MGR" },
+          select: { id: true },
+        })
+        const solicitanteUser = await prisma.createdUser.findUnique({
+          where: { id: session.user.id },
+          select: { name: true },
+        })
+        const nomesSolicitante = solicitanteUser?.name ?? session.user.name ?? "Usuário"
+        const dataFormatada = formatDataPtBr(data.dataIso)
+        const tipoFormatado = tipoLabel(data.tipo)
 
-      await Promise.all(
-        mgrUsers.map((mgr) =>
-          createNotification(
-            mgr.id,
-            "ABSENCE_REQUEST",
-            "Nova solicitação de ausência",
-            `${nomesSolicitante} solicitou ausência do tipo ${tipoFormatado} em ${dataFormatada}.`,
-            null,
+        await Promise.all(
+          mgrUsers.map((mgr) =>
+            createNotification(
+              mgr.id,
+              "ABSENCE_REQUEST",
+              "Nova solicitação de ausência",
+              `${nomesSolicitante} solicitou ausência do tipo ${tipoFormatado} em ${dataFormatada}.`,
+              null,
+            ),
           ),
-        ),
-      )
-    } catch (notifErr) {
-      console.error("[createIndividualAusencias] falha ao notificar MGRs:", notifErr)
+        )
+      } catch (notifErr) {
+        console.error("[createIndividualAusencias] falha ao notificar MGRs:", notifErr)
+      }
     }
 
     revalidatePath("/individual/ausencias")

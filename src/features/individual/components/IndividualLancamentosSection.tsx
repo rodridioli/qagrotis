@@ -167,10 +167,16 @@ function computeStats(entries: LancamentoRow[]) {
   const issueSet = new Set<string>()
   const criticalIssues = new Set<string>()
   const brokenTestIssues = new Set<string>()
+  const docReviewIssues = new Set<string>()
+  const newDocIssues = new Set<string>()
   const qtdByIssue = new Map<string, number>()
 
   const isBrokenTest = (e: LancamentoRow) =>
     (e.issueType ?? "").toLowerCase().includes("broken")
+  const isDocReview = (e: LancamentoRow) =>
+    (e.issueType ?? "").toLowerCase() === "documentation review"
+  const isNewDoc = (e: LancamentoRow) =>
+    (e.issueType ?? "").toLowerCase() === "new documentation"
 
   for (const e of entries) {
     const pk = e.projectKey || e.issueKey.split("-")[0]
@@ -181,6 +187,8 @@ function computeStats(entries: LancamentoRow[]) {
     issueSet.add(e.issueKey)
     if (priorityIsCritical(e.priority)) criticalIssues.add(e.issueKey)
     if (isBrokenTest(e)) brokenTestIssues.add(e.issueKey)
+    if (isDocReview(e)) docReviewIssues.add(e.issueKey)
+    if (isNewDoc(e)) newDocIssues.add(e.issueKey)
     if (e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)) {
       const prev = qtdByIssue.get(e.issueKey) ?? 0
       qtdByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosQA))
@@ -201,6 +209,8 @@ function computeStats(entries: LancamentoRow[]) {
     totalIssues: issueSet.size,
     criticalCount: criticalIssues.size,
     brokenTestCountFromWorklogs: brokenTestIssues.size,
+    docReviewCount: docReviewIssues.size,
+    newDocCount: newDocIssues.size,
     qtdCenariosTotal,
   }
 }
@@ -438,6 +448,7 @@ export function IndividualLancamentosSection({
       const ok = body as ApiOk
 
       // "Anteriormente": fase 1 — 14 dias. Refina para o dia mais recente com entradas.
+      // Keep loading=true so the spinner stays alive while phase 2 runs.
       if (preset === "anteriormente" && !anteriormenteRefining && from !== to) {
         const maxDate = ok.entries?.reduce((max, e) => {
           const d = e.started?.slice(0, 10) ?? ""
@@ -447,13 +458,12 @@ export function IndividualLancamentosSection({
           setAnteriormenteRefining(true)
           setFrom(maxDate)
           setTo(maxDate)
-          // The useEffect on [load] will trigger the second fetch automatically.
-          return
+          return // loading stays true — phase 2 will clear it
         }
       }
       setAnteriormenteRefining(false)
-
       setData(ok)
+      setLoading(false)
       if (ok.jiraBrowseBase?.trim()) {
         setJiraBase(ok.jiraBrowseBase.replace(/\/$/, ""))
       }
@@ -461,7 +471,6 @@ export function IndividualLancamentosSection({
       setAnteriormenteRefining(false)
       setData(null)
       setError(e instanceof Error ? e.message : "Erro ao carregar.")
-    } finally {
       setLoading(false)
     }
   }, [evaluatedUserId, from, to, preset, anteriormenteRefining])
@@ -477,6 +486,9 @@ export function IndividualLancamentosSection({
     setAnteriormenteRefining(false)
     setFrom(r.from)
     setTo(r.to)
+    // Clear stale data immediately so the spinner shows before the effect fires.
+    setData(null)
+    setLoading(true)
   }
 
   const allEntries = data?.entries ?? []
@@ -545,7 +557,7 @@ export function IndividualLancamentosSection({
             </div>
           ) : null}
 
-          {data.truncatedIssues || data.truncatedWorklogs ? (
+          {allEntries.length > 0 && (data.truncatedIssues || data.truncatedWorklogs) ? (
             <p className="text-sm text-text-secondary">
               {data.truncatedIssues
                 ? "Lista de issues truncada (limite do servidor). Reduza o intervalo para ver mais."

@@ -369,10 +369,20 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
   // Convert plain output to rich Markdown for Jira/display
   function formatOutputAsMarkdown(raw: string): string {
+    let counter = 0
     return raw
-      // Add bold + newlines before field labels
+      // Number cenários as CT-001, CT-002, ...
       .replace(
-        /^(Cenário:|Descrição:|Regra de negócio:|Pré-condições:|BDD \(Gherkin\):|Resultado esperado:)/gim,
+        /^(\*\*Cenário:\*\*|Cenário:)/gim,
+        () => {
+          counter++
+          const num = String(counter).padStart(3, "0")
+          return `\n\n**CT-${num}:**`
+        }
+      )
+      // Add bold + newlines before other field labels
+      .replace(
+        /^(Descrição:|Regra de negócio:|Pré-condições:|BDD \(Gherkin\):|Resultado esperado:)/gim,
         (_, label) => `\n\n**${label}**`
       )
       // Ensure --- separators have blank lines around them
@@ -539,7 +549,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                     </Button>
                   } />
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                    <DropdownMenuItem onClick={() => { setOutput(formatOutputAsMarkdown(output)); setIsEditing(true) }}>
                       <Pencil className="size-4" />
                       Editar
                     </DropdownMenuItem>
@@ -954,17 +964,18 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
 
           <DialogFooter showCloseButton={false}>
             <div className="flex w-full items-center justify-between gap-2">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   const allSelectable = importItems.filter((i) => !i.error)
                   const allOn = allSelectable.every((i) => i.include)
                   setImportItems((prev) => prev.map((i) => i.error ? i : { ...i, include: !allOn }))
                 }}
-                className="text-sm text-brand-primary hover:underline"
               >
                 {importItems.filter((i) => !i.error).every((i) => i.include) ? "Desmarcar todos" : "Selecionar todos"}
-              </button>
+              </Button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setImportModalOpen(false)}>
                   <X className="size-4" />

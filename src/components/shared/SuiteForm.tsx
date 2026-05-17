@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Check, Plus, MoreVertical, Trash2, ExternalLink, FileDown, Loader2, Play, Power, RefreshCw, FileText, FlaskConical, History } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Button } from "@/components/ui/button"
@@ -119,11 +120,10 @@ export function SuiteForm({
       execucoes: c.execucoes, erros: c.erros, deps: 0,
     })) ?? []
   )
-  const [historico, setHistorico] = useState<HistoricoItem[]>(() => {
-    const raw = (suite?.historico ?? []) as HistoricoItem[]
-    // Sort by timestamp descending (newest first)
-    return [...raw].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
-  })
+  // Kept in insertion order (matching server storage). sortedHistorico handles DESC display ordering.
+  const [historico, setHistorico] = useState<HistoricoItem[]>(
+    (suite?.historico ?? []) as HistoricoItem[]
+  )
 
   const cenarioRefById = useMemo(() => buildSuiteCenarioRefByIdMap(cenarios), [cenarios])
 
@@ -290,9 +290,10 @@ export function SuiteForm({
       const data = await res.json()
       if (!res.ok) throw new Error((data as string) || "Erro ao enviar para o Jira.")
       const evMsg = jiraEvidences.length > 0 ? ` ${jiraEvidences.length} evidência(s) anexada(s).` : ""
+      const jiraUrl = (data as { url: string }).url
+      if (jiraUrl) window.open(jiraUrl, "_blank")
       toast.success("Exportado para o Jira com sucesso.", {
         description: `Issue ${issueKey} atualizada.${evMsg}`,
-        action: { label: "Abrir no Jira", onClick: () => window.open((data as { url: string }).url, "_blank") },
       })
       setJiraModalOpen(false)
       setJiraIssueInput("")
@@ -350,7 +351,7 @@ export function SuiteForm({
     const cMod = (c.module || "").toLowerCase().trim()
     const matchesModule = !modSelected || cMod === modSelected
     return matchesSearch && matchesModule
-  })
+  }).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
 
   // Stats computed from historico (execuções and erros per cenário)
   const historicoStats = useMemo(() => {
@@ -727,6 +728,42 @@ export function SuiteForm({
     }
   }
 
+  async function handleRemoverEntrada(originalIdx: number) {
+    if (!suite?.id) return
+    const h = historico[originalIdx]
+    const previousHistorico = historico
+
+    if (h?.timestamp !== undefined) {
+      for (const tipo of ["manual", "auto"] as const) {
+        const key = evHistoricoStorageKey(suite.id, h.id, h.timestamp, tipo)
+        const raw = sessionStorage.getItem(key)
+        try {
+          const list = (raw ? JSON.parse(raw) : []) as EvFile[]
+          for (const ev of list) void deleteEvidenceFile(ev)
+        } catch { /* ignore */ }
+        sessionStorage.removeItem(key)
+      }
+    }
+
+    setHistorico((prev) => prev.filter((_, i) => i !== originalIdx))
+    setSelectedHistorico((prev) => {
+      const next = new Set<number>()
+      for (const idx of prev) {
+        if (idx < originalIdx) next.add(idx)
+        else if (idx > originalIdx) next.add(idx - 1)
+      }
+      return next
+    })
+
+    try {
+      await removerHistoricoSuite(suite.id, [originalIdx])
+      toast.success("Registro removido com sucesso.")
+    } catch {
+      setHistorico(previousHistorico)
+      toast.error("Erro ao remover registro do histórico.")
+    }
+  }
+
   const TABS = [
     { id: "cadastro" as const,  label: "Cadastro",   icon: FileText,    badge: null, disabled: false },
     { id: "cenarios" as const,  label: "Testes",     icon: FlaskConical, badge: cenarios.length, disabled: false },
@@ -1014,19 +1051,41 @@ export function SuiteForm({
                         ) : (() => {
                           const cenarioAtivo = isCenarioAtivoFn(c.id)
                           const href = suite?.id ? `/suites/${suite.id}/${c.id}` : `/cenarios/${c.id}`
-                          return (
-                            <div className="flex items-center justify-end gap-4">
-                              {cenarioAtivo && !encerrada && (
-                                <Link
-                                  href={href}
-                                  aria-label="Testar Cenário"
-                                  title="Testar Cenário"
-                                  className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+
+                          if (cenarioAtivo && !encerrada) {
+                            return (
+                              <div className="flex items-center justify-end gap-3">
+                                <TooltipProvider delay={200}>
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <Link
+                                        href={href}
+                                        aria-label="Testar Cenário"
+                                        className="flex size-8 items-center justify-center rounded-md bg-brand-primary/10 text-brand-primary transition-colors hover:bg-brand-primary/20"
+                                      />
+                                    }
+                                  >
+                                    <Play className="size-4" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>Testar Cenário</TooltipContent>
+                                </Tooltip>
+                                </TooltipProvider>
+                                <button
+                                  type="button"
+                                  aria-label="Remover da suíte"
+                                  onClick={() => handleRemove(c.id)}
+                                  className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                                 >
-                                  <Play className="size-4" />
-                                </Link>
-                              )}
-                              {(!encerrada || !cenarioAtivo) && (
+                                  <Trash2 className="size-4" />
+                                </button>
+                              </div>
+                            )
+                          }
+
+                          if (!cenarioAtivo) {
+                            return (
+                              <div className="flex items-center justify-end">
                                 <DropdownMenu>
                                   <DropdownMenuTrigger
                                     render={
@@ -1040,11 +1099,9 @@ export function SuiteForm({
                                     <MoreVertical className="size-4" />
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" side="bottom">
-                                    {!cenarioAtivo && (
-                                      <DropdownMenuItem>
-                                        <Link href={href} className="w-full">Visualizar</Link>
-                                      </DropdownMenuItem>
-                                    )}
+                                    <DropdownMenuItem>
+                                      <Link href={href} className="w-full">Visualizar</Link>
+                                    </DropdownMenuItem>
                                     {!encerrada && (
                                       <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
                                         Remover
@@ -1052,9 +1109,11 @@ export function SuiteForm({
                                     )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
-                              )}
-                            </div>
-                          )
+                              </div>
+                            )
+                          }
+
+                          return null
                         })()}
                       </td>
                     </tr>
@@ -1112,6 +1171,7 @@ export function SuiteForm({
                   <col className="w-28" />
                   <col className="w-20" />
                   <col className="w-28" />
+                  <col className="w-12" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -1135,6 +1195,7 @@ export function SuiteForm({
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Execução</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Hora</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Resultado</th>
+                    <th className="px-2 py-3" />
                   </tr>
                 </thead>
                 <tbody>
@@ -1211,6 +1272,18 @@ export function SuiteForm({
                           : (h.hora ?? "—")}
                       </td>
                       <td className="px-4 py-3"><ResultadoBadge resultado={h.resultado} /></td>
+                      <td className="px-2 py-3">
+                        {!encerrada && (
+                          <button
+                            type="button"
+                            aria-label="Remover registro"
+                            onClick={() => { void handleRemoverEntrada(h._originalIdx) }}
+                            className="flex size-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   )})}
                 </tbody>

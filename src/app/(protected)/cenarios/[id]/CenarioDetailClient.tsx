@@ -177,7 +177,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     cenario.tipo === "Manual" || cenario.tipo === "Man./Auto."
   const showAutomacao =
     cenario.tipo === "Automatizado" || cenario.tipo === "Man./Auto."
-  const viewOnly = cenario.active === false
+  const suiteEncerrada = suite?.encerrada === true
+  const viewOnly = cenario.active === false || suiteEncerrada
   const allowEvidencias = !viewOnly
 
   // Carrega evidências salvas na sessão ao abrir o cenário (só quando edição permitida)
@@ -311,8 +312,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     if (!suite) return
     setIsRegistering(true)
     try {
-      const { timestamp } = await registrarResultadoSuite(suite.id, cenario.id, resultado)
-      await snapshotEvidenciasParaHistorico(timestamp)
+      const item = await registrarResultadoSuite(suite.id, cenario.id, resultado)
+      await snapshotEvidenciasParaHistorico(item.timestamp ?? Date.now())
       toast.success("Teste registrado com sucesso.")
       router.push(`/suites/${suite.id}?tab=cenarios`)
     } catch (e: unknown) {
@@ -331,8 +332,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     }
     setIsRegistering(true)
     try {
-      const { timestamp } = await registrarResultadoSuite(suite.id, cenario.id, "Alerta", { alertaObs: obs })
-      await snapshotEvidenciasParaHistorico(timestamp)
+      const item = await registrarResultadoSuite(suite.id, cenario.id, "Alerta", { alertaObs: obs })
+      await snapshotEvidenciasParaHistorico(item.timestamp ?? Date.now())
       toast.success("Alerta registrado com sucesso.")
       setAlertModalOpen(false)
       setAlertaObs("")
@@ -408,7 +409,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
         <div className="flex flex-wrap items-center gap-2">
           {viewOnly && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-grey-300 bg-neutral-grey-100 px-3 py-1 text-xs font-medium text-text-secondary">
-              Somente visualização — cenário inativo
+              {suiteEncerrada ? "Somente visualização — suíte encerrada" : "Somente visualização — cenário inativo"}
             </span>
           )}
           {suite && !viewOnly && (

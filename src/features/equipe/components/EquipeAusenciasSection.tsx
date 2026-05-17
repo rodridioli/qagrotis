@@ -1,17 +1,39 @@
 "use client"
 
 import * as React from "react"
+import { Check, Loader2, Plus, X } from "lucide-react"
+import { toast } from "sonner"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { TableToolbar } from "@/components/shared/TableToolbar"
-import { Button } from "@/components/ui/button"
 import { AusenciaTipoBadge } from "@/components/shared/StatusBadge"
 import {
   listAllAusenciasAprovadas,
+  createIndividualAusencias,
   type IndividualAusenciasRow,
+  type AusenciaTipo,
 } from "@/features/individual/actions/individual-ausencias"
+import { getActiveQaUsers, type QaUserRecord } from "@/features/usuarios/actions/usuarios"
+import {
+  createAusenciaSchema,
+} from "@/features/individual/lib/individual-ausencias-schemas"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -43,13 +65,66 @@ function getInitials(name: string): string {
     .join("")
 }
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const TIPO_OPTIONS: { value: AusenciaTipo; label: string }[] = [
+  { value: "FALTA",       label: "Falta" },
+  { value: "BANCO_HORAS", label: "Banco de horas" },
+  { value: "ATESTADO",    label: "Atestado" },
+  { value: "OUTRO",       label: "Outro" },
+]
+
+// ── Form state ────────────────────────────────────────────────────────────────
+
+interface FormState {
+  evaluatedUserId: string
+  tipo: AusenciaTipo | ""
+  dataIso: string
+  diaInteiro: boolean
+  horaInicio: string
+  horaFim: string
+  justificativa: string
+}
+
+const EMPTY_FORM: FormState = {
+  evaluatedUserId: "",
+  tipo: "",
+  dataIso: "",
+  diaInteiro: true,
+  horaInicio: "",
+  horaFim: "",
+  justificativa: "",
+}
+
+interface FieldErrors {
+  evaluatedUserId?: boolean
+  tipo?: boolean
+  dataIso?: boolean
+  horaInicio?: boolean
+  horaFim?: boolean
+  justificativa?: boolean
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function EquipeAusenciasSection() {
+interface EquipeAusenciasSectionProps {
+  isMgr: boolean
+  currentUserId: string
+}
+
+export function EquipeAusenciasSection({ isMgr, currentUserId }: EquipeAusenciasSectionProps) {
   const [rows, setRows] = React.useState<IndividualAusenciasRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [search, setSearch] = React.useState("")
+
+  // Modal state
+  const [modalOpen, setModalOpen] = React.useState(false)
+  const [form, setForm] = React.useState<FormState>(EMPTY_FORM)
+  const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({})
+  const [saving, setSaving] = React.useState(false)
+  const [users, setUsers] = React.useState<QaUserRecord[]>([])
+  const [loadingUsers, setLoadingUsers] = React.useState(false)
 
   const refetch = React.useCallback(async () => {
     setLoading(true)
@@ -66,6 +141,76 @@ export function EquipeAusenciasSection() {
 
   React.useEffect(() => { void refetch() }, [refetch])
 
+  async function openModal() {
+    setForm({ ...EMPTY_FORM, evaluatedUserId: isMgr ? "" : currentUserId })
+    setFieldErrors({})
+    setModalOpen(true)
+    if (isMgr && users.length === 0) {
+      setLoadingUsers(true)
+      try {
+        setUsers(await getActiveQaUsers())
+      } finally {
+        setLoadingUsers(false)
+      }
+    }
+  }
+
+  async function handleSave() {
+    const errs: FieldErrors = {}
+    if (isMgr && !form.evaluatedUserId) errs.evaluatedUserId = true
+    if (!form.tipo) errs.tipo = true
+    if (!form.dataIso) errs.dataIso = true
+    if (!form.justificativa.trim()) errs.justificativa = true
+    if (!form.diaInteiro) {
+      if (!form.horaInicio) errs.horaInicio = true
+      if (!form.horaFim) errs.horaFim = true
+    }
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs)
+      toast.error("Preencha todos os campos obrigatórios.")
+      return
+    }
+
+    if (!form.diaInteiro && form.horaInicio && form.horaFim) {
+      const toMin = (h: string) => {
+        const [hh, mm] = h.split(":").map(Number)
+        return (hh ?? 0) * 60 + (mm ?? 0)
+      }
+      if (toMin(form.horaFim) <= toMin(form.horaInicio)) {
+        setFieldErrors((p) => ({ ...p, horaFim: true }))
+        toast.error("Hora de término deve ser após a hora de início.")
+        return
+      }
+    }
+
+    const payload = {
+      evaluatedUserId: form.evaluatedUserId,
+      tipo: form.tipo as AusenciaTipo,
+      dataIso: form.dataIso,
+      diaInteiro: form.diaInteiro,
+      horaInicio: form.diaInteiro ? null : form.horaInicio || null,
+      horaFim: form.diaInteiro ? null : form.horaFim || null,
+      justificativa: form.justificativa.trim(),
+    }
+
+    const parsed = createAusenciaSchema.safeParse(payload)
+    if (!parsed.success) {
+      toast.error("Dados inválidos. Verifique os campos.")
+      return
+    }
+
+    setFieldErrors({})
+    setSaving(true)
+    try {
+      const res = await createIndividualAusencias(payload)
+      if ("error" in res) { toast.error(res.error); return }
+      toast.success("Solicitação enviada para aprovação.")
+      setModalOpen(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const filtered = React.useMemo<IndividualAusenciasRow[]>(() => {
     if (!search.trim()) return rows
     const q = search.trim().toLowerCase()
@@ -77,6 +222,13 @@ export function EquipeAusenciasSection() {
 
   return (
     <div className="flex w-full flex-col gap-4">
+      <div className="flex justify-end">
+        <Button type="button" className="gap-2" onClick={() => void openModal()}>
+          <Plus className="size-4" aria-hidden />
+          Adicionar Ausência
+        </Button>
+      </div>
+
       <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
         <TableToolbar
           search={search}
@@ -122,14 +274,12 @@ export function EquipeAusenciasSection() {
                       key={row.id}
                       className="border-b border-border-default last:border-b-0 transition-colors"
                     >
-                      {/* Código — sem hyperlink */}
                       <td className="whitespace-nowrap px-3 py-3 sm:px-4">
                         <span className="font-semibold tabular-nums text-text-primary">
                           {formatCodigo(row.codigo)}
                         </span>
                       </td>
 
-                      {/* Usuário */}
                       <td className="whitespace-nowrap px-3 py-3 sm:px-4">
                         <div className="flex items-center gap-2.5">
                           <Avatar size="sm">
@@ -142,22 +292,18 @@ export function EquipeAusenciasSection() {
                         </div>
                       </td>
 
-                      {/* Tipo */}
                       <td className="whitespace-nowrap px-3 py-3 sm:px-4">
                         <AusenciaTipoBadge tipo={row.tipo} />
                       </td>
 
-                      {/* Data */}
                       <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary tabular-nums sm:px-4">
                         {formatIsoToBr(row.dataIso)}
                       </td>
 
-                      {/* Período */}
                       <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary sm:px-4">
                         {formatPeriodo(row)}
                       </td>
 
-                      {/* Justificativa */}
                       <td className="px-3 py-3 text-sm text-text-secondary sm:px-4">
                         <span title={row.justificativa}>{truncate(row.justificativa)}</span>
                       </td>
@@ -169,6 +315,221 @@ export function EquipeAusenciasSection() {
           </div>
         )}
       </div>
+
+      {/* ── Create modal ─────────────────────────────────────────────────────── */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent showCloseButton className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar ausência</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4 py-2">
+            {/* Usuário — apenas Administrador:MGR pode selecionar outro membro */}
+            {isMgr && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary" htmlFor="eq-aus-user">
+                  Membro da equipe <span className="text-destructive" aria-hidden>*</span>
+                </label>
+                {loadingUsers ? (
+                  <div className="flex h-9 items-center gap-2 text-sm text-text-secondary">
+                    <Loader2 className="size-4 animate-spin" />
+                    Carregando usuários…
+                  </div>
+                ) : (
+                  <Select
+                    value={form.evaluatedUserId}
+                    onValueChange={(v) => {
+                      setForm((f) => ({ ...f, evaluatedUserId: v ?? "" }))
+                      setFieldErrors((p) => ({ ...p, evaluatedUserId: false }))
+                    }}
+                    aria-label="Membro da equipe"
+                  >
+                    <SelectTrigger
+                      id="eq-aus-user"
+                      className={fieldErrors.evaluatedUserId ? "border-destructive" : ""}
+                    >
+                      <SelectValue>
+                        {users.find((u) => u.id === form.evaluatedUserId)?.name ?? "Selecione o membro"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectPopup>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name}
+                        </SelectItem>
+                      ))}
+                    </SelectPopup>
+                  </Select>
+                )}
+              </div>
+            )}
+
+            {/* Tipo */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary" htmlFor="eq-aus-tipo">
+                Tipo de ausência <span className="text-destructive" aria-hidden>*</span>
+              </label>
+              <Select
+                value={form.tipo}
+                onValueChange={(v) => {
+                  setForm((f) => ({ ...f, tipo: v as AusenciaTipo }))
+                  setFieldErrors((p) => ({ ...p, tipo: false }))
+                }}
+                aria-label="Tipo de ausência"
+              >
+                <SelectTrigger
+                  id="eq-aus-tipo"
+                  className={fieldErrors.tipo ? "border-destructive" : ""}
+                >
+                  <SelectValue>
+                    {TIPO_OPTIONS.find((o) => o.value === form.tipo)?.label ?? "Selecione o tipo"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectPopup>
+                  {TIPO_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            </div>
+
+            {/* Data */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary" htmlFor="eq-aus-data">
+                Data da ausência <span className="text-destructive" aria-hidden>*</span>
+              </label>
+              <input
+                id="eq-aus-data"
+                type="date"
+                value={form.dataIso}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, dataIso: e.target.value }))
+                  setFieldErrors((p) => ({ ...p, dataIso: false }))
+                }}
+                className={`h-9 w-full rounded-lg border bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${fieldErrors.dataIso ? "border-destructive" : "border-border-default"}`}
+                style={{ colorScheme: "light" }}
+              />
+            </div>
+
+            {/* Período */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium text-text-primary">
+                Período <span className="text-destructive" aria-hidden>*</span>
+              </span>
+              <div role="radiogroup" aria-label="Período" className="flex flex-col gap-2 sm:flex-row sm:gap-6">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-text-primary">
+                  <input
+                    type="radio"
+                    name="eq-aus-periodo"
+                    checked={form.diaInteiro}
+                    onChange={() => setForm((f) => ({ ...f, diaInteiro: true, horaInicio: "", horaFim: "" }))}
+                    className="accent-brand-primary"
+                  />
+                  Dia todo
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-text-primary">
+                  <input
+                    type="radio"
+                    name="eq-aus-periodo"
+                    checked={!form.diaInteiro}
+                    onChange={() => setForm((f) => ({ ...f, diaInteiro: false }))}
+                    className="accent-brand-primary"
+                  />
+                  Parte do dia
+                </label>
+              </div>
+
+              {!form.diaInteiro && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-text-primary" htmlFor="eq-aus-hora-inicio">
+                      Hora de início <span className="text-destructive" aria-hidden>*</span>
+                    </label>
+                    <input
+                      id="eq-aus-hora-inicio"
+                      type="time"
+                      value={form.horaInicio}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, horaInicio: e.target.value }))
+                        setFieldErrors((p) => ({ ...p, horaInicio: false }))
+                      }}
+                      className={`h-9 w-full rounded-lg border bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${fieldErrors.horaInicio ? "border-destructive" : "border-border-default"}`}
+                      style={{ colorScheme: "light" }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-text-primary" htmlFor="eq-aus-hora-fim">
+                      Hora de término <span className="text-destructive" aria-hidden>*</span>
+                    </label>
+                    <input
+                      id="eq-aus-hora-fim"
+                      type="time"
+                      value={form.horaFim}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, horaFim: e.target.value }))
+                        setFieldErrors((p) => ({ ...p, horaFim: false }))
+                      }}
+                      className={`h-9 w-full rounded-lg border bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${fieldErrors.horaFim ? "border-destructive" : "border-border-default"}`}
+                      style={{ colorScheme: "light" }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Justificativa */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary" htmlFor="eq-aus-justificativa">
+                Justificativa <span className="text-destructive" aria-hidden>*</span>
+              </label>
+              <textarea
+                id="eq-aus-justificativa"
+                rows={3}
+                value={form.justificativa}
+                placeholder="Descreva o motivo da ausência…"
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, justificativa: e.target.value }))
+                  setFieldErrors((p) => ({ ...p, justificativa: false }))
+                }}
+                className={`w-full rounded-lg border bg-surface-input px-3 py-2 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary resize-none ${fieldErrors.justificativa ? "border-destructive" : "border-border-default"}`}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => setModalOpen(false)}
+              disabled={saving}
+            >
+              <X className="size-4 shrink-0" aria-hidden />
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="gap-1.5"
+              onClick={() => void handleSave()}
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                  Enviando…
+                </>
+              ) : (
+                <>
+                  <Check className="size-4 shrink-0" aria-hidden />
+                  Enviar solicitação
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

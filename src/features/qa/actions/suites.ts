@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { requireSession, requireAdmin } from "@/core/session"
+import { requireSession } from "@/core/session"
 import { nextId } from "@/core/db-utils"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/core/prisma"
 
 export interface SuiteRecord {
@@ -27,21 +28,21 @@ export interface SuiteRecord {
     deps: number
     tipo: string
   }[]
-  historico?: {
-    id: string
-    cenario: string
-    module: string
-    tipo: string
-    deps: number
-    data: string
-    hora?: string
-    timestamp?: number
-    resultado: "Sucesso" | "Erro" | "Pendente" | "Alerta"
-    /** Texto da modal de alerta (só quando resultado === "Alerta"). */
-    alertaObs?: string
-    /** Email (ou identificador) de quem registrou a execução — usado no ranking do dashboard. */
-    executadoPor?: string
-  }[]
+  historico?: SuiteHistoricoItem[]
+}
+
+export interface SuiteHistoricoItem {
+  id: string
+  cenario: string
+  module: string
+  tipo: string
+  deps: number
+  data: string
+  hora?: string
+  timestamp?: number
+  resultado: "Sucesso" | "Erro" | "Pendente" | "Alerta"
+  alertaObs?: string
+  executadoPor?: string
 }
 
 const suiteSchema = z.object({
@@ -197,7 +198,7 @@ export async function registrarResultadoSuite(
   cenarioId: string,
   resultado: "Sucesso" | "Erro" | "Alerta",
   options?: { alertaObs?: string },
-): Promise<{ timestamp: number }> {
+): Promise<SuiteHistoricoItem> {
   const session = await requireSession()
 
   const alertaObs = (options?.alertaObs ?? "").trim()
@@ -217,8 +218,7 @@ export async function registrarResultadoSuite(
   const nameRaw = session.user?.name?.trim()
   const executadoPor =
     (emailRaw ? emailRaw.toLowerCase() : nameRaw) || undefined
-  type HistItem = NonNullable<SuiteRecord["historico"]>[number]
-  const historicoItem: HistItem = {
+  const historicoItem: SuiteHistoricoItem = {
     id:       cenarioId,
     cenario:  cenarioRef.name,
     module:   cenarioRef.module,
@@ -235,11 +235,11 @@ export async function registrarResultadoSuite(
   const historico = (suite.historico as unknown as NonNullable<SuiteRecord["historico"]>) ?? []
   historico.push(historicoItem)
 
-  await prisma.suite.update({ where: { id: suiteId }, data: { historico } })
+  await prisma.suite.update({ where: { id: suiteId }, data: { historico: historico as unknown as Prisma.InputJsonValue } })
   revalidatePath("/suites")
   revalidatePath(`/suites/${suiteId}`)
   revalidatePath("/dashboard")
-  return { timestamp: historicoItem.timestamp ?? now.getTime() }
+  return historicoItem
 }
 
 // ── Dashboard-specific: minimal record with full historico ──────────────────
@@ -292,7 +292,7 @@ export async function reabrirSuite(id: string): Promise<void> {
 }
 
 export async function ativarSuite(id: string): Promise<void> {
-  await requireAdmin()
+  await requireSession()
   await prisma.suite.update({ where: { id }, data: { active: true } })
   revalidatePath("/suites")
 }
@@ -312,7 +312,7 @@ export async function removerHistoricoSuite(suiteId: string, indices: number[]):
   const indexSet = new Set(indices)
   const updated = historico.filter((_, i) => !indexSet.has(i))
 
-  await prisma.suite.update({ where: { id: suiteId }, data: { historico: updated } })
+  await prisma.suite.update({ where: { id: suiteId }, data: { historico: updated as unknown as Prisma.InputJsonValue } })
   revalidatePath("/suites")
   revalidatePath(`/suites/${suiteId}`)
 }

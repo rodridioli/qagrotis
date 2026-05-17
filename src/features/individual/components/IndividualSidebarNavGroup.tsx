@@ -142,6 +142,16 @@ export function IndividualSidebarNavGroup({
             const active =
               pathname === `/individual/${slug}` ||
               (slug === "avaliacoes" && pathname.startsWith("/individual/avaliacoes/"))
+            if (slug === "ficha" || slug === "dominio") {
+              return (
+                <li key={slug}>
+                  <span className="flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium opacity-40">
+                    <Icon className="size-4 shrink-0 text-text-secondary" aria-hidden />
+                    <span className="truncate text-text-secondary">{label}</span>
+                  </span>
+                </li>
+              )
+            }
             return (
               <li key={slug}>
                 <button

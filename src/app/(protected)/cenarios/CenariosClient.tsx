@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useDeferredValue, useTransition, useRef } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { AlertCircle, ArrowRightLeft, ChevronDown, ChevronUp, FileText, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, Upload, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -67,6 +67,8 @@ interface Props {
 
 export default function CenariosClient({ initialCenarios: initialCenariosParam, allModulos, initialClientes, isAdmin }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
   const [isImporting, setIsImporting] = useState(false)
   const [isInativando, setIsInativando] = useState(false)
@@ -74,10 +76,13 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
   const { sistemaSelecionado } = useSistemaSelecionado()
   const setupFileInputRef = useRef<HTMLInputElement>(null)
 
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "")
   const deferredSearch = useDeferredValue(search)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(() => {
+    const p = searchParams.get("page")
+    return p ? Math.max(1, parseInt(p, 10)) : 1
+  })
   const [filterOpen, setFilterOpen] = useState(false)
   const [inativarOpen, setInativarOpen] = useState(false)
   const [inativarIds, setInativarIds] = useState<string[]>([])
@@ -96,13 +101,25 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
   const [importProgressOpen, setImportProgressOpen] = useState(false)
   const [importedIds, setImportedIds] = useState<string[]>([])
   const [suitePromptOpen, setSuitePromptOpen] = useState(false)
-  const [filters, setFilters] = useState<FilterState>({
-    modulo: "",
-    cliente: "",
-    tipo: "",
-    apenasInativos: false,
-  })
+  const [filters, setFilters] = useState<FilterState>(() => ({
+    modulo: searchParams.get("modulo") ?? "",
+    cliente: searchParams.get("cliente") ?? "",
+    tipo: searchParams.get("tipo") ?? "",
+    apenasInativos: searchParams.get("inativos") === "1",
+  }))
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (search) params.set("q", search)
+    if (filters.modulo) params.set("modulo", filters.modulo)
+    if (filters.cliente) params.set("cliente", filters.cliente)
+    if (filters.tipo) params.set("tipo", filters.tipo)
+    if (filters.apenasInativos) params.set("inativos", "1")
+    if (currentPage > 1) params.set("page", String(currentPage))
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [search, filters, currentPage]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const modulosDosistema = useMemo(
     () => allModulos.filter((m) => m.active && m.sistemaName === sistemaSelecionado).map((m) => m.name),
@@ -501,7 +518,7 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
                           <button
                             type="button"
                             aria-label="Ativar"
-                            onClick={() => { setAtivarId(c.id); setAtivarOpen(true) }}
+                            onClick={(e) => { e.stopPropagation(); setAtivarId(c.id); setAtivarOpen(true) }}
                             className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
                           >
                             <RotateCcw className="size-4" />
@@ -881,17 +898,18 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
 
           <DialogFooter showCloseButton={false}>
             <div className="flex items-center gap-2 w-full justify-between">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   const allSelectable = importItems.filter((i) => !i.error)
                   const allOn = allSelectable.every((i) => i.include)
                   setImportItems((prev) => prev.map((i) => i.error ? i : { ...i, include: !allOn }))
                 }}
-                className="text-sm text-brand-primary hover:underline"
               >
                 {importItems.filter((i) => !i.error).every((i) => i.include) ? "Desmarcar todos" : "Selecionar todos"}
-              </button>
+              </Button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setImportModalOpen(false)}>
                   <X className="size-4" />

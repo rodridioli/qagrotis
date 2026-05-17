@@ -223,6 +223,7 @@ export async function GET(req: NextRequest) {
       ? fetchIssueFieldsForKeys(base, credentials, keysToEnrich).catch(() => new Map<string, LancamentoIssueFieldsPatch>())
       : Promise.resolve(new Map<string, LancamentoIssueFieldsPatch>())
 
+  // Retorno de Testes uses the same date range as the rest of the period filter.
   const reporterCountFrom = from
   // Prefer the name from our own DB over Jira's displayName — when Jira hides
   // emails by privacy, findJiraAccountIdByEmail may pick the wrong user, so
