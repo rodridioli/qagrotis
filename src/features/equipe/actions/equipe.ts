@@ -373,6 +373,7 @@ export async function getEquipeListagemCadastro(): Promise<{
   aniversariantes: EquipeUsuarioCadastro[]
   comHorario: EquipeUsuarioCadastro[]
 }> {
+  await requireSession()
   try {
     await ensureUserDataNascimentoColumns()
     await ensureUserWorkScheduleColumns()
@@ -588,6 +589,7 @@ export async function getSistemasEModulos(): Promise<{
   sistemas: string[]
   modulosPorSistema: Record<string, string[]>
 }> {
+  await requireSession()
   const [sistemas, modulos] = await Promise.all([
     prisma.sistema.findMany({ where: { active: true }, select: { name: true }, orderBy: { name: "asc" } }),
     prisma.modulo.findMany({

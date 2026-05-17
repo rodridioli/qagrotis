@@ -5,7 +5,7 @@ import { LAYOUT_CACHE_TAG } from "@/core/layout-cache"
 import { normalizeProvider } from "@/lib/ai/provider"
 import { z } from "zod"
 import { nextId } from "@/core/db-utils"
-import { requireAdmin } from "@/core/session"
+import { requireAdmin, requireSession } from "@/core/session"
 import { prisma } from "@/core/prisma"
 
 export interface IntegracaoRecord {
@@ -45,6 +45,7 @@ export async function getIntegracoes(): Promise<IntegracaoRecord[]> {
 
 // Não retorna apiKey — usar em contextos que serializam props para o cliente
 export async function getIntegracoesSafe(): Promise<IntegracaoSafeRecord[]> {
+  await requireSession()
   const rows = await prisma.integracao.findMany({
     orderBy: { createdAt: "asc" },
     take: 100,

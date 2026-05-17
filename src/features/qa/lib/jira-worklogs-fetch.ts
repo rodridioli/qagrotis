@@ -102,6 +102,7 @@ async function jiraJson<T>(
   init?: RequestInit,
 ): Promise<{ ok: boolean; status: number; data: T | null; text: string }> {
   const res = await fetch(url, {
+    signal: AbortSignal.timeout(15_000),
     ...init,
     headers: {
       Authorization: `Basic ${credentials}`,

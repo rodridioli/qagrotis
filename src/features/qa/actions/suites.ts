@@ -93,6 +93,7 @@ export interface SuiteListRecord extends Omit<SuiteRecord, "historico"> {
 }
 
 export async function getSuites(): Promise<SuiteListRecord[]> {
+  await requireSession()
   const rows = await prisma.suite.findMany({
     orderBy: { createdAt: "asc" },
     take: 1000,
@@ -114,6 +115,7 @@ export async function getSuites(): Promise<SuiteListRecord[]> {
 }
 
 export async function getSuiteById(id: string): Promise<SuiteRecord | null> {
+  await requireSession()
   if (!id || typeof id !== "string") return null
   const row = await prisma.suite.findUnique({ where: { id } })
   return row ? toRecord(row) : null
