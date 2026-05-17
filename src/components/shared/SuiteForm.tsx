@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Check, Plus, MoreVertical, Trash2, ExternalLink, FileDown, Loader2, Play, Power, RefreshCw, FileText, FlaskConical, History } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Button } from "@/components/ui/button"
@@ -1021,7 +1021,8 @@ export function SuiteForm({
                           if (cenarioAtivo && !encerrada) {
                             return (
                               <div className="flex items-center justify-end gap-1">
-                                <Tooltip delay={150}>
+                                <TooltipProvider delay={200}>
+                                <Tooltip>
                                   <TooltipTrigger
                                     render={
                                       <Link
@@ -1035,6 +1036,7 @@ export function SuiteForm({
                                   </TooltipTrigger>
                                   <TooltipContent>Testar Cenário</TooltipContent>
                                 </Tooltip>
+                                </TooltipProvider>
                                 <button
                                   type="button"
                                   aria-label="Remover da suíte"
