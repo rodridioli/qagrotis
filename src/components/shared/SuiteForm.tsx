@@ -294,8 +294,6 @@ export function SuiteForm({
       if (jiraUrl) window.open(jiraUrl, "_blank")
       toast.success("Exportado para o Jira com sucesso.", {
         description: `Issue ${issueKey} atualizada.${evMsg}`,
-        duration: 12000,
-        action: { label: "Abrir no Jira", onClick: () => window.open(jiraUrl, "_blank") },
       })
       setJiraModalOpen(false)
       setJiraIssueInput("")

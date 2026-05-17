@@ -190,8 +190,6 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
       if (jiraUrl) window.open(jiraUrl, "_blank")
       toast.success("Exportado para o Jira com sucesso.", {
         description: `Issue ${issueKey} atualizada.${uploadMsg}`,
-        duration: 12000,
-        action: { label: "Abrir no Jira", onClick: () => window.open(jiraUrl, "_blank") },
       })
       handleClose()
     } catch (err) {
