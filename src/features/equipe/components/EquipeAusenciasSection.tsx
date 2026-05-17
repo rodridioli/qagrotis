@@ -332,7 +332,7 @@ export function EquipeAusenciasSection() {
                 <Select
                   value={form.evaluatedUserId}
                   onValueChange={(v) => {
-                    setForm((f) => ({ ...f, evaluatedUserId: v }))
+                    setForm((f) => ({ ...f, evaluatedUserId: v ?? "" }))
                     setFieldErrors((p) => ({ ...p, evaluatedUserId: false }))
                   }}
                   aria-label="Membro da equipe"
