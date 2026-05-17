@@ -4,7 +4,7 @@ import { revalidatePath, updateTag } from "next/cache"
 import { LAYOUT_CACHE_TAG } from "@/core/layout-cache"
 import { z } from "zod"
 import { nextId } from "@/core/db-utils"
-import { requireAdmin } from "@/core/session"
+import { requireAdmin, requireSession } from "@/core/session"
 import { prisma } from "@/core/prisma"
 
 export interface SistemaRecord {
@@ -28,11 +28,13 @@ const idsArraySchema = z.array(idSchema).max(1000)
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getSistemas(): Promise<SistemaRecord[]> {
+  await requireSession()
   const rows = await prisma.sistema.findMany({ orderBy: { createdAt: "asc" }, take: 200 })
   return rows.map((r) => ({ ...r, createdAt: r.createdAt.getTime() }))
 }
 
 export async function getSistema(id: string): Promise<SistemaRecord | null> {
+  await requireSession()
   const result = idSchema.safeParse(id)
   if (!result.success) return null
   const row = await prisma.sistema.findUnique({ where: { id } })
@@ -40,6 +42,7 @@ export async function getSistema(id: string): Promise<SistemaRecord | null> {
 }
 
 export async function getActiveSistemaNames(): Promise<string[]> {
+  await requireSession()
   const rows = await prisma.sistema.findMany({
     where: { active: true },
     select: { name: true },

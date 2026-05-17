@@ -124,6 +124,7 @@ function toRecord(row: any): CenarioRecord {
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getCenarios(): Promise<CenarioRecord[]> {
+  await requireSession()
   await ensureCenarioSuiteRelationColumns()
   const [rows, activeSuites] = await Promise.all([
     prisma.cenario.findMany({ orderBy: { createdAt: "asc" }, take: 2000 }),
@@ -145,6 +146,7 @@ export async function getCenarios(): Promise<CenarioRecord[]> {
 }
 
 export async function getCenario(id: string): Promise<CenarioRecord | null> {
+  await requireSession()
   const result = idSchema.safeParse(id)
   if (!result.success) return null
   const row = await prisma.cenario.findUnique({ where: { id } })

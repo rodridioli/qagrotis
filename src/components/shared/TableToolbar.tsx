@@ -53,7 +53,7 @@ export function TableToolbar(props: TableToolbarProps) {
                 placeholder={searchPlaceholder}
                 value={search}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="h-9 w-48 rounded-custom border border-border-default bg-surface-input pl-9 pr-3 text-sm text-text-primary outline-none placeholder:text-text-secondary focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 lg:w-64"
+                className="h-9 w-32 sm:w-48 rounded-custom border border-border-default bg-surface-input pl-9 pr-3 text-sm text-text-primary outline-none placeholder:text-text-secondary focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 lg:w-64"
               />
             </div>
             {onFilterOpen && (
