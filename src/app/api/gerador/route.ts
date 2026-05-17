@@ -1,6 +1,5 @@
 import { auth } from "@/core/auth"
 import { NextRequest } from "next/server"
-import { getIntegracao } from "@/features/integracoes/actions/integracoes"
 import { normalizeProvider } from "@/lib/ai/provider"
 import { prisma } from "@/core/prisma"
 import { validateOrigin } from "@/core/security"
@@ -748,7 +747,15 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const integracao = await getIntegracao(integrationId)
+  // getIntegracao requires admin — query prisma directly so non-admin QA users can generate.
+  const ID_PATTERN = /^INT-\d+$/
+  if (!ID_PATTERN.test(integrationId)) {
+    return new Response("ID de integração inválido.", { status: 400 })
+  }
+  const integracao = await prisma.integracao.findUnique({
+    where: { id: integrationId },
+    select: { id: true, provider: true, model: true, apiKey: true, active: true },
+  })
   if (!integracao) {
     return new Response(
       `Modelo de IA não encontrado (ID: ${integrationId}). ` +
