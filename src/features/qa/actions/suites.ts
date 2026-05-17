@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { requireSession, requireAdmin } from "@/core/session"
 import { nextId } from "@/core/db-utils"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/core/prisma"
 
 export interface SuiteRecord {
@@ -234,7 +235,7 @@ export async function registrarResultadoSuite(
   const historico = (suite.historico as unknown as NonNullable<SuiteRecord["historico"]>) ?? []
   historico.push(historicoItem)
 
-  await prisma.suite.update({ where: { id: suiteId }, data: { historico } })
+  await prisma.suite.update({ where: { id: suiteId }, data: { historico: historico as unknown as Prisma.InputJsonValue } })
   revalidatePath("/suites")
   revalidatePath(`/suites/${suiteId}`)
   revalidatePath("/dashboard")
