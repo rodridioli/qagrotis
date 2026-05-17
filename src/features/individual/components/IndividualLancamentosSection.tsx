@@ -13,8 +13,8 @@ import {
   Hash,
   LayoutDashboard,
   Layers,
-  RotateCcw,
   Search,
+  Users,
 } from "lucide-react"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -87,6 +87,7 @@ type ApiOk = {
   brokenTestsCreatedByUser?: number
   reporterBrokenTestIssueCount?: number
   researchCount?: number
+  usabilityCount?: number
   docReviewCount?: number
   newDocCount?: number
   pendingUxReturnCount?: number
@@ -325,6 +326,7 @@ function DashboardPanel({
   brokenTestsOpenedCount,
   reporterBrokenTestIssueCount,
   researchCount,
+  usabilityCount,
   docReviewCount,
   newDocCount,
   pendingUxReturnCount,
@@ -336,6 +338,7 @@ function DashboardPanel({
   brokenTestsOpenedCount?: number
   reporterBrokenTestIssueCount?: number
   researchCount?: number
+  usabilityCount?: number
   docReviewCount?: number
   newDocCount?: number
   pendingUxReturnCount?: number
@@ -350,8 +353,8 @@ function DashboardPanel({
   let card2: React.ReactNode
 
   if (profile === "UX") {
-    card1 = <StatCard icon={Search}    label="Pesquisas"         value={researchCount ?? 0}        iconVariant="brand" />
-    card2 = <StatCard icon={RotateCcw} label="Retornos do PO"   value={pendingUxReturnCount ?? 0} iconVariant="warning" />
+    card1 = <StatCard icon={Search} label="Pesquisas"   value={researchCount ?? 0}   iconVariant="brand" />
+    card2 = <StatCard icon={Users}  label="Usabilidade" value={usabilityCount ?? 0}  iconVariant="warning" />
   } else if (profile === "TW") {
     card1 = <StatCard icon={FileCheck} label="Documentos revisados" value={docReviewCount ?? 0} iconVariant="info" />
     card2 = <StatCard icon={FilePlus}  label="Novos documentos"     value={newDocCount ?? 0}    iconVariant="brand" />
@@ -578,6 +581,7 @@ export function IndividualLancamentosSection({
               brokenTestsOpenedCount={data.brokenTestsOpenedCount}
               reporterBrokenTestIssueCount={data.reporterBrokenTestIssueCount}
               researchCount={data.researchCount}
+              usabilityCount={data.usabilityCount}
               docReviewCount={data.docReviewCount}
               newDocCount={data.newDocCount}
               pendingUxReturnCount={data.pendingUxReturnCount}
