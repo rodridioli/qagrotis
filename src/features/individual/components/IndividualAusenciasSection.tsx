@@ -37,12 +37,14 @@ import {
   deleteIndividualAusencias,
   approveIndividualAusencias,
   refuseIndividualAusencias,
-  createAusenciaSchema,
-  updateAusenciaSchema,
-  refuseAusenciaSchema,
   type IndividualAusenciasRow,
   type AusenciaTipo,
 } from "@/features/individual/actions/individual-ausencias"
+import {
+  createAusenciaSchema,
+  updateAusenciaSchema,
+  refuseAusenciaSchema,
+} from "@/features/individual/lib/individual-ausencias-schemas"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
