@@ -31,6 +31,8 @@ interface Props {
   canFilterByProfile: boolean
   canAccessEquipeLancamentos: boolean
   canAccessEquipePerformance: boolean
+  currentUserId: string
+  isMgr: boolean
   initialTab?: TabId
 }
 
@@ -136,6 +138,8 @@ export default function EquipeClient({
   canFilterByProfile,
   canAccessEquipeLancamentos,
   canAccessEquipePerformance,
+  currentUserId,
+  isMgr,
   initialTab = "chapters",
 }: Props) {
   function safeTab(tab: TabId): TabId {
@@ -374,7 +378,7 @@ const aniversariantesPorMes = useMemo(() => {
 
       {activeTab === "ferias" && <EquipeFeriasSection />}
 
-      {activeTab === "ausencias" && <EquipeAusenciasSection />}
+      {activeTab === "ausencias" && <EquipeAusenciasSection isMgr={isMgr} currentUserId={currentUserId} />}
 
       {activeTab === "metas" && (
         <div className="flex items-center justify-center py-16">
