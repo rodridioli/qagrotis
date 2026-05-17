@@ -311,8 +311,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     if (!suite) return
     setIsRegistering(true)
     try {
-      const { timestamp } = await registrarResultadoSuite(suite.id, cenario.id, resultado)
-      await snapshotEvidenciasParaHistorico(timestamp)
+      const item = await registrarResultadoSuite(suite.id, cenario.id, resultado)
+      await snapshotEvidenciasParaHistorico(item.timestamp ?? Date.now())
       toast.success("Teste registrado com sucesso.")
       router.push(`/suites/${suite.id}?tab=cenarios`)
     } catch (e: unknown) {
@@ -331,8 +331,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     }
     setIsRegistering(true)
     try {
-      const { timestamp } = await registrarResultadoSuite(suite.id, cenario.id, "Alerta", { alertaObs: obs })
-      await snapshotEvidenciasParaHistorico(timestamp)
+      const item = await registrarResultadoSuite(suite.id, cenario.id, "Alerta", { alertaObs: obs })
+      await snapshotEvidenciasParaHistorico(item.timestamp ?? Date.now())
       toast.success("Alerta registrado com sucesso.")
       setAlertModalOpen(false)
       setAlertaObs("")

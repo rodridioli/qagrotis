@@ -37,7 +37,7 @@ function fieldMd(label: string, value: string | undefined | null): string {
 }
 
 function buildContent(cenario: CenarioRecord, manualNames: string[], autoNames: string[]): string {
-  const exportDate = new Date().toLocaleDateString("pt-BR")
+  const exportDate = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
   const titulo = nomeParaTituloExportJira({
     nomeNaSuiteOuHistorico: cenario.scenarioName ?? "",
   })
@@ -186,9 +186,12 @@ export function JiraExportModal({ open, onClose, cenario, manualAttachments, aut
         ? ` ${allFiles.length} ficheiro(s) enviado(s) ao Jira.`
         : ""
 
+      const jiraUrl = (data as { url: string }).url
+      if (jiraUrl) window.open(jiraUrl, "_blank")
       toast.success("Exportado para o Jira com sucesso.", {
         description: `Issue ${issueKey} atualizada.${uploadMsg}`,
-        action: { label: "Abrir no Jira", onClick: () => window.open((data as { url: string }).url, "_blank") },
+        duration: 12000,
+        action: { label: "Abrir no Jira", onClick: () => window.open(jiraUrl, "_blank") },
       })
       handleClose()
     } catch (err) {

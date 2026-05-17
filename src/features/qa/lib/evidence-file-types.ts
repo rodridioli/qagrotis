@@ -3,15 +3,17 @@
  * Na exportação para o Jira os ficheiros são enviados como anexos.
  */
 export const EVIDENCE_FILE_ACCEPT =
-  "image/*,application/pdf,video/*,.pdf,.mp4,.webm,.mov,.mkv,.m4v,.avi,.mpeg,.mpg,.ogv"
+  "image/*,application/pdf,video/*,text/plain,.pdf,.mp4,.webm,.mov,.mkv,.m4v,.avi,.mpeg,.mpg,.ogv,.txt"
 
 export function isAllowedEvidenceFile(file: Pick<File, "name" | "type">): boolean {
   const t = (file.type || "").toLowerCase()
   if (t.startsWith("image/")) return true
   if (t === "application/pdf") return true
   if (t.startsWith("video/")) return true
+  if (t === "text/plain") return true
   const n = file.name.toLowerCase()
   if (n.endsWith(".pdf")) return true
+  if (n.endsWith(".txt")) return true
   return /\.(mp4|m4v|webm|mov|mkv|ogv|avi|mpeg|mpg)$/i.test(file.name)
 }
 

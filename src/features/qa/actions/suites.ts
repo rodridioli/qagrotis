@@ -27,21 +27,21 @@ export interface SuiteRecord {
     deps: number
     tipo: string
   }[]
-  historico?: {
-    id: string
-    cenario: string
-    module: string
-    tipo: string
-    deps: number
-    data: string
-    hora?: string
-    timestamp?: number
-    resultado: "Sucesso" | "Erro" | "Pendente" | "Alerta"
-    /** Texto da modal de alerta (só quando resultado === "Alerta"). */
-    alertaObs?: string
-    /** Email (ou identificador) de quem registrou a execução — usado no ranking do dashboard. */
-    executadoPor?: string
-  }[]
+  historico?: SuiteHistoricoItem[]
+}
+
+export interface SuiteHistoricoItem {
+  id: string
+  cenario: string
+  module: string
+  tipo: string
+  deps: number
+  data: string
+  hora?: string
+  timestamp?: number
+  resultado: "Sucesso" | "Erro" | "Pendente" | "Alerta"
+  alertaObs?: string
+  executadoPor?: string
 }
 
 const suiteSchema = z.object({
@@ -197,7 +197,7 @@ export async function registrarResultadoSuite(
   cenarioId: string,
   resultado: "Sucesso" | "Erro" | "Alerta",
   options?: { alertaObs?: string },
-): Promise<{ timestamp: number }> {
+): Promise<SuiteHistoricoItem> {
   const session = await requireSession()
 
   const alertaObs = (options?.alertaObs ?? "").trim()
@@ -217,8 +217,7 @@ export async function registrarResultadoSuite(
   const nameRaw = session.user?.name?.trim()
   const executadoPor =
     (emailRaw ? emailRaw.toLowerCase() : nameRaw) || undefined
-  type HistItem = NonNullable<SuiteRecord["historico"]>[number]
-  const historicoItem: HistItem = {
+  const historicoItem: SuiteHistoricoItem = {
     id:       cenarioId,
     cenario:  cenarioRef.name,
     module:   cenarioRef.module,
@@ -239,7 +238,7 @@ export async function registrarResultadoSuite(
   revalidatePath("/suites")
   revalidatePath(`/suites/${suiteId}`)
   revalidatePath("/dashboard")
-  return { timestamp: historicoItem.timestamp ?? now.getTime() }
+  return historicoItem
 }
 
 // ── Dashboard-specific: minimal record with full historico ──────────────────

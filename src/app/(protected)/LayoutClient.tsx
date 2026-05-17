@@ -5,8 +5,8 @@ import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   LayoutDashboard, FileText, Rocket,
-  Settings, LogOut, ChevronLeft,
-  ChevronRight, Menu, Moon, Sun, Sparkles, History, Users,
+  Settings, LogOut, PanelLeftClose,
+  PanelLeftOpen, Menu, Moon, Sun, Sparkles, History, Users,
   Target, Network, ClipboardCheck, MessageSquare, User,
 } from "lucide-react"
 import { buildRole, can, isDisabled, isVisible, type Role, type Capability, type AccessProfile } from "@/core/rbac/policy"
@@ -36,6 +36,7 @@ import { SistemaContext } from "@/core/modulo-context"
 import { AssistenteDrawer } from "@/components/shared/AssistenteDrawer"
 import type { IntegracaoSafeRecord } from "@/features/integracoes/actions/integracoes"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
+import { BackToTop } from "@/components/shared/BackToTop"
 
 const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"
@@ -546,8 +547,8 @@ const Topbar = React.memo(function Topbar({
           className="hidden size-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-neutral-grey-100 lg:flex"
         >
           {collapsed
-            ? <ChevronRight className="size-4" />
-            : <ChevronLeft className="size-4" />
+            ? <PanelLeftOpen className="size-4" />
+            : <PanelLeftClose className="size-4" />
           }
         </button>
         <h1 className="text-base font-semibold text-text-primary">{title}</h1>
@@ -829,6 +830,7 @@ export default function LayoutClient({
               </div>
             )}
             {(!needsSistema || hasActiveSistema || pathname.startsWith("/configuracoes/sistemas")) ? children : null}
+            <BackToTop />
           </main>
         </div>
       </div>
