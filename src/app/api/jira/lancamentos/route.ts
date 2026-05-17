@@ -219,10 +219,8 @@ export async function GET(req: NextRequest) {
       ? fetchIssueFieldsForKeys(base, credentials, keysToEnrich).catch(() => new Map<string, LancamentoIssueFieldsPatch>())
       : Promise.resolve(new Map<string, LancamentoIssueFieldsPatch>())
 
-  // Retorno de Testes always covers the full month of the selected period,
-  // not just the worklog window. "Semana" (May 11–16) should still count
-  // all Broken Tests created in May, just like the Jira monthly filter does.
-  const reporterCountFrom = `${to.slice(0, 7)}-01` // first day of `to`'s month
+  // Retorno de Testes uses the same date range as the rest of the period filter.
+  const reporterCountFrom = from
   // Prefer the name from our own DB over Jira's displayName — when Jira hides
   // emails by privacy, findJiraAccountIdByEmail may pick the wrong user, so
   // its displayName would also be wrong. Our DB name is the source of truth.
