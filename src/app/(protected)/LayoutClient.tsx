@@ -45,7 +45,7 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false, capability: "menu.painel" },
   { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false, capability: "menu.suites" },
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
-  { href: "/pdi",           icon: Target,          label: "PDI",              alwaysEnabled: true,  capability: "menu.pdi" },
+  { href: "/pdi",           icon: Target,          label: "PDI",              alwaysEnabled: false, capability: "menu.pdi" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
   { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
   { href: "/individual",    icon: User,            label: "Individual",             alwaysEnabled: true,  capability: "menu.individual" },
