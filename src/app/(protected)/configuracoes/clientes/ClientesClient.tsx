@@ -412,14 +412,14 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                         </td>
                         <td className="bg-surface-card px-4 py-3 font-medium text-text-primary truncate" title={c.nomeFantasia}>{c.nomeFantasia}</td>
                         <td className="bg-surface-card px-4 py-3 text-text-secondary truncate" title={c.razaoSocial ?? undefined}>
-                          {c.razaoSocial ?? <span className="italic text-text-secondary/60"></span>}
+                          {c.razaoSocial ?? <span className="text-text-secondary/40">-</span>}
                         </td>
                         <td className="bg-surface-card px-4 py-3 text-text-secondary truncate" title={c.cpfCnpj ?? undefined}>
-                          {c.cpfCnpj ?? <span className="italic text-text-secondary/60"></span>}
+                          {c.cpfCnpj ?? <span className="text-text-secondary/40">-</span>}
                         </td>
                         <td className="bg-surface-card px-4 py-3">
                           {sistemas.length === 0 ? (
-                            <span className="italic text-text-secondary/60 text-sm"></span>
+                            <span className="text-text-secondary/40 text-sm">-</span>
                           ) : (
                             <div className="flex flex-wrap gap-1">
                               {sistemas.map((s) => (
