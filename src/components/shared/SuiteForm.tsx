@@ -728,6 +728,42 @@ export function SuiteForm({
     }
   }
 
+  async function handleRemoverEntrada(originalIdx: number) {
+    if (!suite?.id) return
+    const h = historico[originalIdx]
+    const previousHistorico = historico
+
+    if (h?.timestamp !== undefined) {
+      for (const tipo of ["manual", "auto"] as const) {
+        const key = evHistoricoStorageKey(suite.id, h.id, h.timestamp, tipo)
+        const raw = sessionStorage.getItem(key)
+        try {
+          const list = (raw ? JSON.parse(raw) : []) as EvFile[]
+          for (const ev of list) void deleteEvidenceFile(ev)
+        } catch { /* ignore */ }
+        sessionStorage.removeItem(key)
+      }
+    }
+
+    setHistorico((prev) => prev.filter((_, i) => i !== originalIdx))
+    setSelectedHistorico((prev) => {
+      const next = new Set<number>()
+      for (const idx of prev) {
+        if (idx < originalIdx) next.add(idx)
+        else if (idx > originalIdx) next.add(idx - 1)
+      }
+      return next
+    })
+
+    try {
+      await removerHistoricoSuite(suite.id, [originalIdx])
+      toast.success("Registro removido com sucesso.")
+    } catch {
+      setHistorico(previousHistorico)
+      toast.error("Erro ao remover registro do histórico.")
+    }
+  }
+
   const TABS = [
     { id: "cadastro" as const,  label: "Cadastro",   icon: FileText,    badge: null, disabled: false },
     { id: "cenarios" as const,  label: "Testes",     icon: FlaskConical, badge: cenarios.length, disabled: false },
@@ -1135,6 +1171,7 @@ export function SuiteForm({
                   <col className="w-28" />
                   <col className="w-20" />
                   <col className="w-28" />
+                  <col className="w-12" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -1158,6 +1195,7 @@ export function SuiteForm({
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Execução</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Hora</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Resultado</th>
+                    <th className="px-2 py-3" />
                   </tr>
                 </thead>
                 <tbody>
@@ -1234,6 +1272,18 @@ export function SuiteForm({
                           : (h.hora ?? "—")}
                       </td>
                       <td className="px-4 py-3"><ResultadoBadge resultado={h.resultado} /></td>
+                      <td className="px-2 py-3">
+                        {!encerrada && (
+                          <button
+                            type="button"
+                            aria-label="Remover registro"
+                            onClick={() => { void handleRemoverEntrada(h._originalIdx) }}
+                            className="flex size-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   )})}
                 </tbody>
