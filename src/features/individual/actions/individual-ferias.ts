@@ -83,13 +83,13 @@ async function assertEvaluatedUserInScope(evaluatedUserId: string): Promise<void
 export async function listIndividualFerias(
   evaluatedUserId: string,
 ): Promise<IndividualFeriasRow[]> {
-  await requireViewFeriasAccess(evaluatedUserId)
-  const r = userIdSchema.safeParse(evaluatedUserId)
-  if (!r.success) throw new Error("Usuário inválido.")
-  await ensureIndividualFeriasTable()
-  assertFeriasModelReady()
-
   try {
+    await requireViewFeriasAccess(evaluatedUserId)
+    const r = userIdSchema.safeParse(evaluatedUserId)
+    if (!r.success) return []
+    await ensureIndividualFeriasTable()
+    assertFeriasModelReady()
+
     const [rows, allUsers] = await Promise.all([
       prisma.individualFerias.findMany({
         where: { evaluatedUserId },
@@ -111,17 +111,16 @@ export async function listIndividualFerias(
     }))
   } catch (e) {
     console.error("[listIndividualFerias]", e)
-    throw new Error(evalPrismaMessage(e, "Não foi possível carregar as férias."))
+    return []
   }
 }
 
 export async function listAllFerias(): Promise<IndividualFeriasRow[]> {
-  const session = await requireSession()
-  if (!session) throw new Error("Não autorizado.")
-  await ensureIndividualFeriasTable()
-  assertFeriasModelReady()
-
   try {
+    await requireSession()
+    await ensureIndividualFeriasTable()
+    assertFeriasModelReady()
+
     const [rows, allUsers] = await Promise.all([
       prisma.individualFerias.findMany({
         orderBy: [{ inicio: "desc" }],
@@ -143,7 +142,7 @@ export async function listAllFerias(): Promise<IndividualFeriasRow[]> {
     })
   } catch (e) {
     console.error("[listAllFerias]", e)
-    throw new Error(evalPrismaMessage(e, "Não foi possível carregar as férias."))
+    return []
   }
 }
 

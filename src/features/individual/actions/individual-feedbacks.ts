@@ -163,13 +163,13 @@ function rowToDetail(row: {
 export async function listIndividualFeedbacks(
   evaluatedUserId: string,
 ): Promise<IndividualFeedbackListRow[]> {
-  await requireMgrFeedbackAccess()
-  await assertEvaluatedUserInScope(evaluatedUserId)
-  await ensureIndividualFeedbackTable()
-  await ensureIndividualFeedbackPeriodoColumn()
-  assertFeedbackModelReady()
-
   try {
+    await requireMgrFeedbackAccess()
+    await assertEvaluatedUserInScope(evaluatedUserId)
+    await ensureIndividualFeedbackTable()
+    await ensureIndividualFeedbackPeriodoColumn()
+    assertFeedbackModelReady()
+
     const rows = (await prisma.individualFeedback.findMany({
       where: { evaluatedUserId },
       orderBy: [{ codigo: "desc" }],
@@ -186,21 +186,21 @@ export async function listIndividualFeedbacks(
     }))
   } catch (e) {
     console.error("[listIndividualFeedbacks]", e)
-    throw new Error(evalPrismaMessage(e, "Não foi possível carregar os feedbacks."))
+    return []
   }
 }
 
 export async function getIndividualFeedback(
   id: string,
 ): Promise<IndividualFeedbackDetail | null> {
-  await requireMgrFeedbackAccess()
-  const r = idSchema.safeParse(id)
-  if (!r.success) return null
-  await ensureIndividualFeedbackTable()
-  await ensureIndividualFeedbackPeriodoColumn()
-  assertFeedbackModelReady()
-
   try {
+    await requireMgrFeedbackAccess()
+    const r = idSchema.safeParse(id)
+    if (!r.success) return null
+    await ensureIndividualFeedbackTable()
+    await ensureIndividualFeedbackPeriodoColumn()
+    assertFeedbackModelReady()
+
     const row = (await prisma.individualFeedback.findUnique({ where: { id } })) as {
       id: string
       evaluatedUserId: string
@@ -388,11 +388,11 @@ export async function deleteIndividualFeedback(id: string): Promise<{ error?: st
  * Não requer `individual.viewOthers` — restrito ao próprio userId da sessão.
  */
 export async function listMyCompletedFeedbacks(): Promise<IndividualFeedbackListRow[]> {
-  const session = await requireSession()
-  await ensureIndividualFeedbackTable()
-  await ensureIndividualFeedbackPeriodoColumn()
-
   try {
+    const session = await requireSession()
+    await ensureIndividualFeedbackTable()
+    await ensureIndividualFeedbackPeriodoColumn()
+
     const rows = (await prisma.individualFeedback.findMany({
       where: { evaluatedUserId: session.user.id, status: "CONCLUIDA" },
       orderBy: [{ codigo: "desc" }],
@@ -409,7 +409,7 @@ export async function listMyCompletedFeedbacks(): Promise<IndividualFeedbackList
     }))
   } catch (e) {
     console.error("[listMyCompletedFeedbacks]", e)
-    throw new Error(evalPrismaMessage(e, "Não foi possível carregar os feedbacks."))
+    return []
   }
 }
 
@@ -418,13 +418,13 @@ export async function listMyCompletedFeedbacks(): Promise<IndividualFeedbackList
  * Retorna null se não encontrar, não for CONCLUIDA, ou não pertencer ao usuário.
  */
 export async function getMyCompletedFeedback(id: string): Promise<IndividualFeedbackDetail | null> {
-  const session = await requireSession()
-  const r = idSchema.safeParse(id)
-  if (!r.success) return null
-  await ensureIndividualFeedbackTable()
-  await ensureIndividualFeedbackPeriodoColumn()
-
   try {
+    const session = await requireSession()
+    const r = idSchema.safeParse(id)
+    if (!r.success) return null
+    await ensureIndividualFeedbackTable()
+    await ensureIndividualFeedbackPeriodoColumn()
+
     const row = (await prisma.individualFeedback.findUnique({
       where: { id: r.data },
     })) as {

@@ -96,19 +96,23 @@ async function userDisplayMetaById(): Promise<
 
 /** Autores ativos para multi-select (mesma base que /configuracoes/usuarios). */
 export async function listEquipeChapterAuthorOptions(): Promise<EquipeChapterAuthorOption[]> {
-  await requireSession()
-  const users = await getQaUsers()
-  return users
-    .filter((u) => u.active)
-    .map((u) => ({ id: u.id, name: (u.name || u.email || u.id).trim() || u.id }))
-    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+  try {
+    await requireSession()
+    const users = await getQaUsers()
+    return users
+      .filter((u) => u.active)
+      .map((u) => ({ id: u.id, name: (u.name || u.email || u.id).trim() || u.id }))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+  } catch (e) {
+    console.error("[listEquipeChapterAuthorOptions]", e)
+    return []
+  }
 }
 
 export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
-  await requireSession()
-  await ensureEquipeChapterTables()
-
   try {
+    await requireSession()
+    await ensureEquipeChapterTables()
     const chapters = (await prisma.equipeChapter.findMany({
       include: { authors: true },
       orderBy: [{ data: "asc" }, { createdAt: "asc" }],
@@ -184,8 +188,6 @@ export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
 export async function getEquipeChapterAuthorRankingPage(
   page: number = 1,
 ): Promise<EquipeChapterRankingPage> {
-  await requireSession()
-  await ensureEquipeChapterTables()
   const pageSize = EQUIPE_CHAPTER_RANKING_PAGE_SIZE
   const empty = (): EquipeChapterRankingPage => ({
     rows: [],
@@ -196,6 +198,8 @@ export async function getEquipeChapterAuthorRankingPage(
   })
 
   try {
+    await requireSession()
+    await ensureEquipeChapterTables()
     const links = await prisma.equipeChapterAuthor.findMany({ select: { userId: true } })
     const tally = new Map<string, number>()
     for (const { userId } of links) {
@@ -391,12 +395,12 @@ const ratingCreateSchema = z.object({
 })
 
 export async function listChapterRatings(chapterId: string): Promise<EquipeChapterRatingEntry[]> {
-  const session = await requireSession()
-  const myId = session.user?.id ?? ""
-  await ensureEquipeChapterTables()
-  const r = idSchema.safeParse(chapterId)
-  if (!r.success) return []
   try {
+    const session = await requireSession()
+    const myId = session.user?.id ?? ""
+    await ensureEquipeChapterTables()
+    const r = idSchema.safeParse(chapterId)
+    if (!r.success) return []
 
     const rows = await prisma.equipeChapterRating.findMany({
       where: { chapterId },
