@@ -1054,7 +1054,7 @@ export function SuiteForm({
 
                           if (cenarioAtivo && !encerrada) {
                             return (
-                              <div className="flex items-center justify-end gap-1">
+                              <div className="flex items-center justify-end gap-3">
                                 <TooltipProvider delay={200}>
                                 <Tooltip>
                                   <TooltipTrigger

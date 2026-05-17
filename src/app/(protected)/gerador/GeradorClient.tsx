@@ -377,7 +377,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
         () => {
           counter++
           const num = String(counter).padStart(3, "0")
-          return `\n\n**CT - ${num}:**`
+          return `\n\n**CT-${num}:**`
         }
       )
       // Add bold + newlines before other field labels
@@ -549,7 +549,7 @@ export function GeradorClient({ initialCenarios, allModulos, integracoes }: Prop
                     </Button>
                   } />
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                    <DropdownMenuItem onClick={() => { setOutput(formatOutputAsMarkdown(output)); setIsEditing(true) }}>
                       <Pencil className="size-4" />
                       Editar
                     </DropdownMenuItem>
