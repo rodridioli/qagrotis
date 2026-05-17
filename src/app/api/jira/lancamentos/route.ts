@@ -281,6 +281,7 @@ export async function GET(req: NextRequest) {
   }
 
   const researchCount = countByTypeField("research")
+  const usabilityCount = countByTypeField("usability")
   const docReviewCount = countByTypeField("documentation review")
   const newDocCount = countByTypeField("new documentation")
 
@@ -316,6 +317,7 @@ export async function GET(req: NextRequest) {
       clockworkMergedCount: 0,
       reporterBrokenTestIssueCount: 0,
       researchCount: 0,
+      usabilityCount: 0,
       docReviewCount: 0,
       newDocCount: 0,
       pendingUxReturnCount: 0,
@@ -338,6 +340,7 @@ export async function GET(req: NextRequest) {
     clockworkMergedCount: clockworkAdded,
     reporterBrokenTestIssueCount,
     researchCount,
+    usabilityCount,
     docReviewCount,
     newDocCount,
     pendingUxReturnCount,
