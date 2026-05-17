@@ -4,11 +4,17 @@ import * as React from "react"
 import {
   AlertTriangle,
   BarChart3,
+  Briefcase,
   Bug,
   CheckCircle2,
+  FileCheck,
+  FilePlus,
   Flame,
   Hash,
+  LayoutDashboard,
   Layers,
+  RotateCcw,
+  Search,
 } from "lucide-react"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -37,6 +43,8 @@ import {
 
 export interface IndividualLancamentosSectionProps {
   evaluatedUserId: string
+  /** Perfil de acesso do membro avaliado — controla quais cards são exibidos no DashboardPanel. */
+  evaluatedUserAccessProfile?: "QA" | "UX" | "TW" | "MGR" | null
   /** Controlado externamente (ex.: IndividualSecaoDevelopmentPanel). Quando fornecido, omite o Select interno. */
   preset?: LancamentosPeriodPreset
   onPresetChange?: (p: LancamentosPeriodPreset) => void
@@ -78,6 +86,10 @@ type ApiOk = {
   brokenTestSubtasksTotalInScope?: number
   brokenTestsCreatedByUser?: number
   reporterBrokenTestIssueCount?: number
+  researchCount?: number
+  docReviewCount?: number
+  newDocCount?: number
+  pendingUxReturnCount?: number
 }
 
 function formatDurationHMin(totalSeconds: number): string {
@@ -302,33 +314,60 @@ function DashboardPanel({
   brokenTestsCreatedByUser,
   brokenTestsOpenedCount,
   reporterBrokenTestIssueCount,
+  researchCount,
+  docReviewCount,
+  newDocCount,
+  pendingUxReturnCount,
+  evaluatedUserAccessProfile,
 }: {
   entries: LancamentoRow[]
   brokenTestSubtasksTotalInScope?: number
   brokenTestsCreatedByUser?: number
   brokenTestsOpenedCount?: number
   reporterBrokenTestIssueCount?: number
+  researchCount?: number
+  docReviewCount?: number
+  newDocCount?: number
+  pendingUxReturnCount?: number
+  evaluatedUserAccessProfile?: "QA" | "UX" | "TW" | "MGR" | null
 }) {
   const stats = React.useMemo(() => computeStats(entries), [entries])
 
-  // All API counts return 0 (not null/undefined) when nothing is found, so
-  // use || to fall through zeros. Prefer the total-in-scope subtask count
-  // (broken tests under parent issues) as the most reliable metric.
-  const retornoValor =
-    brokenTestSubtasksTotalInScope ||
-    reporterBrokenTestIssueCount ||
-    brokenTestsCreatedByUser ||
-    brokenTestsOpenedCount ||
-    stats.brokenTestCountFromWorklogs
+  const profile = evaluatedUserAccessProfile ?? null
+
+  // Cards 1 e 2 variam por perfil; cards 3 e 4 são invariantes.
+  let card1: React.ReactNode
+  let card2: React.ReactNode
+
+  if (profile === "UX") {
+    card1 = <StatCard icon={Search}    label="Pesquisas"         value={researchCount ?? 0}        iconVariant="brand" />
+    card2 = <StatCard icon={RotateCcw} label="Retornos do PO"   value={pendingUxReturnCount ?? 0} iconVariant="warning" />
+  } else if (profile === "TW") {
+    card1 = <StatCard icon={FileCheck} label="Documentos revisados" value={docReviewCount ?? 0} iconVariant="info" />
+    card2 = <StatCard icon={FilePlus}  label="Novos documentos"     value={newDocCount ?? 0}    iconVariant="brand" />
+  } else if (profile === "MGR") {
+    card1 = <StatCard icon={Briefcase}       label="Operacional" value="Em breve" iconVariant="info" />
+    card2 = <StatCard icon={LayoutDashboard} label="Gestão"      value="Em breve" iconVariant="brand" />
+  } else {
+    // QA e fallback: comportamento original
+    const retornoValor =
+      brokenTestSubtasksTotalInScope ||
+      reporterBrokenTestIssueCount ||
+      brokenTestsCreatedByUser ||
+      brokenTestsOpenedCount ||
+      stats.brokenTestCountFromWorklogs
+    card1 = <StatCard icon={Bug}    label="Retorno de Testes" value={retornoValor}           iconVariant="warning" />
+    card2 = <StatCard icon={Layers} label="Testes Realizados" value={stats.qtdCenariosTotal} iconVariant="brand" />
+  }
 
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {/* Coluna esquerda: 2×2 stat cards */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon={Bug}    label="Retorno de Testes"   value={retornoValor}           iconVariant="warning" />
-        <StatCard icon={Layers} label="Testes Realizados"   value={stats.qtdCenariosTotal} iconVariant="brand" />
-        <StatCard icon={Hash}   label="Total de Jiras"      value={stats.totalIssues}      iconVariant="info" />
-        <StatCard icon={Flame}  label="Jiras críticos"      value={stats.criticalCount}    iconVariant="destructive" />
+        {card1}
+        {card2}
+        <StatCard icon={Hash}  label="Total de Jiras"  value={stats.totalIssues}   iconVariant="info" />
+        <StatCard icon={Flame} label="Jiras críticos"  value={stats.criticalCount} iconVariant="destructive" />
       </div>
       {/* Coluna direita: barra de horas */}
       <ProjectStackedBar projectHours={stats.projectHours} />
@@ -340,6 +379,7 @@ function DashboardPanel({
 
 export function IndividualLancamentosSection({
   evaluatedUserId,
+  evaluatedUserAccessProfile,
   preset: presetProp,
   onPresetChange,
 }: IndividualLancamentosSectionProps) {
@@ -525,6 +565,11 @@ export function IndividualLancamentosSection({
               brokenTestsCreatedByUser={data.brokenTestsCreatedByUser}
               brokenTestsOpenedCount={data.brokenTestsOpenedCount}
               reporterBrokenTestIssueCount={data.reporterBrokenTestIssueCount}
+              researchCount={data.researchCount}
+              docReviewCount={data.docReviewCount}
+              newDocCount={data.newDocCount}
+              pendingUxReturnCount={data.pendingUxReturnCount}
+              evaluatedUserAccessProfile={evaluatedUserAccessProfile}
             />
           )}
 

@@ -11,6 +11,7 @@ import {
   augmentFieldMapWithGetIssueFallback,
   brokenTestSubtasksCountsInParents,
   countReporterIssuesByTypes,
+  countStatusTransitionsToValue,
   fetchIssueFieldsForKeys,
   fetchWorklogsForAuthorInRange,
   findJiraAccountIdByEmail,
@@ -68,6 +69,7 @@ function mergeEntryWithPatch(
           ? e.qtdCenariosQA
           : null,
     projectName: patch.projectName?.trim() ? patch.projectName : e.projectName?.trim() ? e.projectName : null,
+    typeField: patch.typeField?.trim() ? patch.typeField : e.typeField?.trim() ? e.typeField : null,
   }
 }
 
@@ -105,6 +107,7 @@ export async function GET(req: NextRequest) {
   }
 
   let targetUserId = session.user.id
+  let targetAccessProfile: string | null = session.user.accessProfile ?? null
   const requested = url.searchParams.get("userId")?.trim()
   const canViewOthers = can(role, "individual.viewOthers")
   const canViewTeamLancamentos = can(role, "equipe.lancamentos")
@@ -127,6 +130,7 @@ export async function GET(req: NextRequest) {
       }
     }
     targetUserId = requested
+    targetAccessProfile = target.accessProfile ?? null
   }
 
   const [targetEmail, targetName] = await Promise.all([
@@ -219,10 +223,7 @@ export async function GET(req: NextRequest) {
       ? fetchIssueFieldsForKeys(base, credentials, keysToEnrich).catch(() => new Map<string, LancamentoIssueFieldsPatch>())
       : Promise.resolve(new Map<string, LancamentoIssueFieldsPatch>())
 
-  // Retorno de Testes always covers the full month of the selected period,
-  // not just the worklog window. "Semana" (May 11–16) should still count
-  // all Broken Tests created in May, just like the Jira monthly filter does.
-  const reporterCountFrom = `${to.slice(0, 7)}-01` // first day of `to`'s month
+  const reporterCountFrom = from
   // Prefer the name from our own DB over Jira's displayName — when Jira hides
   // emails by privacy, findJiraAccountIdByEmail may pick the wrong user, so
   // its displayName would also be wrong. Our DB name is the source of truth.
@@ -240,10 +241,17 @@ export async function GET(req: NextRequest) {
         ).catch(() => emptyDiagnostics)
       : Promise.resolve(emptyDiagnostics)
 
-  const [fieldMap, brokenCounts, reporterDiagnostics] = await Promise.all([
+  const isTargetUX = targetAccessProfile === "UX"
+  const pendingUxReturnPromise: Promise<number> =
+    isTargetUX && keysToEnrich.length > 0
+      ? countStatusTransitionsToValue(base, credentials, keysToEnrich, "Pending UX").catch(() => 0)
+      : Promise.resolve(0)
+
+  const [fieldMap, brokenCounts, reporterDiagnostics, pendingUxReturnCount] = await Promise.all([
     enrichPromise,
     brokenCountsPromise,
     reporterCountPromise,
+    pendingUxReturnPromise,
   ])
   const reporterBrokenTestIssueCount = reporterDiagnostics.count
 
@@ -259,6 +267,22 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  // Counts derivados do campo custom "Type" — calculados das entries já enriquecidas.
+  function countByTypeField(value: string): number {
+    const lower = value.toLowerCase()
+    const seen = new Set<string>()
+    for (const e of entries) {
+      if ((e.typeField ?? "").trim().toLowerCase() === lower) {
+        seen.add(e.issueKey.toUpperCase())
+      }
+    }
+    return seen.size
+  }
+
+  const researchCount = countByTypeField("research")
+  const docReviewCount = countByTypeField("documentation review")
+  const newDocCount = countByTypeField("new documentation")
+
   const totalSeconds = entries.reduce((acc, e) => acc + e.timeSpentSeconds, 0)
   const longSessionCount = entries.filter((e) => e.isLongSession).length
   const noJiraUser = !jiraUser
@@ -266,6 +290,7 @@ export async function GET(req: NextRequest) {
   const _debug = {
     targetEmail,
     targetName,
+    targetAccessProfile,
     jiraUserFound: !!jiraUser,
     jiraAccountIdFromEmail: jiraUser?.accountId ?? null,
     jiraDisplayNameFromEmail: jiraUser?.displayName ?? null,
@@ -289,6 +314,10 @@ export async function GET(req: NextRequest) {
       includesClockwork: false,
       clockworkMergedCount: 0,
       reporterBrokenTestIssueCount: 0,
+      researchCount: 0,
+      docReviewCount: 0,
+      newDocCount: 0,
+      pendingUxReturnCount: 0,
       message: "Nenhum registro encontrado",
       _debug,
     })
@@ -307,6 +336,10 @@ export async function GET(req: NextRequest) {
     includesClockwork: clockworkAdded > 0,
     clockworkMergedCount: clockworkAdded,
     reporterBrokenTestIssueCount,
+    researchCount,
+    docReviewCount,
+    newDocCount,
+    pendingUxReturnCount,
     _debug,
     ...(brokenCounts
       ? {
