@@ -291,7 +291,6 @@ CREATE TABLE IF NOT EXISTS "IndividualFeedback" (
     g.__qagrotisEnsuredIndividualFeedback = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualFeedback", e)
-    throw e
   }
 }
 
@@ -342,7 +341,6 @@ CREATE TABLE IF NOT EXISTS "IndividualProgressao" (
     g.__qagrotisEnsuredIndividualProgressao = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualProgressao", e)
-    throw e
   }
 }
 
@@ -525,7 +523,6 @@ CREATE TABLE IF NOT EXISTS "IndividualFerias" (
     g.__qagrotisEnsuredIndividualFerias = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualFerias", e)
-    throw e
   }
 }
 
