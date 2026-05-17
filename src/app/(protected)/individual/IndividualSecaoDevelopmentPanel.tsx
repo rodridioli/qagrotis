@@ -224,7 +224,7 @@ export function IndividualSecaoDevelopmentPanel({
           evaluatedUserId={effectiveUserId}
           preset={lancamentosPreset}
           onPresetChange={handlePresetChange}
-          accessProfile={users.find((u) => u.id === selectedUserId)?.accessProfile}
+          evaluatedUserAccessProfile={users.find((u) => u.id === selectedUserId)?.accessProfile}
         />
       ) : (
         <div className="flex w-full flex-1 flex-col items-center justify-center py-16">
