@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { nextId } from "@/core/db-utils"
-import { requireAdmin } from "@/core/session"
+import { requireSession } from "@/core/session"
 import { prisma } from "@/core/prisma"
 import { ensureClienteTable } from "@/core/prisma-schema-ensure"
 
@@ -63,7 +63,7 @@ export async function criarCliente(data: {
   razaoSocial: string | null
   cpfCnpj: string | null
 }): Promise<ClienteRecord> {
-  await requireAdmin()
+  await requireSession()
   await ensureClienteTable()
   const parsed = clienteInputSchema.parse({
     nomeFantasia: data.nomeFantasia.trim(),
@@ -93,7 +93,7 @@ export async function atualizarCliente(
   id: string,
   data: { nomeFantasia: string; razaoSocial: string | null; cpfCnpj: string | null }
 ): Promise<void> {
-  await requireAdmin()
+  await requireSession()
   idSchema.parse(id)
   const parsed = clienteInputSchema.parse({
     nomeFantasia: data.nomeFantasia.trim(),
@@ -124,7 +124,7 @@ export async function atualizarCliente(
 }
 
 export async function ativarCliente(id: string): Promise<void> {
-  await requireAdmin()
+  await requireSession()
   idSchema.parse(id)
   await prisma.cliente.update({ where: { id }, data: { active: true } })
   revalidatePath("/configuracoes/clientes")
@@ -133,7 +133,7 @@ export async function ativarCliente(id: string): Promise<void> {
 }
 
 export async function inativarClientes(ids: string[]): Promise<void> {
-  await requireAdmin()
+  await requireSession()
   if (ids.length === 0) return
   idsArraySchema.parse(ids)
 

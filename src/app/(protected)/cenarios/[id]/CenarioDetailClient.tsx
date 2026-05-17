@@ -177,7 +177,8 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
     cenario.tipo === "Manual" || cenario.tipo === "Man./Auto."
   const showAutomacao =
     cenario.tipo === "Automatizado" || cenario.tipo === "Man./Auto."
-  const viewOnly = cenario.active === false
+  const suiteEncerrada = suite?.encerrada === true
+  const viewOnly = cenario.active === false || suiteEncerrada
   const allowEvidencias = !viewOnly
 
   // Carrega evidências salvas na sessão ao abrir o cenário (só quando edição permitida)
@@ -408,7 +409,7 @@ export default function CenarioDetailClient({ cenario, suite, allCenarios = [] }
         <div className="flex flex-wrap items-center gap-2">
           {viewOnly && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-grey-300 bg-neutral-grey-100 px-3 py-1 text-xs font-medium text-text-secondary">
-              Somente visualização — cenário inativo
+              {suiteEncerrada ? "Somente visualização — suíte encerrada" : "Somente visualização — cenário inativo"}
             </span>
           )}
           {suite && !viewOnly && (

@@ -107,7 +107,12 @@ interface FieldErrors {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function EquipeAusenciasSection() {
+interface EquipeAusenciasSectionProps {
+  isMgr: boolean
+  currentUserId: string
+}
+
+export function EquipeAusenciasSection({ isMgr, currentUserId }: EquipeAusenciasSectionProps) {
   const [rows, setRows] = React.useState<IndividualAusenciasRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -137,10 +142,10 @@ export function EquipeAusenciasSection() {
   React.useEffect(() => { void refetch() }, [refetch])
 
   async function openModal() {
-    setForm(EMPTY_FORM)
+    setForm({ ...EMPTY_FORM, evaluatedUserId: isMgr ? "" : currentUserId })
     setFieldErrors({})
     setModalOpen(true)
-    if (users.length === 0) {
+    if (isMgr && users.length === 0) {
       setLoadingUsers(true)
       try {
         setUsers(await getActiveQaUsers())
@@ -152,7 +157,7 @@ export function EquipeAusenciasSection() {
 
   async function handleSave() {
     const errs: FieldErrors = {}
-    if (!form.evaluatedUserId) errs.evaluatedUserId = true
+    if (isMgr && !form.evaluatedUserId) errs.evaluatedUserId = true
     if (!form.tipo) errs.tipo = true
     if (!form.dataIso) errs.dataIso = true
     if (!form.justificativa.trim()) errs.justificativa = true
@@ -319,43 +324,45 @@ export function EquipeAusenciasSection() {
           </DialogHeader>
 
           <div className="flex flex-col gap-4 py-2">
-            {/* Usuário */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary" htmlFor="eq-aus-user">
-                Membro da equipe <span className="text-destructive" aria-hidden>*</span>
-              </label>
-              {loadingUsers ? (
-                <div className="flex h-9 items-center gap-2 text-sm text-text-secondary">
-                  <Loader2 className="size-4 animate-spin" />
-                  Carregando usuários…
-                </div>
-              ) : (
-                <Select
-                  value={form.evaluatedUserId}
-                  onValueChange={(v) => {
-                    setForm((f) => ({ ...f, evaluatedUserId: v ?? "" }))
-                    setFieldErrors((p) => ({ ...p, evaluatedUserId: false }))
-                  }}
-                  aria-label="Membro da equipe"
-                >
-                  <SelectTrigger
-                    id="eq-aus-user"
-                    className={fieldErrors.evaluatedUserId ? "border-destructive" : ""}
+            {/* Usuário — apenas Administrador:MGR pode selecionar outro membro */}
+            {isMgr && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary" htmlFor="eq-aus-user">
+                  Membro da equipe <span className="text-destructive" aria-hidden>*</span>
+                </label>
+                {loadingUsers ? (
+                  <div className="flex h-9 items-center gap-2 text-sm text-text-secondary">
+                    <Loader2 className="size-4 animate-spin" />
+                    Carregando usuários…
+                  </div>
+                ) : (
+                  <Select
+                    value={form.evaluatedUserId}
+                    onValueChange={(v) => {
+                      setForm((f) => ({ ...f, evaluatedUserId: v ?? "" }))
+                      setFieldErrors((p) => ({ ...p, evaluatedUserId: false }))
+                    }}
+                    aria-label="Membro da equipe"
                   >
-                    <SelectValue>
-                      {users.find((u) => u.id === form.evaluatedUserId)?.name ?? "Selecione o membro"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectPopup>
-                    {users.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.name}
-                      </SelectItem>
-                    ))}
-                  </SelectPopup>
-                </Select>
-              )}
-            </div>
+                    <SelectTrigger
+                      id="eq-aus-user"
+                      className={fieldErrors.evaluatedUserId ? "border-destructive" : ""}
+                    >
+                      <SelectValue>
+                        {users.find((u) => u.id === form.evaluatedUserId)?.name ?? "Selecione o membro"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectPopup>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name}
+                        </SelectItem>
+                      ))}
+                    </SelectPopup>
+                  </Select>
+                )}
+              </div>
+            )}
 
             {/* Tipo */}
             <div className="space-y-1.5">

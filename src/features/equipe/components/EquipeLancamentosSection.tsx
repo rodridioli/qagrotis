@@ -156,6 +156,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
           evaluatedUserId={selectedUserId}
           preset={preset}
           onPresetChange={setPreset}
+          accessProfile={canFilterByProfile ? profileFilter : userAccessProfile}
         />
       ) : null}
     </div>
