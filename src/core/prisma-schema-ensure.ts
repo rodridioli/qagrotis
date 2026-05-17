@@ -413,8 +413,13 @@ EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 `)
-    // If the type already existed without ABSENCE_REQUEST, add it now.
-    await prisma.$executeRawUnsafe(`ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'ABSENCE_REQUEST'`)
+    // ALTER TYPE ADD VALUE cannot run inside a transaction block on some drivers.
+    // Isolate it so a failure here does not abort the table-creation statements below.
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'ABSENCE_REQUEST'`)
+    } catch (alterErr) {
+      console.error("[prisma-schema-ensure] ALTER TYPE NotificationType (non-fatal)", alterErr)
+    }
     await prisma.$executeRawUnsafe(`
 CREATE TABLE IF NOT EXISTS "Notification" (
     "id" TEXT NOT NULL,
