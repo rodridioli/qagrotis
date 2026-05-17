@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, Loader2, X } from "lucide-react"
+import { Check, Loader2, Plus, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -219,7 +219,8 @@ export function EquipeAusenciasSection() {
     <div className="flex w-full flex-col gap-4">
       <div className="flex justify-end">
         <Button type="button" className="gap-2" onClick={() => void openModal()}>
-          + Adicionar ausência
+          <Plus className="size-4" aria-hidden />
+          Adicionar Ausência
         </Button>
       </div>
 

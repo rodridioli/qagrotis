@@ -124,6 +124,16 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
             }).map(({ id, label, icon: Icon }) => {
               const href = `/equipe?tab=${id}`
               const active = parentActive && activeTabId === id
+              if (id === "metas") {
+                return (
+                  <li key={id}>
+                    <span className="flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium opacity-40">
+                      <Icon className="size-4 shrink-0 text-text-secondary" aria-hidden />
+                      <span className="truncate text-text-secondary">{label}</span>
+                    </span>
+                  </li>
+                )
+              }
               return (
                 <li key={id}>
                   <button

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, Loader2, MoreVertical, Trash2, X } from "lucide-react"
+import { Check, Loader2, MoreVertical, Plus, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -352,7 +352,8 @@ export const IndividualAusenciasSection = React.forwardRef<
             setModalOpen(true)
           }}
         >
-          + Informar ausência
+          <Plus className="size-4" aria-hidden />
+          Adicionar Ausência
         </Button>
       </div>
 

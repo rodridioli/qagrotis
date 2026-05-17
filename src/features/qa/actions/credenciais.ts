@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { nextId, encryptField, decryptField } from "@/core/db-utils"
-import { requireSession } from "@/core/session"
+import { requireAdmin, requireSession } from "@/core/session"
 import { prisma } from "@/core/prisma"
 
 export interface CredencialRecord {
@@ -77,7 +77,7 @@ export async function criarCredencial(data: {
   usuario: string
   senha: string
 }): Promise<CredencialRecord> {
-  await requireSession()
+  await requireAdmin()
   return _inserirCredencial(data)
 }
 
@@ -85,7 +85,7 @@ export async function atualizarCredencial(
   id: string,
   data: { nome: string; urlAmbiente?: string | null; usuario: string; senha?: string }
 ): Promise<CredencialRecord> {
-  await requireSession()
+  await requireAdmin()
   idSchema.parse(id)
   const parsed = z.object({
     nome:        z.string().min(1).max(200),
@@ -118,14 +118,14 @@ export async function atualizarCredencial(
 }
 
 export async function inativarCredencial(id: string): Promise<void> {
-  await requireSession()
+  await requireAdmin()
   idSchema.parse(id)
   await prisma.credencial.update({ where: { id }, data: { active: false } })
   revalidatePath("/configuracoes/credenciais")
 }
 
 export async function ativarCredencial(id: string): Promise<void> {
-  await requireSession()
+  await requireAdmin()
   idSchema.parse(id)
   await prisma.credencial.update({ where: { id }, data: { active: true } })
   revalidatePath("/configuracoes/credenciais")

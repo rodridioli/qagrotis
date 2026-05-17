@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { requireSession } from "@/core/session"
+import { requireSession, requireAdmin } from "@/core/session"
 import { nextId } from "@/core/db-utils"
 import { prisma } from "@/core/prisma"
 import { aggregateHistoricoExecucoesErrosByCenarioId } from "@/features/qa/lib/suite-historico-stats"
@@ -384,7 +384,7 @@ export async function atualizarCenario(id: string, data: {
 }
 
 export async function ativarCenario(id: string): Promise<void> {
-  await requireSession()
+  await requireAdmin()
   idSchema.parse(id)
   await prisma.cenario.update({ where: { id }, data: { active: true } })
   revalidatePath("/cenarios")
