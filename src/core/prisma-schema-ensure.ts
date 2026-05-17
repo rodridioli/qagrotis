@@ -291,7 +291,6 @@ CREATE TABLE IF NOT EXISTS "IndividualFeedback" (
     g.__qagrotisEnsuredIndividualFeedback = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualFeedback", e)
-    throw e
   }
 }
 
@@ -342,7 +341,6 @@ CREATE TABLE IF NOT EXISTS "IndividualProgressao" (
     g.__qagrotisEnsuredIndividualProgressao = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualProgressao", e)
-    throw e
   }
 }
 
@@ -410,11 +408,13 @@ export async function ensureNotificationTables(): Promise<void> {
   try {
     await prisma.$executeRawUnsafe(`
 DO $$ BEGIN
-    CREATE TYPE "NotificationType" AS ENUM ('FEEDBACK', 'EVALUATION', 'PROGRESSION', 'ACHIEVEMENT');
+    CREATE TYPE "NotificationType" AS ENUM ('FEEDBACK', 'EVALUATION', 'PROGRESSION', 'ACHIEVEMENT', 'ABSENCE_REQUEST');
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 `)
+    // If the type already existed without ABSENCE_REQUEST, add it now.
+    await prisma.$executeRawUnsafe(`ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'ABSENCE_REQUEST'`)
     await prisma.$executeRawUnsafe(`
 CREATE TABLE IF NOT EXISTS "Notification" (
     "id" TEXT NOT NULL,
@@ -448,7 +448,6 @@ CREATE TABLE IF NOT EXISTS "UserBadge" (
     g.__qagrotisEnsuredNotificationTables = true
   } catch (e) {
     console.error("[prisma-schema-ensure] Notification/UserBadge tables", e)
-    throw e
   }
 }
 
@@ -524,7 +523,6 @@ CREATE TABLE IF NOT EXISTS "IndividualFerias" (
     g.__qagrotisEnsuredIndividualFerias = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualFerias", e)
-    throw e
   }
 }
 
@@ -534,6 +532,8 @@ CREATE TABLE IF NOT EXISTS "IndividualFerias" (
  */
 export async function ensureIndividualAusenciasTable(): Promise<void> {
   if (g.__qagrotisEnsuredIndividualAusencias) return
+  // Garante que NotificationType existe com ABSENCE_REQUEST antes de referenciar o tipo.
+  await ensureNotificationTables()
   try {
     await prisma.$executeRawUnsafe(`
 DO $$ BEGIN
@@ -548,9 +548,6 @@ DO $$ BEGIN
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
-`)
-    await prisma.$executeRawUnsafe(`
-ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'ABSENCE_REQUEST';
 `)
     await prisma.$executeRawUnsafe(`
 CREATE TABLE IF NOT EXISTS "IndividualAusencias" (
@@ -584,6 +581,5 @@ CREATE TABLE IF NOT EXISTS "IndividualAusencias" (
     g.__qagrotisEnsuredIndividualAusencias = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualAusencias", e)
-    throw e
   }
 }
