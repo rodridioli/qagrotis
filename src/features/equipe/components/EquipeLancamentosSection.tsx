@@ -31,7 +31,7 @@ import {
 
 type AccessProfileId = "QA" | "UX" | "TW" | "MGR"
 
-const PROFILE_OPTIONS: { value: AccessProfileId; label: string }[] = [
+const ALL_PROFILE_OPTIONS: { value: AccessProfileId; label: string }[] = [
   { value: "QA",  label: "QA"      },
   { value: "UX",  label: "UX"      },
   { value: "TW",  label: "TW"      },
@@ -52,6 +52,13 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
   const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
   const [preset, setPreset] = React.useState<LancamentosPeriodPreset>("week")
 
+  const isViewerMgr = userAccessProfile === "MGR"
+
+  // Viewers não-MGR não veem a opção Manager no dropdown
+  const profileOptions = isViewerMgr
+    ? ALL_PROFILE_OPTIONS
+    : ALL_PROFILE_OPTIONS.filter((o) => o.value !== "MGR")
+
   React.useEffect(() => {
     let cancelled = false
     setLoading(true)
@@ -59,13 +66,15 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
     const profile = canFilterByProfile ? profileFilter : userAccessProfile
     getEquipeMembrosParaLancamentos(profile).then((data) => {
       if (!cancelled) {
-        setMembros(data)
-        setSelectedUserId(data[0]?.userId ?? null)
+        // Viewers não-MGR não veem avatares de membros MGR
+        const visible = isViewerMgr ? data : data.filter((m) => m.accessProfile !== "MGR")
+        setMembros(visible)
+        setSelectedUserId(visible[0]?.userId ?? null)
         setLoading(false)
       }
     })
     return () => { cancelled = true }
-  }, [profileFilter, canFilterByProfile, userAccessProfile])
+  }, [profileFilter, canFilterByProfile, userAccessProfile, isViewerMgr])
 
   return (
     <div className="flex flex-col gap-4">
@@ -123,7 +132,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
                 <SelectValue />
               </SelectTrigger>
               <SelectPopup>
-                {PROFILE_OPTIONS.map((o) => (
+                {profileOptions.map((o) => (
                   <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                 ))}
               </SelectPopup>
@@ -154,6 +163,9 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
       ) : selectedUserId ? (
         <IndividualLancamentosSection
           evaluatedUserId={selectedUserId}
+          evaluatedUserAccessProfile={
+            (membros.find((m) => m.userId === selectedUserId)?.accessProfile as "QA" | "UX" | "TW" | "MGR" | null) ?? null
+          }
           preset={preset}
           onPresetChange={setPreset}
           accessProfile={canFilterByProfile ? profileFilter : userAccessProfile}
