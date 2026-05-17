@@ -312,7 +312,7 @@ export async function removerHistoricoSuite(suiteId: string, indices: number[]):
   const indexSet = new Set(indices)
   const updated = historico.filter((_, i) => !indexSet.has(i))
 
-  await prisma.suite.update({ where: { id: suiteId }, data: { historico: updated } })
+  await prisma.suite.update({ where: { id: suiteId }, data: { historico: updated as unknown as Prisma.InputJsonValue } })
   revalidatePath("/suites")
   revalidatePath(`/suites/${suiteId}`)
 }
