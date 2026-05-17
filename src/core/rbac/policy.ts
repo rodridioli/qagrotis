@@ -71,13 +71,12 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.equipe",
       "menu.individual",
       "menu.configuracoes",
-      "menu.atualizacoes",
       "topbar.sistemaSelector",
       "config.clientes",
       "config.credenciais",
       "config.meuCadastro",
     ],
-    disabled: [],
+    disabled: ["menu.pdi"],
     manageableProfiles: [],
   },
   "Administrador:QA": {
@@ -102,7 +101,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "equipe.performance",
       "equipe.lancamentos",
     ],
-    disabled: [],
+    disabled: ["menu.pdi"],
     manageableProfiles: ["QA"],
   },
 
@@ -114,10 +113,9 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.equipe",
       "menu.individual",
       "menu.configuracoes",
-      "menu.atualizacoes",
       "config.meuCadastro",
     ],
-    disabled: ["menu.documentos"],
+    disabled: ["menu.documentos", "menu.pdi"],
     manageableProfiles: [],
   },
   "Administrador:UX": {
@@ -133,7 +131,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "equipe.performance",
       "equipe.lancamentos",
     ],
-    disabled: ["menu.documentos"],
+    disabled: ["menu.documentos", "menu.pdi"],
     manageableProfiles: ["UX"],
   },
 
@@ -145,10 +143,9 @@ const POLICY: Record<Role, RoleConfig> = {
       "menu.equipe",
       "menu.individual",
       "menu.configuracoes",
-      "menu.atualizacoes",
       "config.meuCadastro",
     ],
-    disabled: ["menu.documentos"],
+    disabled: ["menu.documentos", "menu.pdi"],
     manageableProfiles: [],
   },
   "Administrador:TW": {
@@ -164,7 +161,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "equipe.performance",
       "equipe.lancamentos",
     ],
-    disabled: ["menu.documentos"],
+    disabled: ["menu.documentos", "menu.pdi"],
     manageableProfiles: ["TW"],
   },
 
@@ -172,7 +169,7 @@ const POLICY: Record<Role, RoleConfig> = {
   "Padrão:MGR": {
     // combinação inválida — fallback fechado
     capabilities: [],
-    disabled: [],
+    disabled: ["menu.pdi"],
     manageableProfiles: [],
   },
   "Administrador:MGR": {
@@ -195,7 +192,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "individual.viewOthers",
       "config.clockwork",
     ],
-    disabled: [],
+    disabled: ["menu.pdi"],
     manageableProfiles: ["QA", "UX", "TW", "MGR"],
   },
 }

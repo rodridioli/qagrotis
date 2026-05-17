@@ -18,6 +18,7 @@ export type JiraLancamentoEntry = {
   priority?: string | null
   labels?: string[]
   qtdCenariosQA?: number | null
+  typeField?: string | null
   started: string
   timeSpentSeconds: number
   hours: number
@@ -236,6 +237,7 @@ export type LancamentoIssueFieldsPatch = {
   labels: string[]
   qtdCenariosQA: number | null
   projectName: string | null
+  typeField: string | null
 }
 
 function parseQtdCenariosQAFieldValue(raw: unknown): number | null {
@@ -256,9 +258,24 @@ function parseQtdCenariosQAFieldValue(raw: unknown): number | null {
   return null
 }
 
+function parseTypeFieldValue(raw: unknown): string | null {
+  if (raw == null) return null
+  if (typeof raw === "string") {
+    const t = raw.trim()
+    return t.length ? t : null
+  }
+  if (typeof raw === "object") {
+    const o = raw as { value?: unknown; name?: unknown }
+    if (typeof o.value === "string" && o.value.trim()) return o.value.trim()
+    if (typeof o.name === "string" && o.name.trim()) return o.name.trim()
+  }
+  return null
+}
+
 function issueFieldsToLancamentoPatch(
   fields: IssueFields | undefined,
   qtdFieldId: string | null,
+  typeFieldId: string | null,
 ): LancamentoIssueFieldsPatch {
   const f = fields ?? {}
   const summary = summaryFromIssueField(f.summary)
@@ -272,6 +289,7 @@ function issueFieldsToLancamentoPatch(
   if (qtdFieldId && f[qtdFieldId] != null) {
     qtdCenariosQA = parseQtdCenariosQAFieldValue(f[qtdFieldId])
   }
+  const typeField = typeFieldId ? parseTypeFieldValue(f[typeFieldId]) : null
   return {
     summary,
     issueType,
@@ -279,6 +297,7 @@ function issueFieldsToLancamentoPatch(
     labels,
     qtdCenariosQA,
     projectName,
+    typeField,
   }
 }
 /**
@@ -291,9 +310,14 @@ export async function fetchIssueFieldsForKeys(
   keys: string[],
 ): Promise<Map<string, LancamentoIssueFieldsPatch>> {
   const unique = Array.from(new Set(keys.map((k) => k.trim().toUpperCase()).filter((k) => /^[A-Z][A-Z0-9]*-\d+$/i.test(k))))
-  const qtdFieldId = await resolveQtdCenariosQAFieldId(base, credentials)
+  const [qtdFieldId, typeFieldId] = await Promise.all([
+    resolveQtdCenariosQAFieldId(base, credentials),
+    resolveTypeFieldId(base, credentials),
+  ])
   const baseFields = ["summary", "issuetype", "priority", "labels", "project"]
-  const fieldsParam = qtdFieldId ? [...baseFields, qtdFieldId] : baseFields
+  const fieldsParam = [...baseFields]
+  if (qtdFieldId) fieldsParam.push(qtdFieldId)
+  if (typeFieldId) fieldsParam.push(typeFieldId)
 
   const result = new Map<string, LancamentoIssueFieldsPatch>()
   for (let i = 0; i < unique.length; i += SEARCH_KEY_CHUNK) {
@@ -316,7 +340,7 @@ export async function fetchIssueFieldsForKeys(
         for (const issue of data.issues) {
           result.set(
             issue.key.trim().toUpperCase(),
-            issueFieldsToLancamentoPatch(issue.fields, qtdFieldId),
+            issueFieldsToLancamentoPatch(issue.fields, qtdFieldId, typeFieldId),
           )
         }
       }
@@ -441,6 +465,11 @@ export function mergeLancamentoIssuePatches(
       : prev?.projectName?.trim()
         ? prev.projectName.trim()
         : null,
+    typeField: next.typeField?.trim()
+      ? next.typeField.trim()
+      : prev?.typeField?.trim()
+        ? prev.typeField.trim()
+        : null,
   }
 }
 
@@ -453,7 +482,10 @@ export async function augmentFieldMapWithGetIssueFallback(
   fieldMap: Map<string, LancamentoIssueFieldsPatch>,
   allKeysUppercase: string[],
 ): Promise<void> {
-  const qtdFieldId = await resolveQtdCenariosQAFieldId(base, credentials)
+  const [qtdFieldId, typeFieldId] = await Promise.all([
+    resolveQtdCenariosQAFieldId(base, credentials),
+    resolveTypeFieldId(base, credentials),
+  ])
 
   const unique = Array.from(new Set(allKeysUppercase.map((k) => k.trim().toUpperCase())))
   const need = unique
@@ -473,6 +505,7 @@ export async function augmentFieldMapWithGetIssueFallback(
 
   const fieldNames = ["summary", "issuetype", "priority", "labels", "project"]
   if (qtdFieldId) fieldNames.push(qtdFieldId)
+  if (typeFieldId) fieldNames.push(typeFieldId)
   const fieldsComma = fieldNames.join(",")
 
   for (let i = 0; i < need.length; i += FALLBACK_GET_CONCURRENCY) {
@@ -483,7 +516,7 @@ export async function augmentFieldMapWithGetIssueFallback(
           const url = `${base}/rest/api/3/issue/${encodeURIComponent(key)}?fields=${fieldsComma}`
           const { ok, data } = await jiraJson<{ fields?: IssueFields }>(url, credentials)
           if (!ok || !data?.fields) return
-          const patch = issueFieldsToLancamentoPatch(data.fields, qtdFieldId)
+          const patch = issueFieldsToLancamentoPatch(data.fields, qtdFieldId, typeFieldId)
           fieldMap.set(key, mergeLancamentoIssuePatches(fieldMap.get(key), patch))
         } catch {
           // non-fatal
@@ -563,14 +596,13 @@ export async function countReporterIssuesByTypes(
       ? `issuetype = ${quoteName(allNames[0]!)}`
       : `issuetype in (${allNames.map((n) => quoteName(n)).join(", ")})`
 
-  // Use the end of `toIso`'s month as the exclusive upper bound — matches the
-  // Jira UI filter (`created < first-day-of-next-month`) and avoids missing
-  // issues created today due to timezone skew between server and Jira.
-  const [yStr, mStr] = toIso.split("-")
-  const year = Number(yStr)
-  const monthIdx = Number(mStr) - 1 // 0-based
-  const nextMonth = new Date(Date.UTC(year, monthIdx + 1, 1))
-  const upperExclusive = nextMonth.toISOString().slice(0, 10)
+  // Upper bound: the day after `toIso` so issues created anywhere during that
+  // day are included regardless of timezone skew, without leaking into future days.
+  const upperExclusive = (() => {
+    const d = new Date(`${toIso}T00:00:00.000Z`)
+    d.setUTCDate(d.getUTCDate() + 1)
+    return d.toISOString().slice(0, 10)
+  })()
 
   const attempts: ReporterCountDiagnostics["attempts"] = []
 
@@ -670,6 +702,99 @@ export async function resolveQtdCenariosQAFieldId(
   return cachedQtdCenariosQAFieldId
 }
 
+const TYPE_ENV_FIELD_ID = process.env.JIRA_TYPE_FIELD_ID?.trim()
+
+let cachedTypeFieldId: string | null | undefined = undefined
+
+export async function resolveTypeFieldId(
+  base: string,
+  credentials: string,
+): Promise<string | null> {
+  if (TYPE_ENV_FIELD_ID) return TYPE_ENV_FIELD_ID
+  if (cachedTypeFieldId !== undefined) return cachedTypeFieldId
+
+  try {
+    const { ok, data } = await jiraJson<{ id: string; name: string; custom?: boolean }[]>(
+      `${base}/rest/api/3/field`,
+      credentials,
+    )
+    if (!ok || !Array.isArray(data)) {
+      cachedTypeFieldId = null
+      return null
+    }
+    // Match only custom fields named exactly "Type" (case-insensitive).
+    // Avoids colliding with built-in issuetype.
+    const found = data.find(
+      (f) => f.custom !== false && /^type$/i.test(f.name.trim()),
+    )
+    cachedTypeFieldId = found?.id ?? null
+  } catch {
+    cachedTypeFieldId = null
+  }
+
+  return cachedTypeFieldId
+}
+
+// ── Status transition counting ────────────────────────────────────────────────
+
+/**
+ * Conta quantas vezes um conjunto de issues transitou para um status específico
+ * consultando a API de changelog do Jira. Tolerante a falhas por issue.
+ */
+export async function countStatusTransitionsToValue(
+  base: string,
+  credentials: string,
+  issueKeys: string[],
+  targetStatus: string,
+): Promise<number> {
+  const unique = Array.from(new Set(issueKeys.filter((k) => /^[A-Z][A-Z0-9]*-\d+$/i.test(k))))
+  if (unique.length === 0) return 0
+
+  const targetLower = targetStatus.trim().toLowerCase()
+  let total = 0
+
+  for (let i = 0; i < unique.length; i += FALLBACK_GET_CONCURRENCY) {
+    const slice = unique.slice(i, i + FALLBACK_GET_CONCURRENCY)
+    const counts = await Promise.all(
+      slice.map(async (key): Promise<number> => {
+        try {
+          let count = 0
+          let startAt = 0
+          for (;;) {
+            const url = `${base}/rest/api/3/issue/${encodeURIComponent(key)}/changelog?maxResults=100&startAt=${startAt}`
+            const { ok, data } = await jiraJson<{
+              values?: { items?: { field?: string; toString?: string }[] }[]
+              total?: number
+              isLast?: boolean
+            }>(url, credentials)
+            if (!ok || !data?.values) break
+            for (const entry of data.values) {
+              for (const item of entry.items ?? []) {
+                if (
+                  item.field === "status" &&
+                  (item.toString ?? "").trim().toLowerCase() === targetLower
+                ) {
+                  count++
+                }
+              }
+            }
+            startAt += data.values.length
+            const fetched = startAt
+            const total_ = typeof data.total === "number" ? data.total : fetched
+            if (data.isLast === true || fetched >= total_ || data.values.length === 0) break
+          }
+          return count
+        } catch {
+          return 0
+        }
+      }),
+    )
+    total += counts.reduce((a, b) => a + b, 0)
+  }
+
+  return total
+}
+
 // ── Issue search ──────────────────────────────────────────────────────────────
 
 async function searchIssuesByJql(
@@ -727,8 +852,11 @@ export async function fetchWorklogsForAuthorInRange(
     return { entries: [], truncatedIssues: false, truncatedWorklogs: false }
   }
 
-  const qtdFieldId = await resolveQtdCenariosQAFieldId(base, credentials)
-  const extraFields = qtdFieldId ? [qtdFieldId] : []
+  const [qtdFieldId, typeFieldId] = await Promise.all([
+    resolveQtdCenariosQAFieldId(base, credentials),
+    resolveTypeFieldId(base, credentials),
+  ])
+  const extraFields = [...(qtdFieldId ? [qtdFieldId] : []), ...(typeFieldId ? [typeFieldId] : [])]
 
   const escaped = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
   const jqlDated = `worklogAuthor = "${escaped}" AND worklogDate >= "${jFrom}" AND worklogDate <= "${jTo}" ORDER BY updated DESC`
@@ -771,7 +899,7 @@ export async function fetchWorklogsForAuthorInRange(
   for (const issueKey of issueKeys) {
     if (entries.length >= MAX_WORKLOGS_TOTAL) break
     const fields = issueFieldsMap.get(issueKey) ?? {}
-    const patch = issueFieldsToLancamentoPatch(fields, qtdFieldId)
+    const patch = issueFieldsToLancamentoPatch(fields, qtdFieldId, typeFieldId)
     const projectKey = issueKey.split("-")[0] ?? issueKey
 
     let wlStart = 0
@@ -806,6 +934,7 @@ export async function fetchWorklogsForAuthorInRange(
           priority: patch.priority,
           labels: patch.labels,
           qtdCenariosQA: patch.qtdCenariosQA,
+          typeField: patch.typeField,
           started,
           timeSpentSeconds: w.timeSpentSeconds,
           hours: Math.round((w.timeSpentSeconds / 3600) * 100) / 100,

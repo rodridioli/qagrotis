@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { requireSession, requireAdmin } from "@/core/session"
+import { requireSession } from "@/core/session"
 import { nextId } from "@/core/db-utils"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/core/prisma"
@@ -294,7 +294,7 @@ export async function reabrirSuite(id: string): Promise<void> {
 }
 
 export async function ativarSuite(id: string): Promise<void> {
-  await requireAdmin()
+  await requireSession()
   await prisma.suite.update({ where: { id }, data: { active: true } })
   revalidatePath("/suites")
 }
