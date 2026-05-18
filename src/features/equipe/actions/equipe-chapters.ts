@@ -230,15 +230,24 @@ export async function getEquipeChapterAuthorRankingPage(
     }
     if (tally.size === 0) return empty()
 
-    // Resolve the actual CreatedUser.id for the logged-in user (avoids client-side ID mismatch)
-    let resolvedCurrentUserId = sessionUserId
+    // Collect ALL possible IDs for the logged-in user so isCurrentUser is reliable even when
+    // EquipeChapterAuthor.userId was stored with an OAuth UUID before the createdUser record existed.
+    const currentUserIds = new Set<string>()
+    if (sessionUserId) currentUserIds.add(sessionUserId)
     if (sessionEmail) {
       try {
-        const cu = await prisma.createdUser.findFirst({
-          where: { email: { equals: sessionEmail, mode: "insensitive" } },
-          select: { id: true },
-        })
-        if (cu) resolvedCurrentUserId = cu.id
+        const [cu, oauthUser] = await Promise.all([
+          prisma.createdUser.findFirst({
+            where: { email: { equals: sessionEmail, mode: "insensitive" } },
+            select: { id: true },
+          }),
+          prisma.user.findFirst({
+            where: { email: { equals: sessionEmail, mode: "insensitive" } },
+            select: { id: true },
+          }).catch(() => null),
+        ])
+        if (cu) currentUserIds.add(cu.id)
+        if (oauthUser) currentUserIds.add(oauthUser.id)
       } catch { /* keep sessionUserId */ }
     }
 
@@ -276,7 +285,7 @@ export async function getEquipeChapterAuthorRankingPage(
       active: row.active,
       chapterCount: row.chapterCount,
       points: row.points,
-      isCurrentUser: row.userId === resolvedCurrentUserId,
+      isCurrentUser: currentUserIds.has(row.userId),
     }))
 
     return { rows, page: safePage, pageSize, totalItems, totalPages }
@@ -286,17 +295,42 @@ export async function getEquipeChapterAuthorRankingPage(
   }
 }
 
+/** Resolve todos os IDs possíveis do usuário logado (createdUser + oauth user). */
+async function resolveCurrentUserIds(session: Awaited<ReturnType<typeof requireSession>>): Promise<string[]> {
+  const sessionId = (session.user?.id ?? "").trim()
+  const sessionEmail = (session.user?.email ?? "").trim().toLowerCase()
+  const ids = new Set<string>()
+  if (sessionId) ids.add(sessionId)
+  if (sessionEmail) {
+    try {
+      const [cu, oauthUser] = await Promise.all([
+        prisma.createdUser.findFirst({
+          where: { email: { equals: sessionEmail, mode: "insensitive" } },
+          select: { id: true },
+        }),
+        prisma.user.findFirst({
+          where: { email: { equals: sessionEmail, mode: "insensitive" } },
+          select: { id: true },
+        }).catch(() => null),
+      ])
+      if (cu) ids.add(cu.id)
+      if (oauthUser) ids.add(oauthUser.id)
+    } catch { /* keep sessionId */ }
+  }
+  return [...ids]
+}
+
 /** Retorna o saldo de pontos do usuário logado. */
 export async function getMyChapterBalance(): Promise<{ chapterCount: number; spent: number; points: number }> {
   const session = await requireSession()
-  const userId = session.user?.id ?? ""
+  const userIds = await resolveCurrentUserIds(session)
 
   const [links, redemptions] = await Promise.all([
-    prisma.equipeChapterAuthor.findMany({ where: { userId }, select: { userId: true } }),
-    prisma.chapterRedemption.findMany({ where: { userId }, select: { costPoints: true } }),
+    prisma.equipeChapterAuthor.findMany({ where: { userId: { in: userIds } }, select: { userId: true } }),
+    prisma.chapterRedemption.findMany({ where: { userId: { in: userIds } }, select: { costPoints: true } }),
   ])
   const chapterCount = links.length
-  const spent = redemptions.reduce((acc, r) => acc + r.costPoints, 0)
+  const spent = redemptions.reduce((acc: number, r: { costPoints: number }) => acc + r.costPoints, 0)
   return { chapterCount, spent, points: Math.max(0, chapterCount - spent) }
 }
 
