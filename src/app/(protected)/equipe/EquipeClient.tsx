@@ -374,7 +374,7 @@ const aniversariantesPorMes = useMemo(() => {
         />
       )}
 
-      {activeTab === "chapters" && <EquipeChaptersSection isAdmin={isAdmin} />}
+      {activeTab === "chapters" && <EquipeChaptersSection isAdmin={isAdmin} currentUserId={currentUserId} />}
 
       {activeTab === "ferias" && <EquipeFeriasSection />}
 

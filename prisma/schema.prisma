@@ -557,3 +557,16 @@ model IndividualAusencias {
   @@index([evaluatedUserId])
   @@index([situacao])
 }
+
+// ── Chapter Prizes / Resgates ──────────────────────────────────────────────────
+
+model ChapterRedemption {
+  id         String   @id @default(cuid())
+  userId     String
+  prizeId    String
+  prizeLabel String
+  costPoints Int
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}

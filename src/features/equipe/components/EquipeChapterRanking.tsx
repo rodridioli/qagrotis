@@ -23,13 +23,15 @@ export interface EquipeChapterRankingProps {
   data: EquipeChapterRankingPage | null
   loading?: boolean
   onPageChange: (page: number) => void
+  currentUserId?: string
+  onOpenPremios?: () => void
   className?: string
 }
 
 /**
  * Ranking de autores por participação em chapters (paginado no servidor, 10 por página).
  */
-export function EquipeChapterRanking({ data, loading, onPageChange, className }: EquipeChapterRankingProps) {
+export function EquipeChapterRanking({ data, loading, onPageChange, currentUserId, onOpenPremios, className }: EquipeChapterRankingProps) {
   return (
     <aside
       className={cn(
@@ -113,9 +115,20 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
                         </span>
                       </td>
                       <td className="px-2 py-1.5 text-right align-middle sm:px-3 sm:py-2">
-                        <span className="text-[11px] font-normal tabular-nums text-text-primary sm:text-xs">
-                          {e.points}
-                        </span>
+                        {e.userId === currentUserId && e.points > 2 && onOpenPremios ? (
+                          <button
+                            type="button"
+                            onClick={onOpenPremios}
+                            title="Ver prêmios disponíveis"
+                            className="text-[11px] font-semibold tabular-nums text-brand-primary underline decoration-dotted underline-offset-2 hover:text-brand-primary/80 sm:text-xs"
+                          >
+                            {e.points}
+                          </button>
+                        ) : (
+                          <span className="text-[11px] font-normal tabular-nums text-text-primary sm:text-xs">
+                            {e.points}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
