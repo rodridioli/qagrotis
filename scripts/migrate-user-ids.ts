@@ -47,9 +47,11 @@ function nextUId(existingIds: string[]): () => string {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL
+  // Aceita URL por argumento CLI (--url=...) ou variável de ambiente
+  const cliUrl = process.argv.find((a) => a.startsWith("--url="))?.slice(6)
+  const connectionString = cliUrl ?? process.env.DATABASE_URL
   if (!connectionString || connectionString.includes("USER:PASSWORD")) {
-    console.error("❌ DATABASE_URL ou DIRECT_URL não configurado. Defina a variável antes de executar.")
+    console.error("❌ Forneça a connection string via --url=<postgres://...> ou DATABASE_URL.")
     process.exit(1)
   }
   console.log(`🔌 Conectando em: ${connectionString.replace(/:\/\/[^@]+@/, "://<credenciais>@")}`)
@@ -82,14 +84,22 @@ async function main() {
       console.log(`  ${oldId} → ${newId}  (${user?.name ?? user?.email ?? ""})`)
     }
 
-    // 4. Executar tudo em uma única transação com constraints deferidas
-    //    para evitar violação de FK durante a atualização do PK.
+    // 4. Executar tudo em uma única transação (timeout aumentado para comportar todos os updates).
+    //    Como as FK constraints do Prisma são NOT DEFERRABLE por padrão,
+    //    fazemos drop → update PK → update FKs → recreate constraints.
     await prisma.$transaction(async (tx) => {
-      // Deferir checagem de FK para o final da transação
-      await tx.$executeRaw`SET CONSTRAINTS ALL DEFERRED`
+      // Drop das FK constraints que apontam para CreatedUser.id
+      await tx.$executeRaw`ALTER TABLE "Notification" DROP CONSTRAINT IF EXISTS "Notification_userId_fkey"`
+      await tx.$executeRaw`ALTER TABLE "UserBadge" DROP CONSTRAINT IF EXISTS "UserBadge_userId_fkey"`
 
       for (const [oldId, newId] of idMap.entries()) {
-        // ── Tabelas com FK explícita para CreatedUser.id ──────────────────
+        // ── PK primeiro (sem FKs apontando, update é livre) ──────────────
+        await tx.$executeRawUnsafe(
+          `UPDATE "CreatedUser" SET "id" = $1 WHERE "id" = $2`,
+          newId, oldId,
+        )
+
+        // ── Tabelas que tinham FK (agora sem constraint, update livre) ────
         await tx.$executeRawUnsafe(
           `UPDATE "Notification" SET "userId" = $1 WHERE "userId" = $2`,
           newId, oldId,
@@ -120,8 +130,6 @@ async function main() {
           `UPDATE "ClockworkIntegration" SET "updatedByUserId" = $1 WHERE "updatedByUserId" = $2`,
           newId, oldId,
         )
-
-        // Individual
         await tx.$executeRawUnsafe(
           `UPDATE "IndividualFerias" SET "evaluatedUserId" = $1 WHERE "evaluatedUserId" = $2`,
           newId, oldId,
@@ -166,8 +174,6 @@ async function main() {
           `UPDATE "IndividualProgressao" SET "createdByUserId" = $1 WHERE "createdByUserId" = $2`,
           newId, oldId,
         )
-
-        // Equipe
         await tx.$executeRawUnsafe(
           `UPDATE "EquipeChapterAuthor" SET "userId" = $1 WHERE "userId" = $2`,
           newId, oldId,
@@ -177,15 +183,21 @@ async function main() {
           newId, oldId,
         )
 
-        // ── Por último: atualizar o PK em CreatedUser ─────────────────────
-        await tx.$executeRawUnsafe(
-          `UPDATE "CreatedUser" SET "id" = $1 WHERE "id" = $2`,
-          newId, oldId,
-        )
-
         console.log(`  ✓ ${oldId} → ${newId}`)
       }
-    })
+
+      // Recriar FK constraints com as mesmas regras originais do Prisma
+      await tx.$executeRaw`
+        ALTER TABLE "Notification"
+        ADD CONSTRAINT "Notification_userId_fkey"
+        FOREIGN KEY ("userId") REFERENCES "CreatedUser"("id") ON DELETE CASCADE ON UPDATE CASCADE
+      `
+      await tx.$executeRaw`
+        ALTER TABLE "UserBadge"
+        ADD CONSTRAINT "UserBadge_userId_fkey"
+        FOREIGN KEY ("userId") REFERENCES "CreatedUser"("id") ON DELETE CASCADE ON UPDATE CASCADE
+      `
+    }, { timeout: 60000 })
 
     console.log("\n✅ Migração concluída com sucesso!")
     console.log(`   ${idMap.size} usuário(s) renomeado(s).`)
