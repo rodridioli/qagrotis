@@ -55,7 +55,7 @@ function playSuccessChord() {
   if (typeof window === "undefined") return
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
   try {
-    const AudioCtx = window.AudioContext ?? (window as Record<string, unknown>).webkitAudioContext as typeof AudioContext | undefined
+    const AudioCtx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
     if (!AudioCtx) return
     const ctx = new AudioCtx()
     const notes = [
