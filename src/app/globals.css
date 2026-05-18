@@ -558,6 +558,30 @@
   }
 }
 
+/* ── Dominio evaluation screen slide transitions ─────────────────────────── */
+
+@keyframes slideOutLeft {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(-6%); opacity: 0; }
+}
+@keyframes slideOutRight {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(6%); opacity: 0; }
+}
+@keyframes slideInFromRight {
+  from { transform: translateX(6%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideInFromLeft {
+  from { transform: translateX(-6%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+.slide-exit-left  { animation: slideOutLeft      250ms ease-in-out forwards; }
+.slide-exit-right { animation: slideOutRight     250ms ease-in-out forwards; }
+.slide-enter-right { animation: slideInFromRight 250ms ease-in-out forwards; }
+.slide-enter-left  { animation: slideInFromLeft  250ms ease-in-out forwards; }
+
 /* ── Badge achievement hover animations ──────────────────────────────────── */
 
 @keyframes badge-hex-bounce {
