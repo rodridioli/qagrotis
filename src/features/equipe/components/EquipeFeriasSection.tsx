@@ -162,9 +162,8 @@ export function EquipeFeriasSection() {
             <table className="qagrotis-table-row-hover-muted w-full min-w-[52rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border-default bg-neutral-grey-50">
-                  <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Código</th>
-                  <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Usuário</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Início</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Usuário</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Dias</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Retorno</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Situação</th>
@@ -177,10 +176,8 @@ export function EquipeFeriasSection() {
                   const initials = getInitials(userName)
                   return (
                     <tr key={row.id} className="border-b border-border-default last:border-b-0 transition-colors">
-                      <td className="whitespace-nowrap px-3 py-3 sm:px-4">
-                        <span className="font-semibold tabular-nums text-text-primary">
-                          {formatCodigo(row.codigo)}
-                        </span>
+                      <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary tabular-nums sm:px-4">
+                        {formatIsoToBr(row.inicioIso)}
                       </td>
                       <td className="whitespace-nowrap px-3 py-3 sm:px-4">
                         <div className="flex items-center gap-2.5">
@@ -192,9 +189,6 @@ export function EquipeFeriasSection() {
                           </Avatar>
                           <span className="text-sm text-text-primary">{userName}</span>
                         </div>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary tabular-nums sm:px-4">
-                        {formatIsoToBr(row.inicioIso)}
                       </td>
                       <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary tabular-nums sm:px-4">
                         {row.dias}
