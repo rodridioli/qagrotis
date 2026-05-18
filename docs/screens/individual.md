@@ -36,6 +36,33 @@
 - Regimes: CLT, PJ, COOPERADO
 - Histórico de aumentos/mudanças com data e valor
 
+## Avaliação de Domínio
+
+Fluxo full screen imersivo (100vw × 100vh) montado pelo `LayoutClient` quando há avaliação pendente.
+
+**Componente:** `src/features/individual/components/DominioAvaliacaoModal.tsx`
+
+**Actions:**
+- `getPendingDominioAvaliacao()` — busca avaliação pendente do usuário logado (chamada no layout)
+- `completarDominioAvaliacao(id, respostas[])` — salva respostas; valida via Zod; verifica `evaluatedUserId === session.user.id` (IDOR guard)
+
+**Fluxo:**
+1. Tela abre com fade-in + barra de progresso global no topo
+2. Um produto por vez; módulos avaliados com 1–5 estrelas
+3. "Próximo →" bloqueado até todos os módulos do produto atual terem nota
+4. Slide horizontal entre produtos (250ms ease-in-out)
+5. Após o último produto: tela de conclusão com badge animado, pontuação geral e resumo por produto
+6. Som de sucesso via Web Audio API (C5→E5→G5, suprimido com `prefers-reduced-motion`)
+7. "Confirmar e salvar" chama a action e fecha com fade-out
+
+**Estados:**
+- Vazio (`configSnapshot=[]`): ícone PackageX + mensagem orientativa
+- Loading: botão "Salvando…" desabilitado
+- Erro: `toast.error` via Sonner + tela de conclusão permanece aberta
+- Sucesso: `toast.success` + fade-out + `router.refresh()`
+
+**Acessibilidade:** focus trap, `aria-live="polite"` no indicador de step, `role="progressbar"`, Esc abre confirm dialog de saída.
+
 ## RBAC
 
 - `can(role, 'menu.individual')` — visibilidade do menu
