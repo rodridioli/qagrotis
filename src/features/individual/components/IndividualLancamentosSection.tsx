@@ -409,6 +409,9 @@ export function IndividualLancamentosSection({
   const [jiraBase, setJiraBase] = React.useState<string | null>(null)
   const [search, setSearch] = React.useState("")
 
+  // AbortController para cancelar requisições em voo ao trocar filtros
+  const abortRef = React.useRef<AbortController | null>(null)
+
   React.useEffect(() => {
     if (presetProp === undefined) return
     const r = getLancamentosPresetRange(presetProp)
@@ -430,6 +433,12 @@ export function IndividualLancamentosSection({
   }, [])
 
   const load = React.useCallback(async () => {
+    // Aborta qualquer requisição anterior em voo antes de iniciar uma nova
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    const { signal } = controller
+
     setLoading(true)
     setError(null)
     const qs = new URLSearchParams({
@@ -439,8 +448,15 @@ export function IndividualLancamentosSection({
       tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
     })
     try {
-      const res = await fetch(`/api/jira/lancamentos?${qs}`, { credentials: "same-origin" })
+      const res = await fetch(`/api/jira/lancamentos?${qs}`, {
+        credentials: "same-origin",
+        signal,
+      })
+      if (signal.aborted) return
+
       const body = (await res.json().catch(() => null)) as ApiOk | { error?: string } | null
+      if (signal.aborted) return
+
       if (!res.ok) {
         const msg =
           typeof body === "object" && body && "error" in body && typeof body.error === "string"
@@ -471,6 +487,8 @@ export function IndividualLancamentosSection({
         setJiraBase(ok.jiraBrowseBase.replace(/\/$/, ""))
       }
     } catch (e) {
+      // Ignora erros de requisições abortadas — não atualiza estado
+      if (signal.aborted) return
       setAnteriormenteRefining(false)
       setData(null)
       setError(e instanceof Error ? e.message : "Erro ao carregar.")
@@ -480,6 +498,8 @@ export function IndividualLancamentosSection({
 
   React.useEffect(() => {
     void load()
+    // Aborta a requisição em voo ao desmontar ou quando load mudar (novo filtro)
+    return () => { abortRef.current?.abort() }
   }, [load])
 
   function applyPreset(p: LancamentosPeriodPreset) {

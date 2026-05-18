@@ -248,17 +248,23 @@ export async function GET(req: NextRequest) {
       ? countStatusTransitionsToValue(base, credentials, keysToEnrich, "Pending UX").catch(() => 0)
       : Promise.resolve(0)
 
+  // augmentFieldMapWithGetIssueFallback precisa do fieldMap mas pode rodar em
+  // paralelo com brokenCounts/reporterCount/pendingUxReturn — economiza latência
+  // ao não esperar o augment terminar sequencialmente após o Promise.all anterior.
+  const enrichWithAugmentPromise = enrichPromise.then(async (fm) => {
+    if (keysToEnrich.length > 0) {
+      await augmentFieldMapWithGetIssueFallback(base, credentials, fm, keysToEnrich)
+    }
+    return fm
+  })
+
   const [fieldMap, brokenCounts, reporterDiagnostics, pendingUxReturnCount] = await Promise.all([
-    enrichPromise,
+    enrichWithAugmentPromise,
     brokenCountsPromise,
     reporterCountPromise,
     pendingUxReturnPromise,
   ])
   const reporterBrokenTestIssueCount = reporterDiagnostics.count
-
-  if (keysToEnrich.length > 0) {
-    await augmentFieldMapWithGetIssueFallback(base, credentials, fieldMap, keysToEnrich)
-  }
 
   let entries = rawEntries
   if (keysToEnrich.length > 0) {
