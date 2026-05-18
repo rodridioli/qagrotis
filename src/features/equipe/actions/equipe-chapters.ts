@@ -235,7 +235,8 @@ export async function getEquipeChapterAuthorRankingPage(
       name: row.name,
       photoPath: row.photoPath,
       active: row.active,
-      points: row.points,
+      chapterCount: row.points, // hoje = participações; independente de resgates futuros
+      points: row.points,       // saldo; poderá ser decrementado ao resgatar brindes
     }))
 
     return {

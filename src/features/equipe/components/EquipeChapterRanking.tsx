@@ -57,6 +57,9 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
                     <th className="px-2 py-2 text-left text-[10px] font-semibold text-text-secondary sm:px-3 sm:py-2.5 sm:text-[11px]">
                       Usuário
                     </th>
+                    <th className="w-14 px-2 py-2 text-right text-[10px] font-semibold text-text-secondary sm:w-16 sm:px-3 sm:py-2.5 sm:text-[11px]">
+                      Chapters
+                    </th>
                     <th className="w-11 px-2 py-2 text-right text-[10px] font-semibold text-text-secondary sm:w-14 sm:px-3 sm:py-2.5 sm:text-[11px]">
                       Pts.
                     </th>
@@ -103,6 +106,11 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
                             {e.name}
                           </span>
                         </div>
+                      </td>
+                      <td className="px-2 py-1.5 text-right align-middle sm:px-3 sm:py-2">
+                        <span className="text-[11px] font-normal tabular-nums text-text-primary sm:text-xs">
+                          {e.chapterCount}
+                        </span>
                       </td>
                       <td className="px-2 py-1.5 text-right align-middle sm:px-3 sm:py-2">
                         <span className="text-[11px] font-normal tabular-nums text-text-primary sm:text-xs">
