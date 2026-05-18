@@ -13,9 +13,9 @@ describe("individual-lancamentos-date-presets", () => {
     expect(r).toEqual({ from: "2026-01-15", to: "2026-01-15" })
   })
 
-  it("anteriormente: janela de 14 dias terminando ontem", () => {
+  it("anterior: janela de 14 dias terminando ontem (fase 1, refina para dia mais recente)", () => {
     const fixed = new Date(2026, 0, 15, 14, 30, 0)
-    const r = getLancamentosPresetRange("anteriormente", fixed)
+    const r = getLancamentosPresetRange("anterior", fixed)
     expect(r).toEqual({ from: "2025-12-31", to: "2026-01-14" })
   })
 

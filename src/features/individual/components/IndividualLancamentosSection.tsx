@@ -401,7 +401,7 @@ export function IndividualLancamentosSection({
   const preset = isControlled ? presetProp : presetInternal
   const [from, setFrom] = React.useState(() => getLancamentosPresetRange("week").from)
   const [to, setTo] = React.useState(() => getLancamentosPresetRange("week").to)
-  // Tracks whether the "anteriormente" two-phase refinement is in progress
+  // Tracks whether the "anterior" two-phase refinement is in progress
   const [anteriormenteRefining, setAnteriormenteRefining] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -466,9 +466,9 @@ export function IndividualLancamentosSection({
       }
       const ok = body as ApiOk
 
-      // "Anteriormente": fase 1 — 14 dias. Refina para o dia mais recente com entradas.
+      // "Anterior": fase 1 — 14 dias até ontem. Refina para o dia mais recente com entradas.
       // Keep loading=true so the spinner stays alive while phase 2 runs.
-      if (preset === "anteriormente" && !anteriormenteRefining && from !== to) {
+      if (preset === "anterior" && !anteriormenteRefining && from !== to) {
         const maxDate = ok.entries?.reduce((max, e) => {
           const d = e.started?.slice(0, 10) ?? ""
           return d > max ? d : max
