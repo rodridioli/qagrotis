@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, ChevronRight, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react"
+import { Check, ChevronDown, ChevronRight, Pencil, Plus, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +10,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet"
 import {
@@ -197,10 +196,7 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
         <SheetHeader className="border-b border-border-default pb-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <SheetTitle>Configuração de Domínio</SheetTitle>
-              <SheetDescription className="mt-1">
-                Gerencie os produtos e módulos avaliados globalmente.
-              </SheetDescription>
+              <SheetTitle>Configurar Teste de Domínio</SheetTitle>
             </div>
             <Button
               type="button"
@@ -252,8 +248,6 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
                         )}
                       </button>
 
-                      <GripVertical className="size-4 shrink-0 text-text-tertiary" aria-hidden />
-
                       {isEditingThisProduto ? (
                         <Input
                           autoFocus
@@ -272,22 +266,22 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
                         </span>
                       )}
 
-                      <div className="flex shrink-0 items-center gap-1">
+                      <div className="flex shrink-0 items-center">
                         <button
                           type="button"
-                          onClick={() => startEditProduto(produto)}
-                          className="rounded p-1 text-text-secondary hover:bg-neutral-grey-100 hover:text-text-primary"
-                          aria-label="Editar produto"
+                          onClick={() => isEditingThisProduto ? commitEdit() : startEditProduto(produto)}
+                          className="inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+                          aria-label={isEditingThisProduto ? "Salvar produto" : "Editar produto"}
                         >
-                          <Pencil className="size-3.5" />
+                          {isEditingThisProduto ? <Check className="size-4" /> : <Pencil className="size-4" />}
                         </button>
                         <button
                           type="button"
                           onClick={() => removeProduto(produto.id)}
-                          className="rounded p-1 text-text-secondary hover:bg-destructive/10 hover:text-destructive"
+                          className="inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                           aria-label="Remover produto"
                         >
-                          <Trash2 className="size-3.5" />
+                          <Trash2 className="size-4" />
                         </button>
                       </div>
                     </div>
@@ -311,10 +305,6 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
                                 key={modulo.id}
                                 className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-neutral-grey-50"
                               >
-                                <GripVertical
-                                  className="size-3.5 shrink-0 text-text-tertiary"
-                                  aria-hidden
-                                />
                                 {isEditingThisModulo ? (
                                   <Input
                                     autoFocus
@@ -332,22 +322,22 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
                                     {modulo.nome}
                                   </span>
                                 )}
-                                <div className="flex shrink-0 items-center gap-1">
+                                <div className="flex shrink-0 items-center">
                                   <button
                                     type="button"
-                                    onClick={() => startEditModulo(produto.id, modulo)}
-                                    className="rounded p-1 text-text-secondary hover:bg-neutral-grey-100 hover:text-text-primary"
-                                    aria-label="Editar módulo"
+                                    onClick={() => isEditingThisModulo ? commitEdit() : startEditModulo(produto.id, modulo)}
+                                    className="inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+                                    aria-label={isEditingThisModulo ? "Salvar módulo" : "Editar módulo"}
                                   >
-                                    <Pencil className="size-3" />
+                                    {isEditingThisModulo ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => removeModulo(produto.id, modulo.id)}
-                                    className="rounded p-1 text-text-secondary hover:bg-destructive/10 hover:text-destructive"
+                                    className="inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                                     aria-label="Remover módulo"
                                   >
-                                    <Trash2 className="size-3" />
+                                    <Trash2 className="size-3.5" />
                                   </button>
                                 </div>
                               </div>
