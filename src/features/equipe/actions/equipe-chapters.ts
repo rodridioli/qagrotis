@@ -214,7 +214,9 @@ export async function getEquipeChapterAuthorRankingPage(
   })
 
   try {
-    await requireSession()
+    const session = await requireSession()
+    const sessionUserId = (session.user?.id ?? "").trim()
+    const sessionEmail = (session.user?.email ?? "").trim().toLowerCase()
     await ensureEquipeChapterTables()
 
     const [links, spentMap] = await Promise.all([
@@ -227,6 +229,18 @@ export async function getEquipeChapterAuthorRankingPage(
       tally.set(userId, (tally.get(userId) ?? 0) + 1)
     }
     if (tally.size === 0) return empty()
+
+    // Resolve the actual CreatedUser.id for the logged-in user (avoids client-side ID mismatch)
+    let resolvedCurrentUserId = sessionUserId
+    if (sessionEmail) {
+      try {
+        const cu = await prisma.createdUser.findFirst({
+          where: { email: { equals: sessionEmail, mode: "insensitive" } },
+          select: { id: true },
+        })
+        if (cu) resolvedCurrentUserId = cu.id
+      } catch { /* keep sessionUserId */ }
+    }
 
     const meta = await userDisplayMetaById()
     const sorted = [...tally.entries()]
@@ -262,6 +276,7 @@ export async function getEquipeChapterAuthorRankingPage(
       active: row.active,
       chapterCount: row.chapterCount,
       points: row.points,
+      isCurrentUser: row.userId === resolvedCurrentUserId,
     }))
 
     return { rows, page: safePage, pageSize, totalItems, totalPages }

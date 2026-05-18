@@ -22,6 +22,7 @@ function makeRows(startPos: number, count: number, pointsBase: number): EquipeCh
     active: true,
     chapterCount: Math.max(1, pointsBase - i),
     points: Math.max(1, pointsBase - i),
+    isCurrentUser: false,
   }))
 }
 
@@ -72,7 +73,7 @@ export const SoPrimeiroLugar: Story = {
   args: {
     data: {
       rows: [
-        { position: 1, userId: "U-01", name: "Cibele Esmaniotto", photoPath: null, active: true, chapterCount: 7, points: 7 },
+        { position: 1, userId: "U-01", name: "Cibele Esmaniotto", photoPath: null, active: true, chapterCount: 7, points: 7, isCurrentUser: false },
       ],
       page: 1,
       pageSize: EQUIPE_CHAPTER_RANKING_PAGE_SIZE,
@@ -109,6 +110,7 @@ export const InativoComFotoEmCinza: Story = {
           active: true,
           chapterCount: 5,
           points: 5,
+          isCurrentUser: false,
         },
         {
           position: 2,
@@ -118,6 +120,7 @@ export const InativoComFotoEmCinza: Story = {
           active: false,
           chapterCount: 3,
           points: 3,
+          isCurrentUser: false,
         },
       ],
       page: 1,

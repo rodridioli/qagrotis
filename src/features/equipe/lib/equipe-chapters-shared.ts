@@ -53,9 +53,10 @@ export interface EquipeChapterRankingRow {
   active: boolean
   /** Total de chapters apresentados como autor — não muda com resgates de pontos. */
   chapterCount: number
-  /** Saldo de pontos disponível. Hoje igual a `chapterCount`; no futuro pode ser
-   *  decrementado quando o utilizador resgatar brindes. */
+  /** Saldo de pontos disponível. Decrementado quando o utilizador resgata brindes. */
   points: number
+  /** `true` quando esta linha pertence ao utilizador logado (calculado no servidor). */
+  isCurrentUser: boolean
 }
 
 export interface EquipeChapterRankingPage {
