@@ -26,6 +26,57 @@ function formatPt(iso: string) {
   }
 }
 
+/** Retorna true quando a avaliação foi editada após a criação (tolerância de 10 s). */
+function wasEdited(createdAt: string, updatedAt: string) {
+  try {
+    return new Date(updatedAt).getTime() - new Date(createdAt).getTime() > 10_000
+  } catch {
+    return false
+  }
+}
+
+/** Seletor de estrelas interativo (1–5 + possibilidade de limpar clicando na mesma). */
+function StarPicker({
+  value,
+  onChange,
+}: {
+  value: number
+  onChange: (v: number) => void
+}) {
+  const [hovered, setHovered] = React.useState(0)
+  const active = hovered || value
+
+  return (
+    <div
+      role="group"
+      aria-label="Nota de 1 a 5 estrelas"
+      className="flex gap-1"
+      onMouseLeave={() => setHovered(0)}
+    >
+      {[1, 2, 3, 4, 5].map((i) => (
+        <button
+          key={i}
+          type="button"
+          aria-label={`${i} estrela${i > 1 ? "s" : ""}`}
+          onClick={() => onChange(value === i ? 0 : i)}
+          onMouseEnter={() => setHovered(i)}
+          className="rounded-sm p-0.5 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+        >
+          <Star
+            className={cn(
+              "size-8 transition-colors",
+              i <= active
+                ? "fill-badge-warning text-badge-warning"
+                : "fill-neutral-grey-100 text-neutral-grey-300",
+            )}
+            strokeWidth={1.2}
+          />
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export interface ChapterRatingDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -216,9 +267,20 @@ export function ChapterRatingDialog({
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-medium text-text-primary">Anônimo</span>
-                        <time className="text-xs text-text-secondary tabular-nums" dateTime={e.createdAt}>
-                          {formatPt(e.createdAt)}
-                        </time>
+                        <div className="flex flex-col items-end gap-0.5">
+                          <time className="text-xs text-text-secondary tabular-nums" dateTime={e.createdAt}>
+                            {formatPt(e.createdAt)}
+                          </time>
+                          {wasEdited(e.createdAt, e.updatedAt) && (
+                            <time
+                              className="text-[10px] italic text-text-secondary tabular-nums"
+                              dateTime={e.updatedAt}
+                              title={`Editado em ${formatPt(e.updatedAt)}`}
+                            >
+                              Editado em: {formatPt(e.updatedAt)}
+                            </time>
+                          )}
+                        </div>
                       </div>
                       <div className="mt-1 flex gap-0.5" aria-label={`${e.stars} estrelas`}>
                         {[1, 2, 3, 4, 5].map((i) => (
@@ -271,38 +333,10 @@ export function ChapterRatingDialog({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <p className="border-b border-border-default pb-3 text-sm font-medium text-text-primary">
-              Dê uma nota de 0 a 5, onde 0 é péssimo e 5 é excelente.
+              Clique nas estrelas para dar sua nota (1 a 5).
             </p>
 
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Nota de 0 a 5">
-              {[0, 1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setStarsPick(n)}
-                  className={cn(
-                    "min-w-10 rounded-md border px-2 py-1.5 text-sm font-medium transition-colors",
-                    starsPick === n
-                      ? "border-brand-primary bg-brand-primary/10 text-brand-primary"
-                      : "border-border-default bg-surface-card text-text-primary hover:bg-neutral-grey-50",
-                  )}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-0.5 pt-1" aria-hidden>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star
-                  key={i}
-                  className={cn(
-                    "size-5",
-                    i <= starsPick ? "fill-badge-warning text-badge-warning" : "text-neutral-grey-300",
-                  )}
-                  strokeWidth={1.4}
-                />
-              ))}
-            </div>
+            <StarPicker value={starsPick} onChange={setStarsPick} />
             <div className="space-y-1">
               <label className="text-xs font-medium text-text-secondary">Comentário (opcional)</label>
               <AutoResizeTextarea

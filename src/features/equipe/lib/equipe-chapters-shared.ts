@@ -39,6 +39,8 @@ export interface EquipeChapterRatingEntry {
   stars: number
   comment: string
   createdAt: string
+  /** ISO string da última edição; igual a createdAt quando ainda não editado. */
+  updatedAt: string
   /** Só no utilizador autenticado: indica a própria linha para edição na UI. */
   isMine?: boolean
 }

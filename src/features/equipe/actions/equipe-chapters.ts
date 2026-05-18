@@ -536,7 +536,7 @@ const ratingCreateSchema = z.object({
 export async function listChapterRatings(chapterId: string): Promise<EquipeChapterRatingEntry[]> {
   try {
     const session = await requireSession()
-    const myId = session.user?.id ?? ""
+    const myIds = new Set(await resolveCurrentUserIds(session))
     await ensureEquipeChapterTables()
     const r = idSchema.safeParse(chapterId)
     if (!r.success) return []
@@ -544,14 +544,15 @@ export async function listChapterRatings(chapterId: string): Promise<EquipeChapt
     const rows = await prisma.equipeChapterRating.findMany({
       where: { chapterId },
       orderBy: { createdAt: "desc" },
-      select: { id: true, stars: true, comment: true, createdAt: true, userId: true },
+      select: { id: true, stars: true, comment: true, createdAt: true, updatedAt: true, userId: true },
     })
     return rows.map((row) => ({
       id: row.id,
       stars: row.stars,
       comment: row.comment,
       createdAt: row.createdAt.toISOString(),
-      isMine: Boolean(myId && row.userId === myId),
+      updatedAt: row.updatedAt.toISOString(),
+      isMine: myIds.size > 0 && myIds.has(row.userId),
     }))
   } catch (e) {
     console.error("[listChapterRatings]", e)
