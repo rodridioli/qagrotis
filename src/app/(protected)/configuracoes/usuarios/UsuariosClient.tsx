@@ -368,14 +368,15 @@ export default function UsuariosClient({
           />
         ) : (
           <>
-            <div className="min-w-0 w-full overflow-x-auto sm:overflow-x-visible">
-              <table className="qagrotis-table-row-hover w-full min-w-0 table-fixed text-sm">
+            <div className="w-full overflow-x-auto">
+              <table className="qagrotis-table-row-hover w-full min-w-[72rem] table-fixed text-sm">
                 <colgroup>
                   {showBulkActions && <col style={{ width: "2.5rem" }} />}
-                  <col style={{ width: "5.25rem" }} />
-                  <col style={{ width: "20%" }} />
-                  <col style={{ width: "26%" }} />
-                  <col style={{ width: "7rem" }} />
+                  <col style={{ width: "6rem" }} />
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "24%" }} />
+                  <col style={{ width: "8rem" }} />
+                  <col style={{ width: "6rem" }} />
                   <col />
                   <col style={{ width: "3.25rem" }} />
                 </colgroup>
@@ -404,9 +405,9 @@ export default function UsuariosClient({
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">E-mail</th>
-                    <th className="w-40 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
-                    <th className="w-24 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Perfil</th>
-                    <th className="w-56 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cargo</th>
+                    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Perfil</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cargo</th>
                     <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
                   </tr>
                 </thead>
@@ -468,12 +469,10 @@ export default function UsuariosClient({
                         <td className="bg-surface-card px-4 py-3"><UserTipoBadge tipo={u.type} /></td>
                         <td className="bg-surface-card px-4 py-3"><AccessProfileBadge perfil={u.accessProfile} /></td>
                         <td
-                          className="min-w-0 bg-surface-card px-4 py-3 text-text-secondary"
+                          className="bg-surface-card px-4 py-3 text-text-secondary"
                           title={u.classificacao ?? undefined}
                         >
-                          <span className="block truncate whitespace-nowrap">
-                            {u.classificacao ?? "—"}
-                          </span>
+                          {u.classificacao ?? "—"}
                         </td>
                         <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
                           {filters.apenasInativos && !isSelf ? (
