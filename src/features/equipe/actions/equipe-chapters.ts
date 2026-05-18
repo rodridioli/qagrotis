@@ -265,6 +265,7 @@ export async function getEquipeChapterAuthorRankingPage(
         }
       })
       .sort((a, b) => {
+        if (b.chapterCount !== a.chapterCount) return b.chapterCount - a.chapterCount
         if (b.points !== a.points) return b.points - a.points
         return a.name.localeCompare(b.name, "pt-BR")
       })
