@@ -100,6 +100,9 @@ export function EquipeChaptersTable({
         <tbody>
           {rows.map((r) => {
             const canLink = isSafeExternalUrl(r.hyperlink)
+            const now = new Date()
+            const todayYmd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+            const canRate = !!onOpenRating && r.dataYmd <= todayYmd
             return (
               <tr
                 key={r.id}
@@ -145,13 +148,16 @@ export function EquipeChaptersTable({
                 <td className="min-w-0 px-3 py-3 sm:px-4">
                   <button
                     type="button"
-                    className="w-full max-w-[11rem] rounded-lg border border-transparent px-1 py-1 text-left transition-colors hover:border-border-default hover:bg-neutral-grey-50"
-                    onClick={() => onOpenRating?.(r)}
-                    disabled={!onOpenRating}
+                    className={`w-full max-w-[11rem] rounded-lg border border-transparent px-1 py-1 text-left transition-colors ${canRate ? "hover:border-border-default hover:bg-neutral-grey-50" : "cursor-not-allowed opacity-40"}`}
+                    onClick={() => canRate && onOpenRating?.(r)}
+                    disabled={!canRate}
+                    title={!canRate && r.dataYmd > todayYmd ? "Não é possível avaliar um chapter futuro" : undefined}
                     aria-label={
-                      r.ratingAvg != null
-                        ? `Avaliações: média ${r.ratingAvg.toFixed(1).replace(".", ",")} de 5 estrelas`
-                        : "Avaliações: sem notas"
+                      !canRate && r.dataYmd > todayYmd
+                        ? "Avaliação indisponível — chapter ainda não ocorreu"
+                        : r.ratingAvg != null
+                          ? `Avaliações: média ${r.ratingAvg.toFixed(1).replace(".", ",")} de 5 estrelas`
+                          : "Avaliações: sem notas"
                     }
                   >
                     <ChapterStarsSummary avg={r.ratingAvg} count={r.ratingCount} starsOnly />
