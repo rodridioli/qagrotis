@@ -1,4 +1,4 @@
-<!-- gerado por: reviewer | atualizado: 2026-05-17 -->
+<!-- gerado por: reviewer | atualizado: 2026-05-18 -->
 # Tela: Equipe
 
 **Rota:** `/equipe`  
@@ -79,6 +79,96 @@ O preset `anteriormente` usa refinamento em duas fases: busca 14 dias e refina p
 - `can(role, "individual.viewOthers")` — Administrador:MGR pode ver qualquer usuário ativo
 - `manageableProfiles(role)` — Admins não-MGR só veem usuários do seu perfil gerenciável
 - `can(role, "equipe.performance.filterByProfile")` — apenas Administrador:MGR pode usar o filtro de perfil
+
+---
+
+---
+
+## Aba: Performance
+
+Exibe cards individuais de performance por perfil de acesso, com métricas ajustadas por perfil e filtro de período.
+
+### Arquivos principais
+
+- `src/features/equipe/actions/equipe.ts` — `getPerformanceData(filters)` — server action principal
+- `src/features/equipe/components/EquipePerformanceCard.tsx` — card de performance (UI por perfil)
+- `src/features/equipe/lib/equipe-performance-utils.ts` — funções puras: `isoToDateOnly`, `countUniqueByTypes`, `topProjectsByIssueCount`
+- `src/app/(protected)/equipe/EquipeClient.tsx` — gerencia estado do filtro de período e perfil selecionado
+
+### Filtros de período
+
+`Hoje` · `Mês atual` · `Mês anterior` · `Ano`
+
+### Cards por perfil
+
+#### QA
+
+| Seção | Dados |
+|-------|-------|
+| Linhas de detalhe | Sistemas + módulos onde o usuário tem cenários no período (`atividadePorSistema`) |
+| Cenários | Count de cenários criados (`cenariosCriados`) |
+| Testes | Count de execuções de suítes atribuídas ao usuário (`testesExecutados`) |
+| Sucesso | Count de histórico resultado = Sucesso |
+| Alertas | Count de histórico resultado = Alerta |
+| Erros | Count de histórico resultado = Erro |
+| Barra | % de cenários automatizados (`percentualAutomatizado`) |
+
+#### UX
+
+| Seção | Dados |
+|-------|-------|
+| Linhas de detalhe | Top 3 projetos Jira por count de issues distintas (`atividadePorProjeto`) |
+| Novos Protótipos | Issues com `typeField` = New ou Redesign (deduplicadas por issueKey) |
+| Pesquisa | Issues com `typeField` = Research |
+| Ajustes em Protótipos | Issues com `typeField` = Improvement ou Adjustment/Return |
+| Usabilidade | Issues com `typeField` = Usability |
+| Barra Taxa de Retorno | % de issues que saíram de "Entregue" e voltaram para "Pending UX" |
+
+Fonte: Jira API (worklogs do usuário no período) via `fetchJiraMetricsForUser`.
+
+#### TW
+
+| Seção | Dados |
+|-------|-------|
+| Linhas de detalhe | Top 3 projetos Jira por count de issues distintas (`atividadePorProjeto`) |
+| Novos | Issues com `typeField` = New Documentation |
+| Revisões | Issues com `typeField` = Documentation Review |
+| Outros | Issues com `typeField` = Others |
+
+Fonte: Jira API — mesma stack que UX.
+
+#### MGR
+
+| Seção | Dados |
+|-------|-------|
+| Feedbacks | Count global de registros em `IndividualFeedback` no período (`updatedAt`) |
+| Avaliações | Count global de registros em `IndividualPerformanceEvaluation` no período |
+
+Sem linhas de detalhe e sem barra de progresso.
+
+### Integrações Jira (UX/TW)
+
+- Credenciais resolvidas via `resolveJiraCredentialsForRequest(session.user.id)` — MGR fallback automático
+- Busca por `accountId` do usuário via `findJiraAccountIdByEmail`
+- Worklogs recuperados por `fetchWorklogsForAuthorInRange` + enriquecimento de campos via `fetchIssueFieldsForKeys` + `augmentFieldMapWithGetIssueFallback`
+- Chamadas em batches de 5 usuários com `Promise.allSettled` — falhas individuais isoladas via `EMPTY_JIRA_METRICS`
+- Taxa de retorno UX: `countStatusTransitionsToValue(keys, "Pending UX")` — chamado apenas quando `validKeys.length > 0`
+
+### Banco de dados (MGR)
+
+- `$queryRawUnsafe` com `tableName` como union type TypeScript (injection-safe)
+- Parâmetros de data passados como `Date[]` parametrizados (`$1`, `$2`)
+- `ensureIndividualFeedbackTable()` e `ensureIndividualPerformanceEvaluationTable()` chamados antes do count
+
+### RBAC
+
+- `can(role, 'equipe.performance')` — acesso à aba
+- `can(role, 'equipe.performance.filterByProfile')` — filtro de perfil (apenas Administrador:MGR)
+- Dados Jira requerem credenciais cadastradas no sistema; sem credenciais → métricas zeradas sem erro
+
+### Testes
+
+- `__tests__/equipe-performance-utils.test.ts` — 14 casos Vitest cobrindo `isoToDateOnly`, `countUniqueByTypes` (dedup, case-insensitive, multi-type) e `topProjectsByIssueCount` (top N, fallback, dedup)
 
 ---
 

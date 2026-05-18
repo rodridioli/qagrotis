@@ -135,9 +135,16 @@ function StatBox({
   )
 }
 
-function ProgressBar({ value }: { value: number }) {
+function ProgressBar({ value, label }: { value: number; label?: string }) {
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-grey-100 dark:bg-neutral-grey-200">
+    <div
+      role="progressbar"
+      aria-valuenow={value}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={label}
+      className="h-2 w-full overflow-hidden rounded-full bg-neutral-grey-100 dark:bg-neutral-grey-200"
+    >
       <div
         className="h-full rounded-full bg-brand-primary transition-all duration-500"
         style={{ width: `${Math.min(100, value)}%` }}
@@ -160,24 +167,21 @@ export interface EquipePerformanceCardProps {
 type CardLabels = {
   cenarios: string
   testes: string
-  sucesso: string
-  alertas?: string      // omitido = não renderiza o box "Alertas"
-  erros?: string        // omitido = não renderiza o box "Erros"
-  automatizados?: string // omitido = não renderiza a barra de automatizados
+  sucesso?: string       // omitido = não renderiza o box "Sucesso/Ajustes"
+  alertas?: string       // omitido = não renderiza o box "Alertas"
+  erros?: string         // omitido = não renderiza o box "Erros"
+  automatizados?: string // omitido = não renderiza a barra de progresso
 }
 
 const LABELS_BY_PROFILE: Record<string, CardLabels> = {
   MGR: {
     cenarios: "Feedbacks",
     testes: "Avaliações",
-    sucesso: "Operacional",
-    erros: "Gestão",
-    automatizados: "Domínio",
   },
   UX: {
-    cenarios: "Protótipos",
-    testes: "Pesquisas",
-    sucesso: "Validações",
+    cenarios: "Novos Protótipos",
+    testes: "Pesquisa",
+    sucesso: "Ajustes em Protótipos",
     erros: "Usabilidade",
     automatizados: "Taxa de Retorno",
   },
@@ -201,11 +205,18 @@ export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps
   const labels = LABELS_BY_PROFILE[user.accessProfile ?? ""] ?? DEFAULT_LABELS
   const errosVariant: "error" | "info" = user.accessProfile === "UX" ? "info" : "error"
   const isMgr = user.accessProfile === "MGR"
+  const isUxOrTw = user.accessProfile === "UX" || user.accessProfile === "TW"
   const isQA = user.accessProfile === "QA"
   const hasAnySistema = user.atividadePorSistema.length > 0
   const detailRowsResolved = useMemo(() => {
-    if (isMgr && user.perfilCounts && user.perfilCounts.length > 0) {
-      return user.perfilCounts.map((e) => ({ label: e.label, value: String(e.count) }))
+    if (isMgr) return []
+    if (isUxOrTw) {
+      const proj = user.atividadePorProjeto ?? []
+      return [0, 1, 2].map((i) => {
+        const row = proj[i]
+        if (!row) return { label: FALLBACK_ROW_LABELS[i]!, value: "—" }
+        return { label: row.projectName, value: `${row.jirasCount} jiras` }
+      })
     }
     if (!hasAnySistema) {
       return FALLBACK_ROW_LABELS.map((label) => ({ label, value: "—" }))
@@ -213,7 +224,7 @@ export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps
     const src = user.atividadePorSistema
     return [0, 1, 2].map((i) => {
       const row = src[i]
-      const label = row?.sistema?.trim() || FALLBACK_ROW_LABELS[i]
+      const label = row?.sistema?.trim() || FALLBACK_ROW_LABELS[i]!
       const mods = row?.modulos ?? []
       const value = mods.length
         ? isQA
@@ -222,7 +233,7 @@ export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps
         : "—"
       return { label, value }
     })
-  }, [isMgr, isQA, hasAnySistema, user.atividadePorSistema, user.perfilCounts])
+  }, [isMgr, isUxOrTw, isQA, hasAnySistema, user.atividadePorSistema, user.atividadePorProjeto])
 
   return (
     <article
@@ -242,21 +253,23 @@ export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps
         </div>
       </div>
 
-      <div className="space-y-2.5 px-4 py-3">
-        {detailRowsResolved.map((row, rowIdx) => (
-          <div
-            key={`perf-detail-${rowIdx}-${row.label}`}
-            className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm"
-          >
-            <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-text-secondary sm:text-xs">
-              {row.label}
-            </span>
-            <span className="min-w-0 text-right font-semibold text-text-primary">{row.value}</span>
-          </div>
-        ))}
-      </div>
+      {detailRowsResolved.length > 0 && (
+        <div className="space-y-2.5 px-4 py-3">
+          {detailRowsResolved.map((row, rowIdx) => (
+            <div
+              key={`perf-detail-${rowIdx}-${row.label}`}
+              className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm"
+            >
+              <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-text-secondary sm:text-xs">
+                {row.label}
+              </span>
+              <span className="min-w-0 text-right font-semibold text-text-primary">{row.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Métricas: 5 cols (alertas+erros), 4 cols (só erros), 3 cols (nenhum). */}
+      {/* Métricas: 5 cols (alertas+erros), 4 cols (só erros), 3 cols (nenhum), 2 cols (MGR). */}
       <div
         className={cn(
           "grid gap-1.5 border-t border-border-default px-3 py-3 sm:gap-2 sm:px-4 sm:py-4",
@@ -264,12 +277,16 @@ export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps
             ? "grid-cols-5"
             : labels.erros
               ? "grid-cols-4"
-              : "grid-cols-3",
+              : labels.sucesso
+                ? "grid-cols-3"
+                : "grid-cols-2",
         )}
       >
-        <StatBox label={labels.cenarios} value={user.cenariosCriados} variant="cenarios" />
-        <StatBox label={labels.testes} value={user.testesExecutados} variant="testes" />
-        <StatBox label={labels.sucesso} value={user.sucessos} variant="success" />
+        <StatBox label={labels.cenarios} value={isMgr ? (user.feedbacksCount ?? 0) : user.cenariosCriados} variant="cenarios" />
+        <StatBox label={labels.testes} value={isMgr ? (user.avaliacoesCount ?? 0) : user.testesExecutados} variant={isMgr ? "success" : "testes"} />
+        {labels.sucesso && (
+          <StatBox label={labels.sucesso} value={user.sucessos} variant="success" />
+        )}
         {labels.alertas && (
           <StatBox label={labels.alertas} value={user.alertas} variant="warning" />
         )}
@@ -279,19 +296,17 @@ export function EquipePerformanceCard({ user, rank }: EquipePerformanceCardProps
       </div>
 
       {labels.automatizados && (
-      <div className="border-t border-border-default px-4 pb-4 pt-3">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wide text-text-secondary">
-            {labels.automatizados}
-          </span>
-          <span className="text-xs font-semibold tabular-nums text-text-primary sm:text-sm">
-            {isMgr
-              ? "60%"
-              : `${user.testesAutomatizados} de ${user.cenariosCriados} - ${user.percentualAutomatizado}%`}
-          </span>
+        <div className="border-t border-border-default px-4 pb-4 pt-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-text-secondary">
+              {labels.automatizados}
+            </span>
+            <span className="text-xs font-semibold tabular-nums text-text-primary sm:text-sm">
+              {`${user.percentualAutomatizado}%`}
+            </span>
+          </div>
+          <ProgressBar value={user.percentualAutomatizado} label={labels.automatizados} />
         </div>
-        <ProgressBar value={isMgr ? 60 : user.percentualAutomatizado} />
-      </div>
       )}
     </article>
   )
