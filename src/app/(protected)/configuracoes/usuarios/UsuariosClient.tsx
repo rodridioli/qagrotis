@@ -375,8 +375,8 @@ export default function UsuariosClient({
                   <col style={{ width: "6rem" }} />
                   <col style={{ width: "18%" }} />
                   <col style={{ width: "24%" }} />
+                  <col style={{ width: "10rem" }} />
                   <col style={{ width: "8rem" }} />
-                  <col style={{ width: "6rem" }} />
                   <col />
                   <col style={{ width: "3.25rem" }} />
                 </colgroup>
