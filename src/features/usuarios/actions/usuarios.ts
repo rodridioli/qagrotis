@@ -581,7 +581,7 @@ export async function criarQaUser(data: {
     } else {
       const createdIds = await prisma.createdUser.findMany({ select: { id: true } })
       const allIds = createdIds.map((u) => u.id)
-      const id = nextId(allIds, "U")
+      const id = nextId(allIds, "U", 3)
       await prisma.createdUser.create({
         data: {
           id,

@@ -31,7 +31,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { UserTipoBadge } from "@/components/shared/StatusBadge"
+import { UserTipoBadge, AccessProfileBadge } from "@/components/shared/StatusBadge"
 import { TableToolbar } from "@/components/shared/TableToolbar"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
@@ -405,6 +405,7 @@ export default function UsuariosClient({
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Usuário</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">E-mail</th>
                     <th className="w-40 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Tipo</th>
+                    <th className="w-24 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Perfil</th>
                     <th className="w-56 whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-text-secondary">Cargo</th>
                     <th className="sticky right-0 z-20 bg-neutral-grey-50 py-3 pl-2 pr-4" />
                   </tr>
@@ -465,6 +466,7 @@ export default function UsuariosClient({
                         </td>
                         <td className="truncate bg-surface-card px-4 py-3 text-text-secondary" title={u.email}>{u.email}</td>
                         <td className="bg-surface-card px-4 py-3"><UserTipoBadge tipo={u.type} /></td>
+                        <td className="bg-surface-card px-4 py-3"><AccessProfileBadge perfil={u.accessProfile} /></td>
                         <td
                           className="min-w-0 bg-surface-card px-4 py-3 text-text-secondary"
                           title={u.classificacao ?? undefined}
