@@ -37,6 +37,8 @@ import { AssistenteDrawer } from "@/components/shared/AssistenteDrawer"
 import type { IntegracaoSafeRecord } from "@/features/integracoes/actions/integracoes"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { BackToTop } from "@/components/shared/BackToTop"
+import { DominioAvaliacaoModal } from "@/features/individual/components/DominioAvaliacaoModal"
+import type { PendingDominioAvaliacaoDto } from "@/features/individual/actions/individual-dominio"
 
 const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"
@@ -635,6 +637,7 @@ interface Props {
   hasSistemaComModulo?: boolean
   hasCenario?: boolean
   isAdmin?: boolean
+  pendingDominioAvaliacao?: PendingDominioAvaliacaoDto | null
 }
 
 export default function LayoutClient({
@@ -644,6 +647,7 @@ export default function LayoutClient({
   hasSistemaComModulo: hasSistemaComModuloProp = false,
   hasCenario: hasCenarioProp = false,
   isAdmin: _isAdmin = false,
+  pendingDominioAvaliacao = null,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -784,6 +788,12 @@ export default function LayoutClient({
 
   return (
     <SistemaContext.Provider value={{ sistemaSelecionado, setSistemaSelecionado: handleSistemaChange }}>
+      {pendingDominioAvaliacao ? (
+        <DominioAvaliacaoModal
+          avaliacaoId={pendingDominioAvaliacao.id}
+          configSnapshot={pendingDominioAvaliacao.configSnapshot}
+        />
+      ) : null}
       <div className="flex h-screen overflow-hidden">
         <Sidebar
           collapsed={collapsed}

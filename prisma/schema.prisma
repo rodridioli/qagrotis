@@ -481,6 +481,7 @@ enum NotificationType {
   PROGRESSION
   ACHIEVEMENT
   ABSENCE_REQUEST
+  DOMAIN_EVALUATION
 }
 
 // ── Ausências ──────────────────────────────────────────────────────────────────
@@ -559,6 +560,44 @@ model IndividualAusencias {
 }
 
 // ── Chapter Prizes / Resgates ──────────────────────────────────────────────────
+
+// ── Domínio de Produto (avaliação de domínio por módulo) ─────────────────────
+
+enum DominioAvaliacaoStatus {
+  PENDENTE
+  CONCLUIDA
+}
+
+/** Configuração global de Produtos e Módulos para avaliações de domínio. Singleton (id = "global"). */
+model DominioConfiguracao {
+  id              String   @id @default("global")
+  /** [{ id: uuid, nome: string, modulos: [{ id: uuid, nome: string }] }] */
+  produtos        Json     @default("[]")
+  updatedByUserId String?
+  updatedAt       DateTime @updatedAt
+}
+
+/** Avaliação de domínio de um usuário sobre os módulos de produto da empresa. */
+model DominioAvaliacao {
+  id               String                 @id @default(cuid())
+  evaluatedUserId  String
+  solicitadaPorId  String
+  /** Sequência por usuário avaliado (ex.: 1, 2, 3…). */
+  codigo           Int
+  status           DominioAvaliacaoStatus @default(PENDENTE)
+  /** Percentual global calculado após preenchimento. */
+  resultadoPercent Float?
+  /** [{ produtoId: string, moduloId: string, estrelas: 1..5 }] */
+  respostas        Json                   @default("[]")
+  /** Snapshot da configuração de produtos/módulos no momento da solicitação. */
+  configSnapshot   Json                   @default("[]")
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@unique([evaluatedUserId, codigo])
+  @@index([evaluatedUserId])
+  @@index([status])
+}
 
 model ChapterRedemption {
   id         String   @id @default(cuid())

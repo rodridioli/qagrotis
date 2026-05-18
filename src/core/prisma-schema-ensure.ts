@@ -18,6 +18,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredIndividualFerias?: boolean
   __qagrotisEnsuredClienteTable?: boolean
   __qagrotisEnsuredIndividualAusencias?: boolean
+  __qagrotisEnsuredDominioTables?: boolean
 }
 
 /**
@@ -414,11 +415,13 @@ EXCEPTION
 END $$;
 `)
     // ALTER TYPE ADD VALUE cannot run inside a transaction block on some drivers.
-    // Isolate it so a failure here does not abort the table-creation statements below.
-    try {
-      await prisma.$executeRawUnsafe(`ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'ABSENCE_REQUEST'`)
-    } catch (alterErr) {
-      console.error("[prisma-schema-ensure] ALTER TYPE NotificationType (non-fatal)", alterErr)
+    // Isolate each value so a failure does not abort the table-creation statements below.
+    for (const val of ["ABSENCE_REQUEST", "DOMAIN_EVALUATION"]) {
+      try {
+        await prisma.$executeRawUnsafe(`ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS '${val}'`)
+      } catch (alterErr) {
+        console.error(`[prisma-schema-ensure] ALTER TYPE NotificationType ADD VALUE ${val} (non-fatal)`, alterErr)
+      }
     }
     await prisma.$executeRawUnsafe(`
 CREATE TABLE IF NOT EXISTS "Notification" (
@@ -586,5 +589,58 @@ CREATE TABLE IF NOT EXISTS "IndividualAusencias" (
     g.__qagrotisEnsuredIndividualAusencias = true
   } catch (e) {
     console.error("[prisma-schema-ensure] IndividualAusencias", e)
+  }
+}
+
+/**
+ * Garante tabelas de Domínio (configuração global de produtos/módulos e avaliações de domínio).
+ * DDL idempotente — cria enums, tabelas e índices se não existirem (Vercel/Neon sem migrate deploy).
+ */
+export async function ensureDominioTables(): Promise<void> {
+  if (g.__qagrotisEnsuredDominioTables) return
+  try {
+    await prisma.$executeRawUnsafe(`
+DO $$ BEGIN
+    CREATE TYPE "DominioAvaliacaoStatus" AS ENUM ('PENDENTE', 'CONCLUIDA');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+`)
+    await prisma.$executeRawUnsafe(`
+CREATE TABLE IF NOT EXISTS "DominioConfiguracao" (
+    "id" TEXT NOT NULL DEFAULT 'global',
+    "produtos" JSONB NOT NULL DEFAULT '[]',
+    "updatedByUserId" TEXT,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "DominioConfiguracao_pkey" PRIMARY KEY ("id")
+);
+`)
+    await prisma.$executeRawUnsafe(`
+CREATE TABLE IF NOT EXISTS "DominioAvaliacao" (
+    "id" TEXT NOT NULL,
+    "evaluatedUserId" TEXT NOT NULL,
+    "solicitadaPorId" TEXT NOT NULL,
+    "codigo" INTEGER NOT NULL,
+    "status" "DominioAvaliacaoStatus" NOT NULL DEFAULT 'PENDENTE',
+    "resultadoPercent" DOUBLE PRECISION,
+    "respostas" JSONB NOT NULL DEFAULT '[]',
+    "configSnapshot" JSONB NOT NULL DEFAULT '[]',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "DominioAvaliacao_pkey" PRIMARY KEY ("id")
+);
+`)
+    await prisma.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "DominioAvaliacao_evaluatedUserId_codigo_key" ON "DominioAvaliacao"("evaluatedUserId", "codigo")`,
+    )
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "DominioAvaliacao_evaluatedUserId_idx" ON "DominioAvaliacao"("evaluatedUserId")`,
+    )
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "DominioAvaliacao_status_idx" ON "DominioAvaliacao"("status")`,
+    )
+    g.__qagrotisEnsuredDominioTables = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] Dominio tables", e)
   }
 }

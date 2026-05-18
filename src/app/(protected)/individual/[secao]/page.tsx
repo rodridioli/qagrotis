@@ -13,6 +13,7 @@ import { MinhasProgressoesSection } from "@/features/individual/components/Minha
 import { IndividualFeriasSection } from "@/features/individual/components/IndividualFeriasSection"
 import { IndividualAusenciasSection } from "@/features/individual/components/IndividualAusenciasSection"
 import { individualSectionLabel, isIndividualSectionSlug } from "@/features/individual/lib/individual-sections"
+import { IndividualDominioSection } from "@/features/individual/components/IndividualDominioSection"
 
 export async function generateMetadata({
   params,
@@ -98,6 +99,8 @@ export default async function IndividualSecaoPage({
         <IndividualFeriasSection evaluatedUserId={session.user.id} canWrite={false} defaultSituacaoFiltro="todas" />
       ) : secao === "ausencias" ? (
         <IndividualAusenciasSection evaluatedUserId={session.user.id} canWrite={false} />
+      ) : secao === "dominio" ? (
+        <IndividualDominioSection evaluatedUserId={session.user.id} readOnly />
       ) : (
         <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center justify-center py-16">
           <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>

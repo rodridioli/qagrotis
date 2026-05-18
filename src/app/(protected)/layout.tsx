@@ -1,6 +1,8 @@
 import { getLayoutMenuData } from "@/core/layout-cache"
 import { checkIsAdmin } from "@/core/session"
 import { checkAndSendBirthdayNotifications, checkAndSendCompanyAnniversaryNotifications } from "@/core/actions/notifications"
+import { getPendingDominioAvaliacao } from "@/features/individual/actions/individual-dominio"
+import type { PendingDominioAvaliacaoDto } from "@/features/individual/actions/individual-dominio"
 import LayoutClient from "./LayoutClient"
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -9,8 +11,13 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   let hasSistemaComModulo = false
   let hasCenario = false
   let isAdmin = false
+  let pendingDominioAvaliacao: PendingDominioAvaliacaoDto | null = null
   try {
-    const [rData, rAdmin] = await Promise.allSettled([getLayoutMenuData(), checkIsAdmin()])
+    const [rData, rAdmin, rDominio] = await Promise.allSettled([
+      getLayoutMenuData(),
+      checkIsAdmin(),
+      getPendingDominioAvaliacao(),
+    ])
     if (rData.status === "fulfilled") {
       const data = rData.value
       sistemaNames = data.sistemaNames
@@ -20,6 +27,9 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     }
     if (rAdmin.status === "fulfilled") {
       isAdmin = rAdmin.value
+    }
+    if (rDominio.status === "fulfilled") {
+      pendingDominioAvaliacao = rDominio.value
     }
   } catch {
     // If DB is temporarily unavailable, render layout without lists
@@ -36,6 +46,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       hasSistemaComModulo={hasSistemaComModulo}
       hasCenario={hasCenario}
       isAdmin={isAdmin}
+      pendingDominioAvaliacao={pendingDominioAvaliacao}
     >
       {children}
     </LayoutClient>
