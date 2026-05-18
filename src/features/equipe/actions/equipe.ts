@@ -10,10 +10,27 @@ import {
   ensureUserDataNascimentoColumns,
   ensureUserHybridWorkDaysColumns,
   ensureUserWorkScheduleColumns,
+  ensureIndividualFeedbackTable,
+  ensureIndividualPerformanceEvaluationTable,
 } from "@/core/prisma-schema-ensure"
 import { USER_PROFILE_READ_SELECT } from "@/features/usuarios/lib/prisma-user-selects"
 import { resolveHistoricoRunnerEmailKey } from "@/lib/historico-runner-attribution"
 import { requireSession } from "@/core/session"
+import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credentials-db"
+import {
+  findJiraAccountIdByEmail,
+  fetchWorklogsForAuthorInRange,
+  fetchIssueFieldsForKeys,
+  augmentFieldMapWithGetIssueFallback,
+  countStatusTransitionsToValue,
+  type JiraLancamentoEntry,
+} from "@/features/qa/lib/jira-worklogs-fetch"
+import {
+  isoToDateOnly,
+  countUniqueByTypes,
+  topProjectsByIssueCount,
+} from "@/features/equipe/lib/equipe-performance-utils"
+
 export interface UserPerformanceData {
   userId: string
   name: string
@@ -33,6 +50,137 @@ export interface UserPerformanceData {
   score: number
   /** Contagem de usuários ativos por perfil — preenchido apenas para cards de usuário MGR */
   perfilCounts?: { label: string; count: number }[]
+  /** Projetos Jira onde o usuário lançou horas (UX/TW), top 3 por quantidade de issues */
+  atividadePorProjeto?: { projectName: string; jirasCount: number }[]
+  /** UX: issues com type = New ou Redesign */
+  newPrototypesCount?: number
+  /** UX: issues com type = Improvement ou Adjustment/Return */
+  adjustmentsCount?: number
+  /** TW: issues com type = Others */
+  othersCount?: number
+  /** UX: % de issues que saíram de Entregue e voltaram para Pending UX */
+  returnRatePercent?: number
+  /** MGR: total de feedbacks do sistema no período */
+  feedbacksCount?: number
+  /** MGR: total de avaliações do sistema no período */
+  avaliacoesCount?: number
+}
+
+// ── Jira helpers (UX/TW performance) ─────────────────────────────────────────
+
+type JiraUserMetrics = {
+  atividadePorProjeto: { projectName: string; jirasCount: number }[]
+  newPrototypesCount: number
+  researchCount: number
+  adjustmentsCount: number
+  usabilityCount: number
+  returnRatePercent: number
+  newDocCount: number
+  docReviewCount: number
+  othersCount: number
+}
+
+const EMPTY_JIRA_METRICS: JiraUserMetrics = {
+  atividadePorProjeto: [],
+  newPrototypesCount: 0,
+  researchCount: 0,
+  adjustmentsCount: 0,
+  usabilityCount: 0,
+  returnRatePercent: 0,
+  newDocCount: 0,
+  docReviewCount: 0,
+  othersCount: 0,
+}
+
+const JIRA_KEY_RE = /^[A-Z][A-Z0-9]*-\d+$/i
+
+async function runInBatches<T, R>(
+  items: T[],
+  batchSize: number,
+  fn: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = []
+  for (let i = 0; i < items.length; i += batchSize) {
+    const chunk = items.slice(i, i + batchSize)
+    const settled = await Promise.allSettled(chunk.map(fn))
+    results.push(...settled)
+  }
+  return results
+}
+
+async function fetchJiraMetricsForUser(
+  base: string,
+  credentials: string,
+  email: string,
+  fromIso: string,
+  toIso: string,
+  profile: "UX" | "TW",
+): Promise<JiraUserMetrics> {
+  const jiraUser = await findJiraAccountIdByEmail(base, credentials, email).catch(() => null)
+  if (!jiraUser) return EMPTY_JIRA_METRICS
+
+  const { entries: rawEntries } = await fetchWorklogsForAuthorInRange(
+    base, credentials, jiraUser.accountId, fromIso, toIso, "UTC",
+  ).catch(() => ({ entries: [] as JiraLancamentoEntry[], truncatedIssues: false, truncatedWorklogs: false }))
+
+  const validKeys = Array.from(
+    new Set(rawEntries.map((e) => e.issueKey.trim().toUpperCase()).filter((k) => JIRA_KEY_RE.test(k))),
+  )
+
+  let entries = rawEntries
+  if (validKeys.length > 0) {
+    const fieldMap = await fetchIssueFieldsForKeys(base, credentials, validKeys).catch(
+      () => new Map<string, import("@/features/qa/lib/jira-worklogs-fetch").LancamentoIssueFieldsPatch>(),
+    )
+    await augmentFieldMapWithGetIssueFallback(base, credentials, fieldMap, validKeys).catch(() => undefined)
+    entries = rawEntries.map((e) => {
+      const patch = fieldMap.get(e.issueKey.trim().toUpperCase())
+      if (!patch) return e
+      return {
+        ...e,
+        typeField: patch.typeField?.trim() ? patch.typeField.trim() : e.typeField,
+        projectName: patch.projectName?.trim() ? patch.projectName.trim() : e.projectName,
+      }
+    })
+  }
+
+  let returnRatePercent = 0
+  if (profile === "UX" && validKeys.length > 0) {
+    const pendingCount = await countStatusTransitionsToValue(base, credentials, validKeys, "Pending UX").catch(() => 0)
+    returnRatePercent = Math.round((pendingCount / validKeys.length) * 100)
+  }
+
+  return {
+    atividadePorProjeto: topProjectsByIssueCount(entries),
+    newPrototypesCount: countUniqueByTypes(entries, "new", "redesign"),
+    researchCount: countUniqueByTypes(entries, "research"),
+    adjustmentsCount: countUniqueByTypes(entries, "improvement", "adjustment/return"),
+    usabilityCount: countUniqueByTypes(entries, "usability"),
+    returnRatePercent,
+    newDocCount: countUniqueByTypes(entries, "new documentation"),
+    docReviewCount: countUniqueByTypes(entries, "documentation review"),
+    othersCount: countUniqueByTypes(entries, "others"),
+  }
+}
+
+async function countTableRowsInDateRange(
+  tableName: "IndividualFeedback" | "IndividualPerformanceEvaluation",
+  dateFilter: { gte?: Date; lte?: Date },
+): Promise<number> {
+  try {
+    const params: Date[] = []
+    const conds: string[] = []
+    if (dateFilter.gte) { conds.push(`"updatedAt" >= $${params.length + 1}`); params.push(dateFilter.gte) }
+    if (dateFilter.lte) { conds.push(`"updatedAt" <= $${params.length + 1}`); params.push(dateFilter.lte) }
+    const where = conds.length > 0 ? `WHERE ${conds.join(" AND ")}` : ""
+    const rows = await prisma.$queryRawUnsafe<[{ cnt: bigint | number }]>(
+      `SELECT COUNT(*) as cnt FROM "${tableName}" ${where}`,
+      ...params,
+    )
+    return Number(rows[0]?.cnt ?? 0)
+  } catch {
+    return 0
+  }
 }
 
 export async function getPerformanceData(filters: {
@@ -40,8 +188,9 @@ export async function getPerformanceData(filters: {
   modulo?: string
   dataInicio?: string
   dataFim?: string
+  profile?: string
 }): Promise<UserPerformanceData[]> {
-  await requireSession()
+  const session = await requireSession()
   try {
     await ensureUserDataNascimentoColumns()
 
@@ -329,6 +478,64 @@ export async function getPerformanceData(filters: {
         perfilCounts,
       }
     })
+
+    // ── Enriquecimento por perfil selecionado ────────────────────────────────
+    const selectedProfile = filters.profile
+
+    if (selectedProfile === "UX" || selectedProfile === "TW") {
+      const resolved = await resolveJiraCredentialsForRequest(session.user.id).catch(() => null)
+      if (resolved) {
+        const base = resolved.jiraUrl.replace(/\/$/, "")
+        const credentials = Buffer.from(`${resolved.jiraEmail}:${resolved.apiToken}`).toString("base64")
+        const fromIso = filters.dataInicio ? isoToDateOnly(filters.dataInicio) : isoToDateOnly(new Date().toISOString())
+        const toIso = filters.dataFim ? isoToDateOnly(filters.dataFim) : isoToDateOnly(new Date().toISOString())
+
+        const targetUsers = result.filter((u) => u.accessProfile === selectedProfile)
+        const settled = await runInBatches(targetUsers, 5, (u) =>
+          fetchJiraMetricsForUser(base, credentials, u.email, fromIso, toIso, selectedProfile as "UX" | "TW"),
+        )
+
+        for (let i = 0; i < targetUsers.length; i++) {
+          const s = settled[i]
+          const metrics = s?.status === "fulfilled" ? s.value : EMPTY_JIRA_METRICS
+          const u = targetUsers[i]!
+          const entry = result.find((r) => r.userId === u.userId)
+          if (!entry) continue
+          entry.atividadePorProjeto = metrics.atividadePorProjeto
+          entry.newPrototypesCount = metrics.newPrototypesCount
+          entry.cenariosCriados = metrics.newPrototypesCount
+          entry.testesExecutados = metrics.researchCount
+          entry.sucessos = metrics.adjustmentsCount
+          entry.errosEncontrados = metrics.usabilityCount
+          entry.percentualAutomatizado = metrics.returnRatePercent
+          entry.adjustmentsCount = metrics.adjustmentsCount
+          entry.returnRatePercent = metrics.returnRatePercent
+          if (selectedProfile === "TW") {
+            entry.othersCount = metrics.othersCount
+            entry.cenariosCriados = metrics.newDocCount
+            entry.testesExecutados = metrics.docReviewCount
+            entry.sucessos = metrics.othersCount
+          }
+        }
+      }
+    }
+
+    if (selectedProfile === "MGR") {
+      await Promise.allSettled([
+        ensureIndividualFeedbackTable(),
+        ensureIndividualPerformanceEvaluationTable(),
+      ])
+      const [feedbacksCount, avaliacoesCount] = await Promise.all([
+        countTableRowsInDateRange("IndividualFeedback", dateFilter),
+        countTableRowsInDateRange("IndividualPerformanceEvaluation", dateFilter),
+      ])
+      for (const entry of result) {
+        if (entry.accessProfile === "MGR") {
+          entry.feedbacksCount = feedbacksCount
+          entry.avaliacoesCount = avaliacoesCount
+        }
+      }
+    }
 
     return result.sort((a, b) =>
       (b.testesExecutados - a.testesExecutados) ||
