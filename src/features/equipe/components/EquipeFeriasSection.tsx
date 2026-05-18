@@ -116,16 +116,18 @@ export function EquipeFeriasSection() {
   )
 
   const filtered = React.useMemo<RowWithSituacao[]>(() => {
-    return rowsWithSituacao.filter((r) => {
-      if (!matchesSituacaoFiltro(r.situacao, situacaoFiltro)) return false
-      if (!search.trim()) return true
-      const q = search.trim().toLowerCase()
-      return (
-        formatCodigo(r.codigo).toLowerCase().includes(q) ||
-        formatIsoToBr(r.inicioIso).includes(q) ||
-        (r.evaluatedUser?.name ?? "").toLowerCase().includes(q)
-      )
-    })
+    return rowsWithSituacao
+      .filter((r) => {
+        if (!matchesSituacaoFiltro(r.situacao, situacaoFiltro)) return false
+        if (!search.trim()) return true
+        const q = search.trim().toLowerCase()
+        return (
+          formatCodigo(r.codigo).toLowerCase().includes(q) ||
+          formatIsoToBr(r.inicioIso).includes(q) ||
+          (r.evaluatedUser?.name ?? "").toLowerCase().includes(q)
+        )
+      })
+      .sort((a, b) => a.inicioIso.localeCompare(b.inicioIso))
   }, [rowsWithSituacao, situacaoFiltro, search])
 
   const activeFilterCount = situacaoFiltro !== DEFAULT_FILTRO ? 1 : 0
