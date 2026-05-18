@@ -266,11 +266,11 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
                         </span>
                       )}
 
-                      <div className="flex shrink-0 items-center">
+                      <div className="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
                           onClick={() => isEditingThisProduto ? commitEdit() : startEditProduto(produto)}
-                          className="inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+                          className="inline-flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
                           aria-label={isEditingThisProduto ? "Salvar produto" : "Editar produto"}
                         >
                           {isEditingThisProduto ? <Check className="size-4" /> : <Pencil className="size-4" />}
@@ -278,7 +278,7 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
                         <button
                           type="button"
                           onClick={() => removeProduto(produto.id)}
-                          className="inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          className="inline-flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                           aria-label="Remover produto"
                         >
                           <Trash2 className="size-4" />
@@ -322,11 +322,11 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
                                     {modulo.nome}
                                   </span>
                                 )}
-                                <div className="flex shrink-0 items-center">
+                                <div className="flex shrink-0 items-center gap-1">
                                   <button
                                     type="button"
                                     onClick={() => isEditingThisModulo ? commitEdit() : startEditModulo(produto.id, modulo)}
-                                    className="inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+                                    className="inline-flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
                                     aria-label={isEditingThisModulo ? "Salvar módulo" : "Editar módulo"}
                                   >
                                     {isEditingThisModulo ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
@@ -334,7 +334,7 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
                                   <button
                                     type="button"
                                     onClick={() => removeModulo(produto.id, modulo.id)}
-                                    className="inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                    className="inline-flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                                     aria-label="Remover módulo"
                                   >
                                     <Trash2 className="size-3.5" />
