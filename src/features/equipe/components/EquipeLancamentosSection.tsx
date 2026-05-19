@@ -50,7 +50,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
   const [membros, setMembros] = React.useState<EquipeMembroLancamentos[]>([])
   const [loading, setLoading] = React.useState(true)
   const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
-  const [preset, setPreset] = React.useState<LancamentosPeriodPreset>("week")
+  const [preset, setPreset] = React.useState<LancamentosPeriodPreset>("anterior")
 
   const isViewerMgr = userAccessProfile === "MGR"
 

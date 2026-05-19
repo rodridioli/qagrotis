@@ -25,7 +25,8 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
   React.useEffect(() => {
     const tab = searchParams.get("tab")
     const isLancamentosTopLevel = tab === "lancamentos" && !canAccessLancamentos
-    const now = pathname.startsWith("/equipe") && !isLancamentosTopLevel
+    const isPerformanceTopLevel = tab === "performance" && !canAccessPerformance
+    const now = pathname.startsWith("/equipe") && !isLancamentosTopLevel && !isPerformanceTopLevel
     const was = prevPath.current.startsWith("/equipe")
     prevPath.current = pathname
     if (now && !was) setOpen(true)
@@ -33,7 +34,9 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
   }, [pathname, searchParams, canAccessLancamentos])
 
   const activeTabId = searchParams.get("tab") ?? "performance"
-  const parentActive = pathname.startsWith("/equipe") && !(activeTabId === "lancamentos" && !canAccessLancamentos)
+  const parentActive = pathname.startsWith("/equipe")
+    && !(activeTabId === "lancamentos" && !canAccessLancamentos)
+    && !(activeTabId === "performance" && !canAccessPerformance)
 
   function go(href: string) {
     if (onNavigate) onNavigate(href)

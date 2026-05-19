@@ -1,11 +1,12 @@
 /** Presets de intervalo em data civil local (YYYY-MM-DD). */
 
-export type LancamentosPeriodPreset = "today" | "anterior" | "week" | "month" | "lastMonth"
+export type LancamentosPeriodPreset = "today" | "anterior" | "week" | "lastWeek" | "month" | "lastMonth"
 
 export const LANCAMENTOS_PRESET_OPTIONS: { value: LancamentosPeriodPreset; label: string }[] = [
   { value: "today",     label: "Hoje" },
   { value: "anterior",  label: "Anterior" },
   { value: "week",      label: "Semana atual" },
+  { value: "lastWeek",  label: "Semana anterior" },
   { value: "month",     label: "Mês atual" },
   { value: "lastMonth", label: "Mês anterior" },
 ]
@@ -48,6 +49,15 @@ export function getLancamentosPresetRange(
     const weekEndIso = toIsoLocal(sun)
     const to = weekEndIso < todayIso ? weekEndIso : todayIso
     return { from: toIsoLocal(mon), to }
+  }
+
+  if (preset === "lastWeek") {
+    const day = now.getDay()
+    const mondayOffset = day === 0 ? -6 : 1 - day
+    const thisMon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset)
+    const mon = new Date(thisMon.getFullYear(), thisMon.getMonth(), thisMon.getDate() - 7)
+    const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6)
+    return { from: toIsoLocal(mon), to: toIsoLocal(sun) }
   }
 
   if (preset === "month") {
