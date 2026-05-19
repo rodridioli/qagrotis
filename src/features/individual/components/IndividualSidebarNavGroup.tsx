@@ -30,15 +30,19 @@ export function IndividualSidebarNavGroup({
   const [open, setOpen] = React.useState(false)
   const prevPath = React.useRef("")
 
+  // "/individual/lancamentos" is a top-level menu item — exclude it from group activation
+  const isIndividualGroup = (p: string) =>
+    p.startsWith("/individual") && p !== "/individual/lancamentos"
+
   React.useEffect(() => {
-    const now = pathname.startsWith("/individual")
-    const was = prevPath.current.startsWith("/individual")
+    const now = isIndividualGroup(pathname)
+    const was = isIndividualGroup(prevPath.current)
     prevPath.current = pathname
     if (now && !was) setOpen(true)
     if (!now && was) setOpen(false)
   }, [pathname])
 
-  const parentActive = pathname.startsWith("/individual")
+  const parentActive = isIndividualGroup(pathname)
   const showLabel = !collapsed
 
   function go(href: string) {
