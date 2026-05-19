@@ -628,7 +628,7 @@ export async function countReporterIssuesByTypes(
   const attempts: ReporterCountDiagnostics["attempts"] = []
 
   async function runJql(reporterClause: string): Promise<number> {
-    const jql = `${reporterClause} AND ${issuetypeClause} AND statusCategory != Done`
+    const jql = `${reporterClause} AND ${issuetypeClause} AND status != "Cancelado" AND created >= "${fromIso}" AND created < "${upperExclusive}"`
     // New API (post May 2025): /search/approximate-count returns just a count.
     // The legacy /search endpoint returns 410 Gone.
     const { ok, status, data } = await jiraJson<{ count?: number }>(

@@ -70,6 +70,8 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
 const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability; label?: string }>>> = {
   "Administrador:MGR": [
     { capability: "menu.painel" },
+    { capability: "equipe.lancamentos", label: "Lançamentos" },
+    { capability: "equipe.performance", label: "Indicadores" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
@@ -154,6 +156,10 @@ function getTitle(pathname: string, role?: Role, tab?: string): string {
     if (label) return `Individual — ${label}`
   }
   if (pathname.startsWith("/equipe")) {
+    if (role === "Administrador:MGR") {
+      if (tab === "lancamentos") return "Lançamentos"
+      if (tab === "performance") return "Indicadores"
+    }
     const entry = EQUIPE_NAV_ENTRIES.find((e) => e.id === tab)
     if (entry) return `Equipe — ${entry.label}`
     return "Equipe"
@@ -298,7 +304,12 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                       </div>
                     }
                   >
-                    <EquipeSidebarNavGroup collapsed={collapsed} onNavigate={onNavigate} canAccessLancamentos={canAccessEquipeLancamentos} canAccessPerformance={canAccessEquipePerformance} />
+                    <EquipeSidebarNavGroup
+                      collapsed={collapsed}
+                      onNavigate={onNavigate}
+                      canAccessLancamentos={role === "Administrador:MGR" ? false : canAccessEquipeLancamentos}
+                      canAccessPerformance={role === "Administrador:MGR" ? false : canAccessEquipePerformance}
+                    />
                   </Suspense>
                 )
               }
@@ -359,9 +370,11 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
               const isAssistente = href === "/assistente"
               const isActive = href === "/equipe?tab=lancamentos"
                 ? pathname === "/equipe" && sidebarSearchParams.get("tab") === "lancamentos"
-                : isAssistente
-                  ? assistenteOpen
-                  : !disabled && pathname.startsWith(href)
+                : href === "/equipe?tab=performance"
+                  ? pathname === "/equipe" && sidebarSearchParams.get("tab") === "performance"
+                  : isAssistente
+                    ? assistenteOpen
+                    : !disabled && pathname.startsWith(href)
               const showLabel = !collapsed
 
               if (disabled) {
