@@ -63,7 +63,7 @@ export default function ClockworkConfigButton() {
       }
       setHasStoredToken(true)
       setToken("")
-      toast.success("API Clockwork salva com sucesso.")
+      toast.success("Clockwork salvo com sucesso.")
       setOpen(false)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível salvar.")
@@ -82,13 +82,13 @@ export default function ClockworkConfigButton() {
         <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
           <Timer className="size-6" />
         </div>
-        <span className="font-semibold text-text-primary">API Clockwork</span>
+        <span className="font-semibold text-text-primary">Clockwork</span>
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>API Clockwork</DialogTitle>
+            <DialogTitle>Clockwork</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-4 py-2">
             <p className="text-sm text-text-secondary">

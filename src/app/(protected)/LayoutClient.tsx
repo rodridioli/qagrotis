@@ -7,7 +7,7 @@ import {
   LayoutDashboard, FileText, Rocket, Clock, Timer,
   Settings, LogOut, PanelLeftClose,
   PanelLeftOpen, Menu, Moon, Sun, Sparkles, Users,
-  Network, ClipboardCheck, MessageSquare, User,
+  Network, ClipboardCheck, MessageSquare, User, BarChart3,
 } from "lucide-react"
 import { buildRole, can, isDisabled, isVisible, type Role, type Capability, type AccessProfile } from "@/core/rbac/policy"
 import {
@@ -50,8 +50,9 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false, capability: "menu.painel" },
   { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false, capability: "menu.suites" },
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
-  { href: "/equipe?tab=lancamentos", icon: Timer,  label: "Lançamentos",      alwaysEnabled: true,  capability: "equipe.lancamentos" },
-  { href: "/individual/lancamentos", icon: Clock,  label: "Lançamentos",      alwaysEnabled: false, capability: "individual.lancamentos" },
+  { href: "/equipe?tab=lancamentos", icon: Timer,      label: "Lançamentos", alwaysEnabled: true,  capability: "equipe.lancamentos" },
+  { href: "/equipe?tab=performance", icon: BarChart3,  label: "Indicadores", alwaysEnabled: true,  capability: "equipe.performance" },
+  { href: "/individual/lancamentos", icon: Clock,      label: "Lançamentos", alwaysEnabled: false, capability: "individual.lancamentos" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
   { href: "/mapa-conhecimento",     icon: Network,         label: "Mapa de Conhecimento",   alwaysEnabled: true,  capability: "menu.mapaConhecimento" },
   { href: "/avaliacao-desempenho",  icon: ClipboardCheck,  label: "Avaliação de Desempenho", alwaysEnabled: true,  capability: "menu.avaliacaoDesempenho" },
@@ -71,6 +72,8 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
     { capability: "menu.painel" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
+    { capability: "equipe.lancamentos" },
+    { capability: "equipe.performance" },
     { capability: "menu.configuracoes" },
   ],
 }
@@ -108,8 +111,11 @@ function getTitle(pathname: string, role?: Role, tab?: string): string {
     if (label) return `Individual — ${label}`
   }
   if (pathname.startsWith("/equipe")) {
-    if (tab === "lancamentos" && (role === "Administrador:QA" || role === "Administrador:UX" || role === "Administrador:TW")) {
+    if (tab === "lancamentos" && (role === "Administrador:QA" || role === "Administrador:UX" || role === "Administrador:TW" || role === "Administrador:MGR")) {
       return "Lançamentos"
+    }
+    if (tab === "performance" && role === "Administrador:MGR") {
+      return "Indicadores"
     }
     const entry = EQUIPE_NAV_ENTRIES.find((e) => e.id === tab)
     if (entry) return `Equipe — ${entry.label}`
