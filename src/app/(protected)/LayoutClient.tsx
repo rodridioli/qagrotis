@@ -52,12 +52,12 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
   { href: "/individual/lancamentos", icon: Clock,  label: "Lançamentos",      alwaysEnabled: false, capability: "individual.lancamentos" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
-  { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
-  { href: "/individual",    icon: User,            label: "Individual",             alwaysEnabled: true,  capability: "menu.individual" },
   { href: "/mapa-conhecimento",     icon: Network,         label: "Mapa de Conhecimento",   alwaysEnabled: true,  capability: "menu.mapaConhecimento" },
   { href: "/avaliacao-desempenho",  icon: ClipboardCheck,  label: "Avaliação de Desempenho", alwaysEnabled: true,  capability: "menu.avaliacaoDesempenho" },
   { href: "/feedbacks",             icon: MessageSquare,   label: "Feedbacks",              alwaysEnabled: true,  capability: "menu.feedbacks" },
   { href: "/configuracoes", icon: Settings,        label: "Configurações",          alwaysEnabled: true,  capability: "menu.configuracoes" },
+  { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
+  { href: "/individual",    icon: User,            label: "Individual",             alwaysEnabled: true,  capability: "menu.individual" },
   { href: "/atualizacoes",  icon: History,         label: "Atualizações",     alwaysEnabled: false, capability: "menu.atualizacoes" },
 ]
 
@@ -69,9 +69,9 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
 const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability; label?: string }>>> = {
   "Administrador:MGR": [
     { capability: "menu.painel" },
+    { capability: "menu.configuracoes" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
-    { capability: "menu.configuracoes" },
     { capability: "menu.atualizacoes" },
   ],
 }
