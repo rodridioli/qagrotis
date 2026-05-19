@@ -15,15 +15,32 @@ interface ConfigCard {
   capability: Capability
 }
 
-const CARDS: ConfigCard[] = [
-  { href: "/configuracoes/usuarios",      icon: Users,     label: "Usuários",      capability: "config.usuarios" },
-  { href: "/configuracoes/sistemas",      icon: Monitor,   label: "Sistemas",      capability: "config.sistemas" },
-  { href: "/configuracoes/modulos",       icon: Box,       label: "Módulos",       capability: "config.modulos" },
-  { href: "/configuracoes/clientes",      icon: Building2, label: "Clientes",      capability: "config.clientes" },
-  { href: "/configuracoes/modelos-de-ia", icon: Sparkles,  label: "Modelos de IA", capability: "config.modelosIA" },
-  { href: "/configuracoes/credenciais",   icon: KeyRound,  label: "Credenciais",   capability: "config.credenciais" },
-  { href: "/atualizacoes",               icon: History,   label: "Atualizações",  capability: "menu.atualizacoes" },
+const MAIN_CARDS: ConfigCard[] = [
+  { href: "/configuracoes/usuarios",  icon: Users,   label: "Usuários",     capability: "config.usuarios" },
+  { href: "/configuracoes/sistemas",  icon: Monitor, label: "Sistemas",     capability: "config.sistemas" },
+  { href: "/configuracoes/modulos",   icon: Box,     label: "Módulos",      capability: "config.modulos" },
+  { href: "/configuracoes/clientes",  icon: Building2, label: "Clientes",   capability: "config.clientes" },
+  { href: "/configuracoes/credenciais", icon: KeyRound, label: "Credenciais", capability: "config.credenciais" },
+  { href: "/atualizacoes",            icon: History, label: "Atualizações", capability: "menu.atualizacoes" },
 ]
+
+const INTEGRATION_CARDS: ConfigCard[] = [
+  { href: "/configuracoes/modelos-de-ia", icon: Sparkles, label: "Modelos de IA", capability: "config.modelosIA" },
+]
+
+function CardLink({ href, icon: Icon, label }: Omit<ConfigCard, "capability">) {
+  return (
+    <Link
+      href={href}
+      className="flex flex-col items-center gap-3 rounded-xl bg-surface-card p-8 shadow-card transition-colors hover:bg-neutral-grey-50"
+    >
+      <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
+        <Icon className="size-6" />
+      </div>
+      <span className="font-semibold text-text-primary">{label}</span>
+    </Link>
+  )
+}
 
 export default async function ConfiguracoesPage() {
   const session = await auth()
@@ -31,13 +48,17 @@ export default async function ConfiguracoesPage() {
   const userId = session?.user?.id ?? ""
   const role = buildRole(session?.user?.type, session?.user?.accessProfile)
 
-  const visibleCards = CARDS.filter((c) => can(role, c.capability))
+  const visibleMain = MAIN_CARDS.filter((c) => can(role, c.capability))
+  const visibleIntegrations = INTEGRATION_CARDS.filter((c) => can(role, c.capability))
   const showJira = can(role, "config.jira")
   const showClockwork = can(role, "config.clockwork")
   const showMeuCadastro = can(role, "config.meuCadastro") && !!userId
 
+  const hasIntegrations = visibleIntegrations.length > 0 || showJira || showClockwork
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
+      {/* Main cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {showMeuCadastro && (
           <Link
@@ -50,23 +71,29 @@ export default async function ConfiguracoesPage() {
             <span className="font-semibold text-text-primary">Meu Cadastro</span>
           </Link>
         )}
-
-        {visibleCards.map(({ href, icon: Icon, label }) => (
-          <Link
-            key={href}
-            href={href}
-            className="flex flex-col items-center gap-3 rounded-xl bg-surface-card p-8 shadow-card transition-colors hover:bg-neutral-grey-50"
-          >
-            <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
-              <Icon className="size-6" />
-            </div>
-            <span className="font-semibold text-text-primary">{label}</span>
-          </Link>
+        {visibleMain.map((c) => (
+          <CardLink key={c.href} href={c.href} icon={c.icon} label={c.label} />
         ))}
-
-        {showJira && <JiraConfigButton defaultEmail={currentEmail} />}
-        {showClockwork && <ClockworkConfigButton />}
       </div>
+
+      {/* Integrações section */}
+      {hasIntegrations && (
+        <>
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border-default" />
+            <span className="text-sm font-semibold uppercase tracking-wider text-text-secondary">Integrações</span>
+            <div className="h-px flex-1 bg-border-default" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {showJira && <JiraConfigButton defaultEmail={currentEmail} />}
+            {showClockwork && <ClockworkConfigButton />}
+            {visibleIntegrations.map((c) => (
+              <CardLink key={c.href} href={c.href} icon={c.icon} label={c.label} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
