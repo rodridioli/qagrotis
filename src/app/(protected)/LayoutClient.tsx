@@ -74,6 +74,20 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
   ],
+  "Padrão:UX": [
+    { capability: "menu.painel" },
+    { capability: "individual.lancamentos" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
+  ],
+  "Padrão:TW": [
+    { capability: "menu.painel" },
+    { capability: "individual.lancamentos" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
+  ],
   "Padrão:QA": [
     { capability: "menu.painel" },
     { capability: "individual.lancamentos" },
