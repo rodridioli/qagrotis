@@ -3,7 +3,6 @@ import { NextRequest } from "next/server"
 import { cookies } from "next/headers"
 import {
   deleteUserJiraCredentials,
-  getMgrJiraCredentials,
   getUserJiraCredentials,
   readLegacyJiraCookies,
   upsertUserJiraCredentials,
@@ -48,9 +47,7 @@ export async function GET() {
     const jiraEmail = (db?.jiraEmail || leg?.jiraEmail || "").trim()
     const hasToken = !!(db?.apiToken?.trim() || leg?.apiToken?.trim())
 
-    const ownConfigured = !!(jiraUrl && jiraEmail && hasToken)
-    const mgrCreds = ownConfigured ? null : await getMgrJiraCredentials()
-    const configured = ownConfigured || !!(mgrCreds?.jiraUrl && mgrCreds?.jiraEmail && mgrCreds?.apiToken)
+    const configured = !!(jiraUrl && jiraEmail && hasToken)
 
     return Response.json({
       jiraUrl,

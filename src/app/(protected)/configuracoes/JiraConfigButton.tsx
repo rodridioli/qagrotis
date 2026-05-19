@@ -117,8 +117,9 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
           </DialogHeader>
           <div className="flex flex-col gap-4 py-2">
             <p className="text-sm text-text-secondary">
-              Token da API Jira (instância única da aplicação). O valor é guardado de forma cifrada na base de dados.
-              Apenas administradores com perfil MGR podem alterar esta configuração.
+              Configure sua integração pessoal com o Jira. Cada usuário deve cadastrar suas próprias credenciais
+              (URL, e-mail e API Token) para que lançamentos e exportações funcionem corretamente.
+              O valor é guardado de forma cifrada na base de dados.
               O token não é exibido depois de salvo; para trocá-lo, informe um novo API Token.
             </p>
             <div className="space-y-1.5">
