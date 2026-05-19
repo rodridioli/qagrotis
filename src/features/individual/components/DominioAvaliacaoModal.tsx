@@ -18,6 +18,13 @@ import {
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet"
 import type {
   DominioProduto,
   DominioAvaliacaoResposta,
@@ -185,88 +192,6 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-// ─── HorizontalStepper ───────────────────────────────────────────────────────
-
-function HorizontalStepper({
-  produtos,
-  step,
-  onClickStep,
-}: {
-  produtos: DominioProduto[]
-  step: WizardStep
-  onClickStep?: (s: WizardStep) => void
-}) {
-  // steps: intro (0), products (1..N), review (N+1)
-  const steps: { label: string; key: WizardStep }[] = [
-    { label: "Introdução", key: "intro" },
-    ...produtos.map((p, i) => ({ label: p.nome, key: i as WizardStep })),
-    { label: "Revisão", key: "review" },
-  ]
-
-  function stepIndex(s: WizardStep): number {
-    if (s === "intro") return 0
-    if (s === "review") return produtos.length + 1
-    if (s === "done") return produtos.length + 1
-    return (s as number) + 1
-  }
-
-  const activeIdx = stepIndex(step)
-
-  return (
-    <nav
-      aria-label="Etapas da avaliação"
-      className="flex items-center gap-0 overflow-x-auto border-b border-border-default bg-background px-4 py-3 sm:px-6"
-    >
-      {steps.map((s, i) => {
-        const sIdx = stepIndex(s.key)
-        const isActive = sIdx === activeIdx
-        const isDone = sIdx < activeIdx && step !== "done"
-        const isLast = i === steps.length - 1
-
-        return (
-          <React.Fragment key={String(s.key)}>
-            <div className="flex shrink-0 items-center gap-1.5">
-              {isDone ? (
-                <span className="flex size-6 items-center justify-center rounded-full bg-brand-primary">
-                  <Check className="size-3.5 text-white" aria-hidden />
-                </span>
-              ) : (
-                <span
-                  className={cn(
-                    "flex size-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-                    isActive
-                      ? "bg-brand-primary text-white"
-                      : "bg-muted text-text-secondary",
-                  )}
-                >
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-              )}
-              <span
-                className={cn(
-                  "whitespace-nowrap text-xs font-medium",
-                  isActive ? "text-text-primary" : isDone ? "text-text-primary" : "text-text-secondary",
-                )}
-              >
-                {s.label}
-              </span>
-            </div>
-            {!isLast && (
-              <div
-                className={cn(
-                  "mx-2 h-px min-w-[24px] flex-1",
-                  sIdx < activeIdx ? "bg-brand-primary" : "bg-border-default",
-                )}
-                aria-hidden
-              />
-            )}
-          </React.Fragment>
-        )
-      })}
-    </nav>
-  )
-}
-
 // ─── IntroScreen ──────────────────────────────────────────────────────────────
 
 function IntroScreen({
@@ -279,26 +204,26 @@ function IntroScreen({
   onStart: () => void
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-12 text-center animate-in fade-in duration-300">
+    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-10 text-center animate-in fade-in duration-300">
       {produtos.length === 0 ? (
         <PackageX className="size-12 text-text-secondary" aria-hidden />
       ) : (
-        <div className="flex size-16 items-center justify-center rounded-full bg-brand-primary/10">
-          <ClipboardList className="size-8 text-brand-primary" aria-hidden />
+        <div className="flex size-14 items-center justify-center rounded-full bg-brand-primary/10">
+          <ClipboardList className="size-7 text-brand-primary" aria-hidden />
         </div>
       )}
       <div className="flex flex-col gap-2">
-        <h2 id="avaliacao-title" className="text-2xl font-bold text-text-primary">
+        <h2 id="avaliacao-title" className="text-xl font-bold text-text-primary">
           Avaliação de domínio técnico
         </h2>
-        <p className="mx-auto max-w-md text-sm text-text-secondary">
+        <p className="mx-auto max-w-sm text-sm text-text-secondary">
           {produtos.length === 0
             ? "Nenhum produto configurado para avaliação."
             : "Avalie seu nível de conhecimento em cada módulo usando a escala de 1 a 5 estrelas. Todos os campos são obrigatórios antes de enviar."}
         </p>
       </div>
       {produtos.length > 0 && (
-        <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-4">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-surface-card px-3 py-1.5 text-xs text-text-secondary">
             {produtos.length} etapa{produtos.length !== 1 ? "s" : ""}
           </div>
@@ -307,7 +232,7 @@ function IntroScreen({
           </div>
         </div>
       )}
-      <Button size="lg" className="min-w-44" onClick={onStart} disabled={produtos.length === 0}>
+      <Button size="lg" className="min-w-40" onClick={onStart} disabled={produtos.length === 0}>
         Começar avaliação
         <ChevronRight className="size-4" aria-hidden />
       </Button>
@@ -315,154 +240,122 @@ function IntroScreen({
   )
 }
 
-// ─── ProductStep ──────────────────────────────────────────────────────────────
+// ─── ProductStepContent (sem footer próprio) ──────────────────────────────────
 
-function ProductStep({
+function ProductStepContent({
   produto,
   produtoIndex,
   respostas,
   onSetEstrelas,
-  onNext,
-  onPrev,
 }: {
   produto: DominioProduto
   produtoIndex: number
   respostas: Record<string, Record<string, number>>
   onSetEstrelas: (produtoId: string, moduloId: string, val: number) => void
-  onNext: () => void
-  onPrev: () => void
 }) {
-  const isComplete = isProdutoComplete(produto, respostas)
   const avaliados = produto.modulos.filter((m) => !!respostas[produto.id]?.[m.id]).length
   const total = produto.modulos.length
   const media = calcProdutoMedia(produto, respostas)
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-200">
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
-          {/* Module evaluation table */}
-          <div className="rounded-xl border border-border-default bg-background">
-            <div className="border-b border-border-default px-5 py-4">
-              <h3 className="text-sm font-semibold text-text-primary">
-                Avalie seu domínio nos módulos
-              </h3>
-              <p className="mt-0.5 text-xs text-text-secondary">
-                Clique nas estrelas para atribuir uma nota de 1 a 5.
+    <div className="px-4 py-5 sm:px-5 animate-in fade-in slide-in-from-right-4 duration-200">
+      {/* Module evaluation table */}
+      <div className="rounded-xl border border-border-default bg-background">
+        <div className="border-b border-border-default px-4 py-3.5">
+          <h3 className="text-sm font-semibold text-text-primary">
+            Avalie seu domínio nos módulos
+          </h3>
+          <p className="mt-0.5 text-xs text-text-secondary">
+            Clique nas estrelas para atribuir uma nota de 1 a 5.
+          </p>
+        </div>
+
+        {/* Table header — hidden on small screens */}
+        <div className="hidden grid-cols-[64px_1fr_140px_100px] border-b border-border-default px-4 py-2 sm:grid">
+          {["CÓDIGO", "MÓDULO", "AVALIAÇÃO", "NÍVEL"].map((col) => (
+            <span key={col} className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
+              {col}
+            </span>
+          ))}
+        </div>
+
+        {/* Rows */}
+        <div className="divide-y divide-border-default">
+          {produto.modulos.map((modulo, mIdx) => {
+            const { code, label } = parseModulo(modulo.nome)
+            const val = respostas[produto.id]?.[modulo.id] ?? 0
+            const nivel = NIVEL_LABELS[val]
+
+            return (
+              <div
+                key={modulo.id}
+                className="flex flex-col gap-2.5 px-4 py-3.5 sm:grid sm:grid-cols-[64px_1fr_140px_100px] sm:items-center sm:gap-3"
+              >
+                {/* Código */}
+                <div>
+                  {code ? (
+                    <span
+                      className={cn(
+                        "inline-block rounded px-1.5 py-0.5 text-[11px] font-bold tracking-wide",
+                        codeColor(produtoIndex * 10 + mIdx),
+                      )}
+                    >
+                      {code}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-text-secondary">—</span>
+                  )}
+                </div>
+                {/* Módulo */}
+                <div>
+                  <p className="text-sm font-medium text-text-primary">{label}</p>
+                </div>
+                {/* Avaliação */}
+                <div>
+                  <StarRating value={val} onChange={(v) => onSetEstrelas(produto.id, modulo.id, v)} />
+                </div>
+                {/* Nível */}
+                <div>
+                  {val > 0 ? (
+                    <span className="text-sm font-semibold text-text-primary">{nivel}</span>
+                  ) : (
+                    <span className="text-xs text-destructive">Obrigatório</span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Bottom summary */}
+        <div className="flex flex-col gap-2.5 border-t border-border-default bg-muted/40 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2.5">
+            <div
+              className={cn(
+                "flex size-9 items-center justify-center rounded-lg text-sm font-bold",
+                media !== null ? "bg-brand-primary/10 text-brand-primary" : "bg-muted text-text-secondary",
+              )}
+            >
+              {media !== null ? media.toFixed(1) : "—"}
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-text-primary">Média desta etapa</p>
+              <p className="text-xs text-text-secondary">
+                {avaliados} de {total} módulo{total !== 1 ? "s" : ""} avaliado{avaliados !== 1 ? "s" : ""}
               </p>
             </div>
-
-            {/* Table header */}
-            <div className="hidden grid-cols-[80px_1fr_180px_120px] border-b border-border-default px-5 py-2.5 sm:grid">
-              {["CÓDIGO", "MÓDULO", "AVALIAÇÃO", "NÍVEL"].map((col) => (
-                <span key={col} className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
-                  {col}
-                </span>
-              ))}
-            </div>
-
-            {/* Rows */}
-            <div className="divide-y divide-border-default">
-              {produto.modulos.map((modulo, mIdx) => {
-                const { code, label } = parseModulo(modulo.nome)
-                const val = respostas[produto.id]?.[modulo.id] ?? 0
-                const nivel = NIVEL_LABELS[val]
-
-                return (
-                  <div
-                    key={modulo.id}
-                    className="flex flex-col gap-3 px-5 py-4 sm:grid sm:grid-cols-[80px_1fr_180px_120px] sm:items-center sm:gap-4"
-                  >
-                    {/* Código */}
-                    <div>
-                      {code ? (
-                        <span
-                          className={cn(
-                            "inline-block rounded px-1.5 py-0.5 text-[11px] font-bold tracking-wide",
-                            codeColor(produtoIndex * 10 + mIdx),
-                          )}
-                        >
-                          {code}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-text-secondary">—</span>
-                      )}
-                    </div>
-                    {/* Módulo */}
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">{label}</p>
-                    </div>
-                    {/* Avaliação */}
-                    <div>
-                      <StarRating value={val} onChange={(v) => onSetEstrelas(produto.id, modulo.id, v)} />
-                    </div>
-                    {/* Nível */}
-                    <div>
-                      {val > 0 ? (
-                        <span className="text-sm font-semibold text-text-primary">{nivel}</span>
-                      ) : (
-                        <span className="text-xs text-destructive">Obrigatório</span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Bottom summary */}
-            <div className="flex flex-col gap-3 border-t border-border-default bg-muted/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "flex size-10 items-center justify-center rounded-lg text-sm font-bold",
-                    media !== null ? "bg-brand-primary/10 text-brand-primary" : "bg-muted text-text-secondary",
-                  )}
-                >
-                  {media !== null ? media.toFixed(1) : "—"}
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-text-primary">Média desta etapa</p>
-                  <p className="text-xs text-text-secondary">
-                    {avaliados} de {total} módulo{total !== 1 ? "s" : ""} avaliado{avaliados !== 1 ? "s" : ""}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 sm:w-48">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-default">
-                  <div
-                    className="h-full rounded-full bg-brand-primary transition-[width] duration-300"
-                    style={{ width: `${(avaliados / total) * 100}%` }}
-                    aria-hidden
-                  />
-                </div>
-                <span className="w-10 text-right text-xs tabular-nums text-text-secondary">
-                  {Math.round((avaliados / total) * 100)}% concluído
-                </span>
-              </div>
-            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Sticky bottom bar */}
-      <div className="shrink-0 border-t border-border-default bg-background px-4 py-3 sm:px-6">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
-          <p className="text-xs text-text-secondary">
-            {isComplete ? (
-              <span className="font-medium text-badge-success">Etapa completa. Avance para a próxima.</span>
-            ) : (
-              `Avalie todos os ${total} módulos para continuar.`
-            )}
-          </p>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onPrev}>
-              <ChevronLeft className="size-4" aria-hidden />
-              Voltar
-            </Button>
-            <Button size="sm" onClick={onNext} disabled={!isComplete} className="gap-1.5">
-              Próxima etapa
-              <ChevronRight className="size-4" aria-hidden />
-            </Button>
+            <div className="h-1.5 w-32 overflow-hidden rounded-full bg-border-default">
+              <div
+                className="h-full rounded-full bg-brand-primary transition-[width] duration-300"
+                style={{ width: `${(avaliados / total) * 100}%` }}
+                aria-hidden
+              />
+            </div>
+            <span className="w-12 text-right text-xs tabular-nums text-text-secondary">
+              {Math.round((avaliados / total) * 100)}%
+            </span>
           </div>
         </div>
       </div>
@@ -470,22 +363,16 @@ function ProductStep({
   )
 }
 
-// ─── ReviewScreen ─────────────────────────────────────────────────────────────
+// ─── ReviewScreenContent (sem footer próprio) ─────────────────────────────────
 
-function ReviewScreen({
+function ReviewScreenContent({
   produtos,
   respostas,
-  submitting,
   onEdit,
-  onPrev,
-  onConfirm,
 }: {
   produtos: DominioProduto[]
   respostas: Record<string, Record<string, number>>
-  submitting: boolean
   onEdit: (index: number) => void
-  onPrev: () => void
-  onConfirm: () => void
 }) {
   const totalModulos = produtos.reduce((a, p) => a + p.modulos.length, 0)
   const totalAvaliados = countAvaliadosTotal(produtos, respostas)
@@ -503,172 +390,131 @@ function ReviewScreen({
     },
     {
       label: "Módulos avaliados",
-      value: `${totalAvaliados}`,
-      sub: `${totalAvaliados}/${totalModulos}  ·  ${totalAvaliados === totalModulos ? "100% concluído" : `${Math.round((totalAvaliados / totalModulos) * 100)}% concluído`}`,
+      value: `${totalAvaliados}/${totalModulos}`,
+      sub: totalAvaliados === totalModulos ? "100% concluído" : `${Math.round((totalAvaliados / totalModulos) * 100)}% concluído`,
       icon: Check,
       color: "text-blue-600 bg-blue-50",
     },
     {
       label: "Etapas cobertas",
-      value: `${etapasConcluidas}`,
-      sub: `${etapasConcluidas}/${produtos.length}  ·  Etapas com 100% de avaliação`,
+      value: `${etapasConcluidas}/${produtos.length}`,
+      sub: "Etapas com 100% de avaliação",
       icon: Layers,
       color: "text-violet-600 bg-violet-50",
     },
     {
       label: "Pendentes",
       value: `${pendentes}`,
-      sub: pendentes === 0 ? "Pronto para envio" : `${pendentes} módulo${pendentes !== 1 ? "s" : ""} sem avaliação`,
+      sub: pendentes === 0 ? "Pronto para envio" : `${pendentes} sem avaliação`,
       icon: pendentes === 0 ? CheckCircle2 : AlertTriangle,
       color: pendentes === 0 ? "text-badge-success bg-badge-success/10" : "text-amber-600 bg-amber-50",
     },
   ]
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-200">
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
-          {/* Stat cards */}
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {stats.map((s) => {
-              const Icon = s.icon
-              return (
-                <div key={s.label} className="rounded-xl border border-border-default bg-background p-4">
-                  <div className="mb-2 flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-xs text-text-secondary">{s.label}</p>
-                      <p className="mt-1 text-2xl font-bold text-text-primary">{s.value}</p>
-                    </div>
-                    <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", s.color)}>
-                      <Icon className="size-4" aria-hidden />
-                    </div>
-                  </div>
-                  <p className="text-xs text-text-secondary">{s.sub}</p>
+    <div className="px-4 py-5 sm:px-5 animate-in fade-in slide-in-from-right-4 duration-200">
+      {/* Stat cards */}
+      <div className="mb-5 grid grid-cols-2 gap-2.5">
+        {stats.map((s) => {
+          const Icon = s.icon
+          return (
+            <div key={s.label} className="rounded-xl border border-border-default bg-background p-3.5">
+              <div className="mb-1.5 flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[11px] text-text-secondary">{s.label}</p>
+                  <p className="mt-0.5 text-xl font-bold text-text-primary">{s.value}</p>
                 </div>
-              )
-            })}
-          </div>
+                <div className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg", s.color)}>
+                  <Icon className="size-3.5" aria-hidden />
+                </div>
+              </div>
+              <p className="text-[11px] text-text-secondary">{s.sub}</p>
+            </div>
+          )
+        })}
+      </div>
 
-          {/* Per-product sections */}
-          {produtos.length === 0 ? (
-            <p className="py-8 text-center text-sm text-text-secondary">Nenhum produto configurado.</p>
-          ) : (
-            <div className="flex flex-col gap-5">
-              {produtos.map((produto, pIdx) => {
-                const media = calcProdutoMedia(produto, respostas)
-                const avaliados = produto.modulos.filter((m) => !!respostas[produto.id]?.[m.id]).length
+      {/* Per-product sections */}
+      {produtos.length === 0 ? (
+        <p className="py-8 text-center text-sm text-text-secondary">Nenhum produto configurado.</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {produtos.map((produto, pIdx) => {
+            const media = calcProdutoMedia(produto, respostas)
+            const avaliados = produto.modulos.filter((m) => !!respostas[produto.id]?.[m.id]).length
 
-                return (
-                  <div key={produto.id} className="rounded-xl border border-border-default bg-background">
-                    <div className="flex items-center justify-between gap-2 px-5 py-4">
-                      <div>
-                        <p className="text-sm font-semibold text-text-primary">{produto.nome}</p>
-                        <p className="text-xs text-text-secondary">
-                          Média: {media !== null ? media.toFixed(2) : "—"} · {avaliados}/{produto.modulos.length} avaliados
-                        </p>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={() => onEdit(pIdx)}>
-                        Editar
-                      </Button>
-                    </div>
+            return (
+              <div key={produto.id} className="rounded-xl border border-border-default bg-background">
+                <div className="flex items-center justify-between gap-2 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-text-primary">{produto.nome}</p>
+                    <p className="text-xs text-text-secondary">
+                      Média: {media !== null ? media.toFixed(2) : "—"} · {avaliados}/{produto.modulos.length} avaliados
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => onEdit(pIdx)}>
+                    Editar
+                  </Button>
+                </div>
 
-                    <div className="grid grid-cols-1 gap-3 border-t border-border-default px-5 py-4 sm:grid-cols-2">
-                      {produto.modulos.map((modulo, mIdx) => {
-                        const { code, label } = parseModulo(modulo.nome)
-                        const val = respostas[produto.id]?.[modulo.id] ?? 0
-                        const nivel = NIVEL_LABELS[val]
+                <div className="grid grid-cols-1 gap-2 border-t border-border-default px-4 py-3 sm:grid-cols-2">
+                  {produto.modulos.map((modulo, mIdx) => {
+                    const { code, label } = parseModulo(modulo.nome)
+                    const val = respostas[produto.id]?.[modulo.id] ?? 0
+                    const nivel = NIVEL_LABELS[val]
 
-                        return (
-                          <div
-                            key={modulo.id}
-                            className="flex items-center gap-3 rounded-lg border border-border-default p-3"
-                          >
-                            <div
+                    return (
+                      <div
+                        key={modulo.id}
+                        className="flex items-center gap-2.5 rounded-lg border border-border-default p-2.5"
+                      >
+                        <div
+                          className={cn(
+                            "flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
+                            val > 0
+                              ? "bg-brand-primary/10 text-brand-primary"
+                              : "bg-muted text-text-secondary",
+                          )}
+                        >
+                          {val > 0 ? val : "—"}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          {code && (
+                            <span
                               className={cn(
-                                "flex size-9 shrink-0 items-center justify-center rounded-lg text-lg font-bold",
-                                val > 0
-                                  ? "bg-brand-primary/10 text-brand-primary"
-                                  : "bg-muted text-text-secondary",
+                                "mb-0.5 inline-block rounded px-1 py-0.5 text-[10px] font-bold tracking-wide",
+                                codeColor(pIdx * 10 + mIdx),
                               )}
                             >
-                              {val > 0 ? val : "—"}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              {code && (
-                                <span
-                                  className={cn(
-                                    "mb-0.5 inline-block rounded px-1 py-0.5 text-[10px] font-bold tracking-wide",
-                                    codeColor(pIdx * 10 + mIdx),
-                                  )}
-                                >
-                                  {code}
-                                </span>
-                              )}
-                              <p className="truncate text-xs font-medium text-text-primary">{label}</p>
-                              <div className="mt-0.5 flex items-center gap-1">
-                                {[1, 2, 3, 4, 5].map((s) => (
-                                  <Star
-                                    key={s}
-                                    className={cn(
-                                      "size-3",
-                                      s <= val ? "fill-amber-400 text-amber-400" : "text-neutral-grey-300",
-                                    )}
-                                    aria-hidden
-                                  />
-                                ))}
-                                {nivel && (
-                                  <span className="ml-1 text-[11px] text-text-secondary">{nivel}</span>
+                              {code}
+                            </span>
+                          )}
+                          <p className="truncate text-xs font-medium text-text-primary">{label}</p>
+                          <div className="mt-0.5 flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star
+                                key={s}
+                                className={cn(
+                                  "size-3",
+                                  s <= val ? "fill-amber-400 text-amber-400" : "text-neutral-grey-300",
                                 )}
-                              </div>
-                            </div>
+                                aria-hidden
+                              />
+                            ))}
+                            {nivel && (
+                              <span className="ml-1 text-[11px] text-text-secondary">{nivel}</span>
+                            )}
                           </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
         </div>
-      </div>
-
-      {/* Sticky bottom bar */}
-      <div className="shrink-0 border-t border-border-default bg-background px-4 py-3 sm:px-6">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
-          <p className="text-xs text-text-secondary">
-            {pendentes === 0 ? (
-              <span className="font-medium text-badge-success">Tudo pronto. Envie sua avaliação.</span>
-            ) : (
-              <span className="text-amber-600">{pendentes} módulo{pendentes !== 1 ? "s" : ""} pendente{pendentes !== 1 ? "s" : ""}.</span>
-            )}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onPrev} disabled={submitting}>
-              <ChevronLeft className="size-4" aria-hidden />
-              Voltar
-            </Button>
-            <Button
-              size="sm"
-              onClick={onConfirm}
-              disabled={submitting || pendentes > 0}
-              className="gap-1.5"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                  Enviando…
-                </>
-              ) : (
-                <>
-                  Enviar avaliação
-                  <ChevronRight className="size-4" aria-hidden />
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -685,32 +531,31 @@ function SuccessScreen({
   onClose: () => void
 }) {
   return (
-    <div className="flex flex-1 items-center justify-center bg-muted/30 px-4 py-12 animate-in fade-in zoom-in-95 duration-300">
-      <div className="w-full max-w-lg rounded-2xl border border-border-default bg-background p-8 text-center shadow-card">
-        <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-brand-primary/10">
-          <Check className="size-8 text-brand-primary" aria-hidden />
-        </div>
-        <h2 id="avaliacao-title" className="text-xl font-bold text-text-primary">
+    <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-10 text-center animate-in fade-in zoom-in-95 duration-300">
+      <div className="flex size-14 items-center justify-center rounded-full bg-brand-primary/10">
+        <Check className="size-7 text-brand-primary" aria-hidden />
+      </div>
+      <div>
+        <h2 id="avaliacao-title" className="text-lg font-bold text-text-primary">
           Avaliação enviada com sucesso
         </h2>
-        <p className="mt-2 text-sm text-text-secondary">
-          Obrigado por completar a avaliação. Seu domínio geral foi de{" "}
-          <strong>{mediaGeral.toFixed(2)}/5</strong>.
+        <p className="mt-1.5 text-sm text-text-secondary">
+          Seu domínio geral foi de <strong>{mediaGeral.toFixed(2)}/5</strong>.
         </p>
         <p className="mt-1 text-sm text-text-secondary">
-          Você pode revisar suas respostas a qualquer momento dentro de{" "}
+          Você pode revisar suas respostas em{" "}
           <strong>Individual › Avaliações</strong>.
         </p>
-        <div className="mt-7 flex flex-col-reverse items-center gap-2 sm:flex-row sm:justify-center">
-          <Button variant="outline" onClick={onRedo}>
-            <ChevronLeft className="size-4" aria-hidden />
-            Refazer avaliação
-          </Button>
-          <Button onClick={onClose}>
-            Ir para o Painel
-            <ChevronRight className="size-4" aria-hidden />
-          </Button>
-        </div>
+      </div>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
+        <Button variant="outline" onClick={onRedo}>
+          <ChevronLeft className="size-4" aria-hidden />
+          Refazer avaliação
+        </Button>
+        <Button onClick={onClose}>
+          Ir para o Painel
+          <ChevronRight className="size-4" aria-hidden />
+        </Button>
       </div>
     </div>
   )
@@ -720,7 +565,6 @@ function SuccessScreen({
 
 export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }: Props) {
   const router = useRouter()
-  const containerRef = React.useRef<HTMLDivElement>(null)
 
   const produtos = React.useMemo(
     () => configSnapshot.filter((p) => p.modulos.length > 0),
@@ -733,47 +577,32 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
   const [submitting, setSubmitting] = React.useState(false)
   const [mediaGeral, setMediaGeral] = React.useState(0)
   const [showExitConfirm, setShowExitConfirm] = React.useState(false)
-  const [exiting, setExiting] = React.useState(false)
 
-  // Auto-focus first interactive element on step change
-  React.useEffect(() => {
-    const el = containerRef.current?.querySelector<HTMLElement>(
-      "button:not([disabled]), [href], input:not([disabled])",
-    )
-    el?.focus()
-  }, [step])
+  // Computed values for footer
+  const currentProduct = typeof step === "number" ? produtos[step] : undefined
+  const isCurrentProductComplete = currentProduct ? isProdutoComplete(currentProduct, respostas) : false
+  const totalAvaliados = countAvaliadosTotal(produtos, respostas)
+  const pendentes = totalModulos - totalAvaliados
 
-  // Focus trap + Escape
-  React.useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+  // Step label for header
+  function stepLabel(): string {
+    if (step === "intro") return "Introdução"
+    if (step === "review") return `Revisão · ${produtos.length + 1} de ${produtos.length + 1}`
+    if (step === "done") return "Concluído"
+    if (typeof step === "number") return `Produto ${step + 1} de ${produtos.length}`
+    return ""
+  }
 
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.preventDefault()
-        if (step !== "done") setShowExitConfirm((v) => !v)
-        return
-      }
-      if (e.key !== "Tab") return
-      if (!container) return
-      const focusable = Array.from(
-        container.querySelectorAll<HTMLElement>(
-          "button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex='-1'])",
-        ),
-      )
-      if (focusable.length === 0) { e.preventDefault(); return }
-      const first = focusable[0]!
-      const last = focusable[focusable.length - 1]!
-      if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last.focus() }
+  // Intercept Sheet close attempts (ESC / backdrop click)
+  function handleOpenChange(open: boolean) {
+    if (!open) {
+      if (step === "done") {
+        handleExit()
       } else {
-        if (document.activeElement === last) { e.preventDefault(); first.focus() }
+        setShowExitConfirm(true)
       }
     }
-
-    container.addEventListener("keydown", onKeyDown)
-    return () => container.removeEventListener("keydown", onKeyDown)
-  }, [step])
+  }
 
   function setEstrelas(produtoId: string, moduloId: string, val: number) {
     setRespostas((prev) => ({
@@ -804,8 +633,7 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
   }
 
   function handleExit() {
-    setExiting(true)
-    setTimeout(() => router.refresh(), 250)
+    router.refresh()
   }
 
   async function handleConfirm() {
@@ -833,104 +661,184 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
     setStep("done")
   }
 
-  return (
-    <div
-      ref={containerRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="avaliacao-title"
-      className={cn(
-        "fixed inset-0 z-[9999] flex flex-col bg-background",
-        exiting
-          ? "animate-out fade-out zoom-out-[0.97] duration-200 fill-mode-forwards"
-          : "animate-in fade-in zoom-in-[0.97] duration-300 fill-mode-forwards",
-      )}
-    >
-      {/* App-like header */}
-      {step !== "done" && (
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-default bg-background px-4 sm:px-6">
-          <span className="text-sm font-semibold text-text-primary">Avaliação de Domínio</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label="Sair da avaliação"
-            onClick={() => setShowExitConfirm(true)}
-          >
-            <X className="size-4" aria-hidden />
-            <span className="ml-1 hidden sm:inline">Sair</span>
-          </Button>
-        </header>
-      )}
+  // ─── Footer content by step ──────────────────────────────────────────────
 
-      {/* Stepper (hidden on intro + done) */}
-      {step !== "intro" && step !== "done" && (
-        <HorizontalStepper produtos={produtos} step={step} />
-      )}
+  function renderFooter(): React.ReactNode {
+    if (step === "intro" || step === "done") return null
 
-      {/* Main content */}
-      {step === "intro" && (
-        <IntroScreen produtos={produtos} totalModulos={totalModulos} onStart={handleStart} />
-      )}
-
-      {typeof step === "number" && produtos[step] && (
-        <ProductStep
-          key={step}
-          produto={produtos[step]}
-          produtoIndex={step}
-          respostas={respostas}
-          onSetEstrelas={setEstrelas}
-          onNext={() => handleNext(step)}
-          onPrev={() => handlePrev(step)}
-        />
-      )}
-
-      {step === "review" && (
-        <ReviewScreen
-          produtos={produtos}
-          respostas={respostas}
-          submitting={submitting}
-          onEdit={handleEdit}
-          onPrev={() => setStep(produtos.length > 0 ? produtos.length - 1 : "intro")}
-          onConfirm={() => void handleConfirm()}
-        />
-      )}
-
-      {step === "done" && (
-        <SuccessScreen
-          mediaGeral={mediaGeral}
-          onRedo={handleRedo}
-          onClose={handleExit}
-        />
-      )}
-
-      {/* Exit confirm dialog */}
-      {showExitConfirm && (
-        <div
-          className="absolute inset-0 z-10 flex items-center justify-center bg-black/40"
-          aria-live="assertive"
-        >
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="exit-dialog-title"
-            className="mx-4 w-full max-w-sm rounded-xl bg-background p-6 shadow-card"
-          >
-            <h2 id="exit-dialog-title" className="text-base font-semibold text-text-primary">
-              Sair da avaliação?
-            </h2>
-            <p className="mt-1 text-sm text-text-secondary">Seu progresso não será salvo.</p>
-            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-              <Button autoFocus variant="ghost" onClick={() => setShowExitConfirm(false)}>
-                Continuar avaliação
-              </Button>
-              <Button variant="destructive" onClick={handleExit}>
-                Sair mesmo assim
-              </Button>
-            </div>
+    if (typeof step === "number") {
+      return (
+        <div className="flex w-full items-center justify-between gap-3">
+          <p className="text-xs text-text-secondary">
+            {isCurrentProductComplete ? (
+              <span className="font-medium text-badge-success">Etapa completa.</span>
+            ) : (
+              `Avalie todos os módulos para continuar.`
+            )}
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => handlePrev(step)}>
+              <ChevronLeft className="size-4" aria-hidden />
+              Voltar
+            </Button>
+            <Button size="sm" onClick={() => handleNext(step)} disabled={!isCurrentProductComplete} className="gap-1">
+              Próxima etapa
+              <ChevronRight className="size-4" aria-hidden />
+            </Button>
           </div>
         </div>
-      )}
-    </div>
+      )
+    }
+
+    if (step === "review") {
+      return (
+        <div className="flex w-full items-center justify-between gap-3">
+          <p className="text-xs text-text-secondary">
+            {pendentes === 0 ? (
+              <span className="font-medium text-badge-success">Tudo pronto para envio.</span>
+            ) : (
+              <span className="text-amber-600">
+                {pendentes} módulo{pendentes !== 1 ? "s" : ""} pendente{pendentes !== 1 ? "s" : ""}.
+              </span>
+            )}
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setStep(produtos.length > 0 ? produtos.length - 1 : "intro")}
+              disabled={submitting}
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+              Voltar
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => void handleConfirm()}
+              disabled={submitting || pendentes > 0}
+              className="gap-1.5"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  Salvando…
+                </>
+              ) : (
+                <>
+                  <Check className="size-4" aria-hidden />
+                  Salvar
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      )
+    }
+
+    return null
+  }
+
+  const footer = renderFooter()
+
+  return (
+    <Sheet open modal onOpenChange={handleOpenChange}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="flex flex-col gap-0 p-0 sm:!max-w-2xl"
+      >
+        {/* Custom header */}
+        <SheetHeader className="flex shrink-0 flex-row items-center justify-between gap-3 border-b border-border-default px-4 py-3 sm:px-5">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <SheetTitle className="text-sm font-semibold leading-none">
+              Avaliação de Domínio
+            </SheetTitle>
+            {step !== "done" && (
+              <p className="text-xs text-text-secondary">{stepLabel()}</p>
+            )}
+          </div>
+          {step !== "done" && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Sair da avaliação"
+              className="shrink-0"
+              onClick={() => setShowExitConfirm(true)}
+            >
+              <X className="size-4" aria-hidden />
+            </Button>
+          )}
+        </SheetHeader>
+
+        {/* Scrollable body */}
+        <div className="flex flex-1 flex-col overflow-y-auto">
+          {step === "intro" && (
+            <IntroScreen produtos={produtos} totalModulos={totalModulos} onStart={handleStart} />
+          )}
+
+          {typeof step === "number" && currentProduct && (
+            <ProductStepContent
+              key={step}
+              produto={currentProduct}
+              produtoIndex={step}
+              respostas={respostas}
+              onSetEstrelas={setEstrelas}
+            />
+          )}
+
+          {step === "review" && (
+            <ReviewScreenContent
+              produtos={produtos}
+              respostas={respostas}
+              onEdit={handleEdit}
+            />
+          )}
+
+          {step === "done" && (
+            <SuccessScreen
+              mediaGeral={mediaGeral}
+              onRedo={handleRedo}
+              onClose={handleExit}
+            />
+          )}
+        </div>
+
+        {/* Navigation footer */}
+        {footer && (
+          <SheetFooter className="shrink-0 border-t border-border-default px-4 py-3 sm:px-5">
+            {footer}
+          </SheetFooter>
+        )}
+
+        {/* Exit confirm overlay — inside Sheet so it appears above the backdrop */}
+        {showExitConfirm && (
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 px-4"
+            aria-live="assertive"
+          >
+            <div
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="exit-dialog-title"
+              className="w-full max-w-sm rounded-xl bg-background p-6 shadow-card"
+            >
+              <h2 id="exit-dialog-title" className="text-base font-semibold text-text-primary">
+                Sair da avaliação?
+              </h2>
+              <p className="mt-1 text-sm text-text-secondary">Seu progresso não será salvo.</p>
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+                <Button autoFocus variant="ghost" onClick={() => setShowExitConfirm(false)}>
+                  Continuar avaliação
+                </Button>
+                <Button variant="destructive" onClick={handleExit}>
+                  Sair mesmo assim
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   )
 }
