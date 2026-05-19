@@ -48,8 +48,6 @@ export interface IndividualLancamentosSectionProps {
   /** Controlado externamente (ex.: IndividualSecaoDevelopmentPanel). Quando fornecido, omite o Select interno. */
   preset?: LancamentosPeriodPreset
   onPresetChange?: (p: LancamentosPeriodPreset) => void
-  /** Perfil do utilizador visualizado — altera os rótulos dos cards de estatísticas. */
-  accessProfile?: string | null
 }
 
 type LancamentoRow = {
@@ -362,8 +360,6 @@ function DashboardPanel({
   evaluatedUserAccessProfile?: "QA" | "UX" | "TW" | "MGR" | null
 }) {
   const stats = React.useMemo(() => computeStats(entries), [entries])
-  const isTW = accessProfile === "TW"
-
   const profile = evaluatedUserAccessProfile ?? null
 
   // Para QA: 5 cards (Jiras abertos, Cenários com Erro, Testes Realizados, Total de Jiras, Jiras críticos).
@@ -416,7 +412,6 @@ export function IndividualLancamentosSection({
   evaluatedUserAccessProfile,
   preset: presetProp,
   onPresetChange,
-  accessProfile,
 }: IndividualLancamentosSectionProps) {
   const isControlled = presetProp !== undefined
   const [presetInternal, setPresetInternal] = React.useState<LancamentosPeriodPreset>("week")
