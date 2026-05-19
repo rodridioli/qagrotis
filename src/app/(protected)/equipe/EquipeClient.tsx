@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, Suspense } from "react"
 import {
   getPerformanceData,
   getEquipeListagemCadastro,
@@ -369,10 +369,12 @@ const aniversariantesPorMes = useMemo(() => {
       )}
 
       {activeTab === "lancamentos" && canAccessEquipeLancamentos && (
-        <EquipeLancamentosSection
-          userAccessProfile={userAccessProfile}
-          canFilterByProfile={canFilterByProfile}
-        />
+        <Suspense fallback={<SectionSpinner minHeight="min-h-[20rem]" />}>
+          <EquipeLancamentosSection
+            userAccessProfile={userAccessProfile}
+            canFilterByProfile={canFilterByProfile}
+          />
+        </Suspense>
       )}
 
       {activeTab === "chapters" && <EquipeChaptersSection isAdmin={isAdmin} currentUserId={currentUserId} />}

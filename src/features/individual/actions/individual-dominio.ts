@@ -39,6 +39,8 @@ export interface DominioAvaliacaoResposta {
 export interface PendingDominioAvaliacaoDto {
   id: string
   configSnapshot: DominioProduto[]
+  /** Respostas da avaliação CONCLUIDA mais recente do mesmo usuário, para pré-preenchimento. */
+  respostasAnteriores?: DominioAvaliacaoResposta[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -178,15 +180,30 @@ export async function getPendingDominioAvaliacao(): Promise<PendingDominioAvalia
   try {
     const session = await requireSession()
     await ensureDominioTables()
-    const row = await prisma.dominioAvaliacao.findFirst({
-      where: { evaluatedUserId: session.user.id, status: "PENDENTE" },
-      orderBy: { createdAt: "asc" },
-      select: { id: true, configSnapshot: true },
-    })
-    if (!row) return null
+
+    const [pending, anterior] = await Promise.all([
+      prisma.dominioAvaliacao.findFirst({
+        where: { evaluatedUserId: session.user.id, status: "PENDENTE" },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, configSnapshot: true },
+      }),
+      prisma.dominioAvaliacao.findFirst({
+        where: { evaluatedUserId: session.user.id, status: "CONCLUIDA" },
+        orderBy: { updatedAt: "desc" },
+        select: { respostas: true },
+      }),
+    ])
+
+    if (!pending) return null
+
+    const respostasAnteriores = anterior
+      ? ((anterior.respostas as unknown as DominioAvaliacaoResposta[]) ?? [])
+      : undefined
+
     return {
-      id: row.id,
-      configSnapshot: (row.configSnapshot as unknown as DominioProduto[]) ?? [],
+      id: pending.id,
+      configSnapshot: (pending.configSnapshot as unknown as DominioProduto[]) ?? [],
+      respostasAnteriores,
     }
   } catch (e) {
     console.error("[getPendingDominioAvaliacao]", e)

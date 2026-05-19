@@ -29,6 +29,7 @@ interface Props {
   onOpenChange: (v: boolean) => void
   avaliacaoId: string
   configSnapshot: DominioProduto[]
+  respostasAnteriores?: DominioAvaliacaoResposta[]
   onSubmit: (id: string, respostas: DominioAvaliacaoResposta[]) => Promise<{ error?: string }>
 }
 
@@ -244,6 +245,29 @@ function ProdutoCardInput({
   )
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Converte respostasAnteriores em Record, filtrando apenas módulos do snapshot atual. */
+function buildInitialRespostas(
+  configSnapshot: DominioProduto[],
+  respostasAnteriores?: DominioAvaliacaoResposta[],
+): Record<string, Record<string, number>> {
+  if (!respostasAnteriores?.length) return {}
+  const initial: Record<string, Record<string, number>> = {}
+  for (const produto of configSnapshot) {
+    for (const modulo of produto.modulos) {
+      const anterior = respostasAnteriores.find(
+        (r) => r.produtoId === produto.id && r.moduloId === modulo.id,
+      )
+      if (anterior) {
+        if (!initial[produto.id]) initial[produto.id] = {}
+        initial[produto.id]![modulo.id] = anterior.estrelas
+      }
+    }
+  }
+  return initial
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function DominioResponderSheet({
@@ -251,6 +275,7 @@ export function DominioResponderSheet({
   onOpenChange,
   avaliacaoId,
   configSnapshot,
+  respostasAnteriores,
   onSubmit,
 }: Props) {
   const produtos = React.useMemo(
@@ -258,15 +283,19 @@ export function DominioResponderSheet({
     [configSnapshot],
   )
 
-  const [respostas, setRespostas] = React.useState<Record<string, Record<string, number>>>({})
+  const [respostas, setRespostas] = React.useState<Record<string, Record<string, number>>>(
+    () => buildInitialRespostas(configSnapshot, respostasAnteriores),
+  )
   const [submitting, setSubmitting] = React.useState(false)
   const [confirmExitOpen, setConfirmExitOpen] = React.useState(false)
 
   React.useEffect(() => {
     if (open) {
-      setRespostas({})
+      setRespostas(buildInitialRespostas(configSnapshot, respostasAnteriores))
       setSubmitting(false)
     }
+  // configSnapshot e respostasAnteriores são props imutáveis (vêm do servidor); open é o único gatilho
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   function setEstrelas(pid: string, mid: string, v: number) {

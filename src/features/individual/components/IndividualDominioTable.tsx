@@ -121,13 +121,6 @@ export function IndividualDominioTable({
                             className="size-4 shrink-0 text-destructive"
                             aria-label="Resultado inferior ao anterior"
                           />
-                        ) : trend === "same" ? (
-                          <span
-                            className="text-sm font-semibold text-text-secondary"
-                            aria-label="Mesmo resultado que o anterior"
-                          >
-                            –
-                          </span>
                         ) : null}
                       </span>
                     )}
