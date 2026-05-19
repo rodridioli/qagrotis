@@ -18,6 +18,7 @@ export type JiraLancamentoEntry = {
   priority?: string | null
   labels?: string[]
   qtdCenariosQA?: number | null
+  qtdCenariosErro?: number | null
   typeField?: string | null
   started: string
   timeSpentSeconds: number
@@ -236,6 +237,7 @@ export type LancamentoIssueFieldsPatch = {
   priority: string | null
   labels: string[]
   qtdCenariosQA: number | null
+  qtdCenariosErro: number | null
   projectName: string | null
   typeField: string | null
 }
@@ -276,6 +278,7 @@ function issueFieldsToLancamentoPatch(
   fields: IssueFields | undefined,
   qtdFieldId: string | null,
   typeFieldId: string | null,
+  qtdErroFieldId: string | null,
 ): LancamentoIssueFieldsPatch {
   const f = fields ?? {}
   const summary = summaryFromIssueField(f.summary)
@@ -289,6 +292,10 @@ function issueFieldsToLancamentoPatch(
   if (qtdFieldId && f[qtdFieldId] != null) {
     qtdCenariosQA = parseQtdCenariosQAFieldValue(f[qtdFieldId])
   }
+  let qtdCenariosErro: number | null = null
+  if (qtdErroFieldId && f[qtdErroFieldId] != null) {
+    qtdCenariosErro = parseQtdCenariosQAFieldValue(f[qtdErroFieldId])
+  }
   const typeField = typeFieldId ? parseTypeFieldValue(f[typeFieldId]) : null
   return {
     summary,
@@ -296,6 +303,7 @@ function issueFieldsToLancamentoPatch(
     priority,
     labels,
     qtdCenariosQA,
+    qtdCenariosErro,
     projectName,
     typeField,
   }
@@ -310,14 +318,16 @@ export async function fetchIssueFieldsForKeys(
   keys: string[],
 ): Promise<Map<string, LancamentoIssueFieldsPatch>> {
   const unique = Array.from(new Set(keys.map((k) => k.trim().toUpperCase()).filter((k) => /^[A-Z][A-Z0-9]*-\d+$/i.test(k))))
-  const [qtdFieldId, typeFieldId] = await Promise.all([
+  const [qtdFieldId, typeFieldId, qtdErroFieldId] = await Promise.all([
     resolveQtdCenariosQAFieldId(base, credentials),
     resolveTypeFieldId(base, credentials),
+    resolveQtdCenariosErroFieldId(base, credentials),
   ])
   const baseFields = ["summary", "issuetype", "priority", "labels", "project"]
   const fieldsParam = [...baseFields]
   if (qtdFieldId) fieldsParam.push(qtdFieldId)
   if (typeFieldId) fieldsParam.push(typeFieldId)
+  if (qtdErroFieldId) fieldsParam.push(qtdErroFieldId)
 
   const result = new Map<string, LancamentoIssueFieldsPatch>()
   for (let i = 0; i < unique.length; i += SEARCH_KEY_CHUNK) {
@@ -340,7 +350,7 @@ export async function fetchIssueFieldsForKeys(
         for (const issue of data.issues) {
           result.set(
             issue.key.trim().toUpperCase(),
-            issueFieldsToLancamentoPatch(issue.fields, qtdFieldId, typeFieldId),
+            issueFieldsToLancamentoPatch(issue.fields, qtdFieldId, typeFieldId, qtdErroFieldId),
           )
         }
       }
@@ -460,6 +470,12 @@ export function mergeLancamentoIssuePatches(
         : prev?.qtdCenariosQA != null && Number.isFinite(prev.qtdCenariosQA)
           ? prev.qtdCenariosQA
           : null,
+    qtdCenariosErro:
+      next.qtdCenariosErro != null && Number.isFinite(next.qtdCenariosErro)
+        ? next.qtdCenariosErro
+        : prev?.qtdCenariosErro != null && Number.isFinite(prev.qtdCenariosErro)
+          ? prev.qtdCenariosErro
+          : null,
     projectName: next.projectName?.trim()
       ? next.projectName.trim()
       : prev?.projectName?.trim()
@@ -482,9 +498,10 @@ export async function augmentFieldMapWithGetIssueFallback(
   fieldMap: Map<string, LancamentoIssueFieldsPatch>,
   allKeysUppercase: string[],
 ): Promise<void> {
-  const [qtdFieldId, typeFieldId] = await Promise.all([
+  const [qtdFieldId, typeFieldId, qtdErroFieldId] = await Promise.all([
     resolveQtdCenariosQAFieldId(base, credentials),
     resolveTypeFieldId(base, credentials),
+    resolveQtdCenariosErroFieldId(base, credentials),
   ])
 
   const unique = Array.from(new Set(allKeysUppercase.map((k) => k.trim().toUpperCase())))
@@ -497,7 +514,10 @@ export async function augmentFieldMapWithGetIssueFallback(
       const missQtd =
         qtdFieldId != null &&
         (p.qtdCenariosQA == null || !Number.isFinite(p.qtdCenariosQA))
-      return missMeta || missQtd
+      const missErro =
+        qtdErroFieldId != null &&
+        (p.qtdCenariosErro == null || !Number.isFinite(p.qtdCenariosErro))
+      return missMeta || missQtd || missErro
     })
     .slice(0, MAX_ISSUE_FIELDS_FALLBACK_GET)
 
@@ -506,6 +526,7 @@ export async function augmentFieldMapWithGetIssueFallback(
   const fieldNames = ["summary", "issuetype", "priority", "labels", "project"]
   if (qtdFieldId) fieldNames.push(qtdFieldId)
   if (typeFieldId) fieldNames.push(typeFieldId)
+  if (qtdErroFieldId) fieldNames.push(qtdErroFieldId)
   const fieldsComma = fieldNames.join(",")
 
   for (let i = 0; i < need.length; i += FALLBACK_GET_CONCURRENCY) {
@@ -516,7 +537,7 @@ export async function augmentFieldMapWithGetIssueFallback(
           const url = `${base}/rest/api/3/issue/${encodeURIComponent(key)}?fields=${fieldsComma}`
           const { ok, data } = await jiraJson<{ fields?: IssueFields }>(url, credentials)
           if (!ok || !data?.fields) return
-          const patch = issueFieldsToLancamentoPatch(data.fields, qtdFieldId, typeFieldId)
+          const patch = issueFieldsToLancamentoPatch(data.fields, qtdFieldId, typeFieldId, qtdErroFieldId)
           fieldMap.set(key, mergeLancamentoIssuePatches(fieldMap.get(key), patch))
         } catch {
           // non-fatal
@@ -702,6 +723,40 @@ export async function resolveQtdCenariosQAFieldId(
   return cachedQtdCenariosQAFieldId
 }
 
+const QTD_ERRO_ENV_FIELD_ID = process.env.JIRA_QTD_CENARIOS_ERRO_FIELD_ID?.trim()
+
+let cachedQtdCenariosErroFieldId: string | null | undefined = undefined
+
+export async function resolveQtdCenariosErroFieldId(
+  base: string,
+  credentials: string,
+): Promise<string | null> {
+  if (QTD_ERRO_ENV_FIELD_ID) return QTD_ERRO_ENV_FIELD_ID
+  if (cachedQtdCenariosErroFieldId !== undefined) return cachedQtdCenariosErroFieldId
+
+  try {
+    const { ok, data } = await jiraJson<{ id: string; name: string }[]>(
+      `${base}/rest/api/3/field`,
+      credentials,
+    )
+    if (!ok || !Array.isArray(data)) {
+      cachedQtdCenariosErroFieldId = null
+      return null
+    }
+    const patterns = [
+      /qtd\.?\s*cen[aá]rios\s*com\s*erro\b/i,
+      /cen[aá]rios\s*com\s*erro\b/i,
+      /qtd\.?\s*cen[aá]rios\s*erro\b/i,
+    ]
+    const found = data.find((f) => patterns.some((re) => re.test(f.name)))
+    cachedQtdCenariosErroFieldId = found?.id ?? null
+  } catch {
+    cachedQtdCenariosErroFieldId = null
+  }
+
+  return cachedQtdCenariosErroFieldId
+}
+
 const TYPE_ENV_FIELD_ID = process.env.JIRA_TYPE_FIELD_ID?.trim()
 
 let cachedTypeFieldId: string | null | undefined = undefined
@@ -852,11 +907,16 @@ export async function fetchWorklogsForAuthorInRange(
     return { entries: [], truncatedIssues: false, truncatedWorklogs: false }
   }
 
-  const [qtdFieldId, typeFieldId] = await Promise.all([
+  const [qtdFieldId, typeFieldId, qtdErroFieldId] = await Promise.all([
     resolveQtdCenariosQAFieldId(base, credentials),
     resolveTypeFieldId(base, credentials),
+    resolveQtdCenariosErroFieldId(base, credentials),
   ])
-  const extraFields = [...(qtdFieldId ? [qtdFieldId] : []), ...(typeFieldId ? [typeFieldId] : [])]
+  const extraFields = [
+    ...(qtdFieldId ? [qtdFieldId] : []),
+    ...(typeFieldId ? [typeFieldId] : []),
+    ...(qtdErroFieldId ? [qtdErroFieldId] : []),
+  ]
 
   const escaped = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
   const jqlDated = `worklogAuthor = "${escaped}" AND worklogDate >= "${jFrom}" AND worklogDate <= "${jTo}" ORDER BY updated DESC`
@@ -899,7 +959,7 @@ export async function fetchWorklogsForAuthorInRange(
   for (const issueKey of issueKeys) {
     if (entries.length >= MAX_WORKLOGS_TOTAL) break
     const fields = issueFieldsMap.get(issueKey) ?? {}
-    const patch = issueFieldsToLancamentoPatch(fields, qtdFieldId, typeFieldId)
+    const patch = issueFieldsToLancamentoPatch(fields, qtdFieldId, typeFieldId, qtdErroFieldId)
     const projectKey = issueKey.split("-")[0] ?? issueKey
 
     let wlStart = 0

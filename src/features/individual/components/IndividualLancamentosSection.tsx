@@ -60,6 +60,7 @@ type LancamentoRow = {
   priority?: string | null
   labels?: string[]
   qtdCenariosQA?: number | null
+  qtdCenariosErro?: number | null
   started: string
   timeSpentSeconds: number
   hours: number
@@ -91,6 +92,7 @@ type ApiOk = {
   docReviewCount?: number
   newDocCount?: number
   pendingUxReturnCount?: number
+  qtdCenariosErroTotal?: number
 }
 
 function formatDurationHMin(totalSeconds: number): string {
@@ -171,6 +173,7 @@ function computeStats(entries: LancamentoRow[]) {
   const docReviewIssues = new Set<string>()
   const newDocIssues = new Set<string>()
   const qtdByIssue = new Map<string, number>()
+  const qtdErroByIssue = new Map<string, number>()
 
   const isBrokenTest = (e: LancamentoRow) =>
     (e.issueType ?? "").toLowerCase().includes("broken")
@@ -194,11 +197,20 @@ function computeStats(entries: LancamentoRow[]) {
       const prev = qtdByIssue.get(e.issueKey) ?? 0
       qtdByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosQA))
     }
+    if (e.qtdCenariosErro != null && Number.isFinite(e.qtdCenariosErro)) {
+      const prev = qtdErroByIssue.get(e.issueKey) ?? 0
+      qtdErroByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosErro))
+    }
   }
 
   let qtdCenariosTotal = 0
   for (const v of qtdByIssue.values()) {
     qtdCenariosTotal += v
+  }
+
+  let qtdCenariosErroTotal = 0
+  for (const v of qtdErroByIssue.values()) {
+    qtdCenariosErroTotal += v
   }
 
   const projectHours: ProjectHours[] = Array.from(projectMap.entries())
@@ -213,6 +225,7 @@ function computeStats(entries: LancamentoRow[]) {
     docReviewCount: docReviewIssues.size,
     newDocCount: newDocIssues.size,
     qtdCenariosTotal,
+    qtdCenariosErroTotal,
   }
 }
 
@@ -330,6 +343,7 @@ function DashboardPanel({
   docReviewCount,
   newDocCount,
   pendingUxReturnCount,
+  qtdCenariosErroTotal: qtdCenariosErroTotalProp,
   evaluatedUserAccessProfile,
 }: {
   entries: LancamentoRow[]
@@ -342,13 +356,15 @@ function DashboardPanel({
   docReviewCount?: number
   newDocCount?: number
   pendingUxReturnCount?: number
+  qtdCenariosErroTotal?: number
   evaluatedUserAccessProfile?: "QA" | "UX" | "TW" | "MGR" | null
 }) {
   const stats = React.useMemo(() => computeStats(entries), [entries])
 
   const profile = evaluatedUserAccessProfile ?? null
 
-  // Cards 1 e 2 variam por perfil; cards 3 e 4 são invariantes.
+  // Para QA: 5 cards (Jiras abertos, Cenários com Erro, Testes Realizados, Total de Jiras, Jiras críticos).
+  // Para outros perfis: cards 1 e 2 variam; cards 3 e 4 são invariantes.
   let card1: React.ReactNode
   let card2: React.ReactNode
 
@@ -362,25 +378,32 @@ function DashboardPanel({
     card1 = <StatCard icon={Briefcase}       label="Operacional" value="Em breve" iconVariant="info" />
     card2 = <StatCard icon={LayoutDashboard} label="Gestão"      value="Em breve" iconVariant="brand" />
   } else {
-    // QA e fallback: comportamento original
+    // QA: dois novos cards, mais Testes Realizados como 5º card
     const retornoValor =
       brokenTestSubtasksTotalInScope ||
       reporterBrokenTestIssueCount ||
       brokenTestsCreatedByUser ||
       brokenTestsOpenedCount ||
       stats.brokenTestCountFromWorklogs
-    card1 = <StatCard icon={Bug}    label="Retorno de Testes" value={retornoValor}           iconVariant="warning" />
-    card2 = <StatCard icon={Layers} label="Testes Realizados" value={stats.qtdCenariosTotal} iconVariant="brand" />
+    card1 = <StatCard icon={Bug}    label="Jiras abertos (Broken)" value={retornoValor}                                          iconVariant="warning" />
+    card2 = <StatCard icon={AlertTriangle} label="Cenários com Erro" value={qtdCenariosErroTotalProp ?? stats.qtdCenariosErroTotal} iconVariant="destructive" />
   }
+
+  const isQA = profile === null || profile === "QA"
 
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {/* Coluna esquerda: 2×2 stat cards */}
+      {/* Coluna esquerda: stat cards */}
       <div className="grid grid-cols-2 gap-3">
         {card1}
         {card2}
         <StatCard icon={Hash}  label="Total de Jiras"  value={stats.totalIssues}   iconVariant="info" />
         <StatCard icon={Flame} label="Jiras críticos"  value={stats.criticalCount} iconVariant="destructive" />
+        {isQA && (
+          <div className="col-span-2">
+            <StatCard icon={Layers} label="Testes Realizados" value={stats.qtdCenariosTotal} iconVariant="brand" />
+          </div>
+        )}
       </div>
       {/* Coluna direita: barra de horas */}
       <ProjectStackedBar projectHours={stats.projectHours} />
@@ -605,6 +628,7 @@ export function IndividualLancamentosSection({
               docReviewCount={data.docReviewCount}
               newDocCount={data.newDocCount}
               pendingUxReturnCount={data.pendingUxReturnCount}
+              qtdCenariosErroTotal={data.qtdCenariosErroTotal}
               evaluatedUserAccessProfile={evaluatedUserAccessProfile}
             />
           )}

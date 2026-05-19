@@ -67,6 +67,7 @@ export function IndividualSecaoDevelopmentPanel({
   const [dominioConfiguracaoOpen, setDominioConfiguracaoOpen] = React.useState(false)
   const [solicitarOpen, setSolicitarOpen] = React.useState(false)
   const [solicitarLoading, setSolicitarLoading] = React.useState(false)
+  const [dominioRefreshKey, setDominioRefreshKey] = React.useState(0)
 
   // Optimistic effective user: reflects the navigation target immediately,
   // before the server-rendered prop catches up.
@@ -227,6 +228,7 @@ export function IndividualSecaoDevelopmentPanel({
         <IndividualDominioSection
           evaluatedUserId={selectedUserId}
           readOnly={!isAdministradorMgr}
+          refreshKey={dominioRefreshKey}
         />
       ) : showAvaliacoes ? (
         <IndividualAvaliacoesSection
@@ -290,6 +292,7 @@ export function IndividualSecaoDevelopmentPanel({
               }
               toast.success("Avaliação de domínio solicitada com sucesso.")
               setSolicitarOpen(false)
+              setDominioRefreshKey((k) => k + 1)
             }}
           />
         </>

@@ -14,6 +14,8 @@ import { IndividualFeriasSection } from "@/features/individual/components/Indivi
 import { IndividualAusenciasSection } from "@/features/individual/components/IndividualAusenciasSection"
 import { individualSectionLabel, isIndividualSectionSlug } from "@/features/individual/lib/individual-sections"
 import { IndividualDominioSection } from "@/features/individual/components/IndividualDominioSection"
+import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
+import type { AccessProfile } from "@/core/rbac/policy"
 
 export async function generateMetadata({
   params,
@@ -41,10 +43,10 @@ export default async function IndividualSecaoPage({
   const role = buildRole(session.user.type, session.user.accessProfile)
   if (!can(role, "menu.individual")) redirect("/dashboard")
 
-  if (secao === "lancamentos") notFound()
-
-  const canAccessLancamentos = false
+  const canAccessLancamentos = can(role, "individual.lancamentos")
   const canViewOthers = can(role, "individual.viewOthers")
+
+  if (secao === "lancamentos" && !canAccessLancamentos) notFound()
   const { userId: requestedUserId, completed } = await searchParams
   const showCompletedToast = completed === "1"
   
@@ -101,6 +103,11 @@ export default async function IndividualSecaoPage({
         <IndividualAusenciasSection evaluatedUserId={session.user.id} canWrite={false} />
       ) : secao === "dominio" ? (
         <IndividualDominioSection evaluatedUserId={session.user.id} readOnly />
+      ) : secao === "lancamentos" && canAccessLancamentos ? (
+        <IndividualLancamentosSection
+          evaluatedUserId={session.user.id}
+          evaluatedUserAccessProfile={(session.user.accessProfile ?? "QA") as AccessProfile}
+        />
       ) : (
         <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center justify-center py-16">
           <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>
