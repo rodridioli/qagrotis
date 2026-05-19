@@ -9,6 +9,7 @@ import { TablePagination } from "@/components/shared/TablePagination"
 import { TableToolbar } from "@/components/shared/TableToolbar"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { IndividualDominioTable } from "@/features/individual/components/IndividualDominioTable"
+import { DominioVisualizarSheet } from "@/features/individual/components/DominioVisualizarSheet"
 import {
   listDominioAvaliacoes,
   deleteDominioAvaliacao,
@@ -50,6 +51,8 @@ export function IndividualDominioSection({
   const [page, setPage] = React.useState(1)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [deleteRow, setDeleteRow] = React.useState<DominioAvaliacaoListRow | null>(null)
+  const [viewOpen, setViewOpen] = React.useState(false)
+  const [viewId, setViewId] = React.useState<string | null>(null)
 
   const refetch = React.useCallback(async () => {
     setLoading(true)
@@ -147,8 +150,9 @@ export function IndividualDominioSection({
           <IndividualDominioTable
             rows={paginated}
             scoreTrendByRowId={scoreTrendByRowId}
-            onView={() => {
-              // Avaliações de domínio são apenas para visualização inline — sem tela dedicada por ora.
+            onView={(row) => {
+              setViewId(row.id)
+              setViewOpen(true)
             }}
             onRequestDelete={
               readOnly
@@ -173,6 +177,12 @@ export function IndividualDominioSection({
           />
         )}
       </div>
+
+      <DominioVisualizarSheet
+        open={viewOpen}
+        onOpenChange={setViewOpen}
+        avaliacaoId={viewId}
+      />
 
       {!readOnly ? (
         <ConfirmDialog
