@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   Select,
   SelectItem,
@@ -31,6 +32,9 @@ import {
 
 type AccessProfileId = "QA" | "UX" | "TW" | "MGR"
 
+const VALID_PROFILES = new Set<string>(["QA", "UX", "TW", "MGR"])
+const VALID_PRESETS = new Set<string>(["today", "anterior", "week", "lastWeek", "month", "lastMonth"])
+
 const ALL_PROFILE_OPTIONS: { value: AccessProfileId; label: string }[] = [
   { value: "QA",  label: "QA"      },
   { value: "UX",  label: "UX"      },
@@ -46,11 +50,9 @@ interface Props {
 }
 
 export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile }: Props) {
-  const [profileFilter, setProfileFilter] = React.useState<AccessProfileId>(userAccessProfile)
-  const [membros, setMembros] = React.useState<EquipeMembroLancamentos[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
-  const [preset, setPreset] = React.useState<LancamentosPeriodPreset>("anterior")
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   const isViewerMgr = userAccessProfile === "MGR"
 
@@ -58,6 +60,42 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
   const profileOptions = isViewerMgr
     ? ALL_PROFILE_OPTIONS
     : ALL_PROFILE_OPTIONS.filter((o) => o.value !== "MGR")
+
+  const [profileFilter, setProfileFilter] = React.useState<AccessProfileId>(() => {
+    const v = searchParams.get("lp")
+    return v && VALID_PROFILES.has(v) ? (v as AccessProfileId) : userAccessProfile
+  })
+  const [preset, setPreset] = React.useState<LancamentosPeriodPreset>(() => {
+    const v = searchParams.get("periodo")
+    return v && VALID_PRESETS.has(v) ? (v as LancamentosPeriodPreset) : "anterior"
+  })
+  const [membros, setMembros] = React.useState<EquipeMembroLancamentos[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
+
+  // Captured once so member-load effect doesn't re-run when URL changes
+  const initialMembroRef = React.useRef(searchParams.get("membro"))
+
+  function setParam(key: string, value: string) {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set(key, value)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  function handleProfileChange(v: AccessProfileId) {
+    setProfileFilter(v)
+    setParam("lp", v)
+  }
+
+  function handlePresetChange(v: LancamentosPeriodPreset) {
+    setPreset(v)
+    setParam("periodo", v)
+  }
+
+  function handleMemberSelect(userId: string) {
+    setSelectedUserId(userId)
+    setParam("membro", userId)
+  }
 
   React.useEffect(() => {
     let cancelled = false
@@ -69,7 +107,11 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
         // Viewers não-MGR não veem avatares de membros MGR
         const visible = isViewerMgr ? data : data.filter((m) => m.accessProfile !== "MGR")
         setMembros(visible)
-        setSelectedUserId(visible[0]?.userId ?? null)
+        // Restore member from URL on first load; fall back to first member on profile changes
+        const urlMembro = initialMembroRef.current
+        const match = urlMembro ? visible.find((m) => m.userId === urlMembro) : null
+        setSelectedUserId(match ? match.userId : (visible[0]?.userId ?? null))
+        initialMembroRef.current = null
         setLoading(false)
       }
     })
@@ -99,7 +141,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
                             type="button"
                             aria-current={selected ? "true" : undefined}
                             aria-label={`${m.name}${selected ? " (selecionado)" : ""}`}
-                            onClick={() => setSelectedUserId(m.userId)}
+                            onClick={() => handleMemberSelect(m.userId)}
                             className={cn(
                               "relative rounded-full border-[3px] border-surface-card bg-surface-card shadow-sm duration-100 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 motion-reduce:transition-none",
                               selected
@@ -126,7 +168,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
           {canFilterByProfile && (
             <Select
               value={profileFilter}
-              onValueChange={(v) => v && setProfileFilter(v as AccessProfileId)}
+              onValueChange={(v) => v && handleProfileChange(v as AccessProfileId)}
             >
               <SelectTrigger className="w-36" aria-label="Filtrar por perfil">
                 <SelectValue />
@@ -141,7 +183,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
 
           <Select
             value={preset}
-            onValueChange={(v) => v && setPreset(v as LancamentosPeriodPreset)}
+            onValueChange={(v) => v && handlePresetChange(v as LancamentosPeriodPreset)}
           >
             <SelectTrigger className="w-44" aria-label="Período">
               <SelectValue>{getLancamentosPresetLabel(preset)}</SelectValue>
@@ -167,7 +209,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
             (membros.find((m) => m.userId === selectedUserId)?.accessProfile as "QA" | "UX" | "TW" | "MGR" | null) ?? null
           }
           preset={preset}
-          onPresetChange={setPreset}
+          onPresetChange={handlePresetChange}
         />
       ) : null}
     </div>

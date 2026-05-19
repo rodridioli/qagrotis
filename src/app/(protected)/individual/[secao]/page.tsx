@@ -63,7 +63,8 @@ export default async function IndividualSecaoPage({
   if (canViewOthers && activeUsers.length > 0) {
     const ids = new Set(activeUsers.map((u) => u.id))
     if (!requestedUserId || !ids.has(requestedUserId)) {
-      redirect(`/individual/${secao}?userId=${encodeURIComponent(activeUsers[0].id)}`)
+      const defaultUserId = ids.has(session.user.id) ? session.user.id : activeUsers[0].id
+      redirect(`/individual/${secao}?userId=${encodeURIComponent(defaultUserId)}`)
     }
     targetUserId = requestedUserId
   } else if (canViewOthers && activeUsers.length === 0 && requestedUserId) {
