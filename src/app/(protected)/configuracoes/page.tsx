@@ -81,7 +81,7 @@ export default async function ConfiguracoesPage() {
         <>
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border-default" />
-            <span className="text-sm font-semibold uppercase tracking-wider text-text-secondary">Integrações</span>
+            <span className="text-xs font-medium text-text-secondary">Integrações</span>
             <div className="h-px flex-1 bg-border-default" />
           </div>
 
