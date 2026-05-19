@@ -304,6 +304,78 @@ export async function completarDominioAvaliacao(
   }
 }
 
+// ─── Read: Detalhe de uma Avaliação ──────────────────────────────────────────
+
+export interface DominioAvaliacaoDetalhe {
+  id: string
+  codigo: number
+  status: "PENDENTE" | "CONCLUIDA"
+  dataYmd: string
+  resultadoPercent: number | null
+  configSnapshot: DominioProduto[]
+  respostas: DominioAvaliacaoResposta[]
+  produtoMedias: { produtoId: string; nome: string; media: number | null }[]
+}
+
+export async function getDominioAvaliacaoDetalhe(
+  id: string,
+): Promise<DominioAvaliacaoDetalhe | null> {
+  if (!id?.trim()) return null
+  try {
+    const session = await requireSession()
+    const role = buildRole(session.user.type, session.user.accessProfile)
+    const canViewOthers = can(role, "individual.viewOthers")
+
+    await ensureDominioTables()
+    const row = await prisma.dominioAvaliacao.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        codigo: true,
+        status: true,
+        resultadoPercent: true,
+        createdAt: true,
+        updatedAt: true,
+        evaluatedUserId: true,
+        configSnapshot: true,
+        respostas: true,
+      },
+    })
+    if (!row) return null
+    if (!canViewOthers && row.evaluatedUserId !== session.user.id) return null
+
+    const snapshot = (row.configSnapshot as unknown as DominioProduto[]) ?? []
+    const respostas = (row.respostas as unknown as DominioAvaliacaoResposta[]) ?? []
+
+    const produtoMedias = snapshot.map((p) => {
+      const scores: number[] = []
+      for (const m of p.modulos) {
+        const r = respostas.find((x) => x.produtoId === p.id && x.moduloId === m.id)
+        if (r) scores.push((r.estrelas / 5) * 100)
+      }
+      return {
+        produtoId: p.id,
+        nome: p.nome,
+        media: scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null,
+      }
+    })
+
+    return {
+      id: row.id,
+      codigo: row.codigo,
+      status: row.status as "PENDENTE" | "CONCLUIDA",
+      dataYmd: toDateYmd(row.status === "CONCLUIDA" ? row.updatedAt : row.createdAt),
+      resultadoPercent: row.resultadoPercent,
+      configSnapshot: snapshot,
+      respostas,
+      produtoMedias,
+    }
+  } catch (e) {
+    console.error("[getDominioAvaliacaoDetalhe]", e)
+    return null
+  }
+}
+
 // ─── Write: Excluir Avaliação (MGR only) ──────────────────────────────────────
 
 export async function deleteDominioAvaliacao(id: string): Promise<{ error?: string }> {
