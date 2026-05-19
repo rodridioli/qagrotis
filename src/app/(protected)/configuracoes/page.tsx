@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic"
 export const metadata = { title: "Configurações" }
 
 import Link from "next/link"
-import { Users, Monitor, Box, Building2, Sparkles, KeyRound, UserCircle } from "lucide-react"
+import { Users, Monitor, Box, Building2, Sparkles, KeyRound, UserCircle, History } from "lucide-react"
 import { auth } from "@/core/auth"
 import { buildRole, can, type Capability } from "@/core/rbac/policy"
 import JiraConfigButton from "./JiraConfigButton"
@@ -22,6 +22,7 @@ const CARDS: ConfigCard[] = [
   { href: "/configuracoes/clientes",      icon: Building2, label: "Clientes",      capability: "config.clientes" },
   { href: "/configuracoes/modelos-de-ia", icon: Sparkles,  label: "Modelos de IA", capability: "config.modelosIA" },
   { href: "/configuracoes/credenciais",   icon: KeyRound,  label: "Credenciais",   capability: "config.credenciais" },
+  { href: "/atualizacoes",               icon: History,   label: "Atualizações",  capability: "menu.atualizacoes" },
 ]
 
 export default async function ConfiguracoesPage() {

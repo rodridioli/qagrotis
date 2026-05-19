@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   LayoutDashboard, FileText, Rocket, Clock,
   Settings, LogOut, PanelLeftClose,
-  PanelLeftOpen, Menu, Moon, Sun, Sparkles, History, Users,
+  PanelLeftOpen, Menu, Moon, Sun, Sparkles, Users,
   Network, ClipboardCheck, MessageSquare, User,
 } from "lucide-react"
 import { buildRole, can, isDisabled, isVisible, type Role, type Capability, type AccessProfile } from "@/core/rbac/policy"
@@ -58,7 +58,6 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/configuracoes", icon: Settings,        label: "Configurações",          alwaysEnabled: true,  capability: "menu.configuracoes" },
   { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
   { href: "/individual",    icon: User,            label: "Individual",             alwaysEnabled: true,  capability: "menu.individual" },
-  { href: "/atualizacoes",  icon: History,         label: "Atualizações",     alwaysEnabled: false, capability: "menu.atualizacoes" },
 ]
 
 /**
@@ -72,7 +71,6 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
     { capability: "menu.configuracoes" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
-    { capability: "menu.atualizacoes" },
   ],
 }
 
@@ -306,8 +304,6 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                 } else if (href === "/suites") {
                   disabled = needsSistema && !hasCenario
                 } else if (href === "/dashboard" || href === "/cenarios") {
-                  disabled = needsSistema && !hasSistemaModulo
-                } else if (href === "/atualizacoes") {
                   disabled = needsSistema && !hasSistemaModulo
                 }
               }

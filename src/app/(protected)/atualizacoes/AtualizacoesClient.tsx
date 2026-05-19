@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronDown, ChevronUp, Filter, X } from "lucide-react"
 import { TableToolbar } from "@/components/shared/TableToolbar"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { ChangelogTagBadge } from "@/components/shared/StatusBadge"
@@ -115,6 +116,12 @@ export function AtualizacoesClient({ entries }: Props) {
 
   return (
     <div className="space-y-4">
+      <PageBreadcrumb
+        items={[
+          { label: "Configurações", href: "/configuracoes" },
+          { label: "Atualizações" },
+        ]}
+      />
       <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
         <TableToolbar
           search={search}
