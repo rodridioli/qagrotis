@@ -327,7 +327,7 @@ export async function GET(req: NextRequest) {
       jiraBrowseBase: base,
       includesClockwork: false,
       clockworkMergedCount: 0,
-      reporterBrokenTestIssueCount: 0,
+      reporterBrokenTestIssueCount: reporterDiagnostics.count,
       researchCount: 0,
       usabilityCount: 0,
       docReviewCount: 0,
