@@ -4,7 +4,7 @@ import React, { useState, useEffect, useTransition, useRef, Suspense } from "rea
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
-  LayoutDashboard, FileText, Rocket,
+  LayoutDashboard, FileText, Rocket, Clock,
   Settings, LogOut, PanelLeftClose,
   PanelLeftOpen, Menu, Moon, Sun, Sparkles, History, Users,
   Network, ClipboardCheck, MessageSquare, User,
@@ -51,6 +51,7 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false, capability: "menu.suites" },
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
+  { href: "/individual/lancamentos", icon: Clock,  label: "Lançamentos",      alwaysEnabled: false, capability: "individual.lancamentos" },
   { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
   { href: "/individual",    icon: User,            label: "Individual",             alwaysEnabled: true,  capability: "menu.individual" },
   { href: "/mapa-conhecimento",     icon: Network,         label: "Mapa de Conhecimento",   alwaysEnabled: true,  capability: "menu.mapaConhecimento" },
@@ -131,12 +132,11 @@ interface SidebarProps {
   role: Role
   canAccessEquipeLancamentos: boolean
   canAccessEquipePerformance: boolean
-  canAccessIndividualLancamentos: boolean
   /** Navegação com transição (mantém overlay de carregamento até a rota resolver). */
   onNavigate?: (href: string) => void
 }
 
-const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, role, canAccessEquipeLancamentos, canAccessEquipePerformance, canAccessIndividualLancamentos, onNavigate }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, role, canAccessEquipeLancamentos, canAccessEquipePerformance, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -290,7 +290,6 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                     <IndividualSidebarNavGroup
                       collapsed={collapsed}
                       onNavigate={onNavigate}
-                      canAccessLancamentos={canAccessIndividualLancamentos}
                     />
                   </Suspense>
                 )
@@ -659,7 +658,6 @@ export default function LayoutClient({
   const role: Role = buildRole(session?.user?.type, session?.user?.accessProfile)
   const canAccessEquipeLancamentos = can(role, "equipe.lancamentos")
   const canAccessEquipePerformance = can(role, "equipe.performance")
-  const canAccessIndividualLancamentos = can(role, "individual.lancamentos")
   const accessProfile: AccessProfile = (session?.user?.accessProfile as AccessProfile) ?? "QA"
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -814,7 +812,6 @@ export default function LayoutClient({
           role={role}
           canAccessEquipeLancamentos={canAccessEquipeLancamentos}
           canAccessEquipePerformance={canAccessEquipePerformance}
-          canAccessIndividualLancamentos={canAccessIndividualLancamentos}
           onNavigate={handleNavigate}
         />
         <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />

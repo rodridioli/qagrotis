@@ -16,14 +16,11 @@ function querySuffixFromSearchParams(searchParams: ReturnType<typeof useSearchPa
 export interface IndividualSidebarNavGroupProps {
   collapsed: boolean
   onNavigate?: (href: string) => void
-  /** Quando falso, a secção Lançamentos não aparece no submenu (RBAC). */
-  canAccessLancamentos?: boolean
 }
 
 export function IndividualSidebarNavGroup({
   collapsed,
   onNavigate,
-  canAccessLancamentos = false,
 }: IndividualSidebarNavGroupProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -136,7 +133,7 @@ export function IndividualSidebarNavGroup({
         <nav id="individual-sidebar-subnav" aria-label="Secções Individual" className="ml-2 border-l border-border-default pl-2">
           <ul className="flex flex-col gap-0.5">
           {INDIVIDUAL_NAV_ENTRIES.filter(
-            (e) => e.slug !== "lancamentos" || canAccessLancamentos,
+            (e) => e.slug !== "lancamentos",
           ).map(({ slug, label, icon: Icon }) => {
             const href = `/individual/${slug}${suffix}`
             const active =
