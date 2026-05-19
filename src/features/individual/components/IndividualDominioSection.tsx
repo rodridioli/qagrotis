@@ -145,7 +145,7 @@ export function IndividualDominioSection({
         </span>
       </span>
       {pendingRow && (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-400">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-badge-warning/30 bg-badge-warning/10 px-2.5 py-1 text-xs font-medium text-badge-warning-text">
           <Clock className="size-3 shrink-0" aria-hidden />
           Enviada em {formatRequestDate(pendingRow.createdAtIso)}
         </span>

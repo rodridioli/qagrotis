@@ -93,7 +93,7 @@ function Stars({ value, onChange, name }: { value: number; onChange: (v: number)
             onClick={() => onChange(i)}
             className={cn(
               "flex size-7 items-center justify-center rounded transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary",
-              lit ? "text-amber-400" : "text-neutral-grey-300"
+              lit ? "text-badge-warning" : "text-neutral-grey-300"
             )}
           >
             <Star className="size-5" fill={lit ? "currentColor" : "none"} strokeWidth={1.5} />
@@ -109,15 +109,15 @@ function Stars({ value, onChange, name }: { value: number; onChange: (v: number)
 function DonePane({ overall, onClose }: { overall: number; onClose: () => void }) {
   return (
     <div className="flex flex-col items-center gap-4 py-6 text-center">
-      <div className="flex size-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-950/50">
-        <CheckCircle2 className="size-8 text-green-600 dark:text-green-400" />
+      <div className="flex size-16 items-center justify-center rounded-full bg-badge-success/10">
+        <CheckCircle2 className="size-8 text-badge-success-text" />
       </div>
       <div>
         <h3 className="text-lg font-bold text-text-primary">Avaliação enviada com sucesso</h3>
         <p className="mt-1 text-sm text-text-secondary">
           Domínio geral: <strong>{overall.toFixed(2)}/5</strong>
         </p>
-        <p className="mt-2 text-sm text-text-muted">
+        <p className="mt-2 text-sm text-text-secondary">
           Você pode revisar suas respostas a qualquer momento em <strong>Individual › Domínio</strong>.
         </p>
       </div>
@@ -199,7 +199,7 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
                   <SheetTitle className="text-base font-semibold text-text-primary">
                     Avaliação de Domínio Técnico
                   </SheetTitle>
-                  <p className="mt-0.5 text-xs text-text-muted">
+                  <p className="mt-0.5 text-xs text-text-secondary">
                     {ratedCount} de {totalModulos} módulos avaliados
                   </p>
                 </div>
@@ -225,11 +225,11 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
                       <p className="text-sm font-semibold text-text-primary">{produto.nome}</p>
                       <div className="flex items-center gap-2 shrink-0">
                         {avg > 0 && (
-                          <span className="text-xs text-text-muted tabular-nums">
+                          <span className="text-xs text-text-secondary tabular-nums">
                             {avg.toFixed(1)} ★
                           </span>
                         )}
-                        <span className="text-xs text-text-muted">
+                        <span className="text-xs text-text-secondary">
                           {ratedInProduto}/{produto.modulos.length}
                         </span>
                       </div>
@@ -251,7 +251,7 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
                             <div className="min-w-0 px-3">
                               <p className="truncate text-sm font-medium text-text-primary">{label}</p>
                               {v > 0 && (
-                                <p className="text-xs text-text-muted">{NIVEL[v]}</p>
+                                <p className="text-xs text-text-secondary">{NIVEL[v]}</p>
                               )}
                             </div>
                             <Stars
@@ -270,7 +270,7 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
 
             {/* Footer */}
             <SheetFooter className="flex-row items-center justify-between gap-3 border-t border-border-default px-5 py-4">
-              <p className="min-w-0 flex-1 truncate text-sm text-text-muted">
+              <p className="min-w-0 flex-1 truncate text-sm text-text-secondary">
                 {allDone
                   ? <><strong className="text-text-primary">Tudo pronto.</strong> Envie sua avaliação.</>
                   : <>Faltam <strong className="text-text-primary">{totalModulos - ratedCount}</strong> {totalModulos - ratedCount === 1 ? "item" : "itens"} sem nota.</>

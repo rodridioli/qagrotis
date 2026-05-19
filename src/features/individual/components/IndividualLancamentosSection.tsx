@@ -269,14 +269,14 @@ function StatCard({
 // ── Stacked bar chart ────────────────────────────────────────────────────────
 
 const BAR_COLORS = [
-  "var(--color-brand-primary)",
-  "var(--color-secondary-500)",
-  "#f59e0b",
-  "#3b82f6",
-  "#10b981",
-  "#8b5cf6",
-  "#ec4899",
-  "#06b6d4",
+  "var(--color-chart-1)",
+  "var(--color-chart-2)",
+  "var(--color-chart-3)",
+  "var(--color-chart-4)",
+  "var(--color-chart-5)",
+  "var(--color-chart-6)",
+  "var(--color-chart-7)",
+  "var(--color-chart-8)",
 ]
 
 function ProjectStackedBar({ projectHours }: { projectHours: ProjectHours[] }) {

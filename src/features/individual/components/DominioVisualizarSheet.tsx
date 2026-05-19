@@ -34,15 +34,15 @@ function dominioCodigoPadded(codigo: number): string {
 }
 
 function scoreToneClass(pct: number): string {
-  if (pct >= 80) return "text-green-600 dark:text-green-400"
-  if (pct >= 50) return "text-amber-600 dark:text-amber-400"
-  return "text-red-600 dark:text-red-400"
+  if (pct >= 80) return "text-badge-success-text"
+  if (pct >= 50) return "text-badge-warning-text"
+  return "text-destructive"
 }
 
 function scoreBarClass(pct: number): string {
-  if (pct >= 80) return "bg-green-500"
-  if (pct >= 50) return "bg-amber-500"
-  return "bg-red-500"
+  if (pct >= 80) return "bg-badge-success"
+  if (pct >= 50) return "bg-badge-warning"
+  return "bg-destructive"
 }
 
 function StarDisplay({ count }: { count: number }) {
@@ -54,7 +54,7 @@ function StarDisplay({ count }: { count: number }) {
           className={cn(
             "size-3 shrink-0",
             i < count
-              ? "fill-amber-400 text-amber-400"
+              ? "fill-badge-warning text-badge-warning"
               : "fill-neutral-grey-200 text-neutral-grey-200",
           )}
           aria-hidden
@@ -85,7 +85,7 @@ function ModuloRow({
             </span>
           </>
         ) : (
-          <span className="text-xs italic text-text-muted">—</span>
+          <span className="text-xs italic text-text-secondary">—</span>
         )}
       </div>
     </div>
@@ -128,10 +128,10 @@ function ProdutoCard({
               </span>
             </>
           ) : (
-            <span className="text-xs italic text-text-muted">—</span>
+            <span className="text-xs italic text-text-secondary">—</span>
           )}
           <svg
-            className={cn("size-4 shrink-0 text-text-muted transition-transform duration-200", expanded && "rotate-180")}
+            className={cn("size-4 shrink-0 text-text-secondary transition-transform duration-200", expanded && "rotate-180")}
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -191,7 +191,7 @@ export function DominioVisualizarSheet({ open, onOpenChange, avaliacaoId }: Prop
           <SheetTitle className="text-base font-semibold text-text-primary">
             {detalhe ? dominioCodigoPadded(detalhe.codigo) : "Avaliação de Domínio"}
           </SheetTitle>
-          <SheetDescription className="text-xs text-text-muted">
+          <SheetDescription className="text-xs text-text-secondary">
             {detalhe
               ? `${formatDataPt(detalhe.dataYmd)} · ${detalhe.status === "CONCLUIDA" ? "Concluída" : "Pendente"}`
               : "Carregando…"}
@@ -202,11 +202,11 @@ export function DominioVisualizarSheet({ open, onOpenChange, avaliacaoId }: Prop
           {loading ? (
             <SkeletonRows />
           ) : !detalhe ? (
-            <p className="text-sm text-text-muted">Não foi possível carregar os dados.</p>
+            <p className="text-sm text-text-secondary">Não foi possível carregar os dados.</p>
           ) : detalhe.status === "PENDENTE" ? (
             <div className="rounded-xl border border-border-default bg-surface-card px-5 py-8 text-center">
               <p className="text-sm font-medium text-text-secondary">Avaliação pendente</p>
-              <p className="mt-1 text-xs text-text-muted">
+              <p className="mt-1 text-xs text-text-secondary">
                 Esta avaliação ainda não foi preenchida.
               </p>
             </div>
@@ -215,13 +215,13 @@ export function DominioVisualizarSheet({ open, onOpenChange, avaliacaoId }: Prop
               {/* Média geral */}
               <div className="flex items-center justify-between rounded-xl border border-border-default bg-surface-card px-5 py-4">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+                  <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
                     Média Geral
                   </p>
                   <p
                     className={cn(
                       "mt-1 text-4xl font-bold tabular-nums leading-none",
-                      mediaGeral !== null ? scoreToneClass(mediaGeral) : "text-text-muted",
+                      mediaGeral !== null ? scoreToneClass(mediaGeral) : "text-text-secondary",
                     )}
                   >
                     {mediaGeral !== null ? `${mediaGeral.toFixed(0)}%` : "—"}
@@ -239,7 +239,7 @@ export function DominioVisualizarSheet({ open, onOpenChange, avaliacaoId }: Prop
                       <circle
                         cx="18" cy="18" r="15.9"
                         fill="none"
-                        stroke={mediaGeral >= 80 ? "#22c55e" : mediaGeral >= 50 ? "#f59e0b" : "#ef4444"}
+                        stroke={mediaGeral >= 80 ? "var(--color-badge-success)" : mediaGeral >= 50 ? "var(--color-badge-warning)" : "var(--color-destructive)"}
                         strokeWidth="3.2"
                         strokeDasharray={`${(mediaGeral / 100) * 100} 100`}
                         strokeLinecap="round"
@@ -251,7 +251,7 @@ export function DominioVisualizarSheet({ open, onOpenChange, avaliacaoId }: Prop
 
               {/* Por produto */}
               <div className="flex flex-col gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
                   Por produto
                 </p>
                 {detalhe.configSnapshot.map((produto) => {
