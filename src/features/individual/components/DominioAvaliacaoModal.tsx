@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   Layers,
   Target,
-  X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -45,6 +44,7 @@ type WizardStep = "intro" | number | "review" | "done"
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function parseModulo(nome: string): { code: string | null; label: string } {
+  if (/^Core\s*\/\s*ACC$/i.test(nome.trim())) return { code: "CORE", label: "ACC" }
   const match = /^([A-Z0-9]{2,6})\s*[-–]\s*(.+)$/.exec(nome)
   if (match) return { code: match[1]!, label: match[2]! }
   return { code: null, label: nome }
@@ -59,12 +59,12 @@ const NIVEL_LABELS: Record<number, string> = {
 }
 
 const CODE_COLORS: string[] = [
-  "text-emerald-700 bg-emerald-50",
-  "text-blue-700 bg-blue-50",
-  "text-violet-700 bg-violet-50",
-  "text-amber-700 bg-amber-50",
-  "text-rose-700 bg-rose-50",
-  "text-cyan-700 bg-cyan-50",
+  "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40",
+  "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-950/40",
+  "text-violet-700 bg-violet-50 dark:text-violet-400 dark:bg-violet-950/40",
+  "text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/40",
+  "text-rose-700 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/40",
+  "text-cyan-700 bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-950/40",
 ]
 
 function codeColor(index: number): string {
@@ -214,12 +214,12 @@ function IntroScreen({
       )}
       <div className="flex flex-col gap-2">
         <h2 id="avaliacao-title" className="text-xl font-bold text-text-primary">
-          Avaliação de domínio técnico
+          Avaliação de domínio dos produtos
         </h2>
         <p className="mx-auto max-w-sm text-sm text-text-secondary">
           {produtos.length === 0
             ? "Nenhum produto configurado para avaliação."
-            : "Avalie seu nível de conhecimento em cada módulo usando a escala de 1 a 5 estrelas. Todos os campos são obrigatórios antes de enviar."}
+            : "Indique seu nível de conhecimento sobre os produtos da Agrotis em cada módulo, utilizando a escala de 1 a 5 estrelas. Preencha todos os campos para concluir o envio."}
         </p>
       </div>
       {produtos.length > 0 && (
@@ -232,7 +232,7 @@ function IntroScreen({
           </div>
         </div>
       )}
-      <Button size="lg" className="min-w-40" onClick={onStart} disabled={produtos.length === 0}>
+      <Button className="min-w-40" onClick={onStart} disabled={produtos.length === 0}>
         Começar avaliação
         <ChevronRight className="size-4" aria-hidden />
       </Button>
@@ -262,17 +262,14 @@ function ProductStepContent({
       {/* Module evaluation table */}
       <div className="rounded-xl border border-border-default bg-background">
         <div className="border-b border-border-default px-4 py-3.5">
-          <h3 className="text-sm font-semibold text-text-primary">
-            Avalie seu domínio nos módulos
+          <h3 className="text-base font-bold text-text-primary">
+            {produto.nome}
           </h3>
-          <p className="mt-0.5 text-xs text-text-secondary">
-            Clique nas estrelas para atribuir uma nota de 1 a 5.
-          </p>
         </div>
 
         {/* Table header — hidden on small screens */}
         <div className="hidden grid-cols-[64px_1fr_140px_100px] border-b border-border-default px-4 py-2 sm:grid">
-          {["CÓDIGO", "MÓDULO", "AVALIAÇÃO", "NÍVEL"].map((col) => (
+          {["Código", "Módulo", "Avaliação", "Nível"].map((col) => (
             <span key={col} className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
               {col}
             </span>
@@ -393,28 +390,28 @@ function ReviewScreenContent({
       value: `${totalAvaliados}/${totalModulos}`,
       sub: totalAvaliados === totalModulos ? "100% concluído" : `${Math.round((totalAvaliados / totalModulos) * 100)}% concluído`,
       icon: Check,
-      color: "text-blue-600 bg-blue-50",
+      color: "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950/40",
     },
     {
       label: "Etapas cobertas",
       value: `${etapasConcluidas}/${produtos.length}`,
       sub: "Etapas com 100% de avaliação",
       icon: Layers,
-      color: "text-violet-600 bg-violet-50",
+      color: "text-violet-600 bg-violet-50 dark:text-violet-400 dark:bg-violet-950/40",
     },
     {
       label: "Pendentes",
       value: `${pendentes}`,
       sub: pendentes === 0 ? "Pronto para envio" : `${pendentes} sem avaliação`,
       icon: pendentes === 0 ? CheckCircle2 : AlertTriangle,
-      color: pendentes === 0 ? "text-badge-success bg-badge-success/10" : "text-amber-600 bg-amber-50",
+      color: pendentes === 0 ? "text-badge-success bg-badge-success/10" : "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/40",
     },
   ]
 
   return (
     <div className="px-4 py-5 sm:px-5 animate-in fade-in slide-in-from-right-4 duration-200">
       {/* Stat cards */}
-      <div className="mb-5 grid grid-cols-2 gap-2.5">
+      <div className="mb-5 grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
         {stats.map((s) => {
           const Icon = s.icon
           return (
@@ -576,7 +573,6 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
   const [respostas, setRespostas] = React.useState<Record<string, Record<string, number>>>({})
   const [submitting, setSubmitting] = React.useState(false)
   const [mediaGeral, setMediaGeral] = React.useState(0)
-  const [showExitConfirm, setShowExitConfirm] = React.useState(false)
 
   // Computed values for footer
   const currentProduct = typeof step === "number" ? produtos[step] : undefined
@@ -584,23 +580,10 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
   const totalAvaliados = countAvaliadosTotal(produtos, respostas)
   const pendentes = totalModulos - totalAvaliados
 
-  // Step label for header
-  function stepLabel(): string {
-    if (step === "intro") return "Introdução"
-    if (step === "review") return `Revisão · ${produtos.length + 1} de ${produtos.length + 1}`
-    if (step === "done") return "Concluído"
-    if (typeof step === "number") return `Produto ${step + 1} de ${produtos.length}`
-    return ""
-  }
-
-  // Intercept Sheet close attempts (ESC / backdrop click)
+  // Intercept Sheet close attempts (ESC / backdrop click) — only allow when done
   function handleOpenChange(open: boolean) {
-    if (!open) {
-      if (step === "done") {
-        handleExit()
-      } else {
-        setShowExitConfirm(true)
-      }
+    if (!open && step === "done") {
+      handleExit()
     }
   }
 
@@ -668,7 +651,7 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
 
     if (typeof step === "number") {
       return (
-        <div className="flex w-full items-center justify-between gap-3">
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-text-secondary">
             {isCurrentProductComplete ? (
               <span className="font-medium text-badge-success">Etapa completa.</span>
@@ -677,11 +660,11 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
             )}
           </p>
           <div className="flex shrink-0 items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => handlePrev(step)}>
+            <Button variant="outline" onClick={() => handlePrev(step)}>
               <ChevronLeft className="size-4" aria-hidden />
               Voltar
             </Button>
-            <Button size="sm" onClick={() => handleNext(step)} disabled={!isCurrentProductComplete} className="gap-1">
+            <Button onClick={() => handleNext(step)} disabled={!isCurrentProductComplete}>
               Próxima etapa
               <ChevronRight className="size-4" aria-hidden />
             </Button>
@@ -692,7 +675,7 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
 
     if (step === "review") {
       return (
-        <div className="flex w-full items-center justify-between gap-3">
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-text-secondary">
             {pendentes === 0 ? (
               <span className="font-medium text-badge-success">Tudo pronto para envio.</span>
@@ -705,7 +688,6 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
           <div className="flex shrink-0 items-center gap-2">
             <Button
               variant="outline"
-              size="sm"
               onClick={() => setStep(produtos.length > 0 ? produtos.length - 1 : "intro")}
               disabled={submitting}
             >
@@ -713,10 +695,8 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
               Voltar
             </Button>
             <Button
-              size="sm"
               onClick={() => void handleConfirm()}
               disabled={submitting || pendentes > 0}
-              className="gap-1.5"
             >
               {submitting ? (
                 <>
@@ -748,26 +728,10 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
         className="flex flex-col gap-0 p-0 sm:!max-w-2xl"
       >
         {/* Custom header */}
-        <SheetHeader className="flex shrink-0 flex-row items-center justify-between gap-3 border-b border-border-default px-4 py-3 sm:px-5">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <SheetTitle className="text-sm font-semibold leading-none">
-              Avaliação de Domínio
-            </SheetTitle>
-            {step !== "done" && (
-              <p className="text-xs text-text-secondary">{stepLabel()}</p>
-            )}
-          </div>
-          {step !== "done" && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Sair da avaliação"
-              className="shrink-0"
-              onClick={() => setShowExitConfirm(true)}
-            >
-              <X className="size-4" aria-hidden />
-            </Button>
-          )}
+        <SheetHeader className="shrink-0 border-b border-border-default px-4 py-3 sm:px-5">
+          <SheetTitle className="text-sm font-semibold leading-none">
+            Domínio dos produtos
+          </SheetTitle>
         </SheetHeader>
 
         {/* Scrollable body */}
@@ -810,34 +774,6 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
           </SheetFooter>
         )}
 
-        {/* Exit confirm overlay — inside Sheet so it appears above the backdrop */}
-        {showExitConfirm && (
-          <div
-            className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 px-4"
-            aria-live="assertive"
-          >
-            <div
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="exit-dialog-title"
-              className="w-full max-w-sm rounded-xl bg-background p-6 shadow-card"
-            >
-              <h2 id="exit-dialog-title" className="text-base font-semibold text-text-primary">
-                Sair da avaliação?
-              </h2>
-              <p className="mt-1 text-sm text-text-secondary">Seu progresso não será salvo.</p>
-              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-                <Button autoFocus variant="ghost" onClick={() => setShowExitConfirm(false)}>
-                  Continuar avaliação
-                </Button>
-                <Button variant="destructive" onClick={handleExit}>
-                  Sair mesmo assim
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </SheetContent>
     </Sheet>
   )
