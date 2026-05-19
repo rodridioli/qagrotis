@@ -37,7 +37,7 @@ import { AssistenteDrawer } from "@/components/shared/AssistenteDrawer"
 import type { IntegracaoSafeRecord } from "@/features/integracoes/actions/integracoes"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { BackToTop } from "@/components/shared/BackToTop"
-import { DominioAvaliacaoModal } from "@/features/individual/components/DominioAvaliacaoModal"
+import { DominioResponderSheet } from "@/features/individual/components/DominioResponderSheet"
 import {
   completarDominioAvaliacao,
   type PendingDominioAvaliacaoDto,
@@ -713,6 +713,7 @@ export default function LayoutClient({
   pendingDominioAvaliacao = null,
 }: Props) {
   const router = useRouter()
+  const [drawerOpen, setDrawerOpen] = useState(pendingDominioAvaliacao !== null)
   const pathname = usePathname()
   const { data: session } = useSession()
   const role: Role = buildRole(session?.user?.type, session?.user?.accessProfile)
@@ -852,7 +853,12 @@ export default function LayoutClient({
   return (
     <SistemaContext.Provider value={{ sistemaSelecionado, setSistemaSelecionado: handleSistemaChange }}>
       {pendingDominioAvaliacao ? (
-        <DominioAvaliacaoModal
+        <DominioResponderSheet
+          open={drawerOpen}
+          onOpenChange={(v) => {
+            setDrawerOpen(v)
+            if (!v) router.refresh()
+          }}
           avaliacaoId={pendingDominioAvaliacao.id}
           configSnapshot={pendingDominioAvaliacao.configSnapshot}
           onSubmit={completarDominioAvaliacao}
