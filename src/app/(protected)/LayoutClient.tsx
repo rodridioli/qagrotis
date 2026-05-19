@@ -703,8 +703,8 @@ export default function LayoutClient({
   const pathname = usePathname()
   const { data: session } = useSession()
   const role: Role = buildRole(session?.user?.type, session?.user?.accessProfile)
-  const canAccessEquipeLancamentos = can(role, "equipe.lancamentos") && role !== "Administrador:MGR"
-  const canAccessEquipePerformance = false
+  const canAccessEquipeLancamentos = can(role, "equipe.lancamentos")
+  const canAccessEquipePerformance = can(role, "equipe.performance")
   const accessProfile: AccessProfile = (session?.user?.accessProfile as AccessProfile) ?? "QA"
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
