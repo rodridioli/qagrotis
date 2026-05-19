@@ -107,13 +107,13 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
         <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
           <PanelsTopLeft className="size-6" />
         </div>
-        <span className="font-semibold text-text-primary">Integração Jira</span>
+        <span className="font-semibold text-text-primary">API Jira</span>
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Integração Jira</DialogTitle>
+            <DialogTitle>API Jira</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-4 py-2">
             <p className="text-sm text-text-secondary">
