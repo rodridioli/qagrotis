@@ -3,14 +3,17 @@
 import * as React from "react"
 import {
   Star,
-  Trophy,
-  PackageX,
-  X,
+  Check,
   ChevronLeft,
   ChevronRight,
+  PackageX,
   ClipboardList,
-  Pencil,
   Loader2,
+  AlertTriangle,
+  CheckCircle2,
+  Layers,
+  Target,
+  X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -19,10 +22,9 @@ import type {
   DominioProduto,
   DominioAvaliacaoResposta,
 } from "@/features/individual/actions/individual-dominio"
-import { BadgeAchievement } from "@/features/individual/components/BadgeAchievement"
 import { cn } from "@/core/utils"
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
   avaliacaoId: string
@@ -30,19 +32,46 @@ interface Props {
   onSubmit: (id: string, respostas: DominioAvaliacaoResposta[]) => Promise<{ error?: string }>
 }
 
-type WizardStep = "welcome" | number | "review" | "done"
-type Direction = "forward" | "backward"
+// step: "intro" | 0..N-1 (product index) | "review" | "done"
+type WizardStep = "intro" | number | "review" | "done"
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function parseModulo(nome: string): { code: string | null; label: string } {
+  const match = /^([A-Z0-9]{2,6})\s*[-–]\s*(.+)$/.exec(nome)
+  if (match) return { code: match[1]!, label: match[2]! }
+  return { code: null, label: nome }
+}
+
+const NIVEL_LABELS: Record<number, string> = {
+  1: "Iniciante",
+  2: "Básico",
+  3: "Intermediário",
+  4: "Avançado",
+  5: "Especialista",
+}
+
+const CODE_COLORS: string[] = [
+  "text-emerald-700 bg-emerald-50",
+  "text-blue-700 bg-blue-50",
+  "text-violet-700 bg-violet-50",
+  "text-amber-700 bg-amber-50",
+  "text-rose-700 bg-rose-50",
+  "text-cyan-700 bg-cyan-50",
+]
+
+function codeColor(index: number): string {
+  return CODE_COLORS[index % CODE_COLORS.length]!
+}
 
 function calcProdutoMedia(
   produto: DominioProduto,
   respostas: Record<string, Record<string, number>>,
 ): number | null {
   const scores: number[] = []
-  for (const modulo of produto.modulos) {
-    const val = respostas[produto.id]?.[modulo.id]
-    if (val) scores.push((val / 5) * 100)
+  for (const m of produto.modulos) {
+    const v = respostas[produto.id]?.[m.id]
+    if (v) scores.push(v)
   }
   if (scores.length === 0) return null
   return scores.reduce((a, b) => a + b, 0) / scores.length
@@ -68,6 +97,16 @@ function isProdutoComplete(
   return produto.modulos.every((m) => !!respostas[produto.id]?.[m.id])
 }
 
+function countAvaliadosTotal(
+  produtos: DominioProduto[],
+  respostas: Record<string, Record<string, number>>,
+): number {
+  return produtos.reduce(
+    (acc, p) => acc + p.modulos.filter((m) => !!respostas[p.id]?.[m.id]).length,
+    0,
+  )
+}
+
 function playSuccessChord() {
   if (typeof window === "undefined") return
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
@@ -77,12 +116,11 @@ function playSuccessChord() {
       (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
     if (!AudioCtx) return
     const ctx = new AudioCtx()
-    const notes = [
+    for (const { freq, delay } of [
       { freq: 523.25, delay: 0 },
       { freq: 659.25, delay: 0.2 },
       { freq: 783.99, delay: 0.4 },
-    ]
-    for (const { freq, delay } of notes) {
+    ]) {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.connect(gain)
@@ -99,26 +137,20 @@ function playSuccessChord() {
     }
     setTimeout(() => void ctx.close(), 1200)
   } catch {
-    // silently ignore — audio is enhancement only
+    // audio is enhancement only
   }
 }
 
-function slideClass(direction: Direction): string {
-  return direction === "forward"
-    ? "animate-in fade-in slide-in-from-right-4 duration-200"
-    : "animate-in fade-in slide-in-from-left-4 duration-200"
-}
-
-// ─── StarRating ────────────────────────────────────────────────────────────────
+// ─── StarRating ───────────────────────────────────────────────────────────────
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hovered, setHovered] = React.useState(0)
-  const [bouncingStar, setBouncingStar] = React.useState<number | null>(null)
+  const [bouncing, setBouncing] = React.useState<number | null>(null)
 
   function handleClick(star: number) {
     onChange(star)
-    setBouncingStar(star)
-    setTimeout(() => setBouncingStar(null), 350)
+    setBouncing(star)
+    setTimeout(() => setBouncing(null), 350)
   }
 
   return (
@@ -130,26 +162,22 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
     >
       {[1, 2, 3, 4, 5].map((star) => {
         const filled = star <= (hovered || value)
-        const bouncing = bouncingStar === star
         return (
           <button
             key={star}
             type="button"
             role="radio"
             aria-checked={star === value}
+            aria-label={`${star} estrela${star > 1 ? "s" : ""}`}
             onClick={() => handleClick(star)}
             onMouseEnter={() => setHovered(star)}
-            aria-label={`${star} estrela${star > 1 ? "s" : ""}`}
             className={cn(
               "rounded p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1",
               filled ? "text-amber-400" : "text-neutral-grey-300 hover:text-amber-300",
-              bouncing && "badge-hex-bounce",
+              bouncing === star && "badge-hex-bounce",
             )}
           >
-            <Star
-              className={cn("size-6 sm:size-5 transition-colors", filled ? "fill-current" : "")}
-              aria-hidden
-            />
+            <Star className={cn("size-5 transition-colors", filled && "fill-current")} aria-hidden />
           </button>
         )
       })}
@@ -157,9 +185,91 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-// ─── WelcomeScreen ─────────────────────────────────────────────────────────────
+// ─── HorizontalStepper ───────────────────────────────────────────────────────
 
-function WelcomeScreen({
+function HorizontalStepper({
+  produtos,
+  step,
+  onClickStep,
+}: {
+  produtos: DominioProduto[]
+  step: WizardStep
+  onClickStep?: (s: WizardStep) => void
+}) {
+  // steps: intro (0), products (1..N), review (N+1)
+  const steps: { label: string; key: WizardStep }[] = [
+    { label: "Introdução", key: "intro" },
+    ...produtos.map((p, i) => ({ label: p.nome, key: i as WizardStep })),
+    { label: "Revisão", key: "review" },
+  ]
+
+  function stepIndex(s: WizardStep): number {
+    if (s === "intro") return 0
+    if (s === "review") return produtos.length + 1
+    if (s === "done") return produtos.length + 1
+    return (s as number) + 1
+  }
+
+  const activeIdx = stepIndex(step)
+
+  return (
+    <nav
+      aria-label="Etapas da avaliação"
+      className="flex items-center gap-0 overflow-x-auto border-b border-border-default bg-background px-4 py-3 sm:px-6"
+    >
+      {steps.map((s, i) => {
+        const sIdx = stepIndex(s.key)
+        const isActive = sIdx === activeIdx
+        const isDone = sIdx < activeIdx && step !== "done"
+        const isLast = i === steps.length - 1
+
+        return (
+          <React.Fragment key={String(s.key)}>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {isDone ? (
+                <span className="flex size-6 items-center justify-center rounded-full bg-brand-primary">
+                  <Check className="size-3.5 text-white" aria-hidden />
+                </span>
+              ) : (
+                <span
+                  className={cn(
+                    "flex size-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                    isActive
+                      ? "bg-brand-primary text-white"
+                      : "bg-muted text-text-secondary",
+                  )}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+              )}
+              <span
+                className={cn(
+                  "whitespace-nowrap text-xs font-medium",
+                  isActive ? "text-text-primary" : isDone ? "text-text-primary" : "text-text-secondary",
+                )}
+              >
+                {s.label}
+              </span>
+            </div>
+            {!isLast && (
+              <div
+                className={cn(
+                  "mx-2 h-px min-w-[24px] flex-1",
+                  sIdx < activeIdx ? "bg-brand-primary" : "bg-border-default",
+                )}
+                aria-hidden
+              />
+            )}
+          </React.Fragment>
+        )
+      })}
+    </nav>
+  )
+}
+
+// ─── IntroScreen ──────────────────────────────────────────────────────────────
+
+function IntroScreen({
   produtos,
   totalModulos,
   onStart,
@@ -169,7 +279,7 @@ function WelcomeScreen({
   onStart: () => void
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-10 text-center animate-in fade-in duration-300">
+    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-12 text-center animate-in fade-in duration-300">
       {produtos.length === 0 ? (
         <PackageX className="size-12 text-text-secondary" aria-hidden />
       ) : (
@@ -178,151 +288,189 @@ function WelcomeScreen({
         </div>
       )}
       <div className="flex flex-col gap-2">
-        <h2 id="dominio-modal-title" className="text-2xl font-bold text-text-primary">
-          Avaliação de domínio
+        <h2 id="avaliacao-title" className="text-2xl font-bold text-text-primary">
+          Avaliação de domínio técnico
         </h2>
-        <p className="mx-auto max-w-sm text-sm text-text-secondary">
+        <p className="mx-auto max-w-md text-sm text-text-secondary">
           {produtos.length === 0
             ? "Nenhum produto configurado para avaliação."
-            : "Avalie seu nível de conhecimento em cada módulo. Todos os campos são obrigatórios."}
+            : "Avalie seu nível de conhecimento em cada módulo usando a escala de 1 a 5 estrelas. Todos os campos são obrigatórios antes de enviar."}
         </p>
       </div>
       {produtos.length > 0 && (
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-surface-card px-3 py-1.5 text-xs text-text-secondary">
-          {produtos.length} produto{produtos.length !== 1 ? "s" : ""} · {totalModulos} módulo
-          {totalModulos !== 1 ? "s" : ""}
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-4">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-surface-card px-3 py-1.5 text-xs text-text-secondary">
+            {produtos.length} etapa{produtos.length !== 1 ? "s" : ""}
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-surface-card px-3 py-1.5 text-xs text-text-secondary">
+            {totalModulos} módulo{totalModulos !== 1 ? "s" : ""}
+          </div>
         </div>
       )}
-      <Button size="lg" className="min-w-40" onClick={onStart}>
-        Começar
+      <Button size="lg" className="min-w-44" onClick={onStart} disabled={produtos.length === 0}>
+        Começar avaliação
+        <ChevronRight className="size-4" aria-hidden />
       </Button>
     </div>
   )
 }
 
-// ─── ProductStep ───────────────────────────────────────────────────────────────
+// ─── ProductStep ──────────────────────────────────────────────────────────────
 
 function ProductStep({
   produto,
-  index,
-  total,
+  produtoIndex,
   respostas,
   onSetEstrelas,
   onNext,
   onPrev,
-  direction,
 }: {
   produto: DominioProduto
-  index: number
-  total: number
+  produtoIndex: number
   respostas: Record<string, Record<string, number>>
   onSetEstrelas: (produtoId: string, moduloId: string, val: number) => void
   onNext: () => void
   onPrev: () => void
-  direction: Direction
 }) {
   const isComplete = isProdutoComplete(produto, respostas)
-  const progress = ((index + 1) / total) * 100
+  const avaliados = produto.modulos.filter((m) => !!respostas[produto.id]?.[m.id]).length
+  const total = produto.modulos.length
+  const media = calcProdutoMedia(produto, respostas)
 
   return (
-    <div className={cn("flex flex-1 flex-col overflow-hidden", slideClass(direction))}>
-      {/* Progress */}
-      <div className="flex-shrink-0 px-6 pt-5">
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-xs text-text-secondary">
-            Produto {index + 1} de {total}
-          </span>
-          <span className="text-xs font-medium tabular-nums text-text-secondary">
-            {Math.round(progress)}%
-          </span>
-        </div>
-        <div
-          role="progressbar"
-          aria-valuenow={index + 1}
-          aria-valuemin={1}
-          aria-valuemax={total}
-          aria-label="Progresso da avaliação"
-          className="h-1.5 w-full overflow-hidden rounded-full bg-border-default"
-        >
-          <div
-            className="h-full rounded-full bg-brand-primary transition-[width] duration-300 ease-out"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
+    <div className="flex flex-1 flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-200">
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
+          {/* Module evaluation table */}
+          <div className="rounded-xl border border-border-default bg-background">
+            <div className="border-b border-border-default px-5 py-4">
+              <h3 className="text-sm font-semibold text-text-primary">
+                Avalie seu domínio nos módulos
+              </h3>
+              <p className="mt-0.5 text-xs text-text-secondary">
+                Clique nas estrelas para atribuir uma nota de 1 a 5.
+              </p>
+            </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-5">
-        <div className="mb-4">
-          <h2 id="dominio-modal-title" className="text-xl font-semibold text-text-primary">
-            {produto.nome}
-          </h2>
-          <p className="mt-0.5 text-sm text-text-secondary">Avalie cada módulo abaixo.</p>
-        </div>
-        <div className="rounded-xl border border-border-default bg-surface-card">
-          <div className="flex flex-col divide-y divide-border-default">
-            {produto.modulos.map((modulo) => {
-              const val = respostas[produto.id]?.[modulo.id] ?? 0
-              return (
-                <div
-                  key={modulo.id}
-                  className="flex items-center justify-between gap-4 px-4 py-3"
-                >
-                  <span className="text-sm text-text-primary">{modulo.nome}</span>
-                  <div className="flex flex-col items-end gap-0.5">
-                    <StarRating
-                      value={val}
-                      onChange={(v) => onSetEstrelas(produto.id, modulo.id, v)}
-                    />
-                    {val === 0 ? (
-                      <span className="text-xs text-destructive">Obrigatório</span>
-                    ) : (
-                      <span className="text-xs tabular-nums text-text-secondary">
-                        {((val / 5) * 100).toFixed(0)}%
-                      </span>
-                    )}
+            {/* Table header */}
+            <div className="hidden grid-cols-[80px_1fr_180px_120px] border-b border-border-default px-5 py-2.5 sm:grid">
+              {["CÓDIGO", "MÓDULO", "AVALIAÇÃO", "NÍVEL"].map((col) => (
+                <span key={col} className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
+                  {col}
+                </span>
+              ))}
+            </div>
+
+            {/* Rows */}
+            <div className="divide-y divide-border-default">
+              {produto.modulos.map((modulo, mIdx) => {
+                const { code, label } = parseModulo(modulo.nome)
+                const val = respostas[produto.id]?.[modulo.id] ?? 0
+                const nivel = NIVEL_LABELS[val]
+
+                return (
+                  <div
+                    key={modulo.id}
+                    className="flex flex-col gap-3 px-5 py-4 sm:grid sm:grid-cols-[80px_1fr_180px_120px] sm:items-center sm:gap-4"
+                  >
+                    {/* Código */}
+                    <div>
+                      {code ? (
+                        <span
+                          className={cn(
+                            "inline-block rounded px-1.5 py-0.5 text-[11px] font-bold tracking-wide",
+                            codeColor(produtoIndex * 10 + mIdx),
+                          )}
+                        >
+                          {code}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-text-secondary">—</span>
+                      )}
+                    </div>
+                    {/* Módulo */}
+                    <div>
+                      <p className="text-sm font-medium text-text-primary">{label}</p>
+                    </div>
+                    {/* Avaliação */}
+                    <div>
+                      <StarRating value={val} onChange={(v) => onSetEstrelas(produto.id, modulo.id, v)} />
+                    </div>
+                    {/* Nível */}
+                    <div>
+                      {val > 0 ? (
+                        <span className="text-sm font-semibold text-text-primary">{nivel}</span>
+                      ) : (
+                        <span className="text-xs text-destructive">Obrigatório</span>
+                      )}
+                    </div>
                   </div>
+                )
+              })}
+            </div>
+
+            {/* Bottom summary */}
+            <div className="flex flex-col gap-3 border-t border-border-default bg-muted/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    "flex size-10 items-center justify-center rounded-lg text-sm font-bold",
+                    media !== null ? "bg-brand-primary/10 text-brand-primary" : "bg-muted text-text-secondary",
+                  )}
+                >
+                  {media !== null ? media.toFixed(1) : "—"}
                 </div>
-              )
-            })}
+                <div>
+                  <p className="text-xs font-semibold text-text-primary">Média desta etapa</p>
+                  <p className="text-xs text-text-secondary">
+                    {avaliados} de {total} módulo{total !== 1 ? "s" : ""} avaliado{avaliados !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 sm:w-48">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-default">
+                  <div
+                    className="h-full rounded-full bg-brand-primary transition-[width] duration-300"
+                    style={{ width: `${(avaliados / total) * 100}%` }}
+                    aria-hidden
+                  />
+                </div>
+                <span className="w-10 text-right text-xs tabular-nums text-text-secondary">
+                  {Math.round((avaliados / total) * 100)}% concluído
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="flex-shrink-0 border-t border-border-default bg-muted/30 px-6 py-4">
-        {!isComplete && (
-          <p className="mb-2 text-xs text-text-secondary">
-            Avalie todos os módulos para continuar.
+      {/* Sticky bottom bar */}
+      <div className="shrink-0 border-t border-border-default bg-background px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
+          <p className="text-xs text-text-secondary">
+            {isComplete ? (
+              <span className="font-medium text-badge-success">Etapa completa. Avance para a próxima.</span>
+            ) : (
+              `Avalie todos os ${total} módulos para continuar.`
+            )}
           </p>
-        )}
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-          <Button
-            variant="outline"
-            onClick={onPrev}
-            aria-label={index > 0 ? "Voltar para o produto anterior" : "Voltar para a introdução"}
-          >
-            <ChevronLeft className="size-4" aria-hidden />
-            Anterior
-          </Button>
-          <Button
-            onClick={onNext}
-            disabled={!isComplete}
-            aria-label={
-              isComplete ? "Avançar para o próximo produto" : "Avalie todos os módulos para continuar"
-            }
-            className="sm:min-w-32"
-          >
-            Próximo
-            <ChevronRight className="size-4" aria-hidden />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onPrev}>
+              <ChevronLeft className="size-4" aria-hidden />
+              Voltar
+            </Button>
+            <Button size="sm" onClick={onNext} disabled={!isComplete} className="gap-1.5">
+              Próxima etapa
+              <ChevronRight className="size-4" aria-hidden />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-// ─── ReviewScreen ──────────────────────────────────────────────────────────────
+// ─── ReviewScreen ─────────────────────────────────────────────────────────────
 
 function ReviewScreen({
   produtos,
@@ -331,7 +479,6 @@ function ReviewScreen({
   onEdit,
   onPrev,
   onConfirm,
-  direction,
 }: {
   produtos: DominioProduto[]
   respostas: Record<string, Record<string, number>>
@@ -339,200 +486,237 @@ function ReviewScreen({
   onEdit: (index: number) => void
   onPrev: () => void
   onConfirm: () => void
-  direction: Direction
 }) {
-  return (
-    <div className={cn("flex flex-1 flex-col overflow-hidden", slideClass(direction))}>
-      <div className="flex-shrink-0 px-6 pt-5">
-        <h2 id="dominio-modal-title" className="text-xl font-semibold text-text-primary">
-          Revisão das respostas
-        </h2>
-        <p className="mt-0.5 text-sm text-text-secondary">
-          Confira suas respostas antes de confirmar.
-        </p>
-      </div>
+  const totalModulos = produtos.reduce((a, p) => a + p.modulos.length, 0)
+  const totalAvaliados = countAvaliadosTotal(produtos, respostas)
+  const etapasConcluidas = produtos.filter((p) => isProdutoComplete(p, respostas)).length
+  const pendentes = totalModulos - totalAvaliados
+  const mediaGeral = calcMediaGeral(produtos, respostas)
 
-      <div className="flex-1 overflow-y-auto px-6 py-5">
-        {produtos.length === 0 ? (
-          <p className="py-8 text-center text-sm text-text-secondary">
-            Nenhum produto configurado.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {produtos.map((produto, i) => {
-              const media = calcProdutoMedia(produto, respostas)
+  const stats = [
+    {
+      label: "Domínio geral",
+      value: mediaGeral > 0 ? mediaGeral.toFixed(2) + "/5" : "—",
+      sub: mediaGeral >= 4 ? "Excelente" : mediaGeral >= 3 ? "Bom" : mediaGeral >= 2 ? "Regular" : "—",
+      icon: Target,
+      color: "text-brand-primary bg-brand-primary/10",
+    },
+    {
+      label: "Módulos avaliados",
+      value: `${totalAvaliados}`,
+      sub: `${totalAvaliados}/${totalModulos}  ·  ${totalAvaliados === totalModulos ? "100% concluído" : `${Math.round((totalAvaliados / totalModulos) * 100)}% concluído`}`,
+      icon: Check,
+      color: "text-blue-600 bg-blue-50",
+    },
+    {
+      label: "Etapas cobertas",
+      value: `${etapasConcluidas}`,
+      sub: `${etapasConcluidas}/${produtos.length}  ·  Etapas com 100% de avaliação`,
+      icon: Layers,
+      color: "text-violet-600 bg-violet-50",
+    },
+    {
+      label: "Pendentes",
+      value: `${pendentes}`,
+      sub: pendentes === 0 ? "Pronto para envio" : `${pendentes} módulo${pendentes !== 1 ? "s" : ""} sem avaliação`,
+      icon: pendentes === 0 ? CheckCircle2 : AlertTriangle,
+      color: pendentes === 0 ? "text-badge-success bg-badge-success/10" : "text-amber-600 bg-amber-50",
+    },
+  ]
+
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-200">
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
+          {/* Stat cards */}
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {stats.map((s) => {
+              const Icon = s.icon
               return (
-                <div
-                  key={produto.id}
-                  className="rounded-xl border border-border-default bg-surface-card p-4"
-                >
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-text-primary">{produto.nome}</span>
-                    <div className="flex items-center gap-2">
-                      {media !== null && (
-                        <span
-                          className={cn(
-                            "text-xs font-semibold tabular-nums",
-                            media >= 80
-                              ? "text-badge-success"
-                              : media >= 50
-                                ? "text-amber-500 dark:text-amber-400"
-                                : "text-destructive",
-                          )}
-                        >
-                          {media.toFixed(0)}%
-                        </span>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEdit(i)}
-                        aria-label={`Editar ${produto.nome}`}
-                      >
-                        <Pencil className="size-3.5" aria-hidden />
-                        Editar
-                      </Button>
+                <div key={s.label} className="rounded-xl border border-border-default bg-background p-4">
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-text-secondary">{s.label}</p>
+                      <p className="mt-1 text-2xl font-bold text-text-primary">{s.value}</p>
+                    </div>
+                    <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", s.color)}>
+                      <Icon className="size-4" aria-hidden />
                     </div>
                   </div>
-                  <div className="flex flex-col divide-y divide-border-default">
-                    {produto.modulos.map((modulo) => {
-                      const val = respostas[produto.id]?.[modulo.id] ?? 0
-                      return (
-                        <div
-                          key={modulo.id}
-                          className="flex items-center justify-between gap-4 py-2 first:pt-0 last:pb-0"
-                        >
-                          <span className="text-sm text-text-secondary">{modulo.nome}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="flex gap-0.5" aria-hidden>
-                              {[1, 2, 3, 4, 5].map((s) => (
-                                <Star
-                                  key={s}
-                                  className={cn(
-                                    "size-3.5",
-                                    s <= val
-                                      ? "fill-amber-400 text-amber-400"
-                                      : "text-neutral-grey-300",
-                                  )}
-                                />
-                              ))}
-                            </div>
-                            <span className="w-8 text-right text-xs tabular-nums text-text-secondary">
-                              {((val / 5) * 100).toFixed(0)}%
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
+                  <p className="text-xs text-text-secondary">{s.sub}</p>
                 </div>
               )
             })}
           </div>
-        )}
+
+          {/* Per-product sections */}
+          {produtos.length === 0 ? (
+            <p className="py-8 text-center text-sm text-text-secondary">Nenhum produto configurado.</p>
+          ) : (
+            <div className="flex flex-col gap-5">
+              {produtos.map((produto, pIdx) => {
+                const media = calcProdutoMedia(produto, respostas)
+                const avaliados = produto.modulos.filter((m) => !!respostas[produto.id]?.[m.id]).length
+
+                return (
+                  <div key={produto.id} className="rounded-xl border border-border-default bg-background">
+                    <div className="flex items-center justify-between gap-2 px-5 py-4">
+                      <div>
+                        <p className="text-sm font-semibold text-text-primary">{produto.nome}</p>
+                        <p className="text-xs text-text-secondary">
+                          Média: {media !== null ? media.toFixed(2) : "—"} · {avaliados}/{produto.modulos.length} avaliados
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => onEdit(pIdx)}>
+                        Editar
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 border-t border-border-default px-5 py-4 sm:grid-cols-2">
+                      {produto.modulos.map((modulo, mIdx) => {
+                        const { code, label } = parseModulo(modulo.nome)
+                        const val = respostas[produto.id]?.[modulo.id] ?? 0
+                        const nivel = NIVEL_LABELS[val]
+
+                        return (
+                          <div
+                            key={modulo.id}
+                            className="flex items-center gap-3 rounded-lg border border-border-default p-3"
+                          >
+                            <div
+                              className={cn(
+                                "flex size-9 shrink-0 items-center justify-center rounded-lg text-lg font-bold",
+                                val > 0
+                                  ? "bg-brand-primary/10 text-brand-primary"
+                                  : "bg-muted text-text-secondary",
+                              )}
+                            >
+                              {val > 0 ? val : "—"}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              {code && (
+                                <span
+                                  className={cn(
+                                    "mb-0.5 inline-block rounded px-1 py-0.5 text-[10px] font-bold tracking-wide",
+                                    codeColor(pIdx * 10 + mIdx),
+                                  )}
+                                >
+                                  {code}
+                                </span>
+                              )}
+                              <p className="truncate text-xs font-medium text-text-primary">{label}</p>
+                              <div className="mt-0.5 flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((s) => (
+                                  <Star
+                                    key={s}
+                                    className={cn(
+                                      "size-3",
+                                      s <= val ? "fill-amber-400 text-amber-400" : "text-neutral-grey-300",
+                                    )}
+                                    aria-hidden
+                                  />
+                                ))}
+                                {nivel && (
+                                  <span className="ml-1 text-[11px] text-text-secondary">{nivel}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="flex-shrink-0 border-t border-border-default bg-muted/30 px-6 py-4">
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-          <Button variant="outline" onClick={onPrev} disabled={submitting}>
-            <ChevronLeft className="size-4" aria-hidden />
-            Anterior
-          </Button>
-          <Button onClick={onConfirm} disabled={submitting} className="sm:min-w-48">
-            {submitting ? (
-              <>
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-                Salvando…
-              </>
+      {/* Sticky bottom bar */}
+      <div className="shrink-0 border-t border-border-default bg-background px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
+          <p className="text-xs text-text-secondary">
+            {pendentes === 0 ? (
+              <span className="font-medium text-badge-success">Tudo pronto. Envie sua avaliação.</span>
             ) : (
-              "Confirmar avaliação"
+              <span className="text-amber-600">{pendentes} módulo{pendentes !== 1 ? "s" : ""} pendente{pendentes !== 1 ? "s" : ""}.</span>
             )}
-          </Button>
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onPrev} disabled={submitting}>
+              <ChevronLeft className="size-4" aria-hidden />
+              Voltar
+            </Button>
+            <Button
+              size="sm"
+              onClick={onConfirm}
+              disabled={submitting || pendentes > 0}
+              className="gap-1.5"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  Enviando…
+                </>
+              ) : (
+                <>
+                  Enviar avaliação
+                  <ChevronRight className="size-4" aria-hidden />
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-// ─── ConclusionScreen ──────────────────────────────────────────────────────────
+// ─── SuccessScreen ────────────────────────────────────────────────────────────
 
-function ConclusionScreen({
-  produtos,
-  respostas,
-  resultadoPercent,
+function SuccessScreen({
+  mediaGeral,
+  onRedo,
   onClose,
 }: {
-  produtos: DominioProduto[]
-  respostas: Record<string, Record<string, number>>
-  resultadoPercent: number
+  mediaGeral: number
+  onRedo: () => void
   onClose: () => void
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-6 py-10 text-center animate-in fade-in zoom-in-95 duration-300">
-      <BadgeAchievement
-        label="Domínio"
-        icon={Trophy}
-        color="var(--qagrotis-primary-700)"
-        unlocked
-        autoAnimate
-        description="Avaliação de domínio concluída"
-      />
-
-      <div className="flex flex-col gap-1">
-        <h2 id="dominio-modal-title" className="text-2xl font-bold text-text-primary">
-          Avaliação concluída!
+    <div className="flex flex-1 items-center justify-center bg-muted/30 px-4 py-12 animate-in fade-in zoom-in-95 duration-300">
+      <div className="w-full max-w-lg rounded-2xl border border-border-default bg-background p-8 text-center shadow-card">
+        <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-brand-primary/10">
+          <Check className="size-8 text-brand-primary" aria-hidden />
+        </div>
+        <h2 id="avaliacao-title" className="text-xl font-bold text-text-primary">
+          Avaliação enviada com sucesso
         </h2>
-        <p className="text-sm text-text-secondary">Domínio geral</p>
-        <p className="text-5xl font-bold tabular-nums text-primary-700">
-          {resultadoPercent.toFixed(0)}%
+        <p className="mt-2 text-sm text-text-secondary">
+          Obrigado por completar a avaliação. Seu domínio geral foi de{" "}
+          <strong>{mediaGeral.toFixed(2)}/5</strong>.
         </p>
-      </div>
-
-      {/* Summary per product */}
-      <div className="w-full max-w-sm rounded-xl border border-border-default bg-surface-card p-4">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-          Resumo por produto
-        </h3>
-        <div className="flex flex-col gap-2">
-          {produtos.map((produto) => {
-            const media = calcProdutoMedia(produto, respostas)
-            return (
-              <div key={produto.id} className="flex items-baseline gap-2">
-                <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
-                  {produto.nome}
-                </span>
-                <span
-                  className="shrink-0 flex-1 border-b border-dashed border-border-default"
-                  aria-hidden
-                />
-                <span
-                  className={cn(
-                    "w-10 shrink-0 text-right text-sm font-semibold tabular-nums",
-                    media === null
-                      ? "text-text-secondary"
-                      : media >= 80
-                        ? "text-badge-success"
-                        : media >= 50
-                          ? "text-amber-500 dark:text-amber-400"
-                          : "text-destructive",
-                  )}
-                >
-                  {media !== null ? `${media.toFixed(0)}%` : "—"}
-                </span>
-              </div>
-            )
-          })}
+        <p className="mt-1 text-sm text-text-secondary">
+          Você pode revisar suas respostas a qualquer momento dentro de{" "}
+          <strong>Individual › Avaliações</strong>.
+        </p>
+        <div className="mt-7 flex flex-col-reverse items-center gap-2 sm:flex-row sm:justify-center">
+          <Button variant="outline" onClick={onRedo}>
+            <ChevronLeft className="size-4" aria-hidden />
+            Refazer avaliação
+          </Button>
+          <Button onClick={onClose}>
+            Ir para o Painel
+            <ChevronRight className="size-4" aria-hidden />
+          </Button>
         </div>
       </div>
-
-      <Button size="lg" className="min-w-40" onClick={onClose}>
-        Fechar
-      </Button>
     </div>
   )
 }
 
-// ─── Main Modal ────────────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }: Props) {
   const router = useRouter()
@@ -544,25 +728,22 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
   )
   const totalModulos = produtos.reduce((acc, p) => acc + p.modulos.length, 0)
 
-  const [step, setStep] = React.useState<WizardStep>("welcome")
-  const [direction, setDirection] = React.useState<Direction>("forward")
+  const [step, setStep] = React.useState<WizardStep>("intro")
   const [respostas, setRespostas] = React.useState<Record<string, Record<string, number>>>({})
   const [submitting, setSubmitting] = React.useState(false)
-  const [resultadoPercent, setResultadoPercent] = React.useState<number>(0)
+  const [mediaGeral, setMediaGeral] = React.useState(0)
   const [showExitConfirm, setShowExitConfirm] = React.useState(false)
   const [exiting, setExiting] = React.useState(false)
 
-  // Focus first interactive element when step changes
+  // Auto-focus first interactive element on step change
   React.useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-    const first = container.querySelector<HTMLElement>(
+    const el = containerRef.current?.querySelector<HTMLElement>(
       "button:not([disabled]), [href], input:not([disabled])",
     )
-    first?.focus()
+    el?.focus()
   }, [step])
 
-  // Focus trap
+  // Focus trap + Escape
   React.useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -581,8 +762,8 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
         ),
       )
       if (focusable.length === 0) { e.preventDefault(); return }
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
+      const first = focusable[0]!
+      const last = focusable[focusable.length - 1]!
       if (e.shiftKey) {
         if (document.activeElement === first) { e.preventDefault(); last.focus() }
       } else {
@@ -601,29 +782,30 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
     }))
   }
 
-  function goTo(nextStep: WizardStep, dir: Direction) {
-    setDirection(dir)
-    setStep(nextStep)
-  }
-
   function handleStart() {
-    goTo(produtos.length > 0 ? 0 : "review", "forward")
+    setStep(produtos.length > 0 ? 0 : "review")
   }
 
   function handleNext(index: number) {
-    goTo(index < produtos.length - 1 ? index + 1 : "review", "forward")
+    setStep(index < produtos.length - 1 ? index + 1 : "review")
   }
 
   function handlePrev(index: number) {
-    goTo(index > 0 ? index - 1 : "welcome", "backward")
-  }
-
-  function handlePrevFromReview() {
-    goTo(produtos.length > 0 ? produtos.length - 1 : "welcome", "backward")
+    setStep(index > 0 ? index - 1 : "intro")
   }
 
   function handleEdit(productIndex: number) {
-    goTo(productIndex, "backward")
+    setStep(productIndex)
+  }
+
+  function handleRedo() {
+    setRespostas({})
+    setStep("intro")
+  }
+
+  function handleExit() {
+    setExiting(true)
+    setTimeout(() => router.refresh(), 250)
   }
 
   async function handleConfirm() {
@@ -646,19 +828,17 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
       return
     }
 
-    setResultadoPercent(calcMediaGeral(produtos, respostas))
-    toast.success("Avaliação de domínio concluída!")
+    setMediaGeral(calcMediaGeral(produtos, respostas))
     playSuccessChord()
-    goTo("done", "forward")
-  }
-
-  function handleExit() {
-    setExiting(true)
-    setTimeout(() => router.refresh(), 250)
+    setStep("done")
   }
 
   return (
     <div
+      ref={containerRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="avaliacao-title"
       className={cn(
         "fixed inset-0 z-[9999] flex flex-col bg-background",
         exiting
@@ -666,10 +846,10 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
           : "animate-in fade-in zoom-in-[0.97] duration-300 fill-mode-forwards",
       )}
     >
-      {/* Header */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-default px-4 sm:px-6">
-        <span className="text-sm font-semibold text-text-primary">QAgrotis</span>
-        {step !== "done" && (
+      {/* App-like header */}
+      {step !== "done" && (
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-default bg-background px-4 sm:px-6">
+          <span className="text-sm font-semibold text-text-primary">Avaliação de Domínio</span>
           <Button
             variant="ghost"
             size="sm"
@@ -677,60 +857,51 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
             onClick={() => setShowExitConfirm(true)}
           >
             <X className="size-4" aria-hidden />
-            <span className="ml-1.5 hidden sm:inline">Sair</span>
+            <span className="ml-1 hidden sm:inline">Sair</span>
           </Button>
-        )}
-      </header>
+        </header>
+      )}
 
-      {/* Modal container */}
-      <div
-        ref={containerRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="dominio-modal-title"
-        aria-live="polite"
-        aria-atomic="true"
-        className="flex flex-1 flex-col overflow-hidden"
-      >
-        {step === "welcome" && (
-          <WelcomeScreen produtos={produtos} totalModulos={totalModulos} onStart={handleStart} />
-        )}
+      {/* Stepper (hidden on intro + done) */}
+      {step !== "intro" && step !== "done" && (
+        <HorizontalStepper produtos={produtos} step={step} />
+      )}
 
-        {typeof step === "number" && (
-          <ProductStep
-            key={step}
-            produto={produtos[step]}
-            index={step}
-            total={produtos.length}
-            respostas={respostas}
-            onSetEstrelas={setEstrelas}
-            onNext={() => handleNext(step)}
-            onPrev={() => handlePrev(step)}
-            direction={direction}
-          />
-        )}
+      {/* Main content */}
+      {step === "intro" && (
+        <IntroScreen produtos={produtos} totalModulos={totalModulos} onStart={handleStart} />
+      )}
 
-        {step === "review" && (
-          <ReviewScreen
-            produtos={produtos}
-            respostas={respostas}
-            submitting={submitting}
-            onEdit={handleEdit}
-            onPrev={handlePrevFromReview}
-            onConfirm={() => void handleConfirm()}
-            direction={direction}
-          />
-        )}
+      {typeof step === "number" && produtos[step] && (
+        <ProductStep
+          key={step}
+          produto={produtos[step]}
+          produtoIndex={step}
+          respostas={respostas}
+          onSetEstrelas={setEstrelas}
+          onNext={() => handleNext(step)}
+          onPrev={() => handlePrev(step)}
+        />
+      )}
 
-        {step === "done" && (
-          <ConclusionScreen
-            produtos={produtos}
-            respostas={respostas}
-            resultadoPercent={resultadoPercent}
-            onClose={handleExit}
-          />
-        )}
-      </div>
+      {step === "review" && (
+        <ReviewScreen
+          produtos={produtos}
+          respostas={respostas}
+          submitting={submitting}
+          onEdit={handleEdit}
+          onPrev={() => setStep(produtos.length > 0 ? produtos.length - 1 : "intro")}
+          onConfirm={() => void handleConfirm()}
+        />
+      )}
+
+      {step === "done" && (
+        <SuccessScreen
+          mediaGeral={mediaGeral}
+          onRedo={handleRedo}
+          onClose={handleExit}
+        />
+      )}
 
       {/* Exit confirm dialog */}
       {showExitConfirm && (
