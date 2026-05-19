@@ -13,6 +13,7 @@ import {
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EquipeChapterRanking } from "@/features/equipe/components/EquipeChapterRanking"
 import { ChapterRatingDialog } from "@/features/equipe/components/ChapterRatingDialog"
+import { PremiosModal } from "@/features/equipe/components/PremiosModal"
 import {
   listEquipeChapters,
   listEquipeChapterAuthorOptions,
@@ -30,9 +31,10 @@ import { SectionSpinner } from "@/components/shared/SectionSpinner"
 
 export interface EquipeChaptersSectionProps {
   isAdmin: boolean
+  currentUserId?: string
 }
 
-export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
+export function EquipeChaptersSection({ isAdmin, currentUserId }: EquipeChaptersSectionProps) {
   const [rows, setRows] = React.useState<EquipeChapterListRow[]>([])
   const [rankingData, setRankingData] = React.useState<EquipeChapterRankingPage | null>(null)
   const [rankingBusy, setRankingBusy] = React.useState(false)
@@ -49,6 +51,7 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
   const [deleteRow, setDeleteRow] = React.useState<EquipeChapterListRow | null>(null)
 
   const [ratingRow, setRatingRow] = React.useState<EquipeChapterListRow | null>(null)
+  const [premiosOpen, setPremiosOpen] = React.useState(false)
 
   const [chaptersPage, setChaptersPage] = React.useState(1)
 
@@ -234,6 +237,8 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
             data={rankingData}
             loading={rankingBusy}
             onPageChange={(p) => void loadRankingPage(p)}
+            currentUserId={currentUserId}
+            onOpenPremios={() => setPremiosOpen(true)}
             className="min-w-0 xl:sticky xl:top-4"
           />
         </div>
@@ -256,6 +261,15 @@ export function EquipeChaptersSection({ isAdmin }: EquipeChaptersSectionProps) {
         chapterId={ratingRow?.id ?? ""}
         tema={ratingRow?.tema ?? ""}
         onSubmitted={() => void refetch()}
+      />
+
+      <PremiosModal
+        open={premiosOpen}
+        onClose={() => setPremiosOpen(false)}
+        initialPoints={
+          rankingData?.rows.find((r) => r.userId === currentUserId)?.points ?? 0
+        }
+        onRedeemed={() => void loadRankingPage(rankingData?.page ?? 1)}
       />
 
       <ConfirmDialog

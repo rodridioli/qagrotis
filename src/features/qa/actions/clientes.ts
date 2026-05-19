@@ -46,12 +46,14 @@ function toRecord(row: { id: string; nomeFantasia: string; razaoSocial: string |
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getClientes(): Promise<ClienteRecord[]> {
+  await requireSession()
   await ensureClienteTable()
   const rows = await prisma.cliente.findMany({ orderBy: { createdAt: "asc" }, take: 500 })
   return rows.map(toRecord)
 }
 
 export async function getCliente(id: string): Promise<ClienteRecord | null> {
+  await requireSession()
   const result = idSchema.safeParse(id)
   if (!result.success) return null
   const row = await prisma.cliente.findUnique({ where: { id } })

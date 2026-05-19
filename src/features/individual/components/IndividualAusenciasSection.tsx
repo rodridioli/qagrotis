@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, Loader2, MoreVertical, Trash2, X } from "lucide-react"
+import { Check, Loader2, MoreVertical, Plus, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -352,7 +352,8 @@ export const IndividualAusenciasSection = React.forwardRef<
             setModalOpen(true)
           }}
         >
-          + Informar ausência
+          <Plus className="size-4" aria-hidden />
+          Adicionar Ausência
         </Button>
       </div>
 
@@ -487,7 +488,7 @@ export const IndividualAusenciasSection = React.forwardRef<
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="gap-1 text-xs hover:border-badge-success/50 hover:bg-badge-success/10 hover:text-badge-success-text"
+                                className="gap-1 text-xs border-badge-success bg-badge-success text-white hover:bg-badge-success/88 active:bg-badge-success/95"
                                 aria-label={`Aprovar ausência ${formatCodigo(row.codigo)}`}
                                 disabled={approvingId === row.id}
                                 onClick={() => void handleApprove(row)}
@@ -501,9 +502,9 @@ export const IndividualAusenciasSection = React.forwardRef<
                               </Button>
                               <Button
                                 type="button"
-                                variant="ghost"
+                                variant="destructive"
                                 size="sm"
-                                className="gap-1 text-xs hover:bg-destructive/10 hover:text-destructive"
+                                className="gap-1 text-xs"
                                 aria-label={`Recusar ausência ${formatCodigo(row.codigo)}`}
                                 disabled={approvingId === row.id}
                                 onClick={() => openRecusa(row)}

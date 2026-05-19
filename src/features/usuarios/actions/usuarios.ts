@@ -164,6 +164,7 @@ function validatePhotoPath(photoPath: string | null | undefined): string | null 
 // ── Public actions ─────────────────────────────────────────────────────────
 
 export async function getQaUsers(): Promise<QaUserRecord[]> {
+  await requireSession()
   await ensureAllUserProfileColumns()
   const [inactiveRecords, profiles, createdUsers, oauthUsers] = await Promise.all([
     prisma.inactiveUser.findMany({ select: { userId: true } }),
@@ -580,7 +581,7 @@ export async function criarQaUser(data: {
     } else {
       const createdIds = await prisma.createdUser.findMany({ select: { id: true } })
       const allIds = createdIds.map((u) => u.id)
-      const id = nextId(allIds, "U")
+      const id = nextId(allIds, "U", 3)
       await prisma.createdUser.create({
         data: {
           id,

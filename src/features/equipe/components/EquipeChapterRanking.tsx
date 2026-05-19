@@ -23,13 +23,15 @@ export interface EquipeChapterRankingProps {
   data: EquipeChapterRankingPage | null
   loading?: boolean
   onPageChange: (page: number) => void
+  currentUserId?: string
+  onOpenPremios?: () => void
   className?: string
 }
 
 /**
  * Ranking de autores por participação em chapters (paginado no servidor, 10 por página).
  */
-export function EquipeChapterRanking({ data, loading, onPageChange, className }: EquipeChapterRankingProps) {
+export function EquipeChapterRanking({ data, loading, onPageChange, onOpenPremios, className }: EquipeChapterRankingProps) {
   return (
     <aside
       className={cn(
@@ -51,13 +53,16 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
               <table className="qagrotis-table-row-hover-muted w-full min-w-[240px] table-fixed text-left">
                 <thead>
                   <tr className="border-b border-border-default bg-neutral-grey-50">
-                    <th className="w-11 px-2 py-2 text-left text-[10px] font-semibold text-text-secondary sm:w-12 sm:px-3 sm:py-2.5 sm:text-[11px]">
+                    <th className="w-12 pl-4 pr-2 py-2 text-left text-[10px] font-semibold text-text-secondary sm:w-14 sm:pl-5 sm:py-2.5 sm:text-[11px]">
                       Pos.
                     </th>
                     <th className="px-2 py-2 text-left text-[10px] font-semibold text-text-secondary sm:px-3 sm:py-2.5 sm:text-[11px]">
                       Usuário
                     </th>
-                    <th className="w-11 px-2 py-2 text-right text-[10px] font-semibold text-text-secondary sm:w-14 sm:px-3 sm:py-2.5 sm:text-[11px]">
+                    <th className="w-16 px-2 py-2 text-right text-[10px] font-semibold text-text-secondary sm:w-18 sm:px-3 sm:py-2.5 sm:text-[11px]">
+                      Chapters
+                    </th>
+                    <th className="w-12 pl-2 pr-4 py-2 text-right text-[10px] font-semibold text-text-secondary sm:w-14 sm:pr-5 sm:py-2.5 sm:text-[11px]">
                       Pts.
                     </th>
                   </tr>
@@ -68,7 +73,7 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
                       key={e.userId}
                       className="border-b border-border-default last:border-b-0 transition-colors"
                     >
-                      <td className="px-2 py-1.5 align-middle sm:px-3 sm:py-2">
+                      <td className="pl-4 pr-2 py-1.5 align-middle sm:pl-5 sm:py-2">
                         <RankingPositionBadge position={e.position} />
                       </td>
                       <td className="min-w-0 px-2 py-1.5 align-middle sm:px-3 sm:py-2">
@@ -106,8 +111,24 @@ export function EquipeChapterRanking({ data, loading, onPageChange, className }:
                       </td>
                       <td className="px-2 py-1.5 text-right align-middle sm:px-3 sm:py-2">
                         <span className="text-[11px] font-normal tabular-nums text-text-primary sm:text-xs">
-                          {e.points}
+                          {e.chapterCount}
                         </span>
+                      </td>
+                      <td className="pl-2 pr-4 py-1.5 text-right align-middle sm:pr-5 sm:py-2">
+                        {e.isCurrentUser && e.points >= 2 && onOpenPremios ? (
+                          <button
+                            type="button"
+                            onClick={onOpenPremios}
+                            title="Ver prêmios disponíveis"
+                            className="text-[11px] font-semibold tabular-nums text-brand-primary underline decoration-dotted underline-offset-2 hover:text-brand-primary/80 sm:text-xs"
+                          >
+                            {e.points}
+                          </button>
+                        ) : (
+                          <span className="text-[11px] font-normal tabular-nums text-text-primary sm:text-xs">
+                            {e.points}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

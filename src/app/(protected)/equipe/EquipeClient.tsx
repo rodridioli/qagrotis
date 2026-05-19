@@ -201,6 +201,7 @@ const aniversariantesPorMes = useMemo(() => {
     getPerformanceData({
       dataInicio,
       dataFim,
+      profile: selectedProfile,
     })
       .then((data) => {
         if (!cancelled) setUsers(data)
@@ -217,7 +218,7 @@ const aniversariantesPorMes = useMemo(() => {
     return () => {
       cancelled = true
     }
-  }, [periodo, activeTab])
+  }, [periodo, activeTab, selectedProfile])
 
   useEffect(() => {
     if (activeTab !== "aniversarios" && activeTab !== "horarios") return
@@ -374,7 +375,7 @@ const aniversariantesPorMes = useMemo(() => {
         />
       )}
 
-      {activeTab === "chapters" && <EquipeChaptersSection isAdmin={isAdmin} />}
+      {activeTab === "chapters" && <EquipeChaptersSection isAdmin={isAdmin} currentUserId={currentUserId} />}
 
       {activeTab === "ferias" && <EquipeFeriasSection />}
 

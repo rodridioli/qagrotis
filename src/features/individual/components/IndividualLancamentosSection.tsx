@@ -4,13 +4,17 @@ import * as React from "react"
 import {
   AlertTriangle,
   BarChart3,
+  Briefcase,
   Bug,
   CheckCircle2,
   FileCheck,
   FilePlus,
   Flame,
   Hash,
+  LayoutDashboard,
   Layers,
+  Search,
+  Users,
 } from "lucide-react"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -39,6 +43,8 @@ import {
 
 export interface IndividualLancamentosSectionProps {
   evaluatedUserId: string
+  /** Perfil de acesso do membro avaliado — controla quais cards são exibidos no DashboardPanel. */
+  evaluatedUserAccessProfile?: "QA" | "UX" | "TW" | "MGR" | null
   /** Controlado externamente (ex.: IndividualSecaoDevelopmentPanel). Quando fornecido, omite o Select interno. */
   preset?: LancamentosPeriodPreset
   onPresetChange?: (p: LancamentosPeriodPreset) => void
@@ -56,6 +62,7 @@ type LancamentoRow = {
   priority?: string | null
   labels?: string[]
   qtdCenariosQA?: number | null
+  qtdCenariosErro?: number | null
   started: string
   timeSpentSeconds: number
   hours: number
@@ -82,6 +89,12 @@ type ApiOk = {
   brokenTestSubtasksTotalInScope?: number
   brokenTestsCreatedByUser?: number
   reporterBrokenTestIssueCount?: number
+  researchCount?: number
+  usabilityCount?: number
+  docReviewCount?: number
+  newDocCount?: number
+  pendingUxReturnCount?: number
+  qtdCenariosErroTotal?: number
 }
 
 function formatDurationHMin(totalSeconds: number): string {
@@ -162,6 +175,7 @@ function computeStats(entries: LancamentoRow[]) {
   const docReviewIssues = new Set<string>()
   const newDocIssues = new Set<string>()
   const qtdByIssue = new Map<string, number>()
+  const qtdErroByIssue = new Map<string, number>()
 
   const isBrokenTest = (e: LancamentoRow) =>
     (e.issueType ?? "").toLowerCase().includes("broken")
@@ -185,11 +199,20 @@ function computeStats(entries: LancamentoRow[]) {
       const prev = qtdByIssue.get(e.issueKey) ?? 0
       qtdByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosQA))
     }
+    if (e.qtdCenariosErro != null && Number.isFinite(e.qtdCenariosErro)) {
+      const prev = qtdErroByIssue.get(e.issueKey) ?? 0
+      qtdErroByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosErro))
+    }
   }
 
   let qtdCenariosTotal = 0
   for (const v of qtdByIssue.values()) {
     qtdCenariosTotal += v
+  }
+
+  let qtdCenariosErroTotal = 0
+  for (const v of qtdErroByIssue.values()) {
+    qtdCenariosErroTotal += v
   }
 
   const projectHours: ProjectHours[] = Array.from(projectMap.entries())
@@ -204,6 +227,7 @@ function computeStats(entries: LancamentoRow[]) {
     docReviewCount: docReviewIssues.size,
     newDocCount: newDocIssues.size,
     qtdCenariosTotal,
+    qtdCenariosErroTotal,
   }
 }
 
@@ -316,45 +340,68 @@ function DashboardPanel({
   brokenTestsCreatedByUser,
   brokenTestsOpenedCount,
   reporterBrokenTestIssueCount,
-  accessProfile,
+  researchCount,
+  usabilityCount,
+  docReviewCount,
+  newDocCount,
+  pendingUxReturnCount,
+  qtdCenariosErroTotal: qtdCenariosErroTotalProp,
+  evaluatedUserAccessProfile,
 }: {
   entries: LancamentoRow[]
   brokenTestSubtasksTotalInScope?: number
   brokenTestsCreatedByUser?: number
   brokenTestsOpenedCount?: number
   reporterBrokenTestIssueCount?: number
-  accessProfile?: string | null
+  researchCount?: number
+  usabilityCount?: number
+  docReviewCount?: number
+  newDocCount?: number
+  pendingUxReturnCount?: number
+  qtdCenariosErroTotal?: number
+  evaluatedUserAccessProfile?: "QA" | "UX" | "TW" | "MGR" | null
 }) {
   const stats = React.useMemo(() => computeStats(entries), [entries])
   const isTW = accessProfile === "TW"
 
-  // All API counts return 0 (not null/undefined) when nothing is found, so
-  // use || to fall through zeros. Prefer the total-in-scope subtask count
-  // (broken tests under parent issues) as the most reliable metric.
-  const retornoValor =
-    brokenTestSubtasksTotalInScope ||
-    reporterBrokenTestIssueCount ||
-    brokenTestsCreatedByUser ||
-    brokenTestsOpenedCount ||
-    stats.brokenTestCountFromWorklogs
+  const profile = evaluatedUserAccessProfile ?? null
+
+  // Para QA: 5 cards (Jiras abertos, Cenários com Erro, Testes Realizados, Total de Jiras, Jiras críticos).
+  // Para outros perfis: cards 1 e 2 variam; cards 3 e 4 são invariantes.
+  let card1: React.ReactNode
+  let card2: React.ReactNode
+
+  if (profile === "UX") {
+    card1 = <StatCard icon={Search} label="Pesquisas"   value={researchCount ?? 0}   iconVariant="brand" />
+    card2 = <StatCard icon={Users}  label="Usabilidade" value={usabilityCount ?? 0}  iconVariant="warning" />
+  } else if (profile === "TW") {
+    card1 = <StatCard icon={FileCheck} label="Documentos revisados" value={docReviewCount ?? 0} iconVariant="info" />
+    card2 = <StatCard icon={FilePlus}  label="Novos documentos"     value={newDocCount ?? 0}    iconVariant="brand" />
+  } else if (profile === "MGR") {
+    card1 = <StatCard icon={Briefcase}       label="Operacional" value="Em breve" iconVariant="info" />
+    card2 = <StatCard icon={LayoutDashboard} label="Gestão"      value="Em breve" iconVariant="brand" />
+  } else {
+    // QA: dois novos cards, mais Cenários Testados como 5º card
+    const retornoValor = reporterBrokenTestIssueCount ?? 0
+    card1 = <StatCard icon={Bug}    label="Retorno de Testes (Broken)" value={retornoValor}                                          iconVariant="warning" />
+    card2 = <StatCard icon={AlertTriangle} label="Cenários com Erro" value={qtdCenariosErroTotalProp ?? stats.qtdCenariosErroTotal} iconVariant="destructive" />
+  }
+
+  const isQA = profile === null || profile === "QA"
 
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {/* Coluna esquerda: 2×2 stat cards */}
+      {/* Coluna esquerda: stat cards */}
       <div className="grid grid-cols-2 gap-3">
-        {isTW ? (
-          <>
-            <StatCard icon={FileCheck} label="Documentos Revisados" value={stats.docReviewCount} iconVariant="warning" />
-            <StatCard icon={FilePlus}  label="Novos Documentos"     value={stats.newDocCount}    iconVariant="brand" />
-          </>
-        ) : (
-          <>
-            <StatCard icon={Bug}    label="Retorno de Testes" value={retornoValor}           iconVariant="warning" />
-            <StatCard icon={Layers} label="Testes Realizados" value={stats.qtdCenariosTotal} iconVariant="brand" />
-          </>
-        )}
-        <StatCard icon={Hash}  label="Total de Jiras" value={stats.totalIssues}  iconVariant="info" />
+        {card1}
+        {card2}
+        <StatCard icon={Hash}  label="Total de Jiras"  value={stats.totalIssues}   iconVariant="info" />
         <StatCard icon={Flame} label="Jiras críticos"  value={stats.criticalCount} iconVariant="destructive" />
+        {isQA && (
+          <div className="col-span-2">
+            <StatCard icon={Layers} label="Cenários Testados" value={stats.qtdCenariosTotal} iconVariant="brand" />
+          </div>
+        )}
       </div>
       {/* Coluna direita: barra de horas */}
       <ProjectStackedBar projectHours={stats.projectHours} />
@@ -366,6 +413,7 @@ function DashboardPanel({
 
 export function IndividualLancamentosSection({
   evaluatedUserId,
+  evaluatedUserAccessProfile,
   preset: presetProp,
   onPresetChange,
   accessProfile,
@@ -375,13 +423,16 @@ export function IndividualLancamentosSection({
   const preset = isControlled ? presetProp : presetInternal
   const [from, setFrom] = React.useState(() => getLancamentosPresetRange("week").from)
   const [to, setTo] = React.useState(() => getLancamentosPresetRange("week").to)
-  // Tracks whether the "anteriormente" two-phase refinement is in progress
+  // Tracks whether the "anterior" two-phase refinement is in progress
   const [anteriormenteRefining, setAnteriormenteRefining] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [data, setData] = React.useState<ApiOk | null>(null)
   const [jiraBase, setJiraBase] = React.useState<string | null>(null)
   const [search, setSearch] = React.useState("")
+
+  // AbortController para cancelar requisições em voo ao trocar filtros
+  const abortRef = React.useRef<AbortController | null>(null)
 
   React.useEffect(() => {
     if (presetProp === undefined) return
@@ -404,6 +455,12 @@ export function IndividualLancamentosSection({
   }, [])
 
   const load = React.useCallback(async () => {
+    // Aborta qualquer requisição anterior em voo antes de iniciar uma nova
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    const { signal } = controller
+
     setLoading(true)
     setError(null)
     const qs = new URLSearchParams({
@@ -413,8 +470,15 @@ export function IndividualLancamentosSection({
       tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
     })
     try {
-      const res = await fetch(`/api/jira/lancamentos?${qs}`, { credentials: "same-origin" })
+      const res = await fetch(`/api/jira/lancamentos?${qs}`, {
+        credentials: "same-origin",
+        signal,
+      })
+      if (signal.aborted) return
+
       const body = (await res.json().catch(() => null)) as ApiOk | { error?: string } | null
+      if (signal.aborted) return
+
       if (!res.ok) {
         const msg =
           typeof body === "object" && body && "error" in body && typeof body.error === "string"
@@ -424,9 +488,9 @@ export function IndividualLancamentosSection({
       }
       const ok = body as ApiOk
 
-      // "Anteriormente": fase 1 — 14 dias. Refina para o dia mais recente com entradas.
+      // "Anterior": fase 1 — 14 dias até ontem. Refina para o dia mais recente com entradas.
       // Keep loading=true so the spinner stays alive while phase 2 runs.
-      if (preset === "anteriormente" && !anteriormenteRefining && from !== to) {
+      if (preset === "anterior" && !anteriormenteRefining && from !== to) {
         const maxDate = ok.entries?.reduce((max, e) => {
           const d = e.started?.slice(0, 10) ?? ""
           return d > max ? d : max
@@ -445,6 +509,8 @@ export function IndividualLancamentosSection({
         setJiraBase(ok.jiraBrowseBase.replace(/\/$/, ""))
       }
     } catch (e) {
+      // Ignora erros de requisições abortadas — não atualiza estado
+      if (signal.aborted) return
       setAnteriormenteRefining(false)
       setData(null)
       setError(e instanceof Error ? e.message : "Erro ao carregar.")
@@ -454,6 +520,8 @@ export function IndividualLancamentosSection({
 
   React.useEffect(() => {
     void load()
+    // Aborta a requisição em voo ao desmontar ou quando load mudar (novo filtro)
+    return () => { abortRef.current?.abort() }
   }, [load])
 
   function applyPreset(p: LancamentosPeriodPreset) {
@@ -554,7 +622,13 @@ export function IndividualLancamentosSection({
               brokenTestsCreatedByUser={data.brokenTestsCreatedByUser}
               brokenTestsOpenedCount={data.brokenTestsOpenedCount}
               reporterBrokenTestIssueCount={data.reporterBrokenTestIssueCount}
-              accessProfile={accessProfile}
+              researchCount={data.researchCount}
+              usabilityCount={data.usabilityCount}
+              docReviewCount={data.docReviewCount}
+              newDocCount={data.newDocCount}
+              pendingUxReturnCount={data.pendingUxReturnCount}
+              qtdCenariosErroTotal={data.qtdCenariosErroTotal}
+              evaluatedUserAccessProfile={evaluatedUserAccessProfile}
             />
           )}
 
@@ -651,7 +725,7 @@ export function IndividualLancamentosSection({
                                 <TooltipTrigger className="flex w-full items-center justify-center">
                                   {excesso ? (
                                     <AlertTriangle
-                                      className="size-4 shrink-0 text-amber-500"
+                                      className="size-4 shrink-0 text-badge-warning-text"
                                       aria-label="Excesso de horas"
                                     />
                                   ) : (

@@ -181,8 +181,24 @@ export async function listEquipeChapters(): Promise<EquipeChapterListRow[]> {
   }
 }
 
+/** Busca o total de pontos gastos em resgates por userId (retorna Map). */
+async function getSpentPointsByUserId(): Promise<Map<string, number>> {
+  try {
+    const redemptions = await prisma.chapterRedemption.findMany({
+      select: { userId: true, costPoints: true },
+    })
+    const spent = new Map<string, number>()
+    for (const { userId, costPoints } of redemptions) {
+      spent.set(userId, (spent.get(userId) ?? 0) + costPoints)
+    }
+    return spent
+  } catch {
+    return new Map()
+  }
+}
+
 /**
- * Ranking paginado: cada linha em `EquipeChapterAuthor` conta 1 ponto para o `userId`.
+ * Ranking paginado: chapterCount = participações como autor; points = saldo após resgates.
  * `page` é 1-based; `pageSize` fixo (`EQUIPE_CHAPTER_RANKING_PAGE_SIZE` em `lib/equipe-chapters-shared`).
  */
 export async function getEquipeChapterAuthorRankingPage(
@@ -198,25 +214,58 @@ export async function getEquipeChapterAuthorRankingPage(
   })
 
   try {
-    await requireSession()
+    const session = await requireSession()
+    const sessionUserId = (session.user?.id ?? "").trim()
+    const sessionEmail = (session.user?.email ?? "").trim().toLowerCase()
     await ensureEquipeChapterTables()
-    const links = await prisma.equipeChapterAuthor.findMany({ select: { userId: true } })
+
+    const [links, spentMap] = await Promise.all([
+      prisma.equipeChapterAuthor.findMany({ select: { userId: true } }),
+      getSpentPointsByUserId(),
+    ])
+
     const tally = new Map<string, number>()
     for (const { userId } of links) {
       tally.set(userId, (tally.get(userId) ?? 0) + 1)
     }
     if (tally.size === 0) return empty()
 
+    // Collect ALL possible IDs for the logged-in user so isCurrentUser is reliable even when
+    // EquipeChapterAuthor.userId was stored with an OAuth UUID before the createdUser record existed.
+    const currentUserIds = new Set<string>()
+    if (sessionUserId) currentUserIds.add(sessionUserId)
+    if (sessionEmail) {
+      try {
+        const [cu, oauthUser] = await Promise.all([
+          prisma.createdUser.findFirst({
+            where: { email: { equals: sessionEmail, mode: "insensitive" } },
+            select: { id: true },
+          }),
+          prisma.user.findFirst({
+            where: { email: { equals: sessionEmail, mode: "insensitive" } },
+            select: { id: true },
+          }).catch(() => null),
+        ])
+        if (cu) currentUserIds.add(cu.id)
+        if (oauthUser) currentUserIds.add(oauthUser.id)
+      } catch { /* keep sessionUserId */ }
+    }
+
     const meta = await userDisplayMetaById()
     const sorted = [...tally.entries()]
-      .map(([userId, points]) => ({
-        userId,
-        points,
-        name: meta.get(userId)?.name ?? userId,
-        photoPath: meta.get(userId)?.photoPath ?? null,
-        active: meta.get(userId)?.active ?? true,
-      }))
+      .map(([userId, chapterCount]) => {
+        const spent = spentMap.get(userId) ?? 0
+        return {
+          userId,
+          chapterCount,
+          points: Math.max(0, chapterCount - spent),
+          name: meta.get(userId)?.name ?? userId,
+          photoPath: meta.get(userId)?.photoPath ?? null,
+          active: meta.get(userId)?.active ?? true,
+        }
+      })
       .sort((a, b) => {
+        if (b.chapterCount !== a.chapterCount) return b.chapterCount - a.chapterCount
         if (b.points !== a.points) return b.points - a.points
         return a.name.localeCompare(b.name, "pt-BR")
       })
@@ -235,20 +284,110 @@ export async function getEquipeChapterAuthorRankingPage(
       name: row.name,
       photoPath: row.photoPath,
       active: row.active,
+      chapterCount: row.chapterCount,
       points: row.points,
+      isCurrentUser: currentUserIds.has(row.userId),
     }))
 
-    return {
-      rows,
-      page: safePage,
-      pageSize,
-      totalItems,
-      totalPages,
-    }
+    return { rows, page: safePage, pageSize, totalItems, totalPages }
   } catch (e) {
     console.error("[getEquipeChapterAuthorRankingPage]", e)
     return empty()
   }
+}
+
+/** Resolve todos os IDs possíveis do usuário logado (createdUser + oauth user). */
+async function resolveCurrentUserIds(session: Awaited<ReturnType<typeof requireSession>>): Promise<string[]> {
+  const sessionId = (session.user?.id ?? "").trim()
+  const sessionEmail = (session.user?.email ?? "").trim().toLowerCase()
+  const ids = new Set<string>()
+  if (sessionId) ids.add(sessionId)
+  if (sessionEmail) {
+    try {
+      const [cu, oauthUser] = await Promise.all([
+        prisma.createdUser.findFirst({
+          where: { email: { equals: sessionEmail, mode: "insensitive" } },
+          select: { id: true },
+        }),
+        prisma.user.findFirst({
+          where: { email: { equals: sessionEmail, mode: "insensitive" } },
+          select: { id: true },
+        }).catch(() => null),
+      ])
+      if (cu) ids.add(cu.id)
+      if (oauthUser) ids.add(oauthUser.id)
+    } catch { /* keep sessionId */ }
+  }
+  return [...ids]
+}
+
+/** Retorna o saldo de pontos do usuário logado. */
+export async function getMyChapterBalance(): Promise<{ chapterCount: number; spent: number; points: number }> {
+  const session = await requireSession()
+  const userIds = await resolveCurrentUserIds(session)
+
+  const [links, redemptions] = await Promise.all([
+    prisma.equipeChapterAuthor.findMany({ where: { userId: { in: userIds } }, select: { userId: true } }),
+    prisma.chapterRedemption.findMany({ where: { userId: { in: userIds } }, select: { costPoints: true } }),
+  ])
+  const chapterCount = links.length
+  const spent = redemptions.reduce((acc: number, r: { costPoints: number }) => acc + r.costPoints, 0)
+  return { chapterCount, spent, points: Math.max(0, chapterCount - spent) }
+}
+
+/** Resgata um prêmio para o usuário logado. */
+export async function redeemChapterPrize(
+  prizeId: string,
+): Promise<{ ok: true; newPoints: number } | { error: string }> {
+  const { findPrize } = await import("@/features/equipe/lib/chapter-prizes")
+  const { createNotification } = await import("@/core/actions/notifications")
+
+  let session
+  try { session = await requireSession() } catch { return { error: "Não autenticado." } }
+
+  const userId = session.user?.id ?? ""
+  const prize = findPrize(prizeId)
+  if (!prize) return { error: "Prêmio inválido." }
+
+  const balance = await getMyChapterBalance()
+  if (balance.points < prize.costPoints) {
+    return { error: `Saldo insuficiente. Você tem ${balance.points} pts e o prêmio custa ${prize.costPoints} pts.` }
+  }
+
+  await prisma.chapterRedemption.create({
+    data: {
+      id: `RDM-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      userId,
+      prizeId: prize.id,
+      prizeLabel: prize.label,
+      costPoints: prize.costPoints,
+    },
+  })
+
+  // Notifica todos os Administrador:MGR ativos
+  try {
+    const userName = session.user?.name ?? session.user?.email ?? userId
+    const mgrs = await prisma.createdUser.findMany({
+      where: { accessProfile: "MGR" },
+      select: { id: true },
+    })
+    await Promise.all(
+      mgrs.map((mgr) =>
+        createNotification(
+          mgr.id,
+          "ACHIEVEMENT",
+          "Solicitação de prêmio",
+          `${userName} solicitou o prêmio "${prize.label}" (${prize.costPoints} pts).`,
+          "/equipe?tab=chapters",
+        ),
+      ),
+    )
+  } catch (e) {
+    console.error("[redeemChapterPrize] notificação falhou", e)
+  }
+
+  revalidatePath("/equipe")
+  return { ok: true, newPoints: balance.points - prize.costPoints }
 }
 
 export async function createEquipeChapter(
@@ -397,7 +536,7 @@ const ratingCreateSchema = z.object({
 export async function listChapterRatings(chapterId: string): Promise<EquipeChapterRatingEntry[]> {
   try {
     const session = await requireSession()
-    const myId = session.user?.id ?? ""
+    const myIds = new Set(await resolveCurrentUserIds(session))
     await ensureEquipeChapterTables()
     const r = idSchema.safeParse(chapterId)
     if (!r.success) return []
@@ -405,14 +544,15 @@ export async function listChapterRatings(chapterId: string): Promise<EquipeChapt
     const rows = await prisma.equipeChapterRating.findMany({
       where: { chapterId },
       orderBy: { createdAt: "desc" },
-      select: { id: true, stars: true, comment: true, createdAt: true, userId: true },
+      select: { id: true, stars: true, comment: true, createdAt: true, updatedAt: true, userId: true },
     })
     return rows.map((row) => ({
       id: row.id,
       stars: row.stars,
       comment: row.comment,
       createdAt: row.createdAt.toISOString(),
-      isMine: Boolean(myId && row.userId === myId),
+      updatedAt: row.updatedAt.toISOString(),
+      isMine: myIds.size > 0 && myIds.has(row.userId),
     }))
   } catch (e) {
     console.error("[listChapterRatings]", e)

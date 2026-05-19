@@ -60,6 +60,18 @@ function UserTipoBadge({ tipo }: { tipo: string }) {
   return badge(colorClass, tipo)
 }
 
+function AccessProfileBadge({ perfil }: { perfil: string | null | undefined }) {
+  if (!perfil) return <span className="text-text-secondary">—</span>
+  const styles: Record<string, string> = {
+    QA:  "border-badge-info/30 bg-badge-info/10 text-badge-info-text",
+    UX:  "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
+    TW:  "border-badge-warning/40 bg-badge-warning/10 text-badge-warning-text",
+    MGR: "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
+  }
+  const colorClass = styles[perfil] ?? "border-border-default bg-neutral-grey-50 text-text-secondary"
+  return badge(colorClass, perfil)
+}
+
 function JiraPriorityBadge({ priority }: { priority: string | null | undefined }) {
   if (!priority?.trim()) return <span className="text-text-secondary">—</span>
   const norm = priority.trim().normalize("NFD").replace(/\p{Mark}/gu, "").toLowerCase()
@@ -262,6 +274,7 @@ export {
   SuiteSituacaoBadge,
   AutomacaoBadge,
   UserTipoBadge,
+  AccessProfileBadge,
   PriorityBadge,
   JiraPriorityBadge,
   ChangelogTagBadge,

@@ -4,14 +4,14 @@ import { ChapterRatingDialog } from "@/features/equipe/components/ChapterRatingD
 import type { EquipeChapterRatingEntry } from "@/features/equipe/lib/equipe-chapters-shared"
 
 const previewEntries: EquipeChapterRatingEntry[] = [
-  { id: "r1", stars: 5, comment: "Muito claro e aplicável ao dia a dia.", createdAt: "2026-04-22T14:30:00.000Z" },
-  { id: "r2", stars: 4, comment: "", createdAt: "2026-04-21T09:00:00.000Z" },
-  { id: "r3", stars: 0, comment: "Sem comentário.", createdAt: "2026-04-20T18:15:00.000Z" },
+  { id: "r1", stars: 5, comment: "Muito claro e aplicável ao dia a dia.", createdAt: "2026-04-22T14:30:00.000Z", updatedAt: "2026-04-22T14:30:00.000Z" },
+  { id: "r2", stars: 4, comment: "", createdAt: "2026-04-21T09:00:00.000Z", updatedAt: "2026-04-22T10:00:00.000Z" },
+  { id: "r3", stars: 0, comment: "Sem comentário.", createdAt: "2026-04-20T18:15:00.000Z", updatedAt: "2026-04-20T18:15:00.000Z" },
 ]
 
 const previewComMinhaAvaliacao: EquipeChapterRatingEntry[] = [
-  { id: "r1", stars: 5, comment: "Parabéns pelo trabalho!", createdAt: "2026-04-23T16:31:00.000Z", isMine: true },
-  { id: "r2", stars: 4, comment: "Outra opinião.", createdAt: "2026-04-21T09:00:00.000Z" },
+  { id: "r1", stars: 5, comment: "Parabéns pelo trabalho!", createdAt: "2026-04-23T16:31:00.000Z", updatedAt: "2026-04-24T09:00:00.000Z", isMine: true },
+  { id: "r2", stars: 4, comment: "Outra opinião.", createdAt: "2026-04-21T09:00:00.000Z", updatedAt: "2026-04-21T09:00:00.000Z" },
 ]
 
 const meta: Meta<typeof ChapterRatingDialog> = {

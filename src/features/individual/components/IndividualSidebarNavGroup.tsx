@@ -16,14 +16,11 @@ function querySuffixFromSearchParams(searchParams: ReturnType<typeof useSearchPa
 export interface IndividualSidebarNavGroupProps {
   collapsed: boolean
   onNavigate?: (href: string) => void
-  /** Quando falso, a secção Lançamentos não aparece no submenu (RBAC). */
-  canAccessLancamentos?: boolean
 }
 
 export function IndividualSidebarNavGroup({
   collapsed,
   onNavigate,
-  canAccessLancamentos = false,
 }: IndividualSidebarNavGroupProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -33,15 +30,19 @@ export function IndividualSidebarNavGroup({
   const [open, setOpen] = React.useState(false)
   const prevPath = React.useRef("")
 
+  // "/individual/lancamentos" is a top-level menu item — exclude it from group activation
+  const isIndividualGroup = (p: string) =>
+    p.startsWith("/individual") && p !== "/individual/lancamentos"
+
   React.useEffect(() => {
-    const now = pathname.startsWith("/individual")
-    const was = prevPath.current.startsWith("/individual")
+    const now = isIndividualGroup(pathname)
+    const was = isIndividualGroup(prevPath.current)
     prevPath.current = pathname
     if (now && !was) setOpen(true)
     if (!now && was) setOpen(false)
   }, [pathname])
 
-  const parentActive = pathname.startsWith("/individual")
+  const parentActive = isIndividualGroup(pathname)
   const showLabel = !collapsed
 
   function go(href: string) {
@@ -136,12 +137,22 @@ export function IndividualSidebarNavGroup({
         <nav id="individual-sidebar-subnav" aria-label="Secções Individual" className="ml-2 border-l border-border-default pl-2">
           <ul className="flex flex-col gap-0.5">
           {INDIVIDUAL_NAV_ENTRIES.filter(
-            (e) => e.slug !== "lancamentos" || canAccessLancamentos,
+            (e) => e.slug !== "lancamentos",
           ).map(({ slug, label, icon: Icon }) => {
             const href = `/individual/${slug}${suffix}`
             const active =
               pathname === `/individual/${slug}` ||
               (slug === "avaliacoes" && pathname.startsWith("/individual/avaliacoes/"))
+            if (slug === "ficha" || slug === "pdi") {
+              return (
+                <li key={slug}>
+                  <span className="flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium opacity-40">
+                    <Icon className="size-4 shrink-0 text-text-secondary" aria-hidden />
+                    <span className="truncate text-text-secondary">{label}</span>
+                  </span>
+                </li>
+              )
+            }
             return (
               <li key={slug}>
                 <button

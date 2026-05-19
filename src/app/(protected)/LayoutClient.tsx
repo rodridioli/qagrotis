@@ -4,10 +4,10 @@ import React, { useState, useEffect, useTransition, useRef, Suspense } from "rea
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
-  LayoutDashboard, FileText, Rocket,
+  LayoutDashboard, FileText, Rocket, Clock, Timer,
   Settings, LogOut, PanelLeftClose,
-  PanelLeftOpen, Menu, Moon, Sun, Sparkles, History, Users,
-  Target, Network, ClipboardCheck, MessageSquare, User,
+  PanelLeftOpen, Menu, Moon, Sun, Sparkles, Users,
+  Network, ClipboardCheck, MessageSquare, User, BarChart3,
 } from "lucide-react"
 import { buildRole, can, isDisabled, isVisible, type Role, type Capability, type AccessProfile } from "@/core/rbac/policy"
 import {
@@ -37,6 +37,11 @@ import { AssistenteDrawer } from "@/components/shared/AssistenteDrawer"
 import type { IntegracaoSafeRecord } from "@/features/integracoes/actions/integracoes"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { BackToTop } from "@/components/shared/BackToTop"
+import { DominioAvaliacaoModal } from "@/features/individual/components/DominioAvaliacaoModal"
+import {
+  completarDominioAvaliacao,
+  type PendingDominioAvaliacaoDto,
+} from "@/features/individual/actions/individual-dominio"
 
 const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"
@@ -45,15 +50,16 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false, capability: "menu.painel" },
   { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false, capability: "menu.suites" },
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
-  { href: "/pdi",           icon: Target,          label: "PDI",              alwaysEnabled: true,  capability: "menu.pdi" },
+  { href: "/equipe?tab=lancamentos", icon: Timer,      label: "Lançamentos", alwaysEnabled: true,  capability: "equipe.lancamentos" },
+  { href: "/equipe?tab=performance", icon: BarChart3,  label: "Indicadores", alwaysEnabled: true,  capability: "equipe.performance" },
+  { href: "/individual/lancamentos", icon: Clock,      label: "Lançamentos", alwaysEnabled: false, capability: "individual.lancamentos" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
-  { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
-  { href: "/individual",    icon: User,            label: "Individual",             alwaysEnabled: true,  capability: "menu.individual" },
   { href: "/mapa-conhecimento",     icon: Network,         label: "Mapa de Conhecimento",   alwaysEnabled: true,  capability: "menu.mapaConhecimento" },
   { href: "/avaliacao-desempenho",  icon: ClipboardCheck,  label: "Avaliação de Desempenho", alwaysEnabled: true,  capability: "menu.avaliacaoDesempenho" },
   { href: "/feedbacks",             icon: MessageSquare,   label: "Feedbacks",              alwaysEnabled: true,  capability: "menu.feedbacks" },
   { href: "/configuracoes", icon: Settings,        label: "Configurações",          alwaysEnabled: true,  capability: "menu.configuracoes" },
-  { href: "/atualizacoes",  icon: History,         label: "Atualizações",     alwaysEnabled: false, capability: "menu.atualizacoes" },
+  { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
+  { href: "/individual",    icon: User,            label: "Individual",             alwaysEnabled: true,  capability: "menu.individual" },
 ]
 
 /**
@@ -64,10 +70,56 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
 const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability; label?: string }>>> = {
   "Administrador:MGR": [
     { capability: "menu.painel" },
+    { capability: "equipe.lancamentos", label: "Lançamentos" },
+    { capability: "equipe.performance", label: "Indicadores" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
-    { capability: "menu.atualizacoes" },
+  ],
+  "Padrão:UX": [
+    { capability: "menu.painel" },
+    { capability: "individual.lancamentos" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
+  ],
+  "Padrão:TW": [
+    { capability: "menu.painel" },
+    { capability: "individual.lancamentos" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
+  ],
+  "Padrão:QA": [
+    { capability: "menu.painel" },
+    { capability: "individual.lancamentos" },
+    { capability: "menu.suites" },
+    { capability: "menu.cenarios" },
+    { capability: "menu.gerador" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
+  ],
+  "Administrador:QA": [
+    { capability: "menu.painel" },
+    { capability: "menu.suites" },
+    { capability: "menu.cenarios" },
+    { capability: "menu.gerador" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
+  ],
+  "Administrador:UX": [
+    { capability: "menu.painel" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
+  ],
+  "Administrador:TW": [
+    { capability: "menu.painel" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
   ],
 }
 
@@ -97,12 +149,17 @@ function getTitle(pathname: string, role?: Role, tab?: string): string {
   }
   if (pathname.startsWith("/individual/avaliacoes/nova")) return "Nova avaliação"
   if (/^\/individual\/avaliacoes\/[^/]+$/.test(pathname)) return "Avaliação de desempenho"
+  if (pathname === "/individual/lancamentos") return "Lançamentos"
   if (pathname.startsWith("/individual/")) {
     const secao = pathname.split("/")[2] ?? ""
     const label = individualSectionLabel(secao)
     if (label) return `Individual — ${label}`
   }
   if (pathname.startsWith("/equipe")) {
+    if (role === "Administrador:MGR") {
+      if (tab === "lancamentos") return "Lançamentos"
+      if (tab === "performance") return "Indicadores"
+    }
     const entry = EQUIPE_NAV_ENTRIES.find((e) => e.id === tab)
     if (entry) return `Equipe — ${entry.label}`
     return "Equipe"
@@ -134,6 +191,7 @@ interface SidebarProps {
 const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, role, canAccessEquipeLancamentos, canAccessEquipePerformance, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const sidebarSearchParams = useSearchParams()
 
   return (
     <>
@@ -246,7 +304,12 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                       </div>
                     }
                   >
-                    <EquipeSidebarNavGroup collapsed={collapsed} onNavigate={onNavigate} canAccessLancamentos={canAccessEquipeLancamentos} canAccessPerformance={canAccessEquipePerformance} />
+                    <EquipeSidebarNavGroup
+                      collapsed={collapsed}
+                      onNavigate={onNavigate}
+                      canAccessLancamentos={role === "Administrador:MGR" ? false : canAccessEquipeLancamentos}
+                      canAccessPerformance={role === "Administrador:MGR" ? false : canAccessEquipePerformance}
+                    />
                   </Suspense>
                 )
               }
@@ -285,7 +348,6 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                     <IndividualSidebarNavGroup
                       collapsed={collapsed}
                       onNavigate={onNavigate}
-                      canAccessLancamentos={false}
                     />
                   </Suspense>
                 )
@@ -302,15 +364,17 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                   disabled = needsSistema && !hasCenario
                 } else if (href === "/dashboard" || href === "/cenarios") {
                   disabled = needsSistema && !hasSistemaModulo
-                } else if (href === "/atualizacoes") {
-                  disabled = needsSistema && !hasSistemaModulo
                 }
               }
 
               const isAssistente = href === "/assistente"
-              const isActive = isAssistente
-                ? assistenteOpen
-                : !disabled && pathname.startsWith(href)
+              const isActive = href === "/equipe?tab=lancamentos"
+                ? pathname === "/equipe" && sidebarSearchParams.get("tab") === "lancamentos"
+                : href === "/equipe?tab=performance"
+                  ? pathname === "/equipe" && sidebarSearchParams.get("tab") === "performance"
+                  : isAssistente
+                    ? assistenteOpen
+                    : !disabled && pathname.startsWith(href)
               const showLabel = !collapsed
 
               if (disabled) {
@@ -636,6 +700,7 @@ interface Props {
   hasSistemaComModulo?: boolean
   hasCenario?: boolean
   isAdmin?: boolean
+  pendingDominioAvaliacao?: PendingDominioAvaliacaoDto | null
 }
 
 export default function LayoutClient({
@@ -645,6 +710,7 @@ export default function LayoutClient({
   hasSistemaComModulo: hasSistemaComModuloProp = false,
   hasCenario: hasCenarioProp = false,
   isAdmin: _isAdmin = false,
+  pendingDominioAvaliacao = null,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -785,22 +851,31 @@ export default function LayoutClient({
 
   return (
     <SistemaContext.Provider value={{ sistemaSelecionado, setSistemaSelecionado: handleSistemaChange }}>
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar
-          collapsed={collapsed}
-          mobileOpen={mobileOpen}
-          onCloseMobile={() => setMobileOpen(false)}
-          isDark={isDark}
-          assistenteOpen={assistenteOpen}
-          onAssistenteOpen={() => setAssistenteOpen(true)}
-          hasSistemaModulo={hasSistemaModulo}
-          hasCenario={hasCenario}
-          hasIntegracoes={integracoes.length > 0}
-          role={role}
-          canAccessEquipeLancamentos={canAccessEquipeLancamentos}
-          canAccessEquipePerformance={canAccessEquipePerformance}
-          onNavigate={handleNavigate}
+      {pendingDominioAvaliacao ? (
+        <DominioAvaliacaoModal
+          avaliacaoId={pendingDominioAvaliacao.id}
+          configSnapshot={pendingDominioAvaliacao.configSnapshot}
+          onSubmit={completarDominioAvaliacao}
         />
+      ) : null}
+      <div className="flex h-screen overflow-hidden">
+        <Suspense fallback={null}>
+          <Sidebar
+            collapsed={collapsed}
+            mobileOpen={mobileOpen}
+            onCloseMobile={() => setMobileOpen(false)}
+            isDark={isDark}
+            assistenteOpen={assistenteOpen}
+            onAssistenteOpen={() => setAssistenteOpen(true)}
+            hasSistemaModulo={hasSistemaModulo}
+            hasCenario={hasCenario}
+            hasIntegracoes={integracoes.length > 0}
+            role={role}
+            canAccessEquipeLancamentos={canAccessEquipeLancamentos}
+            canAccessEquipePerformance={canAccessEquipePerformance}
+            onNavigate={handleNavigate}
+          />
+        </Suspense>
         <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Suspense fallback={null}>

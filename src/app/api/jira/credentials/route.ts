@@ -47,11 +47,13 @@ export async function GET() {
     const jiraEmail = (db?.jiraEmail || leg?.jiraEmail || "").trim()
     const hasToken = !!(db?.apiToken?.trim() || leg?.apiToken?.trim())
 
+    const configured = !!(jiraUrl && jiraEmail && hasToken)
+
     return Response.json({
       jiraUrl,
       jiraEmail,
       hasToken,
-      configured: !!(jiraUrl && jiraEmail && hasToken),
+      configured,
     })
   } catch (e) {
     if (process.env.NODE_ENV !== "production") console.error("[jira/credentials] GET:", e)

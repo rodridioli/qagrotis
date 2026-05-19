@@ -558,6 +558,30 @@
   }
 }
 
+/* ── Dominio evaluation screen slide transitions ─────────────────────────── */
+
+@keyframes slideOutLeft {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(-6%); opacity: 0; }
+}
+@keyframes slideOutRight {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(6%); opacity: 0; }
+}
+@keyframes slideInFromRight {
+  from { transform: translateX(6%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideInFromLeft {
+  from { transform: translateX(-6%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+.slide-exit-left  { animation: slideOutLeft      250ms ease-in-out forwards; }
+.slide-exit-right { animation: slideOutRight     250ms ease-in-out forwards; }
+.slide-enter-right { animation: slideInFromRight 250ms ease-in-out forwards; }
+.slide-enter-left  { animation: slideInFromLeft  250ms ease-in-out forwards; }
+
 /* ── Badge achievement hover animations ──────────────────────────────────── */
 
 @keyframes badge-hex-bounce {
@@ -590,6 +614,41 @@
   transform-origin: center;
   animation: badge-icon-turn 1s ease-out forwards;
 }
+
+/* ── DominioAvaliacao animations ────────────────────────────────────────── */
+@keyframes ava-card-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ava-row-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ava-pane-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ava-done-in {
+  0%   { transform: scale(0.5);  opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+@keyframes ava-star-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.35) rotate(-8deg); }
+  100% { transform: scale(1)  rotate(0deg);   }
+}
+@keyframes ava-pulse {
+  0%   { box-shadow: 0 0 0 0   #0E8C5C80; }
+  70%  { box-shadow: 0 0 0 8px #0E8C5C00; }
+  100% { box-shadow: 0 0 0 0   #0E8C5C00; }
+}
+.ava-card-in  { animation: ava-card-in  0.45s cubic-bezier(.2,.8,.2,1) both; }
+.ava-row-in   { animation: ava-row-in   0.45s cubic-bezier(.2,.8,.2,1) both; }
+.ava-pane-in  { animation: ava-pane-in  0.45s cubic-bezier(.2,.8,.2,1) both; }
+.ava-done-in  { animation: ava-done-in  0.55s cubic-bezier(.2,.8,.2,1) both; }
+.ava-star-pop { animation: ava-star-pop 0.45s cubic-bezier(.2,.8,.2,1) both; }
+.ava-pulse-dot { animation: ava-pulse 1.8s infinite; }
 
 .badge-spark-1 {
   animation: badge-spark-pulse 0.55s 0.25s ease-out forwards;

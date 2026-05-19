@@ -1,17 +1,18 @@
 /** Presets de intervalo em data civil local (YYYY-MM-DD). */
 
-export type LancamentosPeriodPreset = "today" | "anteriormente" | "week" | "month" | "lastMonth"
+export type LancamentosPeriodPreset = "today" | "anterior" | "week" | "lastWeek" | "month" | "lastMonth"
 
 export const LANCAMENTOS_PRESET_OPTIONS: { value: LancamentosPeriodPreset; label: string }[] = [
-  { value: "today",          label: "Hoje" },
-  { value: "anteriormente",  label: "Anteriormente" },
-  { value: "week",           label: "Semana" },
-  { value: "month",          label: "Mês Atual" },
-  { value: "lastMonth",      label: "Mês Anterior" },
+  { value: "today",     label: "Hoje" },
+  { value: "anterior",  label: "Anterior" },
+  { value: "week",      label: "Semana atual" },
+  { value: "lastWeek",  label: "Semana anterior" },
+  { value: "month",     label: "Mês atual" },
+  { value: "lastMonth", label: "Mês anterior" },
 ]
 
 export function getLancamentosPresetLabel(preset: LancamentosPeriodPreset): string {
-  return LANCAMENTOS_PRESET_OPTIONS.find((o) => o.value === preset)?.label ?? "Semana"
+  return LANCAMENTOS_PRESET_OPTIONS.find((o) => o.value === preset)?.label ?? "Semana atual"
 }
 
 function pad(n: number) {
@@ -31,9 +32,9 @@ export function getLancamentosPresetRange(
     return { from: t, to: t }
   }
 
-  if (preset === "anteriormente") {
-    // Returns a 14-day window ending yesterday; the component refines to the
-    // most-recent day with entries via a second fetch.
+  if (preset === "anterior") {
+    // Fase 1: janela de 14 dias até ontem. O componente refina para o dia mais
+    // recente com lançamentos (fase 2), mostrando apenas esse dia específico.
     const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
     const twoWeeksAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 15)
     return { from: toIsoLocal(twoWeeksAgo), to: toIsoLocal(yesterday) }
@@ -48,6 +49,15 @@ export function getLancamentosPresetRange(
     const weekEndIso = toIsoLocal(sun)
     const to = weekEndIso < todayIso ? weekEndIso : todayIso
     return { from: toIsoLocal(mon), to }
+  }
+
+  if (preset === "lastWeek") {
+    const day = now.getDay()
+    const mondayOffset = day === 0 ? -6 : 1 - day
+    const thisMon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset)
+    const mon = new Date(thisMon.getFullYear(), thisMon.getMonth(), thisMon.getDate() - 7)
+    const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6)
+    return { from: toIsoLocal(mon), to: toIsoLocal(sun) }
   }
 
   if (preset === "month") {

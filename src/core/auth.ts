@@ -116,8 +116,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         token.id = resolveGoogleInternalId(email, activeCreated?.id ?? null, user.id ?? "")
+        token.email = email
       } else if (user) {
         token.id = user.id
+        token.email = user.email
+        // Resolve the active CreatedUser id by email (mirrors the Google flow) so that
+        // the RBAC enrichment below always has a reliable token.id anchor.
+        if (user.email) {
+          try {
+            const prisma = await getPrisma()
+            const normalizedEmail = user.email.trim().toLowerCase()
+            const activeCreated = await prisma.createdUser.findFirst({
+              where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+              select: { id: true },
+            })
+            if (activeCreated) token.id = activeCreated.id
+          } catch {
+            // Keep token.id from authorize if DB lookup fails
+          }
+        }
       }
 
       // Enriquecer com type + accessProfile (RBAC) e foto do perfil.
@@ -146,10 +163,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           let created = createdById
           if (!created && email) {
-            created = await prisma.createdUser.findFirst({
+            const foundByEmail = await prisma.createdUser.findFirst({
               where: { email: { equals: email, mode: "insensitive" } },
-              select: { type: true, accessProfile: true, photoPath: true },
+              select: { id: true, type: true, accessProfile: true, photoPath: true },
             })
+            if (foundByEmail) {
+              created = foundByEmail
+              // Se token.id era o fallback OAuth (não matchou nenhum createdUser), corrigir agora
+              if (!createdById) token.id = foundByEmail.id
+            }
           }
 
           const resolvedType = profile?.type ?? created?.type ?? "Padrão"

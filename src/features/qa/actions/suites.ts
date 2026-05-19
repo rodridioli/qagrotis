@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { requireSession, requireAdmin } from "@/core/session"
+import { requireSession } from "@/core/session"
 import { nextId } from "@/core/db-utils"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/core/prisma"
@@ -93,6 +93,7 @@ export interface SuiteListRecord extends Omit<SuiteRecord, "historico"> {
 }
 
 export async function getSuites(): Promise<SuiteListRecord[]> {
+  await requireSession()
   const rows = await prisma.suite.findMany({
     orderBy: { createdAt: "asc" },
     take: 1000,
@@ -114,6 +115,7 @@ export async function getSuites(): Promise<SuiteListRecord[]> {
 }
 
 export async function getSuiteById(id: string): Promise<SuiteRecord | null> {
+  await requireSession()
   if (!id || typeof id !== "string") return null
   const row = await prisma.suite.findUnique({ where: { id } })
   return row ? toRecord(row) : null
@@ -292,7 +294,7 @@ export async function reabrirSuite(id: string): Promise<void> {
 }
 
 export async function ativarSuite(id: string): Promise<void> {
-  await requireAdmin()
+  await requireSession()
   await prisma.suite.update({ where: { id }, data: { active: true } })
   revalidatePath("/suites")
 }

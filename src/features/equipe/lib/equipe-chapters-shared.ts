@@ -39,6 +39,8 @@ export interface EquipeChapterRatingEntry {
   stars: number
   comment: string
   createdAt: string
+  /** ISO string da última edição; igual a createdAt quando ainda não editado. */
+  updatedAt: string
   /** Só no utilizador autenticado: indica a própria linha para edição na UI. */
   isMine?: boolean
 }
@@ -51,7 +53,12 @@ export interface EquipeChapterRankingRow {
   photoPath: string | null
   /** `false` para inativos no cadastro — UI pode diferenciar (ex.: foto em cinza). */
   active: boolean
+  /** Total de chapters apresentados como autor — não muda com resgates de pontos. */
+  chapterCount: number
+  /** Saldo de pontos disponível. Decrementado quando o utilizador resgata brindes. */
   points: number
+  /** `true` quando esta linha pertence ao utilizador logado (calculado no servidor). */
+  isCurrentUser: boolean
 }
 
 export interface EquipeChapterRankingPage {

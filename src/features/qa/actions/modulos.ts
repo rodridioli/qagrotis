@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { nextId } from "@/core/db-utils"
-import { requireAdmin } from "@/core/session"
+import { requireAdmin, requireSession } from "@/core/session"
 import { prisma } from "@/core/prisma"
 
 export interface ModuloRecord {
@@ -31,6 +31,7 @@ const idsArraySchema = z.array(idSchema).max(1000)
 // ── Public actions ──────────────────────────────────────────────────────────
 
 export async function getModulos(): Promise<ModuloRecord[]> {
+  await requireSession()
   const rows = await prisma.modulo.findMany({ orderBy: { createdAt: "asc" }, take: 500 })
   return rows.map((r) => ({
     ...r,
@@ -39,6 +40,7 @@ export async function getModulos(): Promise<ModuloRecord[]> {
 }
 
 export async function getModulo(id: string): Promise<ModuloRecord | null> {
+  await requireSession()
   const result = idSchema.safeParse(id)
   if (!result.success) return null
   const row = await prisma.modulo.findUnique({ where: { id } })

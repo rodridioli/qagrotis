@@ -112,9 +112,10 @@ export async function getMgrJiraCredentials(): Promise<StoredJiraCredentials | n
 }
 
 /**
- * Resolve credenciais a partir do BD do utilizador (com fallback para cookies legados e depois MGR).
+ * Resolve credenciais a partir do BD do utilizador (com fallback para cookies legados).
  * NÃO confia no body/form da requisição: dados controlados pelo cliente são ignorados
  * para impedir SSRF lateral via `jiraUrl`.
+ * Cada utilizador deve ter configurado as suas próprias credenciais — não há fallback global.
  */
 export async function resolveJiraCredentialsForRequest(
   userId: string,
@@ -131,11 +132,7 @@ export async function resolveJiraCredentialsForRequest(
   if (jiraUrl && jiraEmail && apiToken && isAllowedJiraUrl(jiraUrl)) {
     return { jiraUrl, jiraEmail, apiToken }
   }
-  // Fallback: credenciais do Administrador:MGR (configuração global da aplicação)
-  const mgr = await getMgrJiraCredentials()
-  if (!mgr) return null
-  if (!isAllowedJiraUrl(mgr.jiraUrl)) return null
-  return mgr
+  return null
 }
 
 /** Valida que a URL do Jira é HTTPS e não aponta para hosts internos/privados. */

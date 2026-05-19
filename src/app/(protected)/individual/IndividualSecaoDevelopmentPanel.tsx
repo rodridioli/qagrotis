@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Plus } from "lucide-react"
+import { Plus, Settings, Send } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -24,6 +25,10 @@ import { ProgressaoSection, type ProgressaoSectionHandle } from "@/features/indi
 import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
 import { IndividualFeriasSection, type IndividualFeriasSectionHandle } from "@/features/individual/components/IndividualFeriasSection"
 import { IndividualAusenciasSection } from "@/features/individual/components/IndividualAusenciasSection"
+import { IndividualDominioSection } from "@/features/individual/components/IndividualDominioSection"
+import { DominioConfiguracaoSheet } from "@/features/individual/components/DominioConfiguracaoSheet"
+import { solicitarDominioAvaliacao } from "@/features/individual/actions/individual-dominio"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 
 type AccessProfileFilter = "all" | "QA" | "UX" | "TW" | "MGR"
 
@@ -59,6 +64,10 @@ export function IndividualSecaoDevelopmentPanel({
   const [lancamentosPreset, setLancamentosPreset] = React.useState<LancamentosPeriodPreset>("week")
   const [accessProfileFilter, setAccessProfileFilter] = React.useState<AccessProfileFilter>("all")
   const [pendingUserId, setPendingUserId] = React.useState<string | null>(null)
+  const [dominioConfiguracaoOpen, setDominioConfiguracaoOpen] = React.useState(false)
+  const [solicitarOpen, setSolicitarOpen] = React.useState(false)
+  const [solicitarLoading, setSolicitarLoading] = React.useState(false)
+  const [dominioRefreshKey, setDominioRefreshKey] = React.useState(0)
 
   // Optimistic effective user: reflects the navigation target immediately,
   // before the server-rendered prop catches up.
@@ -78,6 +87,7 @@ export function IndividualSecaoDevelopmentPanel({
   const showProgressao  = secao === "progressao"
   const showAusencias   = secao === "ausencias"
   const showLancamentos = secao === "lancamentos" && canAccessLancamentos
+  const showDominio     = secao === "dominio"
 
   const visibleUsers = React.useMemo(() => {
     if (accessProfileFilter === "all") return users
@@ -158,6 +168,27 @@ export function IndividualSecaoDevelopmentPanel({
               Adicionar Avaliação
             </Button>
           ) : null}
+          {showDominio && isAdministradorMgr ? (
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-2"
+                onClick={() => setDominioConfiguracaoOpen(true)}
+              >
+                <Settings className="size-4" aria-hidden />
+                Configurações
+              </Button>
+              <Button
+                type="button"
+                className="gap-2"
+                onClick={() => setSolicitarOpen(true)}
+              >
+                <Send className="size-4" aria-hidden />
+                Solicitar Avaliação
+              </Button>
+            </div>
+          ) : null}
           {showFeedbacks ? (
             <Button
               type="button"
@@ -193,7 +224,13 @@ export function IndividualSecaoDevelopmentPanel({
         </div>
       ) : null}
 
-      {showAvaliacoes ? (
+      {showDominio ? (
+        <IndividualDominioSection
+          evaluatedUserId={selectedUserId}
+          readOnly={!isAdministradorMgr}
+          refreshKey={dominioRefreshKey}
+        />
+      ) : showAvaliacoes ? (
         <IndividualAvaliacoesSection
           evaluatedUserId={selectedUserId}
           useMgrListEmptyChrome={isAdministradorMgr}
@@ -224,13 +261,42 @@ export function IndividualSecaoDevelopmentPanel({
           evaluatedUserId={effectiveUserId}
           preset={lancamentosPreset}
           onPresetChange={handlePresetChange}
-          accessProfile={users.find((u) => u.id === selectedUserId)?.accessProfile}
+          evaluatedUserAccessProfile={users.find((u) => u.id === selectedUserId)?.accessProfile}
         />
       ) : (
         <div className="flex w-full flex-1 flex-col items-center justify-center py-16">
           <p className="text-center text-base text-text-secondary">Em desenvolvimento.</p>
         </div>
       )}
+
+      {isAdministradorMgr ? (
+        <>
+          <DominioConfiguracaoSheet
+            open={dominioConfiguracaoOpen}
+            onOpenChange={setDominioConfiguracaoOpen}
+          />
+          <ConfirmDialog
+            open={solicitarOpen}
+            onOpenChange={setSolicitarOpen}
+            title="Solicitar avaliação de domínio?"
+            description={`Será enviada uma notificação para o usuário selecionado pedindo que ele preencha a avaliação de domínio. O usuário só poderá fechar o formulário após concluir o preenchimento.`}
+            confirmLabel={solicitarLoading ? "Solicitando…" : "Solicitar"}
+            buttonVariant="default"
+            onConfirm={async () => {
+              setSolicitarLoading(true)
+              const res = await solicitarDominioAvaliacao(selectedUserId)
+              setSolicitarLoading(false)
+              if (res.error) {
+                toast.error(res.error)
+                return
+              }
+              toast.success("Avaliação de domínio solicitada com sucesso.")
+              setSolicitarOpen(false)
+              setDominioRefreshKey((k) => k + 1)
+            }}
+          />
+        </>
+      ) : null}
     </div>
   )
 }

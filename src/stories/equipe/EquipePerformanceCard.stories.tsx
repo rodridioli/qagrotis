@@ -40,12 +40,57 @@ const mockMgr: UserPerformanceData = {
   testesAutomatizados: 0,
   percentualAutomatizado: 0,
   score: 0,
-  perfilCounts: [
-    { label: "MGR", count: 2 },
-    { label: "QA",  count: 8 },
-    { label: "UX",  count: 3 },
-    { label: "TW",  count: 2 },
+  feedbacksCount: 12,
+  avaliacoesCount: 4,
+}
+
+const mockUX: UserPerformanceData = {
+  userId: "demo-ux",
+  name: "Carla Mendes",
+  email: "carla@example.com",
+  accessProfile: "UX",
+  classificacao: "Designer UX",
+  photoPath: null,
+  atividadePorSistema: [],
+  atividadePorProjeto: [
+    { projectName: "Agro Digital", jirasCount: 12 },
+    { projectName: "SAP Core", jirasCount: 8 },
   ],
+  cenariosCriados: 5,   // newPrototypesCount
+  testesExecutados: 2,  // researchCount
+  sucessos: 7,          // adjustmentsCount
+  errosEncontrados: 1,  // usabilityCount
+  alertas: 0,
+  testesAutomatizados: 0,
+  percentualAutomatizado: 32, // returnRatePercent
+  newPrototypesCount: 5,
+  adjustmentsCount: 7,
+  returnRatePercent: 32,
+  score: 0,
+}
+
+const mockTW: UserPerformanceData = {
+  userId: "demo-tw",
+  name: "Lucas Tavares",
+  email: "lucas@example.com",
+  accessProfile: "TW",
+  classificacao: "Technical Writer",
+  photoPath: null,
+  atividadePorSistema: [],
+  atividadePorProjeto: [
+    { projectName: "Docs Portal", jirasCount: 9 },
+    { projectName: "Release Notes", jirasCount: 4 },
+    { projectName: "API Reference", jirasCount: 2 },
+  ],
+  cenariosCriados: 6,  // newDocCount
+  testesExecutados: 3, // docReviewCount
+  sucessos: 2,         // othersCount
+  errosEncontrados: 0,
+  alertas: 0,
+  testesAutomatizados: 0,
+  percentualAutomatizado: 0,
+  othersCount: 2,
+  score: 0,
 }
 
 const meta = {
@@ -95,10 +140,69 @@ export const SemAtividadeSistema: Story = {
 }
 
 export const CardMGR: Story = {
-  name: "Card MGR (Feedbacks/Avaliações/Domínio 60%)",
+  name: "Card MGR (2 caixas: Feedbacks + Avaliações)",
   args: {
     user: mockMgr,
     rank: 1,
+  },
+  decorators: ReferenciaVisual.decorators,
+}
+
+export const CardMGRSemDados: Story = {
+  name: "Card MGR — sem registros no período",
+  args: {
+    user: { ...mockMgr, feedbacksCount: 0, avaliacoesCount: 0 },
+    rank: 2,
+  },
+  decorators: ReferenciaVisual.decorators,
+}
+
+export const CardUX: Story = {
+  name: "Card UX (Novos Protótipos / Pesquisa / Ajustes / Usabilidade / Taxa de Retorno)",
+  args: {
+    user: mockUX,
+    rank: 1,
+  },
+  decorators: ReferenciaVisual.decorators,
+}
+
+export const CardUXSemJira: Story = {
+  name: "Card UX — sem dados Jira (zeros + traços)",
+  args: {
+    user: {
+      ...mockUX,
+      atividadePorProjeto: [],
+      cenariosCriados: 0,
+      testesExecutados: 0,
+      sucessos: 0,
+      errosEncontrados: 0,
+      percentualAutomatizado: 0,
+    },
+    rank: 3,
+  },
+  decorators: ReferenciaVisual.decorators,
+}
+
+export const CardTW: Story = {
+  name: "Card TW (Novos / Revisões / Outros + projetos Jira)",
+  args: {
+    user: mockTW,
+    rank: 1,
+  },
+  decorators: ReferenciaVisual.decorators,
+}
+
+export const CardTWSemJira: Story = {
+  name: "Card TW — sem dados Jira (zeros + traços)",
+  args: {
+    user: {
+      ...mockTW,
+      atividadePorProjeto: [],
+      cenariosCriados: 0,
+      testesExecutados: 0,
+      sucessos: 0,
+    },
+    rank: 2,
   },
   decorators: ReferenciaVisual.decorators,
 }

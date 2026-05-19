@@ -23,15 +23,20 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
   const prevPath = React.useRef("")
 
   React.useEffect(() => {
-    const now = pathname.startsWith("/equipe")
+    const tab = searchParams.get("tab")
+    const isLancamentosTopLevel = tab === "lancamentos" && !canAccessLancamentos
+    const isPerformanceTopLevel = tab === "performance" && !canAccessPerformance
+    const now = pathname.startsWith("/equipe") && !isLancamentosTopLevel && !isPerformanceTopLevel
     const was = prevPath.current.startsWith("/equipe")
     prevPath.current = pathname
     if (now && !was) setOpen(true)
     if (!now && was) setOpen(false)
-  }, [pathname])
+  }, [pathname, searchParams, canAccessLancamentos, canAccessPerformance])
 
   const activeTabId = searchParams.get("tab") ?? "performance"
   const parentActive = pathname.startsWith("/equipe")
+    && !(activeTabId === "lancamentos" && !canAccessLancamentos)
+    && !(activeTabId === "performance" && !canAccessPerformance)
 
   function go(href: string) {
     if (onNavigate) onNavigate(href)
@@ -124,6 +129,16 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
             }).map(({ id, label, icon: Icon }) => {
               const href = `/equipe?tab=${id}`
               const active = parentActive && activeTabId === id
+              if (id === "metas") {
+                return (
+                  <li key={id}>
+                    <span className="flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium opacity-40">
+                      <Icon className="size-4 shrink-0 text-text-secondary" aria-hidden />
+                      <span className="truncate text-text-secondary">{label}</span>
+                    </span>
+                  </li>
+                )
+              }
               return (
                 <li key={id}>
                   <button
