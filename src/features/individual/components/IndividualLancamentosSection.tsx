@@ -378,14 +378,9 @@ function DashboardPanel({
     card1 = <StatCard icon={Briefcase}       label="Operacional" value="Em breve" iconVariant="info" />
     card2 = <StatCard icon={LayoutDashboard} label="Gestão"      value="Em breve" iconVariant="brand" />
   } else {
-    // QA: dois novos cards, mais Testes Realizados como 5º card
-    const retornoValor =
-      reporterBrokenTestIssueCount ||
-      brokenTestsCreatedByUser ||
-      brokenTestsOpenedCount ||
-      brokenTestSubtasksTotalInScope ||
-      stats.brokenTestCountFromWorklogs
-    card1 = <StatCard icon={Bug}    label="Jiras abertos (Broken)" value={retornoValor}                                          iconVariant="warning" />
+    // QA: dois novos cards, mais Cenários Testados como 5º card
+    const retornoValor = reporterBrokenTestIssueCount ?? 0
+    card1 = <StatCard icon={Bug}    label="Retorno de Testes (Broken)" value={retornoValor}                                          iconVariant="warning" />
     card2 = <StatCard icon={AlertTriangle} label="Cenários com Erro" value={qtdCenariosErroTotalProp ?? stats.qtdCenariosErroTotal} iconVariant="destructive" />
   }
 
@@ -401,7 +396,7 @@ function DashboardPanel({
         <StatCard icon={Flame} label="Jiras críticos"  value={stats.criticalCount} iconVariant="destructive" />
         {isQA && (
           <div className="col-span-2">
-            <StatCard icon={Layers} label="Testes Realizados" value={stats.qtdCenariosTotal} iconVariant="brand" />
+            <StatCard icon={Layers} label="Cenários Testados" value={stats.qtdCenariosTotal} iconVariant="brand" />
           </div>
         )}
       </div>
