@@ -15,6 +15,11 @@ import {
   type DominioProduto,
   type DominioAvaliacaoResposta,
 } from "@/features/individual/actions/individual-dominio"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/core/utils"
 
 interface Props {
@@ -75,7 +80,12 @@ function ModuloRow({
 
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
-      <span className="min-w-0 truncate text-sm text-text-secondary">{nome}</span>
+      <Tooltip>
+        <TooltipTrigger render={<span className="min-w-0 truncate text-sm text-text-secondary" />}>
+          {nome}
+        </TooltipTrigger>
+        <TooltipContent side="top">{nome}</TooltipContent>
+      </Tooltip>
       <div className="flex shrink-0 items-center gap-2">
         {resposta ? (
           <>
@@ -111,9 +121,16 @@ function ProdutoCard({
         className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-neutral-grey-50"
         aria-expanded={expanded}
       >
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text-primary">
-          {produto.nome}
-        </span>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text-primary" />
+            }
+          >
+            {produto.nome}
+          </TooltipTrigger>
+          <TooltipContent side="top">{produto.nome}</TooltipContent>
+        </Tooltip>
         <div className="flex shrink-0 items-center gap-2">
           {media !== null ? (
             <>

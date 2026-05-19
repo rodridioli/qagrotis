@@ -13,9 +13,11 @@ import {
   Hash,
   LayoutDashboard,
   Layers,
+  PlugZap,
   Search,
   Users,
 } from "lucide-react"
+import { toast } from "sonner"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { TableToolbar } from "@/components/shared/TableToolbar"
@@ -424,10 +426,12 @@ export function IndividualLancamentosSection({
   const [error, setError] = React.useState<string | null>(null)
   const [data, setData] = React.useState<ApiOk | null>(null)
   const [jiraBase, setJiraBase] = React.useState<string | null>(null)
+  const [jiraConfigured, setJiraConfigured] = React.useState<boolean | null>(null)
   const [search, setSearch] = React.useState("")
 
   // AbortController para cancelar requisições em voo ao trocar filtros
   const abortRef = React.useRef<AbortController | null>(null)
+  const toastShownRef = React.useRef(false)
 
   React.useEffect(() => {
     if (presetProp === undefined) return
@@ -441,15 +445,37 @@ export function IndividualLancamentosSection({
     let cancelled = false
     fetch("/api/jira/credentials", { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: { jiraUrl?: string } | null) => {
-        if (cancelled || !d?.jiraUrl?.trim()) return
-        setJiraBase((prev) => prev ?? String(d.jiraUrl).replace(/\/$/, ""))
+      .then((d: { jiraUrl?: string; configured?: boolean } | null) => {
+        if (cancelled) return
+        const configured = d?.configured ?? false
+        setJiraConfigured(configured)
+        if (d?.jiraUrl?.trim()) {
+          setJiraBase((prev) => prev ?? String(d.jiraUrl).replace(/\/$/, ""))
+        }
+        if (!configured && !toastShownRef.current) {
+          toastShownRef.current = true
+          setLoading(false)
+          toast.warning("Integração com Jira não configurada", {
+            description: "Configure sua conta Jira em Configurações para visualizar os lançamentos.",
+            action: {
+              label: "Configurações",
+              onClick: () => { window.location.href = "/configuracoes" },
+            },
+            duration: 8000,
+          })
+        }
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) {
+          setJiraConfigured(false)
+          setLoading(false)
+        }
+      })
     return () => { cancelled = true }
   }, [])
 
   const load = React.useCallback(async () => {
+    if (jiraConfigured !== true) return
     // Aborta qualquer requisição anterior em voo antes de iniciar uma nova
     abortRef.current?.abort()
     const controller = new AbortController()
@@ -511,7 +537,7 @@ export function IndividualLancamentosSection({
       setError(e instanceof Error ? e.message : "Erro ao carregar.")
       setLoading(false)
     }
-  }, [evaluatedUserId, from, to, preset, anteriormenteRefining])
+  }, [evaluatedUserId, from, to, preset, anteriormenteRefining, jiraConfigured])
 
   React.useEffect(() => {
     void load()
@@ -578,7 +604,25 @@ export function IndividualLancamentosSection({
         </div>
       )}
 
-      {loading ? (
+      {jiraConfigured === false ? (
+        <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-border-default bg-surface-card py-16 text-center shadow-card">
+          <span className="flex size-14 items-center justify-center rounded-full bg-badge-warning/10">
+            <PlugZap className="size-7 text-badge-warning-text" aria-hidden />
+          </span>
+          <div className="max-w-sm">
+            <p className="text-base font-semibold text-text-primary">Integração com Jira não configurada</p>
+            <p className="mt-1 text-sm text-text-secondary">
+              Configure sua conta Jira para visualizar os lançamentos e estatísticas de trabalho.
+            </p>
+          </div>
+          <a
+            href="/configuracoes"
+            className="inline-flex items-center gap-2 rounded-custom border border-border-default bg-surface-input px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          >
+            Ir para Configurações
+          </a>
+        </div>
+      ) : loading ? (
         <SectionSpinner />
       ) : error ? (
         <EmptyState message={`Erro: ${error}`} />
