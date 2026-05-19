@@ -1,7 +1,7 @@
 import type { Preview } from "@storybook/nextjs-vite"
 
 // Import globals.css so design tokens are available in all stories
-import "../app/globals.css"
+import "../src/app/globals.css"
 
 // Design tokens are available via CSS variables from globals.css
 // Import tokens for use in stories if needed
@@ -9,6 +9,12 @@ import "../app/globals.css"
 
 const preview: Preview = {
   parameters: {
+    nextjs: {
+      appDirectory: true,
+      navigation: {
+        pathname: "/",
+      },
+    },
     options: {
       storySort: {
         order: [
