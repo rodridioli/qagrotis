@@ -38,7 +38,10 @@ import type { IntegracaoSafeRecord } from "@/features/integracoes/actions/integr
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { BackToTop } from "@/components/shared/BackToTop"
 import { DominioAvaliacaoModal } from "@/features/individual/components/DominioAvaliacaoModal"
-import type { PendingDominioAvaliacaoDto } from "@/features/individual/actions/individual-dominio"
+import {
+  completarDominioAvaliacao,
+  type PendingDominioAvaliacaoDto,
+} from "@/features/individual/actions/individual-dominio"
 
 const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"
@@ -792,6 +795,7 @@ export default function LayoutClient({
         <DominioAvaliacaoModal
           avaliacaoId={pendingDominioAvaliacao.id}
           configSnapshot={pendingDominioAvaliacao.configSnapshot}
+          onSubmit={completarDominioAvaliacao}
         />
       ) : null}
       <div className="flex h-screen overflow-hidden">
