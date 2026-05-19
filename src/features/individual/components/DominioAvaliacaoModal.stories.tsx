@@ -45,7 +45,7 @@ const meta: Meta<typeof DominioAvaliacaoModal> = {
     docs: {
       description: {
         component:
-          "Wizard de avaliação de domínio em tela cheia. Guia o usuário step a step por produto, com barra de progresso, tela de revisão e tela de conclusão. Obrigatório — não pode ser fechado antes de completar.",
+          "Drawer lateral de avaliação de domínio. Guia o usuário step a step por produto, com indicador de progresso, revisão e tela de conclusão. Obrigatório — não pode ser fechado antes de completar.",
       },
     },
   },

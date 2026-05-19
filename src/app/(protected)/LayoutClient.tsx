@@ -50,8 +50,8 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false, capability: "menu.painel" },
   { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false, capability: "menu.suites" },
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
-  { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
   { href: "/individual/lancamentos", icon: Clock,  label: "Lançamentos",      alwaysEnabled: false, capability: "individual.lancamentos" },
+  { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
   { href: "/equipe",        icon: Users,           label: "Equipe",                 alwaysEnabled: true,  capability: "menu.equipe" },
   { href: "/individual",    icon: User,            label: "Individual",             alwaysEnabled: true,  capability: "menu.individual" },
   { href: "/mapa-conhecimento",     icon: Network,         label: "Mapa de Conhecimento",   alwaysEnabled: true,  capability: "menu.mapaConhecimento" },
@@ -102,6 +102,7 @@ function getTitle(pathname: string, role?: Role, tab?: string): string {
   }
   if (pathname.startsWith("/individual/avaliacoes/nova")) return "Nova avaliação"
   if (/^\/individual\/avaliacoes\/[^/]+$/.test(pathname)) return "Avaliação de desempenho"
+  if (pathname === "/individual/lancamentos") return "Lançamentos"
   if (pathname.startsWith("/individual/")) {
     const secao = pathname.split("/")[2] ?? ""
     const label = individualSectionLabel(secao)
