@@ -5,6 +5,46 @@ import { describe, expect, it } from "vitest"
 
 type Produto = { id: string; modulos: { id: string }[] }
 type Respostas = Record<string, Record<string, number>>
+type Resposta = { produtoId: string; moduloId: string; estrelas: number }
+
+/** Réplica exata de buildInitialRespostas no componente. */
+function buildInitialRespostas(
+  configSnapshot: Produto[],
+  respostasAnteriores?: Resposta[],
+): Respostas {
+  if (!respostasAnteriores?.length) return {}
+  const initial: Respostas = {}
+  for (const produto of configSnapshot) {
+    for (const modulo of produto.modulos) {
+      const anterior = respostasAnteriores.find(
+        (r) => r.produtoId === produto.id && r.moduloId === modulo.id,
+      )
+      if (anterior) {
+        if (!initial[produto.id]) initial[produto.id] = {}
+        initial[produto.id]![modulo.id] = anterior.estrelas
+      }
+    }
+  }
+  return initial
+}
+
+/** Réplica exata de scoreTrendByRowId (IndividualDominioSection). */
+function calcTrend(
+  concluded: { id: string; resultadoPercent: number }[],
+): Record<string, "up" | "down" | "same"> {
+  const m: Record<string, "up" | "down" | "same"> = {}
+  for (let i = 0; i < concluded.length; i++) {
+    const cur = concluded[i]!
+    const older = concluded[i + 1]
+    if (!older) continue
+    m[cur.id] = cur.resultadoPercent > older.resultadoPercent
+      ? "up"
+      : cur.resultadoPercent < older.resultadoPercent
+        ? "down"
+        : "same"
+  }
+  return m
+}
 
 /** Réplica exata de calcMediaGeral no componente (retorna 0, não null). */
 function calcMediaGeral(produtos: Produto[], respostas: Respostas): number {
@@ -245,6 +285,146 @@ describe("BDD: serialização de respostas para envio", () => {
       expect(item.estrelas).toBeLessThanOrEqual(5)
       expect(Number.isInteger(item.estrelas)).toBe(true)
     }
+  })
+})
+
+// ── buildInitialRespostas ─────────────────────────────────────────────────────
+
+describe("buildInitialRespostas", () => {
+  it("CA-08: retorna {} quando respostasAnteriores é undefined", () => {
+    expect(buildInitialRespostas([produtoA])).toEqual({})
+  })
+
+  it("CA-08: retorna {} quando respostasAnteriores é array vazio", () => {
+    expect(buildInitialRespostas([produtoA], [])).toEqual({})
+  })
+
+  it("CA-05: pré-preenche módulos que existem no configSnapshot atual", () => {
+    const anteriores: Resposta[] = [
+      { produtoId: "p1", moduloId: "m1", estrelas: 4 },
+      { produtoId: "p1", moduloId: "m2", estrelas: 5 },
+      { produtoId: "p1", moduloId: "m3", estrelas: 3 },
+    ]
+    const result = buildInitialRespostas([produtoA], anteriores)
+    expect(result).toEqual({ p1: { m1: 4, m2: 5, m3: 3 } })
+  })
+
+  it("CA-06: ignora módulos ausentes no configSnapshot atual (módulo removido)", () => {
+    const anteriores: Resposta[] = [
+      { produtoId: "p1", moduloId: "m1", estrelas: 4 },
+      { produtoId: "p1", moduloId: "m-removido", estrelas: 5 }, // não existe mais
+    ]
+    const result = buildInitialRespostas([produtoA], anteriores)
+    expect(result.p1?.["m-removido"]).toBeUndefined()
+    expect(result.p1?.["m1"]).toBe(4)
+  })
+
+  it("CA-06: ignora produtos ausentes no configSnapshot atual", () => {
+    const anteriores: Resposta[] = [
+      { produtoId: "p-removido", moduloId: "m1", estrelas: 5 },
+    ]
+    const result = buildInitialRespostas([produtoA], anteriores)
+    expect(result["p-removido"]).toBeUndefined()
+  })
+
+  it("CA-09: pré-preenchimento completo leva isAllFilled a true imediatamente", () => {
+    const produtos = [produtoA, produtoB]
+    const total = produtoA.modulos.length + produtoB.modulos.length
+    const anteriores: Resposta[] = [
+      { produtoId: "p1", moduloId: "m1", estrelas: 5 },
+      { produtoId: "p1", moduloId: "m2", estrelas: 4 },
+      { produtoId: "p1", moduloId: "m3", estrelas: 3 },
+      { produtoId: "p2", moduloId: "m4", estrelas: 2 },
+      { produtoId: "p2", moduloId: "m5", estrelas: 1 },
+    ]
+    const respostas = buildInitialRespostas(produtos, anteriores)
+    expect(isAllFilled(produtos, respostas, total)).toBe(true)
+  })
+
+  it("CA-09: pré-preenchimento parcial (módulo novo) mantém isAllFilled false", () => {
+    // produtoA tem m1, m2, m3; anterior só tem m1 e m2 → m3 fica vazio
+    const anteriores: Resposta[] = [
+      { produtoId: "p1", moduloId: "m1", estrelas: 5 },
+      { produtoId: "p1", moduloId: "m2", estrelas: 4 },
+    ]
+    const respostas = buildInitialRespostas([produtoA], anteriores)
+    expect(isAllFilled([produtoA], respostas, produtoA.modulos.length)).toBe(false)
+  })
+
+  it("estrelas pré-preenchidas são inteiros entre 1 e 5", () => {
+    const anteriores: Resposta[] = [
+      { produtoId: "p1", moduloId: "m1", estrelas: 1 },
+      { produtoId: "p1", moduloId: "m2", estrelas: 3 },
+      { produtoId: "p1", moduloId: "m3", estrelas: 5 },
+    ]
+    const result = buildInitialRespostas([produtoA], anteriores)
+    for (const v of Object.values(result.p1 ?? {})) {
+      expect(v).toBeGreaterThanOrEqual(1)
+      expect(v).toBeLessThanOrEqual(5)
+      expect(Number.isInteger(v)).toBe(true)
+    }
+  })
+
+  it("média geral calculada a partir do estado pré-preenchido é correta", () => {
+    // p1: m1=4(80%), m2=5(100%), m3=5(100%) → média 93.33%
+    // p2: m4=2(40%), m5=3(60%) → média 50%
+    // geral: (93.33 + 50) / 2 = 71.67%
+    const anteriores: Resposta[] = [
+      { produtoId: "p1", moduloId: "m1", estrelas: 4 },
+      { produtoId: "p1", moduloId: "m2", estrelas: 5 },
+      { produtoId: "p1", moduloId: "m3", estrelas: 5 },
+      { produtoId: "p2", moduloId: "m4", estrelas: 2 },
+      { produtoId: "p2", moduloId: "m5", estrelas: 3 },
+    ]
+    const produtos = [produtoA, produtoB]
+    const respostas = buildInitialRespostas(produtos, anteriores)
+    expect(calcMediaGeral(produtos, respostas)).toBeCloseTo(71.67, 1)
+  })
+})
+
+// ── scoreTrend (IndividualDominioSection) ────────────────────────────────────
+
+describe("scoreTrend — indicador de tendência", () => {
+  it("CA-02: resultado superior ao anterior → trend 'up'", () => {
+    const trend = calcTrend([
+      { id: "r2", resultadoPercent: 80 },
+      { id: "r1", resultadoPercent: 60 },
+    ])
+    expect(trend["r2"]).toBe("up")
+  })
+
+  it("CA-03: resultado inferior ao anterior → trend 'down'", () => {
+    const trend = calcTrend([
+      { id: "r2", resultadoPercent: 50 },
+      { id: "r1", resultadoPercent: 70 },
+    ])
+    expect(trend["r2"]).toBe("down")
+  })
+
+  it("CA-01: resultado igual ao anterior → trend 'same' (sem exibição de traço)", () => {
+    const trend = calcTrend([
+      { id: "r2", resultadoPercent: 70 },
+      { id: "r1", resultadoPercent: 70 },
+    ])
+    // trend "same" é calculado corretamente — a UI simplesmente não renderiza indicador
+    expect(trend["r2"]).toBe("same")
+  })
+
+  it("CA-04: primeira avaliação não tem trend (sem avaliação anterior para comparar)", () => {
+    const trend = calcTrend([{ id: "r1", resultadoPercent: 80 }])
+    expect(trend["r1"]).toBeUndefined()
+  })
+
+  it("sequência de três avaliações calcula tendências corretamente", () => {
+    // r3=90% (mais recente), r2=70%, r1=80%
+    const trend = calcTrend([
+      { id: "r3", resultadoPercent: 90 },
+      { id: "r2", resultadoPercent: 70 },
+      { id: "r1", resultadoPercent: 80 },
+    ])
+    expect(trend["r3"]).toBe("up")   // 90 > 70
+    expect(trend["r2"]).toBe("down") // 70 < 80
+    expect(trend["r1"]).toBeUndefined()
   })
 })
 

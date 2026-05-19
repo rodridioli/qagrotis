@@ -861,6 +861,7 @@ export default function LayoutClient({
           }}
           avaliacaoId={pendingDominioAvaliacao.id}
           configSnapshot={pendingDominioAvaliacao.configSnapshot}
+          respostasAnteriores={pendingDominioAvaliacao.respostasAnteriores}
           onSubmit={completarDominioAvaliacao}
         />
       ) : null}

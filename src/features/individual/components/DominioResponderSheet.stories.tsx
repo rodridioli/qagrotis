@@ -107,3 +107,40 @@ export const SemProdutos: Story = {
     configSnapshot: [],
   },
 }
+
+export const PreenchidaComAnterior: Story = {
+  name: "Pré-preenchida com avaliação anterior (botão habilitado imediatamente)",
+  args: {
+    configSnapshot: mockProdutos,
+    respostasAnteriores: [
+      { produtoId: "prod-1", moduloId: "mod-1", estrelas: 4 },
+      { produtoId: "prod-1", moduloId: "mod-2", estrelas: 5 },
+      { produtoId: "prod-1", moduloId: "mod-3", estrelas: 3 },
+      { produtoId: "prod-2", moduloId: "mod-4", estrelas: 4 },
+      { produtoId: "prod-2", moduloId: "mod-5", estrelas: 2 },
+      { produtoId: "prod-3", moduloId: "mod-6", estrelas: 5 },
+    ],
+  },
+}
+
+export const PreenchidaParcialmente: Story = {
+  name: "Pré-preenchida parcialmente (módulo novo sem nota anterior)",
+  args: {
+    configSnapshot: [
+      {
+        id: "prod-1",
+        nome: "Agrotis Plataforma Agro",
+        modulos: [
+          { id: "mod-1", nome: "Core / ACC" },
+          { id: "mod-2", nome: "REC - Receituário" },
+          { id: "mod-novo", nome: "Módulo recém-adicionado (sem nota anterior)" },
+        ],
+      },
+    ],
+    respostasAnteriores: [
+      { produtoId: "prod-1", moduloId: "mod-1", estrelas: 4 },
+      { produtoId: "prod-1", moduloId: "mod-2", estrelas: 3 },
+      // mod-novo não tem resposta anterior — deve aparecer sem estrelas
+    ],
+  },
+}
