@@ -38,30 +38,38 @@
 
 ## Avaliação de Domínio
 
-Fluxo full screen imersivo (100vw × 100vh) montado pelo `LayoutClient` quando há avaliação pendente.
+Drawer lateral (`Sheet side="right"`, `sm:max-w-md`) montado pelo `LayoutClient` quando há avaliação pendente. Não bloqueia a aplicação — o restante da tela permanece visível ao fundo.
 
-**Componente:** `src/features/individual/components/DominioAvaliacaoModal.tsx`
+**Componentes:**
+- `src/features/individual/components/DominioResponderSheet.tsx` — drawer de preenchimento (usuário avaliado)
+- `src/features/individual/components/DominioVisualizarSheet.tsx` — drawer de visualização read-only (MGR e usuário, avaliações já concluídas)
+- `src/features/individual/components/DominioAvaliacaoModal.tsx` — modal multi-step legado (mantido, não mais montado no LayoutClient)
 
 **Actions:**
-- `getPendingDominioAvaliacao()` — busca avaliação pendente do usuário logado (chamada no layout)
+- `getPendingDominioAvaliacao()` — busca avaliação pendente do usuário logado (chamada no layout server)
 - `completarDominioAvaliacao(id, respostas[])` — salva respostas; valida via Zod; verifica `evaluatedUserId === session.user.id` (IDOR guard)
 
-**Fluxo:**
-1. Tela abre com fade-in + barra de progresso global no topo
-2. Um produto por vez; módulos avaliados com 1–5 estrelas
-3. "Próximo →" bloqueado até todos os módulos do produto atual terem nota
-4. Slide horizontal entre produtos (250ms ease-in-out)
-5. Após o último produto: tela de conclusão com badge animado, pontuação geral e resumo por produto
-6. Som de sucesso via Web Audio API (C5→E5→G5, suprimido com `prefers-reduced-motion`)
-7. "Confirmar e salvar" chama a action e fecha com fade-out
+**Fluxo (DominioResponderSheet):**
+1. Drawer abre automaticamente via `drawerOpen` state no `LayoutClient`
+2. Todos os produtos visíveis de uma vez em cards expansíveis (default: expandidos)
+3. Cada módulo tem 5 estrelas interativas (1–5); Média Geral e barras de produto atualizam em real-time
+4. Botão "Enviar Avaliação" habilitado somente quando todos os módulos têm nota
+5. Fechar via X ou backdrop → `ConfirmDialog` ("Sair mesmo assim?") antes de fechar
+6. Envio bem-sucedido: `toast.success` + drawer fecha + `router.refresh()` em background
+
+**Cálculo:** média de médias por produto (idêntico ao `calcResultado` do backend em `individual-dominio.ts`)
 
 **Estados:**
-- Vazio (`configSnapshot=[]`): ícone PackageX + mensagem orientativa
-- Loading: botão "Salvando…" desabilitado
-- Erro: `toast.error` via Sonner + tela de conclusão permanece aberta
-- Sucesso: `toast.success` + fade-out + `router.refresh()`
+- Vazio (nenhuma estrela): Média Geral 0%, botão desabilitado, footer mostra "X módulos restantes"
+- Parcial: Média Geral calculada em real-time, botão ainda desabilitado
+- Completo: footer "Pronto para enviar", botão habilitado
+- Enviando: botão "Enviando…" desabilitado
+- Erro: `toast.error`, drawer permanece aberto com respostas preservadas
+- Fechar sem enviar: `ConfirmDialog` — avaliação permanece PENDENTE no banco
 
-**Acessibilidade:** focus trap, `aria-live="polite"` no indicador de step, `role="progressbar"`, Esc abre confirm dialog de saída.
+**Tooltips:** nomes de produto e módulo com `truncate` exibem o nome completo via `Tooltip` do Design System (em ambos `DominioResponderSheet` e `DominioVisualizarSheet`).
+
+**Acessibilidade:** `role="radiogroup"` + `role="radio"` + `aria-checked` nas estrelas; `aria-expanded` nos cards de produto; `aria-label="Fechar"` no botão X.
 
 ## RBAC
 
