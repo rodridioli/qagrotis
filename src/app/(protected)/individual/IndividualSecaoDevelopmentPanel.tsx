@@ -168,11 +168,11 @@ export function IndividualSecaoDevelopmentPanel({
             </Button>
           ) : null}
           {showDominio && isAdministradorMgr ? (
-            <>
+            <div className="flex shrink-0 items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
-                className="shrink-0 gap-2"
+                className="gap-2"
                 onClick={() => setDominioConfiguracaoOpen(true)}
               >
                 <Settings className="size-4" aria-hidden />
@@ -180,13 +180,13 @@ export function IndividualSecaoDevelopmentPanel({
               </Button>
               <Button
                 type="button"
-                className="shrink-0 gap-2"
+                className="gap-2"
                 onClick={() => setSolicitarOpen(true)}
               >
                 <Send className="size-4" aria-hidden />
                 Solicitar Avaliação
               </Button>
-            </>
+            </div>
           ) : null}
           {showFeedbacks ? (
             <Button
