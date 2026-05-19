@@ -31,7 +31,7 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
     prevPath.current = pathname
     if (now && !was) setOpen(true)
     if (!now && was) setOpen(false)
-  }, [pathname, searchParams, canAccessLancamentos])
+  }, [pathname, searchParams, canAccessLancamentos, canAccessPerformance])
 
   const activeTabId = searchParams.get("tab") ?? "performance"
   const parentActive = pathname.startsWith("/equipe")

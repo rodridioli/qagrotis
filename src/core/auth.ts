@@ -116,6 +116,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         token.id = resolveGoogleInternalId(email, activeCreated?.id ?? null, user.id ?? "")
+        token.email = email
       } else if (user) {
         token.id = user.id
         token.email = user.email
@@ -162,10 +163,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           let created = createdById
           if (!created && email) {
-            created = await prisma.createdUser.findFirst({
+            const foundByEmail = await prisma.createdUser.findFirst({
               where: { email: { equals: email, mode: "insensitive" } },
-              select: { type: true, accessProfile: true, photoPath: true },
+              select: { id: true, type: true, accessProfile: true, photoPath: true },
             })
+            if (foundByEmail) {
+              created = foundByEmail
+              // Se token.id era o fallback OAuth (não matchou nenhum createdUser), corrigir agora
+              if (!createdById) token.id = foundByEmail.id
+            }
           }
 
           const resolvedType = profile?.type ?? created?.type ?? "Padrão"
