@@ -3,6 +3,36 @@ import { DominioAvaliacaoModal } from "./DominioAvaliacaoModal"
 
 const mockOnSubmit = () => Promise.resolve({})
 
+const mockProdutos = [
+  {
+    id: "prod-1",
+    nome: "Agrotis Plataforma Agro",
+    modulos: [
+      { id: "mod-1", nome: "Core / ACC" },
+      { id: "mod-2", nome: "REC - Receituário" },
+      { id: "mod-3", nome: "CDP - Controle de Pátio" },
+    ],
+  },
+  {
+    id: "prod-2",
+    nome: "Módulo de Sementes",
+    modulos: [
+      { id: "mod-4", nome: "SEM - Campos de Sementes" },
+      { id: "mod-5", nome: "LAS - Laboratório de Sementes" },
+      { id: "mod-6", nome: "BEN - Beneficiamento" },
+      { id: "mod-7", nome: "CSEM - Comercial Sementes" },
+    ],
+  },
+  {
+    id: "prod-3",
+    nome: "Módulo Financeiro",
+    modulos: [
+      { id: "mod-8", nome: "ARM - Armazenagem" },
+      { id: "mod-9", nome: "FIN - Contas a Pagar" },
+    ],
+  },
+]
+
 const meta: Meta<typeof DominioAvaliacaoModal> = {
   title: "Individual/DominioAvaliacaoModal",
   component: DominioAvaliacaoModal,
@@ -27,7 +57,13 @@ const meta: Meta<typeof DominioAvaliacaoModal> = {
 export default meta
 type Story = StoryObj<typeof DominioAvaliacaoModal>
 
-// ── 1 produto, 1 módulo ───────────────────────────────────────
+export const Default: Story = {
+  name: "Agrotis — 3 produtos",
+  args: {
+    avaliacaoId: "avaliacao-mock-123",
+    configSnapshot: mockProdutos,
+  },
+}
 
 export const UmProdutoUmModulo: Story = {
   name: "1 produto · 1 módulo",
@@ -42,8 +78,6 @@ export const UmProdutoUmModulo: Story = {
     ],
   },
 }
-
-// ── 3 produtos, 2–4 módulos cada ─────────────────────────────
 
 export const TresProdutosVariosModulos: Story = {
   name: "3 produtos · 2–4 módulos",
@@ -80,8 +114,6 @@ export const TresProdutosVariosModulos: Story = {
     ],
   },
 }
-
-// ── Sem produtos configurados ─────────────────────────────────
 
 export const SemProdutos: Story = {
   name: "Sem produtos configurados",

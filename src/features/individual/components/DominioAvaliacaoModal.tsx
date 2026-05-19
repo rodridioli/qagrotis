@@ -3,10 +3,12 @@
 import * as React from "react"
 import {
   Star,
+  Trophy,
+  PackageX,
+  X,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
-  CheckCircle2,
-  AlertCircle,
-  XCircle,
   Pencil,
   Loader2,
 } from "lucide-react"
@@ -17,6 +19,7 @@ import type {
   DominioProduto,
   DominioAvaliacaoResposta,
 } from "@/features/individual/actions/individual-dominio"
+import { BadgeAchievement } from "@/features/individual/components/BadgeAchievement"
 import { cn } from "@/core/utils"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -65,6 +68,41 @@ function isProdutoComplete(
   return produto.modulos.every((m) => !!respostas[produto.id]?.[m.id])
 }
 
+function playSuccessChord() {
+  if (typeof window === "undefined") return
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+  try {
+    const AudioCtx =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    const notes = [
+      { freq: 523.25, delay: 0 },
+      { freq: 659.25, delay: 0.2 },
+      { freq: 783.99, delay: 0.4 },
+    ]
+    for (const { freq, delay } of notes) {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = "sine"
+      osc.frequency.value = freq
+      const t = ctx.currentTime + delay
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.3, t + 0.01)
+      gain.gain.setValueAtTime(0.3, t + 0.2)
+      gain.gain.linearRampToValueAtTime(0, t + 0.35)
+      osc.start(t)
+      osc.stop(t + 0.4)
+    }
+    setTimeout(() => void ctx.close(), 1200)
+  } catch {
+    // silently ignore — audio is enhancement only
+  }
+}
+
 function slideClass(direction: Direction): string {
   return direction === "forward"
     ? "animate-in fade-in slide-in-from-right-4 duration-200"
@@ -75,6 +113,13 @@ function slideClass(direction: Direction): string {
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hovered, setHovered] = React.useState(0)
+  const [bouncingStar, setBouncingStar] = React.useState<number | null>(null)
+
+  function handleClick(star: number) {
+    onChange(star)
+    setBouncingStar(star)
+    setTimeout(() => setBouncingStar(null), 350)
+  }
 
   return (
     <div
@@ -85,18 +130,20 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
     >
       {[1, 2, 3, 4, 5].map((star) => {
         const filled = star <= (hovered || value)
+        const bouncing = bouncingStar === star
         return (
           <button
             key={star}
             type="button"
             role="radio"
             aria-checked={star === value}
-            onClick={() => onChange(star)}
+            onClick={() => handleClick(star)}
             onMouseEnter={() => setHovered(star)}
             aria-label={`${star} estrela${star > 1 ? "s" : ""}`}
             className={cn(
               "rounded p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1",
               filled ? "text-amber-400" : "text-neutral-grey-300 hover:text-amber-300",
+              bouncing && "badge-hex-bounce",
             )}
           >
             <Star
@@ -123,21 +170,29 @@ function WelcomeScreen({
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-10 text-center animate-in fade-in duration-300">
-      <div className="flex size-16 items-center justify-center rounded-full bg-brand-primary/10">
-        <ClipboardList className="size-8 text-brand-primary" aria-hidden />
-      </div>
+      {produtos.length === 0 ? (
+        <PackageX className="size-12 text-text-secondary" aria-hidden />
+      ) : (
+        <div className="flex size-16 items-center justify-center rounded-full bg-brand-primary/10">
+          <ClipboardList className="size-8 text-brand-primary" aria-hidden />
+        </div>
+      )}
       <div className="flex flex-col gap-2">
         <h2 id="dominio-modal-title" className="text-2xl font-bold text-text-primary">
           Avaliação de domínio
         </h2>
         <p className="mx-auto max-w-sm text-sm text-text-secondary">
-          Avalie seu nível de conhecimento em cada módulo. Todos os campos são obrigatórios.
+          {produtos.length === 0
+            ? "Nenhum produto configurado para avaliação."
+            : "Avalie seu nível de conhecimento em cada módulo. Todos os campos são obrigatórios."}
         </p>
       </div>
-      <div className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-surface-card px-3 py-1.5 text-xs text-text-secondary">
-        {produtos.length} produto{produtos.length !== 1 ? "s" : ""} · {totalModulos} módulo
-        {totalModulos !== 1 ? "s" : ""}
-      </div>
+      {produtos.length > 0 && (
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-surface-card px-3 py-1.5 text-xs text-text-secondary">
+          {produtos.length} produto{produtos.length !== 1 ? "s" : ""} · {totalModulos} módulo
+          {totalModulos !== 1 ? "s" : ""}
+        </div>
+      )}
       <Button size="lg" className="min-w-40" onClick={onStart}>
         Começar
       </Button>
@@ -247,15 +302,19 @@ function ProductStep({
             onClick={onPrev}
             aria-label={index > 0 ? "Voltar para o produto anterior" : "Voltar para a introdução"}
           >
+            <ChevronLeft className="size-4" aria-hidden />
             Anterior
           </Button>
           <Button
             onClick={onNext}
             disabled={!isComplete}
-            aria-label={isComplete ? "Avançar para o próximo produto" : "Avalie todos os módulos para continuar"}
+            aria-label={
+              isComplete ? "Avançar para o próximo produto" : "Avalie todos os módulos para continuar"
+            }
             className="sm:min-w-32"
           >
             Próximo
+            <ChevronRight className="size-4" aria-hidden />
           </Button>
         </div>
       </div>
@@ -315,10 +374,10 @@ function ReviewScreen({
                           className={cn(
                             "text-xs font-semibold tabular-nums",
                             media >= 80
-                              ? "text-green-600 dark:text-green-400"
+                              ? "text-badge-success"
                               : media >= 50
-                                ? "text-amber-600 dark:text-amber-400"
-                                : "text-red-600 dark:text-red-400",
+                                ? "text-amber-500 dark:text-amber-400"
+                                : "text-destructive",
                           )}
                         >
                           {media.toFixed(0)}%
@@ -376,6 +435,7 @@ function ReviewScreen({
       <div className="flex-shrink-0 border-t border-border-default bg-muted/30 px-6 py-4">
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button variant="outline" onClick={onPrev} disabled={submitting}>
+            <ChevronLeft className="size-4" aria-hidden />
             Anterior
           </Button>
           <Button onClick={onConfirm} disabled={submitting} className="sm:min-w-48">
@@ -397,49 +457,74 @@ function ReviewScreen({
 // ─── ConclusionScreen ──────────────────────────────────────────────────────────
 
 function ConclusionScreen({
+  produtos,
+  respostas,
   resultadoPercent,
   onClose,
 }: {
+  produtos: DominioProduto[]
+  respostas: Record<string, Record<string, number>>
   resultadoPercent: number
   onClose: () => void
 }) {
-  const isGreat = resultadoPercent >= 80
-  const isOk = resultadoPercent >= 50
-
-  const Icon = isGreat ? CheckCircle2 : isOk ? AlertCircle : XCircle
-  const iconColor = isGreat
-    ? "text-green-600 dark:text-green-400"
-    : isOk
-      ? "text-amber-600 dark:text-amber-400"
-      : "text-red-600 dark:text-red-400"
-  const scoreColor = isGreat
-    ? "text-green-600 dark:text-green-400"
-    : isOk
-      ? "text-amber-600 dark:text-amber-400"
-      : "text-red-600 dark:text-red-400"
-  const subtitle = isGreat
-    ? "Excelente! Seu domínio está acima da média."
-    : isOk
-      ? "Bom trabalho! Há espaço para crescer."
-      : "Continue estudando para melhorar seu domínio."
-
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-10 text-center animate-in fade-in zoom-in-95 duration-300">
-      <Icon className={cn("size-16", iconColor)} aria-hidden />
-      <div className="flex flex-col gap-2">
+    <div className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-6 py-10 text-center animate-in fade-in zoom-in-95 duration-300">
+      <BadgeAchievement
+        label="Domínio"
+        icon={Trophy}
+        color="var(--qagrotis-primary-700)"
+        unlocked
+        autoAnimate
+        description="Avaliação de domínio concluída"
+      />
+
+      <div className="flex flex-col gap-1">
         <h2 id="dominio-modal-title" className="text-2xl font-bold text-text-primary">
           Avaliação concluída!
         </h2>
-        <p className="text-sm text-text-secondary">{subtitle}</p>
-      </div>
-      <div className="flex flex-col items-center gap-1 rounded-xl border border-border-default bg-surface-card px-10 py-5">
-        <span className="text-xs font-medium uppercase tracking-wide text-text-secondary">
-          Domínio geral
-        </span>
-        <span className={cn("text-5xl font-bold tabular-nums", scoreColor)}>
+        <p className="text-sm text-text-secondary">Domínio geral</p>
+        <p className="text-5xl font-bold tabular-nums text-primary-700">
           {resultadoPercent.toFixed(0)}%
-        </span>
+        </p>
       </div>
+
+      {/* Summary per product */}
+      <div className="w-full max-w-sm rounded-xl border border-border-default bg-surface-card p-4">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+          Resumo por produto
+        </h3>
+        <div className="flex flex-col gap-2">
+          {produtos.map((produto) => {
+            const media = calcProdutoMedia(produto, respostas)
+            return (
+              <div key={produto.id} className="flex items-baseline gap-2">
+                <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
+                  {produto.nome}
+                </span>
+                <span
+                  className="shrink-0 flex-1 border-b border-dashed border-border-default"
+                  aria-hidden
+                />
+                <span
+                  className={cn(
+                    "w-10 shrink-0 text-right text-sm font-semibold tabular-nums",
+                    media === null
+                      ? "text-text-secondary"
+                      : media >= 80
+                        ? "text-badge-success"
+                        : media >= 50
+                          ? "text-amber-500 dark:text-amber-400"
+                          : "text-destructive",
+                  )}
+                >
+                  {media !== null ? `${media.toFixed(0)}%` : "—"}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
       <Button size="lg" className="min-w-40" onClick={onClose}>
         Fechar
       </Button>
@@ -464,6 +549,8 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
   const [respostas, setRespostas] = React.useState<Record<string, Record<string, number>>>({})
   const [submitting, setSubmitting] = React.useState(false)
   const [resultadoPercent, setResultadoPercent] = React.useState<number>(0)
+  const [showExitConfirm, setShowExitConfirm] = React.useState(false)
+  const [exiting, setExiting] = React.useState(false)
 
   // Focus first interactive element when step changes
   React.useEffect(() => {
@@ -475,7 +562,7 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
     first?.focus()
   }, [step])
 
-  // Focus trap: keep Tab cycling within the modal
+  // Focus trap
   React.useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -483,10 +570,10 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault()
+        if (step !== "done") setShowExitConfirm((v) => !v)
         return
       }
       if (e.key !== "Tab") return
-      // container is const-narrowed above; re-check satisfies TS strict closures
       if (!container) return
       const focusable = Array.from(
         container.querySelectorAll<HTMLElement>(
@@ -505,7 +592,7 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
 
     container.addEventListener("keydown", onKeyDown)
     return () => container.removeEventListener("keydown", onKeyDown)
-  }, [])
+  }, [step])
 
   function setEstrelas(produtoId: string, moduloId: string, val: number) {
     setRespostas((prev) => ({
@@ -561,20 +648,41 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
 
     setResultadoPercent(calcMediaGeral(produtos, respostas))
     toast.success("Avaliação de domínio concluída!")
+    playSuccessChord()
     goTo("done", "forward")
   }
 
-  function handleClose() {
-    router.refresh()
+  function handleExit() {
+    setExiting(true)
+    setTimeout(() => router.refresh(), 250)
   }
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
-      onKeyDown={(e) => {
-        if (e.key === "Escape") e.preventDefault()
-      }}
+      className={cn(
+        "fixed inset-0 z-[9999] flex flex-col bg-background",
+        exiting
+          ? "animate-out fade-out zoom-out-[0.97] duration-200 fill-mode-forwards"
+          : "animate-in fade-in zoom-in-[0.97] duration-300 fill-mode-forwards",
+      )}
     >
+      {/* Header */}
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-default px-4 sm:px-6">
+        <span className="text-sm font-semibold text-text-primary">QAgrotis</span>
+        {step !== "done" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Sair da avaliação"
+            onClick={() => setShowExitConfirm(true)}
+          >
+            <X className="size-4" aria-hidden />
+            <span className="ml-1.5 hidden sm:inline">Sair</span>
+          </Button>
+        )}
+      </header>
+
+      {/* Modal container */}
       <div
         ref={containerRef}
         role="dialog"
@@ -582,7 +690,7 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
         aria-labelledby="dominio-modal-title"
         aria-live="polite"
         aria-atomic="true"
-        className="relative flex h-[95dvh] w-full flex-col overflow-hidden bg-background sm:h-auto sm:max-h-[92dvh] sm:max-w-2xl sm:rounded-2xl sm:shadow-2xl sm:ring-1 sm:ring-foreground/10"
+        className="flex flex-1 flex-col overflow-hidden"
       >
         {step === "welcome" && (
           <WelcomeScreen produtos={produtos} totalModulos={totalModulos} onStart={handleStart} />
@@ -615,9 +723,43 @@ export function DominioAvaliacaoModal({ avaliacaoId, configSnapshot, onSubmit }:
         )}
 
         {step === "done" && (
-          <ConclusionScreen resultadoPercent={resultadoPercent} onClose={handleClose} />
+          <ConclusionScreen
+            produtos={produtos}
+            respostas={respostas}
+            resultadoPercent={resultadoPercent}
+            onClose={handleExit}
+          />
         )}
       </div>
+
+      {/* Exit confirm dialog */}
+      {showExitConfirm && (
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center bg-black/40"
+          aria-live="assertive"
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="exit-dialog-title"
+            className="mx-4 w-full max-w-sm rounded-xl bg-background p-6 shadow-card"
+          >
+            <h2 id="exit-dialog-title" className="text-base font-semibold text-text-primary">
+              Sair da avaliação?
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">Seu progresso não será salvo.</p>
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+              <Button autoFocus variant="ghost" onClick={() => setShowExitConfirm(false)}>
+                Continuar avaliação
+              </Button>
+              <Button variant="destructive" onClick={handleExit}>
+                Sair mesmo assim
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -11,6 +11,8 @@ export interface BadgeAchievementProps {
   color: string
   unlocked: boolean
   description?: string
+  /** Trigger bounce+turn animation on mount (for programmatic use) */
+  autoAnimate?: boolean
 }
 
 export function BadgeAchievement({
@@ -19,8 +21,9 @@ export function BadgeAchievement({
   color,
   unlocked,
   description,
+  autoAnimate = false,
 }: BadgeAchievementProps) {
-  const [animKey, setAnimKey] = React.useState(0)
+  const [animKey, setAnimKey] = React.useState(autoAnimate ? 1 : 0)
   const [hovered, setHovered] = React.useState(false)
   const badgeRef = React.useRef<HTMLDivElement>(null)
 
