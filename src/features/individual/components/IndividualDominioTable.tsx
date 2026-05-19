@@ -33,9 +33,9 @@ function dominioCodigoPadded(codigo: number): string {
 }
 
 function resultadoToneClass(pct: number): string {
-  if (pct >= 80) return "text-green-600 dark:text-green-400"
-  if (pct >= 50) return "text-amber-600 dark:text-amber-400"
-  return "text-red-600 dark:text-red-400"
+  if (pct >= 80) return "text-badge-success-text"
+  if (pct >= 50) return "text-badge-warning-text"
+  return "text-destructive"
 }
 
 export function IndividualDominioTable({
@@ -113,12 +113,12 @@ export function IndividualDominioTable({
                         </span>
                         {trend === "up" ? (
                           <ChevronUp
-                            className="size-4 shrink-0 text-green-600 dark:text-green-400"
+                            className="size-4 shrink-0 text-badge-success-text"
                             aria-label="Resultado superior ao anterior"
                           />
                         ) : trend === "down" ? (
                           <ChevronDown
-                            className="size-4 shrink-0 text-red-600 dark:text-red-400"
+                            className="size-4 shrink-0 text-destructive"
                             aria-label="Resultado inferior ao anterior"
                           />
                         ) : trend === "same" ? (

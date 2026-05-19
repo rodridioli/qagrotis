@@ -60,6 +60,7 @@ export function TableToolbar(props: TableToolbarProps) {
               <button
                 type="button"
                 onClick={onFilterOpen}
+                aria-label="Abrir filtros"
                 className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100"
               >
                 <SlidersHorizontal className="size-4" />
