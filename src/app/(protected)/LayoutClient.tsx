@@ -72,8 +72,24 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
     { capability: "menu.painel" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
-    { capability: "equipe.lancamentos" },
-    { capability: "equipe.performance" },
+    { capability: "menu.configuracoes" },
+  ],
+  "Administrador:QA": [
+    { capability: "menu.painel" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
+  ],
+  "Administrador:UX": [
+    { capability: "menu.painel" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
+  ],
+  "Administrador:TW": [
+    { capability: "menu.painel" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
   ],
 }
@@ -111,12 +127,6 @@ function getTitle(pathname: string, role?: Role, tab?: string): string {
     if (label) return `Individual — ${label}`
   }
   if (pathname.startsWith("/equipe")) {
-    if (tab === "lancamentos" && (role === "Administrador:QA" || role === "Administrador:UX" || role === "Administrador:TW" || role === "Administrador:MGR")) {
-      return "Lançamentos"
-    }
-    if (tab === "performance" && role === "Administrador:MGR") {
-      return "Indicadores"
-    }
     const entry = EQUIPE_NAV_ENTRIES.find((e) => e.id === tab)
     if (entry) return `Equipe — ${entry.label}`
     return "Equipe"
@@ -666,7 +676,7 @@ export default function LayoutClient({
   const pathname = usePathname()
   const { data: session } = useSession()
   const role: Role = buildRole(session?.user?.type, session?.user?.accessProfile)
-  const canAccessEquipeLancamentos = false
+  const canAccessEquipeLancamentos = can(role, "equipe.lancamentos") && role !== "Administrador:MGR"
   const canAccessEquipePerformance = false
   const accessProfile: AccessProfile = (session?.user?.accessProfile as AccessProfile) ?? "QA"
   const [collapsed, setCollapsed] = useState(false)
