@@ -380,10 +380,10 @@ function DashboardPanel({
   } else {
     // QA: dois novos cards, mais Testes Realizados como 5º card
     const retornoValor =
-      brokenTestSubtasksTotalInScope ||
       reporterBrokenTestIssueCount ||
       brokenTestsCreatedByUser ||
       brokenTestsOpenedCount ||
+      brokenTestSubtasksTotalInScope ||
       stats.brokenTestCountFromWorklogs
     card1 = <StatCard icon={Bug}    label="Jiras abertos (Broken)" value={retornoValor}                                          iconVariant="warning" />
     card2 = <StatCard icon={AlertTriangle} label="Cenários com Erro" value={qtdCenariosErroTotalProp ?? stats.qtdCenariosErroTotal} iconVariant="destructive" />

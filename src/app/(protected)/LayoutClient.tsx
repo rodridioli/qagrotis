@@ -4,7 +4,7 @@ import React, { useState, useEffect, useTransition, useRef, Suspense } from "rea
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
-  LayoutDashboard, FileText, Rocket, Clock,
+  LayoutDashboard, FileText, Rocket, Clock, Timer,
   Settings, LogOut, PanelLeftClose,
   PanelLeftOpen, Menu, Moon, Sun, Sparkles, Users,
   Network, ClipboardCheck, MessageSquare, User,
@@ -50,6 +50,7 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false, capability: "menu.painel" },
   { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false, capability: "menu.suites" },
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
+  { href: "/equipe?tab=lancamentos", icon: Timer,  label: "Lançamentos",      alwaysEnabled: true,  capability: "equipe.lancamentos" },
   { href: "/individual/lancamentos", icon: Clock,  label: "Lançamentos",      alwaysEnabled: false, capability: "individual.lancamentos" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
   { href: "/mapa-conhecimento",     icon: Network,         label: "Mapa de Conhecimento",   alwaysEnabled: true,  capability: "menu.mapaConhecimento" },
@@ -68,9 +69,9 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
 const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability; label?: string }>>> = {
   "Administrador:MGR": [
     { capability: "menu.painel" },
-    { capability: "menu.configuracoes" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
   ],
 }
 
@@ -107,6 +108,9 @@ function getTitle(pathname: string, role?: Role, tab?: string): string {
     if (label) return `Individual — ${label}`
   }
   if (pathname.startsWith("/equipe")) {
+    if (tab === "lancamentos" && (role === "Administrador:QA" || role === "Administrador:UX" || role === "Administrador:TW")) {
+      return "Lançamentos"
+    }
     const entry = EQUIPE_NAV_ENTRIES.find((e) => e.id === tab)
     if (entry) return `Equipe — ${entry.label}`
     return "Equipe"
@@ -138,6 +142,7 @@ interface SidebarProps {
 const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, role, canAccessEquipeLancamentos, canAccessEquipePerformance, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const sidebarSearchParams = useSearchParams()
 
   return (
     <>
@@ -309,9 +314,11 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
               }
 
               const isAssistente = href === "/assistente"
-              const isActive = isAssistente
-                ? assistenteOpen
-                : !disabled && pathname.startsWith(href)
+              const isActive = href === "/equipe?tab=lancamentos"
+                ? pathname === "/equipe" && sidebarSearchParams.get("tab") === "lancamentos"
+                : isAssistente
+                  ? assistenteOpen
+                  : !disabled && pathname.startsWith(href)
               const showLabel = !collapsed
 
               if (disabled) {
@@ -653,7 +660,11 @@ export default function LayoutClient({
   const pathname = usePathname()
   const { data: session } = useSession()
   const role: Role = buildRole(session?.user?.type, session?.user?.accessProfile)
-  const canAccessEquipeLancamentos = can(role, "equipe.lancamentos")
+  const canAccessEquipeLancamentos =
+    can(role, "equipe.lancamentos") &&
+    role !== "Administrador:QA" &&
+    role !== "Administrador:UX" &&
+    role !== "Administrador:TW"
   const canAccessEquipePerformance = can(role, "equipe.performance")
   const accessProfile: AccessProfile = (session?.user?.accessProfile as AccessProfile) ?? "QA"
   const [collapsed, setCollapsed] = useState(false)
@@ -796,21 +807,23 @@ export default function LayoutClient({
         />
       ) : null}
       <div className="flex h-screen overflow-hidden">
-        <Sidebar
-          collapsed={collapsed}
-          mobileOpen={mobileOpen}
-          onCloseMobile={() => setMobileOpen(false)}
-          isDark={isDark}
-          assistenteOpen={assistenteOpen}
-          onAssistenteOpen={() => setAssistenteOpen(true)}
-          hasSistemaModulo={hasSistemaModulo}
-          hasCenario={hasCenario}
-          hasIntegracoes={integracoes.length > 0}
-          role={role}
-          canAccessEquipeLancamentos={canAccessEquipeLancamentos}
-          canAccessEquipePerformance={canAccessEquipePerformance}
-          onNavigate={handleNavigate}
-        />
+        <Suspense fallback={null}>
+          <Sidebar
+            collapsed={collapsed}
+            mobileOpen={mobileOpen}
+            onCloseMobile={() => setMobileOpen(false)}
+            isDark={isDark}
+            assistenteOpen={assistenteOpen}
+            onAssistenteOpen={() => setAssistenteOpen(true)}
+            hasSistemaModulo={hasSistemaModulo}
+            hasCenario={hasCenario}
+            hasIntegracoes={integracoes.length > 0}
+            role={role}
+            canAccessEquipeLancamentos={canAccessEquipeLancamentos}
+            canAccessEquipePerformance={canAccessEquipePerformance}
+            onNavigate={handleNavigate}
+          />
+        </Suspense>
         <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Suspense fallback={null}>
