@@ -24,6 +24,8 @@ export interface DominioAvaliacaoListRow {
   codigo: number
   /** ISO yyyy-mm-dd (data de conclusão ou criação). */
   dataYmd: string
+  /** ISO 8601 completo — data/hora de criação (solicitação). */
+  createdAtIso: string
   resultadoPercent: number | null
   status: "PENDENTE" | "CONCLUIDA"
 }
@@ -160,6 +162,7 @@ export async function listDominioAvaliacoes(
       id: r.id,
       codigo: r.codigo,
       dataYmd: toDateYmd(r.status === "CONCLUIDA" ? r.updatedAt : r.createdAt),
+      createdAtIso: r.createdAt.toISOString(),
       resultadoPercent: r.resultadoPercent,
       status: r.status as "PENDENTE" | "CONCLUIDA",
     }))

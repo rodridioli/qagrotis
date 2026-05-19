@@ -106,14 +106,19 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
         prev.map((p) => (p.id === produtoId ? { ...p, nome: val } : p)),
       )
     } else if (editingKey.startsWith("modulo-")) {
-      const [, produtoId, moduloId] = editingKey.split("-")
-      setProdutos((prev) =>
-        prev.map((p) =>
-          p.id === produtoId
+      // IDs contain hyphens, so split("-") is unreliable.
+      // Instead, find the produto whose id is a prefix of the key after "modulo-".
+      const rest = editingKey.slice("modulo-".length)
+      setProdutos((prev) => {
+        const produto = prev.find((p) => rest.startsWith(p.id + "-"))
+        if (!produto) return prev
+        const moduloId = rest.slice(produto.id.length + 1)
+        return prev.map((p) =>
+          p.id === produto.id
             ? { ...p, modulos: p.modulos.map((m) => (m.id === moduloId ? { ...m, nome: val } : m)) }
             : p,
-        ),
-      )
+        )
+      })
     }
     setEditingKey(null)
     setDirty(true)

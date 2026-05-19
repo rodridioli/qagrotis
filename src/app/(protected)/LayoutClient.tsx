@@ -131,11 +131,12 @@ interface SidebarProps {
   role: Role
   canAccessEquipeLancamentos: boolean
   canAccessEquipePerformance: boolean
+  canAccessIndividualLancamentos: boolean
   /** Navegação com transição (mantém overlay de carregamento até a rota resolver). */
   onNavigate?: (href: string) => void
 }
 
-const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, role, canAccessEquipeLancamentos, canAccessEquipePerformance, onNavigate }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, role, canAccessEquipeLancamentos, canAccessEquipePerformance, canAccessIndividualLancamentos, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -289,7 +290,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                     <IndividualSidebarNavGroup
                       collapsed={collapsed}
                       onNavigate={onNavigate}
-                      canAccessLancamentos={false}
+                      canAccessLancamentos={canAccessIndividualLancamentos}
                     />
                   </Suspense>
                 )
@@ -658,6 +659,7 @@ export default function LayoutClient({
   const role: Role = buildRole(session?.user?.type, session?.user?.accessProfile)
   const canAccessEquipeLancamentos = can(role, "equipe.lancamentos")
   const canAccessEquipePerformance = can(role, "equipe.performance")
+  const canAccessIndividualLancamentos = can(role, "individual.lancamentos")
   const accessProfile: AccessProfile = (session?.user?.accessProfile as AccessProfile) ?? "QA"
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -812,6 +814,7 @@ export default function LayoutClient({
           role={role}
           canAccessEquipeLancamentos={canAccessEquipeLancamentos}
           canAccessEquipePerformance={canAccessEquipePerformance}
+          canAccessIndividualLancamentos={canAccessIndividualLancamentos}
           onNavigate={handleNavigate}
         />
         <AssistenteDrawer open={assistenteOpen} onOpenChange={setAssistenteOpen} integracoes={integracoes} />

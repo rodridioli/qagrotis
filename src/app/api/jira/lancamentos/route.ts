@@ -68,6 +68,12 @@ function mergeEntryWithPatch(
         : e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)
           ? e.qtdCenariosQA
           : null,
+    qtdCenariosErro:
+      patch.qtdCenariosErro != null && Number.isFinite(patch.qtdCenariosErro)
+        ? patch.qtdCenariosErro
+        : e.qtdCenariosErro != null && Number.isFinite(e.qtdCenariosErro)
+          ? e.qtdCenariosErro
+          : null,
     projectName: patch.projectName?.trim() ? patch.projectName : e.projectName?.trim() ? e.projectName : null,
     typeField: patch.typeField?.trim() ? patch.typeField : e.typeField?.trim() ? e.typeField : null,
   }
@@ -83,7 +89,7 @@ export async function GET(req: NextRequest) {
   }
 
   const role = buildRole(session.user.type, session.user.accessProfile)
-  if (!can(role, "equipe.lancamentos")) {
+  if (!can(role, "equipe.lancamentos") && !can(role, "individual.lancamentos")) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 

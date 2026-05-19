@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Trash2 } from "lucide-react"
+import { Clock, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -34,15 +34,28 @@ function matchesDateSearch(dataYmd: string, query: string): boolean {
   )
 }
 
+function formatRequestDate(iso: string): string {
+  const d = new Date(iso)
+  const day = String(d.getDate()).padStart(2, "0")
+  const month = String(d.getMonth() + 1).padStart(2, "0")
+  const year = d.getFullYear()
+  const hours = String(d.getHours()).padStart(2, "0")
+  const minutes = String(d.getMinutes()).padStart(2, "0")
+  return `${day}/${month}/${year} às ${hours}:${minutes}`
+}
+
 export interface IndividualDominioSectionProps {
   evaluatedUserId: string
   /** Quando true, oculta o botão de excluir (usuário sem permissão MGR). */
   readOnly?: boolean
+  /** Incrementar para forçar recarregamento da lista. */
+  refreshKey?: number
 }
 
 export function IndividualDominioSection({
   evaluatedUserId,
   readOnly = false,
+  refreshKey,
 }: IndividualDominioSectionProps) {
   const [rows, setRows] = React.useState<DominioAvaliacaoListRow[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -71,7 +84,7 @@ export function IndividualDominioSection({
 
   React.useEffect(() => {
     void refetch()
-  }, [refetch])
+  }, [refetch, refreshKey])
 
   const filtered = React.useMemo(
     () => rows.filter((r) => matchesDateSearch(r.dataYmd, q)),
@@ -121,6 +134,25 @@ export function IndividualDominioSection({
     void refetch()
   }
 
+  const pendingRow = rows.find((r) => r.status === "PENDENTE")
+
+  const toolbarLeading = (
+    <div className="flex flex-wrap items-center gap-2.5">
+      <span className="text-sm font-medium text-text-primary">
+        Total de avaliações:{" "}
+        <span className="font-bold">
+          {(loading ? 0 : filtered.length).toLocaleString("pt-BR")}
+        </span>
+      </span>
+      {pendingRow && (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-400">
+          <Clock className="size-3 shrink-0" aria-hidden />
+          Enviada em {formatRequestDate(pendingRow.createdAtIso)}
+        </span>
+      )}
+    </div>
+  )
+
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
@@ -131,8 +163,7 @@ export function IndividualDominioSection({
             setPage(1)
           }}
           searchPlaceholder="Buscar por data…"
-          totalLabel="Total de avaliações"
-          totalCount={loading ? 0 : filtered.length}
+          leadingSummary={toolbarLeading}
           baseCount={loading ? 0 : rows.length}
         />
 

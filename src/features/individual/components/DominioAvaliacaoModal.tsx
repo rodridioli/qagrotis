@@ -45,6 +45,7 @@ const C = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function parseModulo(nome: string): { code: string | null; label: string } {
+  if (/^Core\s*\/\s*ACC$/i.test(nome.trim())) return { code: "CORE", label: "ACC" }
   const m = /^([A-Z0-9]{2,6})\s*[-–]\s*(.+)$/.exec(nome)
   if (m) return { code: m[1]!, label: m[2]! }
   return { code: null, label: nome }
