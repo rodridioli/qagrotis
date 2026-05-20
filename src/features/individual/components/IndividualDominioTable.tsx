@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { ChevronDown, ChevronUp, Eye, MoreVertical, Trash2 } from "lucide-react"
+import { Eye, MoreVertical, Trash2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -102,26 +102,13 @@ export function IndividualDominioTable({
                     {r.status === "PENDENTE" ? (
                       <span className="text-sm text-text-secondary italic">Pendente</span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5">
-                        <span
-                          className={cn(
-                            "text-sm font-semibold tabular-nums",
-                            resultadoToneClass(pct),
-                          )}
-                        >
-                          {pct.toFixed(0)}%
-                        </span>
-                        {trend === "up" ? (
-                          <ChevronUp
-                            className="size-4 shrink-0 text-badge-success-text"
-                            aria-label="Resultado superior ao anterior"
-                          />
-                        ) : trend === "down" ? (
-                          <ChevronDown
-                            className="size-4 shrink-0 text-destructive"
-                            aria-label="Resultado inferior ao anterior"
-                          />
-                        ) : null}
+                      <span
+                        className={cn(
+                          "text-sm font-semibold tabular-nums",
+                          resultadoToneClass(pct),
+                        )}
+                      >
+                        {pct.toFixed(0)}%
                       </span>
                     )}
                   </td>
