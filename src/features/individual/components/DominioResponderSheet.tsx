@@ -12,7 +12,6 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import {
   Tooltip,
   TooltipContent,
@@ -67,7 +66,7 @@ function calcMediaGeral(
   for (const p of produtos) {
     const scores = p.modulos
       .map((m) => respostas[p.id]?.[m.id])
-      .filter((v): v is number => !!v)
+      .filter((v): v is number => v !== undefined && v > 0)
       .map((v) => (v / 5) * 100)
     if (scores.length > 0)
       produtoAvgs.push(scores.reduce((a, b) => a + b, 0) / scores.length)
@@ -82,7 +81,7 @@ function calcMediaProduto(
 ): number | null {
   const scores = produto.modulos
     .map((m) => respostas[produto.id]?.[m.id])
-    .filter((v): v is number => !!v)
+    .filter((v): v is number => v !== undefined && v > 0)
     .map((v) => (v / 5) * 100)
   if (scores.length === 0) return null
   return scores.reduce((a, b) => a + b, 0) / scores.length
@@ -100,10 +99,11 @@ function StarInput({
   name: string
 }) {
   const [hover, setHover] = React.useState(0)
-  const display = hover || value
+  const isNA = value === -1
+  const display = isNA ? 0 : (hover || value)
 
   return (
-    <div className="flex items-center gap-0.5" role="radiogroup" aria-label={`Avalie ${name}`}>
+    <div className="flex items-center gap-1" role="radiogroup" aria-label={`Avalie ${name}`}>
       {[1, 2, 3, 4, 5].map((i) => (
         <button
           key={i}
@@ -111,15 +111,15 @@ function StarInput({
           role="radio"
           aria-checked={value === i}
           aria-label={`${i} estrela${i > 1 ? "s" : ""}`}
-          onMouseEnter={() => setHover(i)}
+          onMouseEnter={() => !isNA && setHover(i)}
           onMouseLeave={() => setHover(0)}
-          onClick={() => onChange(i)}
+          onClick={() => onChange(value === i ? 0 : i)}
           className="rounded p-0.5 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
         >
           <Star
             className={cn(
               "size-4 shrink-0 transition-colors",
-              display >= i
+              !isNA && display >= i
                 ? "fill-badge-warning text-badge-warning"
                 : "fill-neutral-grey-200 text-neutral-grey-200",
             )}
@@ -127,6 +127,21 @@ function StarInput({
           />
         </button>
       ))}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={isNA}
+        aria-label="Não se aplica"
+        onClick={() => onChange(isNA ? 0 : -1)}
+        className={cn(
+          "ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1",
+          isNA
+            ? "bg-neutral-grey-300 text-text-primary"
+            : "bg-neutral-grey-100 text-text-secondary hover:bg-neutral-grey-200",
+        )}
+      >
+        N/A
+      </button>
     </div>
   )
 }
@@ -287,7 +302,6 @@ export function DominioResponderSheet({
     () => buildInitialRespostas(configSnapshot, respostasAnteriores),
   )
   const [submitting, setSubmitting] = React.useState(false)
-  const [confirmExitOpen, setConfirmExitOpen] = React.useState(false)
 
   React.useEffect(() => {
     if (open) {
@@ -326,14 +340,6 @@ export function DominioResponderSheet({
     [produtos, respostas],
   )
 
-  function handleOpenChange(next: boolean) {
-    if (!next) {
-      setConfirmExitOpen(true)
-      return
-    }
-    onOpenChange(next)
-  }
-
   async function handleSubmit() {
     if (submitting || !allFilled) return
     setSubmitting(true)
@@ -341,7 +347,7 @@ export function DominioResponderSheet({
     for (const p of produtos)
       for (const m of p.modulos) {
         const estrelas = respostas[p.id]?.[m.id]
-        if (estrelas) flat.push({ produtoId: p.id, moduloId: m.id, estrelas })
+        if (estrelas && estrelas > 0) flat.push({ produtoId: p.id, moduloId: m.id, estrelas })
       }
     const res = await onSubmit(avaliacaoId, flat)
     setSubmitting(false)
@@ -363,135 +369,101 @@ export function DominioResponderSheet({
           : "var(--color-destructive)"
 
   return (
-    <>
-      <Sheet open={open} onOpenChange={handleOpenChange}>
-        <SheetContent
-          side="right"
-          className="flex flex-col gap-0 p-0 sm:max-w-md"
-          showCloseButton={false}
-        >
-          <SheetHeader className="border-b border-border-default px-5 py-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <SheetTitle className="text-base font-semibold text-text-primary">
-                  Nova Avaliação de Domínio
-                </SheetTitle>
-                <SheetDescription className="mt-0.5 text-xs text-text-secondary">
-                  {formatDataPt(todayYmd())} · Pendente
-                </SheetDescription>
-              </div>
-              <button
-                type="button"
-                onClick={() => setConfirmExitOpen(true)}
-                className="mt-0.5 shrink-0 rounded-md p-1.5 text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
-                aria-label="Fechar"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  className="size-4"
-                  aria-hidden
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </SheetHeader>
+    <Sheet open={open} onOpenChange={() => undefined}>
+      <SheetContent
+        side="right"
+        className="flex flex-col gap-0 p-0 sm:max-w-md"
+        showCloseButton={false}
+      >
+        <SheetHeader className="border-b border-border-default px-5 py-4">
+          <div className="min-w-0">
+            <SheetTitle className="text-base font-semibold text-text-primary">
+              Nova Avaliação de Domínio
+            </SheetTitle>
+            <SheetDescription className="mt-0.5 text-xs text-text-secondary">
+              {formatDataPt(todayYmd())} · Pendente
+            </SheetDescription>
+          </div>
+        </SheetHeader>
 
-          <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-5">
-            {/* Média Geral */}
-            <div className="flex items-center justify-between rounded-xl border border-border-default bg-surface-card px-5 py-4">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
-                  Média Geral
-                </p>
-                <p
-                  className={cn(
-                    "mt-1 text-4xl font-bold tabular-nums leading-none",
-                    mediaGeral > 0 ? scoreToneClass(mediaGeral) : "text-text-secondary",
-                  )}
-                >
-                  {mediaGeral > 0 ? `${mediaGeral.toFixed(0)}%` : "0%"}
-                </p>
-              </div>
-              <div className="relative size-16">
-                <svg viewBox="0 0 36 36" className="-rotate-90" aria-hidden>
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.9"
-                    fill="none"
-                    stroke="var(--neutral-grey-200)"
-                    strokeWidth="3.2"
-                  />
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.9"
-                    fill="none"
-                    stroke={ringStroke}
-                    strokeWidth="3.2"
-                    strokeDasharray={`${(mediaGeral / 100) * 100} 100`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            {/* Por produto */}
-            <div className="flex flex-col gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                Por produto
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-5">
+          {/* Média Geral */}
+          <div className="flex items-center justify-between rounded-xl border border-border-default bg-surface-card px-5 py-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
+                Média Geral
               </p>
-              {produtos.length === 0 ? (
-                <p className="text-sm text-text-secondary">Nenhum produto configurado.</p>
-              ) : (
-                produtos.map((p) => (
-                  <ProdutoCardInput
-                    key={p.id}
-                    produto={p}
-                    respostas={respostas}
-                    onSetEstrelas={setEstrelas}
-                  />
-                ))
-              )}
+              <p
+                className={cn(
+                  "mt-1 text-4xl font-bold tabular-nums leading-none",
+                  mediaGeral > 0 ? scoreToneClass(mediaGeral) : "text-text-secondary",
+                )}
+              >
+                {mediaGeral > 0 ? `${mediaGeral.toFixed(0)}%` : "0%"}
+              </p>
+            </div>
+            <div className="relative size-16">
+              <svg viewBox="0 0 36 36" className="-rotate-90" aria-hidden>
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15.9"
+                  fill="none"
+                  stroke="var(--neutral-grey-200)"
+                  strokeWidth="3.2"
+                />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15.9"
+                  fill="none"
+                  stroke={ringStroke}
+                  strokeWidth="3.2"
+                  strokeDasharray={`${(mediaGeral / 100) * 100} 100`}
+                  strokeLinecap="round"
+                />
+              </svg>
             </div>
           </div>
 
-          <SheetFooter className="border-t border-border-default px-5 py-4">
-            <div className="flex w-full items-center justify-between gap-3">
-              <p className="text-xs text-text-secondary">
-                {allFilled
-                  ? "Pronto para enviar"
-                  : `${remaining} módulo${remaining !== 1 ? "s" : ""} restante${remaining !== 1 ? "s" : ""}`}
-              </p>
-              <Button
-                type="button"
-                disabled={!allFilled || submitting}
-                onClick={() => void handleSubmit()}
-                className="gap-2"
-              >
-                {submitting ? "Enviando…" : "Enviar Avaliação"}
-              </Button>
-            </div>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          {/* Por produto */}
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+              Por produto
+            </p>
+            {produtos.length === 0 ? (
+              <p className="text-sm text-text-secondary">Nenhum produto configurado.</p>
+            ) : (
+              produtos.map((p) => (
+                <ProdutoCardInput
+                  key={p.id}
+                  produto={p}
+                  respostas={respostas}
+                  onSetEstrelas={setEstrelas}
+                />
+              ))
+            )}
+          </div>
+        </div>
 
-      <ConfirmDialog
-        open={confirmExitOpen}
-        onOpenChange={setConfirmExitOpen}
-        title="Sair da avaliação?"
-        description="A avaliação continuará pendente. Você precisará respondê-la em outra ocasião."
-        confirmLabel="Sair mesmo assim"
-        buttonVariant="destructive"
-        onConfirm={() => {
-          setConfirmExitOpen(false)
-          onOpenChange(false)
-        }}
-      />
-    </>
+        <SheetFooter className="border-t border-border-default px-5 py-4">
+          <div className="flex w-full items-center justify-between gap-3">
+            <p className="text-xs text-text-secondary">
+              {allFilled
+                ? "Pronto para enviar"
+                : `${remaining} módulo${remaining !== 1 ? "s" : ""} restante${remaining !== 1 ? "s" : ""}`}
+            </p>
+            <Button
+              type="button"
+              disabled={!allFilled || submitting}
+              onClick={() => void handleSubmit()}
+              className="gap-2"
+            >
+              {submitting ? "Enviando…" : "Enviar Avaliação"}
+            </Button>
+          </div>
+        </SheetFooter>
+        </SheetContent>
+    </Sheet>
   )
 }

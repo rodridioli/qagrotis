@@ -70,12 +70,17 @@ export default function UsuarioFormTabs({
   const [isPending, startTransition] = useTransition()
   const [activeTab, setActiveTab] = useState<"cadastro" | "endereco" | "formacao">("cadastro")
 
+  const isAdmin = sessionUser?.type === "Administrador"
+  const isStandardUser = sessionUser?.type === "Padrão"
+  const isSelfEdit = mode === "edit" && !!sessionUser?.id && sessionUser.id === userId
+
   // --- Cadastro ---
   const [nome, setNome] = useState(initialData?.name ?? "")
   const [email, setEmail] = useState(initialData?.email ?? "")
   const [tipo, setTipo] = useState<string>(initialData?.type ?? "Padrão")
-  /** Admin QA/UX/TW: só um perfil gerenciável — campo travado nesse valor. */
-  const accessProfileSelectDisabled = manageableProfiles.length === 1
+  const tipoSelectDisabled = isStandardUser
+  /** Padrão: sem permissão. Admin QA/UX/TW: só um perfil gerenciável — campo travado nesse valor. */
+  const accessProfileSelectDisabled = isStandardUser || manageableProfiles.length <= 1
   const [accessProfile, setAccessProfile] = useState<AccessProfile>(() => {
     if (manageableProfiles.length === 1) return manageableProfiles[0] ?? "QA"
     return (initialData?.accessProfile as AccessProfile) ?? manageableProfiles[0] ?? "QA"
@@ -284,9 +289,6 @@ export default function UsuarioFormTabs({
     })
   }
 
-  const isAdmin = sessionUser?.type === "Administrador"
-  const isStandardUser = sessionUser?.type === "Padrão"
-  const isSelfEdit = mode === "edit" && !!sessionUser?.id && sessionUser.id === userId
   const backHref = isAdmin ? "/configuracoes/usuarios" : "/configuracoes"
 
   return (
@@ -361,6 +363,7 @@ export default function UsuarioFormTabs({
                     <label className="text-sm font-medium">Tipo</label>
                     <Select
                       value={tipo}
+                      disabled={tipoSelectDisabled}
                       onValueChange={(v) => {
                         if (v === "Padrão" || v === "Administrador") setTipo(v)
                       }}
