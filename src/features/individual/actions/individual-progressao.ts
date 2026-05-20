@@ -233,6 +233,42 @@ export async function getValorHoraAtualBatch(
   return result
 }
 
+export interface ProgressaoHistoricoEntry {
+  dataYmd: string
+  valorHora: number | null
+}
+
+/**
+ * MGR: retorna o histórico completo de progressão (data + valorHora) de cada userId.
+ * Ordenado por data DESC para que o primeiro elemento seja o mais recente.
+ * Permite calcular o valorHora vigente em qualquer mês passado.
+ */
+export async function getProgressaoHistoricoBatch(
+  userIds: string[],
+): Promise<Record<string, ProgressaoHistoricoEntry[]>> {
+  await requireMgr()
+  if (userIds.length === 0) return {}
+  await ensureIndividualProgressaoTable()
+  await ensureIndividualProgressaoValorHoraColumn()
+
+  const rows = await prisma.$queryRaw<{ evaluatedUserId: string; data: Date; valorHora: number | null }[]>`
+    SELECT "evaluatedUserId", data, "valorHora"
+    FROM "IndividualProgressao"
+    WHERE "evaluatedUserId" = ANY(${userIds}::text[])
+    ORDER BY "evaluatedUserId", data DESC
+  `
+
+  const result: Record<string, ProgressaoHistoricoEntry[]> = {}
+  for (const uid of userIds) result[uid] = []
+  for (const row of rows) {
+    result[row.evaluatedUserId]!.push({
+      dataYmd: row.data.toISOString().slice(0, 10),
+      valorHora: row.valorHora,
+    })
+  }
+  return result
+}
+
 export async function deleteProgressao(id: string): Promise<{ error?: string }> {
   try {
     await requireMgr()

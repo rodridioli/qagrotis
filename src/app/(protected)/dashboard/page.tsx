@@ -17,7 +17,7 @@ import type { CenarioRecord } from "@/features/qa/actions/cenarios"
 import type { QaUserRecord } from "@/features/usuarios/actions/usuarios"
 import type { SuiteDashboardRecord } from "@/features/qa/actions/suites"
 import { getEquipeMembrosParaLancamentos } from "@/features/equipe/actions/equipe"
-import { getValorHoraAtualBatch } from "@/features/individual/actions/individual-progressao"
+import { getProgressaoHistoricoBatch } from "@/features/individual/actions/individual-progressao"
 
 export default async function DashboardPage({
   searchParams,
@@ -35,12 +35,12 @@ export default async function DashboardPage({
     if (!isMgr) redirect("/dashboard")
 
     const membros = await getEquipeMembrosParaLancamentos("UX")
-    const valorHoraMap = await getValorHoraAtualBatch(membros.map((m) => m.userId))
+    const progressaoMap = await getProgressaoHistoricoBatch(membros.map((m) => m.userId))
 
     return (
       <UxDashboardClient
         membros={serializeRscProps(membros)}
-        valorHoraMap={serializeRscProps(valorHoraMap)}
+        progressaoMap={serializeRscProps(progressaoMap)}
       />
     )
   }

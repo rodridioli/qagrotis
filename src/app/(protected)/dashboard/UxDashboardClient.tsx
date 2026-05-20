@@ -6,12 +6,14 @@ import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
+import type { ProgressaoHistoricoEntry } from "@/features/individual/actions/individual-progressao"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
   membros: EquipeMembroLancamentos[]
-  valorHoraMap: Record<string, number | null> // centavos
+  /** Histórico completo de progressão por userId, ordenado por data DESC. */
+  progressaoMap: Record<string, ProgressaoHistoricoEntry[]>
 }
 
 interface JiraEntry {
@@ -83,15 +85,33 @@ function sumStats(a: MonthStats, b: MonthStats): MonthStats {
 }
 
 /**
+ * Retorna o valorHora (centavos) vigente para um dado mês/ano.
+ * Usa o registro de progressão mais recente com data ≤ último dia do mês.
+ * Se não houver registro anterior, usa o mais antigo disponível (fallback).
+ */
+function getValorHoraForMonth(
+  history: ProgressaoHistoricoEntry[],
+  year: number,
+  monthIndex: number,
+): number | null {
+  const lastDay = `${year}-${pad(monthIndex + 1)}-${pad(new Date(year, monthIndex + 1, 0).getDate())}`
+  // history já ordenado DESC por data — achar o mais recente com data ≤ último dia do mês
+  const active = history.find((r) => r.dataYmd <= lastDay && r.valorHora != null)
+  if (active) return active.valorHora
+  // Sem registro antes do mês — usar o mais antigo como fallback (progressão mais próxima)
+  const fallback = [...history].reverse().find((r) => r.valorHora != null)
+  return fallback?.valorHora ?? null
+}
+
+/**
  * Agrega entries de um único membro por mês.
- * O investimento é calculado por membro (valorHora × horas individuais).
+ * O valorHora é determinado dinamicamente para cada mês com base no histórico de progressão.
  */
 function aggregateByMonth(
   entries: JiraEntry[],
-  valorHoraCentavos: number | null,
+  progressaoHistory: ProgressaoHistoricoEntry[],
+  year: number,
 ): MonthStats[] {
-  const stats: MonthStats[] = Array.from({ length: 12 }, emptyMonthStats)
-
   // Group entries by month
   const byMonth: Map<number, { seconds: number; proto: Set<string>; pesq: Set<string>; ag: Set<string> }> = new Map()
   for (let i = 0; i < 12; i++) {
@@ -99,7 +119,9 @@ function aggregateByMonth(
   }
 
   for (const e of entries) {
-    const month = new Date(e.started).getMonth()
+    // Parse only the date part to avoid timezone shifting the month
+    const datePart = e.started.slice(0, 10)
+    const month = new Date(`${datePart}T12:00:00`).getMonth()
     if (month < 0 || month > 11) continue
     const bucket = byMonth.get(month)!
     bucket.seconds += e.timeSpentSeconds
@@ -109,20 +131,19 @@ function aggregateByMonth(
     if (tf === "usability") bucket.ag.add(e.issueKey)
   }
 
-  for (let i = 0; i < 12; i++) {
+  return Array.from({ length: 12 }, (_, i) => {
     const bucket = byMonth.get(i)!
     const hours = bucket.seconds / 3600
-    const investimento = valorHoraCentavos != null ? Math.round(hours * valorHoraCentavos) : 0
-    stats[i] = {
+    const valorHora = getValorHoraForMonth(progressaoHistory, year, i)
+    const investimento = valorHora != null ? Math.round(hours * valorHora) : 0
+    return {
       totalSeconds: bucket.seconds,
       prototipacao: bucket.proto.size,
       pesquisa: bucket.pesq.size,
       aguardando: bucket.ag.size,
       investimentoCentavos: investimento,
     }
-  }
-
-  return stats
+  })
 }
 
 // ─── MetricCard ────────────────────────────────────────────────────────────────
@@ -320,7 +341,7 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function UxDashboardClient({ membros, valorHoraMap }: Props) {
+export function UxDashboardClient({ membros, progressaoMap }: Props) {
   const currentYear = new Date().getFullYear()
   const [ano, setAno] = React.useState(currentYear)
   const [loading, setLoading] = React.useState(false)
@@ -376,12 +397,12 @@ export function UxDashboardClient({ membros, valorHoraMap }: Props) {
 
         const allEntries: JiraEntry[] = results.flatMap((r) => r.entries)
 
-        // Monthly stats
+        // Monthly stats — valorHora determinado por mês a partir do histórico de progressão
         const combined: MonthStats[] = Array.from({ length: 12 }, emptyMonthStats)
         let entryCount = 0
         for (const { entries, userId } of results) {
-          const valorHora = valorHoraMap[userId] ?? null
-          const memberStats = aggregateByMonth(entries, valorHora)
+          const history = progressaoMap[userId] ?? []
+          const memberStats = aggregateByMonth(entries, history, year)
           entryCount += entries.length
           for (let i = 0; i < 12; i++) {
             combined[i] = sumStats(combined[i]!, memberStats[i]!)
@@ -422,7 +443,7 @@ export function UxDashboardClient({ membros, valorHoraMap }: Props) {
         setLoading(false)
       }
     },
-    [membros, valorHoraMap],
+    [membros, progressaoMap],
   )
 
   // Replace fetchData with fetchDataWithProducts
