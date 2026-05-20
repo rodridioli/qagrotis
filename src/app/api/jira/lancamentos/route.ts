@@ -76,6 +76,7 @@ function mergeEntryWithPatch(
           : null,
     projectName: patch.projectName?.trim() ? patch.projectName : e.projectName?.trim() ? e.projectName : null,
     typeField: patch.typeField?.trim() ? patch.typeField : e.typeField?.trim() ? e.typeField : null,
+    status: patch.status?.trim() ? patch.status : (e.status?.trim() ? e.status : null),
   }
 }
 

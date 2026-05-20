@@ -20,14 +20,17 @@ interface JiraEntry {
   issueKey: string
   projectName?: string | null
   typeField?: string | null
+  status?: string | null
   started: string
   timeSpentSeconds: number
 }
 
 interface MonthStats {
   totalSeconds: number
-  prototipacao: number
+  novosPrototipos: number
+  melhorias: number
   pesquisa: number
+  usabilidade: number
   aguardando: number
   investimentoCentavos: number
 }
@@ -71,14 +74,24 @@ function formatDurationAvg(seconds: number): string {
 }
 
 function emptyMonthStats(): MonthStats {
-  return { totalSeconds: 0, prototipacao: 0, pesquisa: 0, aguardando: 0, investimentoCentavos: 0 }
+  return {
+    totalSeconds: 0,
+    novosPrototipos: 0,
+    melhorias: 0,
+    pesquisa: 0,
+    usabilidade: 0,
+    aguardando: 0,
+    investimentoCentavos: 0,
+  }
 }
 
 function sumStats(a: MonthStats, b: MonthStats): MonthStats {
   return {
     totalSeconds: a.totalSeconds + b.totalSeconds,
-    prototipacao: a.prototipacao + b.prototipacao,
+    novosPrototipos: a.novosPrototipos + b.novosPrototipos,
+    melhorias: a.melhorias + b.melhorias,
     pesquisa: a.pesquisa + b.pesquisa,
+    usabilidade: a.usabilidade + b.usabilidade,
     aguardando: a.aguardando + b.aguardando,
     investimentoCentavos: a.investimentoCentavos + b.investimentoCentavos,
   }
@@ -112,23 +125,38 @@ function aggregateByMonth(
   progressaoHistory: ProgressaoHistoricoEntry[],
   year: number,
 ): MonthStats[] {
-  // Group entries by month
-  const byMonth: Map<number, { seconds: number; proto: Set<string>; pesq: Set<string>; ag: Set<string> }> = new Map()
+  type Bucket = {
+    seconds: number
+    novosProto: Set<string>
+    melhorias: Set<string>
+    pesq: Set<string>
+    usabilidade: Set<string>
+    ag: Set<string>
+  }
+  const byMonth: Map<number, Bucket> = new Map()
   for (let i = 0; i < 12; i++) {
-    byMonth.set(i, { seconds: 0, proto: new Set(), pesq: new Set(), ag: new Set() })
+    byMonth.set(i, {
+      seconds: 0,
+      novosProto: new Set(),
+      melhorias: new Set(),
+      pesq: new Set(),
+      usabilidade: new Set(),
+      ag: new Set(),
+    })
   }
 
   for (const e of entries) {
-    // Parse only the date part to avoid timezone shifting the month
     const datePart = e.started.slice(0, 10)
     const month = new Date(`${datePart}T12:00:00`).getMonth()
     if (month < 0 || month > 11) continue
     const bucket = byMonth.get(month)!
     bucket.seconds += e.timeSpentSeconds
     const tf = (e.typeField ?? "").trim().toLowerCase()
-    if (tf === "new" || tf === "redesign") bucket.proto.add(e.issueKey)
+    if (tf === "new" || tf === "redesign") bucket.novosProto.add(e.issueKey)
+    if (tf === "ajust/return" || tf === "improvement") bucket.melhorias.add(e.issueKey)
     if (tf === "research") bucket.pesq.add(e.issueKey)
-    if (tf === "usability") bucket.ag.add(e.issueKey)
+    if (tf === "usability") bucket.usabilidade.add(e.issueKey)
+    if (e.status?.toLowerCase().trim() === "approval") bucket.ag.add(e.issueKey)
   }
 
   return Array.from({ length: 12 }, (_, i) => {
@@ -138,8 +166,10 @@ function aggregateByMonth(
     const investimento = valorHora != null ? Math.round(hours * valorHora) : 0
     return {
       totalSeconds: bucket.seconds,
-      prototipacao: bucket.proto.size,
+      novosPrototipos: bucket.novosProto.size,
+      melhorias: bucket.melhorias.size,
       pesquisa: bucket.pesq.size,
+      usabilidade: bucket.usabilidade.size,
       aguardando: bucket.ag.size,
       investimentoCentavos: investimento,
     }
@@ -246,10 +276,16 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
               Investimento
             </th>
             <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Prototipação
+              Novos Protótipos
+            </th>
+            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
+              Melhorias
             </th>
             <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
               Pesquisa
+            </th>
+            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
+              Usabilidade
             </th>
             <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
               Aguardando
@@ -274,10 +310,16 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
                     {formatBRL(qStats.investimentoCentavos)}
                   </td>
                   <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
-                    {qStats.prototipacao}
+                    {qStats.novosPrototipos}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
+                    {qStats.melhorias}
                   </td>
                   <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
                     {qStats.pesquisa}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
+                    {qStats.usabilidade}
                   </td>
                   <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
                     {qStats.aguardando}
@@ -299,10 +341,16 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
                         {formatBRL(ms.investimentoCentavos)}
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums text-text-primary">
-                        {ms.prototipacao}
+                        {ms.novosPrototipos}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums text-text-primary">
+                        {ms.melhorias}
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums text-text-primary">
                         {ms.pesquisa}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums text-text-primary">
+                        {ms.usabilidade}
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums text-text-primary">
                         {ms.aguardando}
@@ -324,10 +372,16 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
               {formatBRL(totalAnual.investimentoCentavos)}
             </td>
             <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
-              {totalAnual.prototipacao}
+              {totalAnual.novosPrototipos}
+            </td>
+            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
+              {totalAnual.melhorias}
             </td>
             <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
               {totalAnual.pesquisa}
+            </td>
+            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
+              {totalAnual.usabilidade}
             </td>
             <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
               {totalAnual.aguardando}
@@ -425,7 +479,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         setMonthStats(combined)
         setTotalEntries(entryCount)
 
-        // Product breakdown — protótipos
+        // Product breakdown — protótipos e aguardando aprovação
         const protoMap = new Map<string, Set<string>>() // projectName → unique issueKeys
         const agMap = new Map<string, Set<string>>()
         for (const e of allEntries) {
@@ -435,7 +489,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
             if (!protoMap.has(proj)) protoMap.set(proj, new Set())
             protoMap.get(proj)!.add(e.issueKey)
           }
-          if (tf === "usability") {
+          if (e.status?.toLowerCase().trim() === "approval") {
             if (!agMap.has(proj)) agMap.set(proj, new Set())
             agMap.get(proj)!.add(e.issueKey)
           }
@@ -526,7 +580,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         />
         <MetricCard
           label="Protótipos no período"
-          value={loading ? "—" : String(totalAnual.prototipacao)}
+          value={loading ? "—" : String(totalAnual.novosPrototipos)}
           icon={Layers}
           iconVariant="warning"
         />

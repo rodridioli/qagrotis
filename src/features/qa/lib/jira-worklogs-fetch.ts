@@ -20,6 +20,8 @@ export type JiraLancamentoEntry = {
   qtdCenariosQA?: number | null
   qtdCenariosErro?: number | null
   typeField?: string | null
+  /** Status atual da issue no Jira (ex: "Approval", "In Progress", "Done"). */
+  status?: string | null
   started: string
   timeSpentSeconds: number
   hours: number
@@ -178,6 +180,7 @@ type IssueFields = {
   priority?: unknown
   labels?: string[]
   project?: { name?: string; key?: string }
+  status?: { name?: string }
   [key: string]: unknown
 }
 
@@ -240,6 +243,7 @@ export type LancamentoIssueFieldsPatch = {
   qtdCenariosErro: number | null
   projectName: string | null
   typeField: string | null
+  status: string | null
 }
 
 function parseQtdCenariosQAFieldValue(raw: unknown): number | null {
@@ -297,6 +301,7 @@ function issueFieldsToLancamentoPatch(
     qtdCenariosErro = parseQtdCenariosQAFieldValue(f[qtdErroFieldId])
   }
   const typeField = typeFieldId ? parseTypeFieldValue(f[typeFieldId]) : null
+  const status = typeof f.status?.name === "string" && f.status.name.trim() ? f.status.name.trim() : null
   return {
     summary,
     issueType,
@@ -306,6 +311,7 @@ function issueFieldsToLancamentoPatch(
     qtdCenariosErro,
     projectName,
     typeField,
+    status,
   }
 }
 /**
@@ -323,7 +329,7 @@ export async function fetchIssueFieldsForKeys(
     resolveTypeFieldId(base, credentials),
     resolveQtdCenariosErroFieldId(base, credentials),
   ])
-  const baseFields = ["summary", "issuetype", "priority", "labels", "project"]
+  const baseFields = ["summary", "issuetype", "priority", "labels", "project", "status"]
   const fieldsParam = [...baseFields]
   if (qtdFieldId) fieldsParam.push(qtdFieldId)
   if (typeFieldId) fieldsParam.push(typeFieldId)
@@ -485,6 +491,11 @@ export function mergeLancamentoIssuePatches(
       ? next.typeField.trim()
       : prev?.typeField?.trim()
         ? prev.typeField.trim()
+        : null,
+    status: next.status?.trim()
+      ? next.status.trim()
+      : prev?.status?.trim()
+        ? prev.status.trim()
         : null,
   }
 }
