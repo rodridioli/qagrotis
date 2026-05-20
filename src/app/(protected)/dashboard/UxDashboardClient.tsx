@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Clock, DollarSign, Layers, Search } from "lucide-react"
+import { Clock, DollarSign, Layers, MousePointer, Search, Wrench } from "lucide-react"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -401,6 +401,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
   const [loading, setLoading] = React.useState(false)
   const [monthStats, setMonthStats] = React.useState<MonthStats[] | null>(null)
   const [totalEntries, setTotalEntries] = React.useState(0)
+  const [totalUniqueIssues, setTotalUniqueIssues] = React.useState(0)
 
   const yearOptions = React.useMemo(() => {
     const opts: number[] = []
@@ -414,8 +415,20 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
     [monthStats],
   )
 
-  const avgSecondsPerEntry = totalEntries > 0 ? Math.round(totalAnual.totalSeconds / totalEntries) : 0
-  const avgInvestimentoCentavos = totalEntries > 0 ? Math.round(totalAnual.investimentoCentavos / totalEntries) : 0
+  // Média do valorHora de todos os membros UX para o ano selecionado (dezembro como referência,
+  // ou mês corrente se o ano for o atual).
+  const avgValorHora = React.useMemo(() => {
+    const refMonth = ano === new Date().getFullYear() ? new Date().getMonth() : 11
+    const rates = membros
+      .map((m) => getValorHoraForMonth(progressaoMap[m.userId] ?? [], ano, refMonth))
+      .filter((v): v is number => v != null)
+    return rates.length > 0 ? rates.reduce((s, v) => s + v, 0) / rates.length : null
+  }, [membros, progressaoMap, ano])
+
+  // Tempo médio e valor médio por issue única (não por worklog)
+  const avgSecondsPerIssue = totalUniqueIssues > 0 ? Math.round(totalAnual.totalSeconds / totalUniqueIssues) : 0
+  const avgInvestimentoCentavos =
+    avgValorHora != null ? Math.round(avgValorHora * (avgSecondsPerIssue / 3600)) : 0
 
   // ── Product breakdown for cards ─────────────────────────────────────────
   const [protoByProduct, setProtoByProduct] = React.useState<{ label: string; count: number; isOther?: boolean }[]>([])
@@ -426,6 +439,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       if (membros.length === 0) {
         setMonthStats(Array.from({ length: 12 }, emptyMonthStats))
         setTotalEntries(0)
+        setTotalUniqueIssues(0)
         setProtoByProduct([])
         setAgByProduct([])
         return
@@ -478,6 +492,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         }
         setMonthStats(combined)
         setTotalEntries(entryCount)
+        setTotalUniqueIssues(new Set(allEntries.map((e) => e.issueKey)).size)
 
         // Product breakdown — protótipos e aguardando aprovação
         const protoMap = new Map<string, Set<string>>() // projectName → unique issueKeys
@@ -565,21 +580,21 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       </div>
 
       {/* Metric cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <MetricCard
           label="Tempo Médio por Atividade"
-          value={loading ? "—" : formatDurationAvg(avgSecondsPerEntry)}
+          value={loading ? "—" : formatDurationAvg(avgSecondsPerIssue)}
           icon={Clock}
           iconVariant="brand"
         />
         <MetricCard
-          label="Invest. Médio por Atividade"
+          label="Valor Médio Investido"
           value={loading ? "—" : formatBRL(avgInvestimentoCentavos)}
           icon={DollarSign}
           iconVariant="success"
         />
         <MetricCard
-          label="Protótipos no período"
+          label="Protótipos Novos"
           value={loading ? "—" : String(totalAnual.novosPrototipos)}
           icon={Layers}
           iconVariant="warning"
@@ -589,6 +604,18 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           value={loading ? "—" : String(totalAnual.pesquisa)}
           icon={Search}
           iconVariant="info"
+        />
+        <MetricCard
+          label="Usabilidade"
+          value={loading ? "—" : String(totalAnual.usabilidade)}
+          icon={MousePointer}
+          iconVariant="brand"
+        />
+        <MetricCard
+          label="Melhorias"
+          value={loading ? "—" : String(totalAnual.melhorias)}
+          icon={Wrench}
+          iconVariant="warning"
         />
       </div>
 
