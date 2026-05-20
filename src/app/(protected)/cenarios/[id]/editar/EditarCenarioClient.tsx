@@ -1013,7 +1013,7 @@ export default function EditarCenarioClient({
           </div>
           <DialogFooter showCloseButton={false}>
             <CancelActionButton onClick={() => setAddDepOpen(false)} />
-            <Button onClick={addDeps} disabled={selectedDepIds.size === 0}>Adicionar</Button>
+            <Button onClick={addDeps} disabled={selectedDepIds.size === 0} className="gap-1.5"><Plus className="size-4 shrink-0" aria-hidden />Adicionar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
