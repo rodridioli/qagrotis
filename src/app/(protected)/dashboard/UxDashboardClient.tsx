@@ -378,21 +378,35 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       }
       setLoading(true)
       try {
-        const from = `${year}-01-01`
-        const to = `${year}-12-31`
+        // A API limita a 92 dias por chamada — buscar 4 trimestres separados por membro.
+        const QUARTERS_RANGES = [
+          { from: `${year}-01-01`, to: `${year}-03-31` },
+          { from: `${year}-04-01`, to: `${year}-06-30` },
+          { from: `${year}-07-01`, to: `${year}-09-30` },
+          { from: `${year}-10-01`, to: `${year}-12-31` },
+        ]
 
-        const results = await Promise.all(
-          membros.map(async (m) => {
-            const url = `/api/jira/lancamentos?userId=${encodeURIComponent(m.userId)}&from=${from}&to=${to}`
+        async function fetchMemberEntries(userId: string): Promise<JiraEntry[]> {
+          const allEntries: JiraEntry[] = []
+          for (const { from, to } of QUARTERS_RANGES) {
+            const url = `/api/jira/lancamentos?userId=${encodeURIComponent(userId)}&from=${from}&to=${to}`
             try {
               const res = await fetch(url)
-              if (!res.ok) return { entries: [] as JiraEntry[], userId: m.userId }
+              if (!res.ok) continue
               const json = (await res.json()) as { entries?: JiraEntry[] }
-              return { entries: json.entries ?? [], userId: m.userId }
+              allEntries.push(...(json.entries ?? []))
             } catch {
-              return { entries: [] as JiraEntry[], userId: m.userId }
+              // silently skip failed quarters
             }
-          }),
+          }
+          return allEntries
+        }
+
+        const results = await Promise.all(
+          membros.map(async (m) => ({
+            userId: m.userId,
+            entries: await fetchMemberEntries(m.userId),
+          })),
         )
 
         const allEntries: JiraEntry[] = results.flatMap((r) => r.entries)
