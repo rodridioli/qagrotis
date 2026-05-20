@@ -207,6 +207,32 @@ export async function updateProgressao(
   }
 }
 
+/**
+ * MGR: retorna o valorHora (centavos) vigente para cada userId da lista.
+ * Usa o registro de progressão mais recente que tenha valorHora não-nulo.
+ */
+export async function getValorHoraAtualBatch(
+  userIds: string[],
+): Promise<Record<string, number | null>> {
+  await requireMgr()
+  if (userIds.length === 0) return {}
+  await ensureIndividualProgressaoTable()
+  await ensureIndividualProgressaoValorHoraColumn()
+
+  const rows = await prisma.$queryRaw<{ evaluatedUserId: string; valorHora: number | null }[]>`
+    SELECT DISTINCT ON ("evaluatedUserId") "evaluatedUserId", "valorHora"
+    FROM "IndividualProgressao"
+    WHERE "evaluatedUserId" = ANY(${userIds}::text[])
+      AND "valorHora" IS NOT NULL
+    ORDER BY "evaluatedUserId", data DESC
+  `
+
+  const result: Record<string, number | null> = {}
+  for (const uid of userIds) result[uid] = null
+  for (const row of rows) result[row.evaluatedUserId] = row.valorHora
+  return result
+}
+
 export async function deleteProgressao(id: string): Promise<{ error?: string }> {
   try {
     await requireMgr()
