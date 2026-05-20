@@ -609,3 +609,37 @@ model ChapterRedemption {
 
   @@index([userId])
 }
+
+// ── Cache de worklogs Jira ────────────────────────────────────────────────────
+
+/// Entrada individual de worklog cacheada do Jira.
+/// Armazenada por (userId, issueKey, startedAt) — garante histórico permanente
+/// independente do limite de 92 dias da API Jira.
+model JiraWorklogCache {
+  id               String   @id @default(cuid())
+  userId           String
+  issueKey         String
+  projectName      String?
+  typeField        String?
+  status           String?
+  startedAt        DateTime
+  timeSpentSeconds Int
+  year             Int
+  month            Int
+
+  @@unique([userId, issueKey, startedAt])
+  @@index([userId, year, month])
+}
+
+/// Marca de controle de sincronização por (userId, year, month).
+/// Registra quando um mês foi sincronizado pela última vez com a API Jira.
+/// Permite saber que um mês com zero worklogs foi de fato sincronizado.
+model JiraWorklogSyncMarker {
+  id       String   @id @default(cuid())
+  userId   String
+  year     Int
+  month    Int
+  syncedAt DateTime @default(now())
+
+  @@unique([userId, year, month])
+}
