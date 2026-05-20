@@ -475,13 +475,6 @@ export function UxDashboardClient({ membros, valorHoraMap }: Props) {
         </div>
       </div>
 
-      {/* Yearly table */}
-      {loading || monthStats === null ? (
-        <SectionSpinner minHeight="min-h-[300px]" />
-      ) : (
-        <YearTable monthStats={monthStats} />
-      )}
-
       {/* Metric cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard
@@ -522,6 +515,13 @@ export function UxDashboardClient({ membros, valorHoraMap }: Props) {
             items={agByProduct.map((i) => ({ ...i }))}
           />
         </div>
+      )}
+
+      {/* Yearly table */}
+      {loading || monthStats === null ? (
+        <SectionSpinner minHeight="min-h-[300px]" />
+      ) : (
+        <YearTable monthStats={monthStats} />
       )}
     </div>
   )
