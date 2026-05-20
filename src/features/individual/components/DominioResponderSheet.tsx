@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Star } from "lucide-react"
+import { Loader2, Send, Star } from "lucide-react"
 import { toast } from "sonner"
 import {
   Sheet,
@@ -457,9 +457,19 @@ export function DominioResponderSheet({
               type="button"
               disabled={!allFilled || submitting}
               onClick={() => void handleSubmit()}
-              className="gap-2"
+              className="gap-1.5"
             >
-              {submitting ? "Enviando…" : "Enviar Avaliação"}
+              {submitting ? (
+                <>
+                  <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                  Enviando…
+                </>
+              ) : (
+                <>
+                  <Send className="size-4 shrink-0" aria-hidden />
+                  Enviar Avaliação
+                </>
+              )}
             </Button>
           </div>
         </SheetFooter>

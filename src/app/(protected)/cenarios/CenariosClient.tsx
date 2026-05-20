@@ -980,7 +980,7 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
               </div>
               <DialogFooter showCloseButton={false}>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setCompareItem(null)}>Fechar</Button>
+                  <Button variant="outline" onClick={() => setCompareItem(null)} className="gap-1.5"><X className="size-4 shrink-0" aria-hidden />Fechar</Button>
                   <Button
                     onClick={() => {
                       setImportItems((prev) =>

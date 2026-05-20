@@ -72,7 +72,7 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
 
   const itemClassName = (active: boolean) =>
     cn(
-      "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium transition-all duration-150",
+      "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-normal transition-all duration-150",
       active
         ? "bg-brand-primary text-white"
         : "text-text-secondary hover:bg-neutral-grey-100 hover:text-text-primary",
@@ -132,8 +132,8 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
               if (id === "metas") {
                 return (
                   <li key={id}>
-                    <span className="flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium opacity-40">
-                      <Icon className="size-4 shrink-0 text-text-secondary" aria-hidden />
+                    <span className="flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-xs font-normal opacity-40">
+                      <Icon className="size-3.5 shrink-0 text-text-secondary" aria-hidden />
                       <span className="truncate text-text-secondary">{label}</span>
                     </span>
                   </li>
@@ -148,7 +148,7 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
                     aria-current={active ? "page" : undefined}
                     onClick={() => go(href)}
                   >
-                    <Icon className={cn("size-4 shrink-0", active ? "text-white" : "")} aria-hidden />
+                    <Icon className={cn("size-3.5 shrink-0", active ? "text-white" : "")} aria-hidden />
                     <span className="truncate">{label}</span>
                   </button>
                 </li>

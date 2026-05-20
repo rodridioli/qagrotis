@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronDown, ChevronRight, Pencil, Plus, Trash2, X } from "lucide-react"
+import { Check, ChevronDown, ChevronRight, Loader2, Pencil, Plus, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -465,15 +465,28 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
             variant="outline"
             onClick={handleClose}
             disabled={saving}
+            className="gap-1.5"
           >
+            <X className="size-4 shrink-0" aria-hidden />
             Cancelar
           </Button>
           <Button
             type="button"
             onClick={() => void handleSave()}
             disabled={saving || loading}
+            className="gap-1.5"
           >
-            {saving ? "Salvando…" : "Salvar"}
+            {saving ? (
+              <>
+                <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                Salvando…
+              </>
+            ) : (
+              <>
+                <Check className="size-4 shrink-0" aria-hidden />
+                Salvar
+              </>
+            )}
           </Button>
         </SheetFooter>
       </SheetContent>
