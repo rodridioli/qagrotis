@@ -220,8 +220,22 @@ function aggregateByMonth(
   progressaoHistory: ProgressaoHistoricoEntry[],
   year: number,
 ): MonthStats[] {
+  // Pre-compute the first worklog month for each issue within this year.
+  // Issue counts are assigned to this "anchor" month so that every issue is
+  // counted exactly once → monthly counts are additive (sum of months = annual
+  // unique total, matching the card values).
+  // Hours and investment are always accumulated in the actual worklog month.
+  const issueFirstMonth = new Map<string, number>()
+  for (const e of entries) {
+    const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+    if (m < 0 || m > 11) continue
+    const cur = issueFirstMonth.get(e.issueKey)
+    if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
+  }
+
   type Bucket = {
     seconds: number
+    investimentoCentavos: number
     all: Set<string>
     novosProto: Set<string>
     melhorias: Set<string>
@@ -237,6 +251,7 @@ function aggregateByMonth(
   for (let i = 0; i < 12; i++) {
     byMonth.set(i, {
       seconds: 0,
+      investimentoCentavos: 0,
       all: new Set(),
       novosProto: new Set(),
       melhorias: new Set(),
@@ -251,59 +266,60 @@ function aggregateByMonth(
   }
 
   for (const e of entries) {
-    const datePart = e.started.slice(0, 10)
-    const month = new Date(`${datePart}T12:00:00`).getMonth()
-    if (month < 0 || month > 11) continue
-    const bucket = byMonth.get(month)!
-    bucket.seconds += e.timeSpentSeconds
-    bucket.all.add(e.issueKey)
-    const tf = (e.typeField ?? "").trim().toLowerCase()
-    if (tf === "new/redesign" || tf === "new" || tf === "redesign") bucket.novosProto.add(e.issueKey)
-    if (tf === "improvement") bucket.melhorias.add(e.issueKey)
-    if (tf === "ajust/return" || tf === "adjustment/return") bucket.ajustes.add(e.issueKey)
-    if (tf === "research") bucket.pesq.add(e.issueKey)
-    if (tf === "usability") bucket.usabilidade.add(e.issueKey)
-    if (tf === "others" || tf === "other") bucket.outros.add(e.issueKey)
-    if (e.priority?.toLowerCase().trim() === "critical") bucket.criticos.add(e.issueKey)
-    if (e.status?.toLowerCase().trim() === "approval") bucket.ag.add(e.issueKey)
-    const r = e.retornos ?? 0
-    if (r > 0) {
-      bucket.retornosPerIssue.set(
-        e.issueKey,
-        Math.max(bucket.retornosPerIssue.get(e.issueKey) ?? 0, r),
-      )
+    const actualMonth = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+    if (actualMonth < 0 || actualMonth > 11) continue
+
+    // Hours and investment always go to the actual worklog month
+    const actualBucket = byMonth.get(actualMonth)!
+    actualBucket.seconds += e.timeSpentSeconds
+    const valorHora = getValorHoraForMonth(progressaoHistory, year, actualMonth)
+    if (valorHora != null) {
+      actualBucket.investimentoCentavos += Math.round((e.timeSpentSeconds / 3600) * valorHora)
     }
+
+    // Issue counts go to the issue's first worklog month (anchor month)
+    const countMonth = issueFirstMonth.get(e.issueKey) ?? actualMonth
+    const cb = byMonth.get(countMonth)!
+    const tf = (e.typeField ?? "").trim().toLowerCase()
+    cb.all.add(e.issueKey)
+    if (tf === "new/redesign" || tf === "new" || tf === "redesign") cb.novosProto.add(e.issueKey)
+    if (tf === "improvement") cb.melhorias.add(e.issueKey)
+    if (tf === "ajust/return" || tf === "adjustment/return") cb.ajustes.add(e.issueKey)
+    if (tf === "research") cb.pesq.add(e.issueKey)
+    if (tf === "usability") cb.usabilidade.add(e.issueKey)
+    if (tf === "others" || tf === "other") cb.outros.add(e.issueKey)
+    if (e.priority?.toLowerCase().trim() === "critical") cb.criticos.add(e.issueKey)
+    if (e.status?.toLowerCase().trim() === "approval") cb.ag.add(e.issueKey)
+    const r = e.retornos ?? 0
+    if (r > 0) cb.retornosPerIssue.set(e.issueKey, Math.max(cb.retornosPerIssue.get(e.issueKey) ?? 0, r))
   }
 
-  // Merge untyped issues (not in any known type bucket) into "outros" per month
+  // Merge untyped issues (not classified into any known type) into "outros" per month
   for (const bucket of byMonth.values()) {
-    const typedInMonth = new Set([
+    const typed = new Set([
       ...bucket.novosProto, ...bucket.melhorias, ...bucket.ajustes,
       ...bucket.pesq, ...bucket.usabilidade, ...bucket.outros,
     ])
     for (const key of bucket.all) {
-      if (!typedInMonth.has(key)) bucket.outros.add(key)
+      if (!typed.has(key)) bucket.outros.add(key)
     }
   }
 
   return Array.from({ length: 12 }, (_, i) => {
-    const bucket = byMonth.get(i)!
-    const hours = bucket.seconds / 3600
-    const valorHora = getValorHoraForMonth(progressaoHistory, year, i)
-    const investimento = valorHora != null ? Math.round(hours * valorHora) : 0
+    const b = byMonth.get(i)!
     return {
-      totalSeconds: bucket.seconds,
-      totalIssues: bucket.all.size,
-      novosPrototipos: bucket.novosProto.size,
-      melhorias: bucket.melhorias.size,
-      ajustes: bucket.ajustes.size,
-      pesquisa: bucket.pesq.size,
-      usabilidade: bucket.usabilidade.size,
-      criticos: bucket.criticos.size,
-      outros: bucket.outros.size,
-      aguardando: bucket.ag.size,
-      retornos: Array.from(bucket.retornosPerIssue.values()).reduce((s, v) => s + v, 0),
-      investimentoCentavos: investimento,
+      totalSeconds: b.seconds,
+      totalIssues: b.all.size,
+      novosPrototipos: b.novosProto.size,
+      melhorias: b.melhorias.size,
+      ajustes: b.ajustes.size,
+      pesquisa: b.pesq.size,
+      usabilidade: b.usabilidade.size,
+      criticos: b.criticos.size,
+      outros: b.outros.size,
+      aguardando: b.ag.size,
+      retornos: Array.from(b.retornosPerIssue.values()).reduce((s, v) => s + v, 0),
+      investimentoCentavos: b.investimentoCentavos,
     }
   })
 }
