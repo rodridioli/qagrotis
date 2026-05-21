@@ -5,6 +5,12 @@ import { Clock, DollarSign, Layers, MousePointer, Search, Wrench } from "lucide-
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
 import type { ProgressaoHistoricoEntry } from "@/features/individual/actions/individual-progressao"
 
@@ -174,6 +180,58 @@ function aggregateByMonth(
       investimentoCentavos: investimento,
     }
   })
+}
+
+// ─── UxAvatarStrip ─────────────────────────────────────────────────────────────
+
+const AVATAR_STRIP_SIZE = 44
+
+function UxAvatarStrip({
+  membros,
+  selectedUserId,
+  onSelect,
+}: {
+  membros: EquipeMembroLancamentos[]
+  selectedUserId: string | null
+  onSelect: (id: string | null) => void
+}) {
+  return (
+    <TooltipProvider delay={0} closeDelay={0}>
+      <div
+        className="flex w-full flex-wrap items-center justify-start gap-y-2 pl-2"
+        role="toolbar"
+        aria-label="Selecionar usuário para visualizar dados"
+      >
+        {membros.map((m, idx) => {
+          const selected = m.userId === selectedUserId
+          return (
+            <Tooltip key={m.userId}>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-current={selected ? "true" : undefined}
+                    aria-label={`${m.name}${selected ? " (selecionado)" : ""}`}
+                    onClick={() => onSelect(selected ? null : m.userId)}
+                    className={cn(
+                      "relative rounded-full border-[3px] border-surface-card bg-surface-card shadow-sm transition-all duration-100 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 motion-reduce:transition-none",
+                      selected
+                        ? "z-20 border-brand-primary ring-2 ring-brand-primary/35"
+                        : "z-10 hover:z-30 hover:ring-1 hover:ring-brand-primary/25",
+                    )}
+                    style={{ marginLeft: idx === 0 ? 0 : -12 }}
+                  />
+                }
+              >
+                <UserAvatar name={m.name} photoPath={m.photoPath} size={AVATAR_STRIP_SIZE} />
+              </TooltipTrigger>
+              <TooltipContent>{m.name}</TooltipContent>
+            </Tooltip>
+          )
+        })}
+      </div>
+    </TooltipProvider>
+  )
 }
 
 // ─── MetricCard ────────────────────────────────────────────────────────────────
@@ -398,6 +456,7 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
 export function UxDashboardClient({ membros, progressaoMap }: Props) {
   const currentYear = new Date().getFullYear()
   const [ano, setAno] = React.useState(currentYear)
+  const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [monthStats, setMonthStats] = React.useState<MonthStats[] | null>(null)
   const [totalEntries, setTotalEntries] = React.useState(0)
@@ -415,15 +474,16 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
     [monthStats],
   )
 
-  // Média do valorHora de todos os membros UX para o ano selecionado (dezembro como referência,
-  // ou mês corrente se o ano for o atual).
+  // Média do valorHora dos membros ativos para o ano selecionado.
+  // Quando há um membro selecionado, usa apenas o valorHora dele.
   const avgValorHora = React.useMemo(() => {
     const refMonth = ano === new Date().getFullYear() ? new Date().getMonth() : 11
-    const rates = membros
+    const activeMembros = selectedUserId ? membros.filter((m) => m.userId === selectedUserId) : membros
+    const rates = activeMembros
       .map((m) => getValorHoraForMonth(progressaoMap[m.userId] ?? [], ano, refMonth))
       .filter((v): v is number => v != null)
     return rates.length > 0 ? rates.reduce((s, v) => s + v, 0) / rates.length : null
-  }, [membros, progressaoMap, ano])
+  }, [membros, progressaoMap, ano, selectedUserId])
 
   // Tempo médio e valor médio por issue única (não por worklog)
   const avgSecondsPerIssue = totalUniqueIssues > 0 ? Math.round(totalAnual.totalSeconds / totalUniqueIssues) : 0
@@ -435,8 +495,9 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
   const [agByProduct, setAgByProduct] = React.useState<{ label: string; count: number; isOther?: boolean }[]>([])
 
   const fetchDataWithProducts = React.useCallback(
-    async (year: number) => {
-      if (membros.length === 0) {
+    async (year: number, filterUserId: string | null) => {
+      const activeMembros = filterUserId ? membros.filter((m) => m.userId === filterUserId) : membros
+      if (activeMembros.length === 0) {
         setMonthStats(Array.from({ length: 12 }, emptyMonthStats))
         setTotalEntries(0)
         setTotalUniqueIssues(0)
@@ -471,7 +532,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         }
 
         const results = await Promise.all(
-          membros.map(async (m) => ({
+          activeMembros.map(async (m) => ({
             userId: m.userId,
             entries: await fetchMemberEntries(m.userId),
           })),
@@ -529,11 +590,10 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
     [membros, progressaoMap],
   )
 
-  // Replace fetchData with fetchDataWithProducts
   React.useEffect(() => {
-    void fetchDataWithProducts(ano)
+    void fetchDataWithProducts(ano, selectedUserId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ano])
+  }, [ano, selectedUserId])
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -546,38 +606,26 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
             Lançamentos, protótipos e investimento da equipe UX
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Year selector */}
-          <select
-            value={ano}
-            onChange={(e) => setAno(Number(e.target.value))}
-            className="rounded-lg border border-border-default bg-surface-card px-3 py-1.5 text-sm font-medium text-text-primary shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
-          >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-          {/* Team avatars */}
-          <div className="flex items-center -space-x-2">
-            {membros.slice(0, 6).map((m) => (
-              <UserAvatar
-                key={m.userId}
-                name={m.name}
-                photoPath={m.photoPath}
-                size={36}
-                className="ring-2 ring-surface-card"
-              />
-            ))}
-            {membros.length > 6 && (
-              <div
-                className="flex size-9 items-center justify-center rounded-full bg-neutral-grey-100 text-xs font-semibold text-text-secondary ring-2 ring-surface-card"
-              >
-                +{membros.length - 6}
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Year selector */}
+        <select
+          value={ano}
+          onChange={(e) => setAno(Number(e.target.value))}
+          className="rounded-lg border border-border-default bg-surface-card px-3 py-1.5 text-sm font-medium text-text-primary shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+        >
+          {yearOptions.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
       </div>
+
+      {/* Avatar strip — filtro por membro */}
+      {membros.length > 0 && (
+        <UxAvatarStrip
+          membros={membros}
+          selectedUserId={selectedUserId}
+          onSelect={setSelectedUserId}
+        />
+      )}
 
       {/* Metric cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
