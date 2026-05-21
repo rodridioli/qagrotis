@@ -6,11 +6,19 @@ import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
 import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "@/components/ui/select"
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { getUxWorklogsForYear } from "@/features/qa/actions/jira-worklog-cache"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
 import type { ProgressaoHistoricoEntry } from "@/features/individual/actions/individual-progressao"
 
@@ -114,10 +122,8 @@ function getValorHoraForMonth(
   monthIndex: number,
 ): number | null {
   const lastDay = `${year}-${pad(monthIndex + 1)}-${pad(new Date(year, monthIndex + 1, 0).getDate())}`
-  // history já ordenado DESC por data — achar o mais recente com data ≤ último dia do mês
   const active = history.find((r) => r.dataYmd <= lastDay && r.valorHora != null)
   if (active) return active.valorHora
-  // Sem registro antes do mês — usar o mais antigo como fallback (progressão mais próxima)
   const fallback = [...history].reverse().find((r) => r.valorHora != null)
   return fallback?.valorHora ?? null
 }
@@ -182,19 +188,30 @@ function aggregateByMonth(
   })
 }
 
+function buildTopItems(map: Map<string, Set<string>>) {
+  const sorted = [...map.entries()]
+    .map(([label, keys]) => ({ label, count: keys.size }))
+    .sort((a, b) => b.count - a.count)
+  if (sorted.length <= 5) return sorted
+  const top4 = sorted.slice(0, 4)
+  const otherCount = sorted.slice(4).reduce((s, x) => s + x.count, 0)
+  return [...top4, { label: "Outros", count: otherCount, isOther: true }]
+}
+
 // ─── UxAvatarStrip ─────────────────────────────────────────────────────────────
 
 const AVATAR_STRIP_SIZE = 44
 
 function UxAvatarStrip({
   membros,
-  selectedUserId,
-  onSelect,
+  selectedUserIds,
+  onToggle,
 }: {
   membros: EquipeMembroLancamentos[]
-  selectedUserId: string | null
-  onSelect: (id: string | null) => void
+  selectedUserIds: string[]
+  onToggle: (userId: string) => void
 }) {
+  const hasSelection = selectedUserIds.length > 0
   return (
     <TooltipProvider delay={0} closeDelay={0}>
       <div
@@ -203,21 +220,23 @@ function UxAvatarStrip({
         aria-label="Selecionar usuário para visualizar dados"
       >
         {membros.map((m, idx) => {
-          const selected = m.userId === selectedUserId
+          const isSelected = selectedUserIds.includes(m.userId)
+          const dimmed = hasSelection && !isSelected
           return (
             <Tooltip key={m.userId}>
               <TooltipTrigger
                 render={
                   <button
                     type="button"
-                    aria-current={selected ? "true" : undefined}
-                    aria-label={`${m.name}${selected ? " (selecionado)" : ""}`}
-                    onClick={() => onSelect(selected ? null : m.userId)}
+                    aria-pressed={isSelected}
+                    aria-label={`${m.name}${isSelected ? " (selecionado)" : ""}`}
+                    onClick={() => onToggle(m.userId)}
                     className={cn(
                       "relative rounded-full border-[3px] border-surface-card bg-surface-card shadow-sm transition-all duration-100 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 motion-reduce:transition-none",
-                      selected
+                      isSelected
                         ? "z-20 border-brand-primary ring-2 ring-brand-primary/35"
                         : "z-10 hover:z-30 hover:ring-1 hover:ring-brand-primary/25",
+                      dimmed && "opacity-40",
                     )}
                     style={{ marginLeft: idx === 0 ? 0 : -12 }}
                   />
@@ -358,7 +377,6 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
             )
             return (
               <React.Fragment key={q.label}>
-                {/* Quarter row */}
                 <tr className="border-b border-border-default bg-neutral-grey-50">
                   <td className="px-4 py-2.5 font-semibold text-text-primary">{q.label}</td>
                   <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
@@ -383,7 +401,6 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
                     {qStats.aguardando}
                   </td>
                 </tr>
-                {/* Month rows */}
                 {q.months.map((mi) => {
                   const ms = monthStats[mi]!
                   return (
@@ -420,7 +437,6 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
             )
           })}
 
-          {/* Annual total row */}
           <tr className="border-t-2 border-border-default bg-neutral-grey-50">
             <td className="px-4 py-2.5 font-bold text-text-primary">Total</td>
             <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
@@ -456,149 +472,139 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
 export function UxDashboardClient({ membros, progressaoMap }: Props) {
   const currentYear = new Date().getFullYear()
   const [ano, setAno] = React.useState(currentYear)
-  const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
-  const [monthStats, setMonthStats] = React.useState<MonthStats[] | null>(null)
-  const [totalEntries, setTotalEntries] = React.useState(0)
-  const [totalUniqueIssues, setTotalUniqueIssues] = React.useState(0)
+  const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([])
+  // Raw entries per userId — fetched once per year, filtered in useMemo
+  const [rawMemberEntries, setRawMemberEntries] = React.useState<Record<string, JiraEntry[]>>({})
 
-  const yearOptions = React.useMemo(() => {
-    const opts: number[] = []
-    for (let y = currentYear; y >= currentYear - 3; y--) opts.push(y)
-    return opts
-  }, [currentYear])
+  // Only current year and previous year
+  const yearOptions = React.useMemo(
+    () => [currentYear, currentYear - 1],
+    [currentYear],
+  )
 
-  // ── Derived totals for metric cards ─────────────────────────────────────
+  // Active members: all when no selection, filtered otherwise
+  const activeMembers = React.useMemo(
+    () =>
+      selectedUserIds.length > 0
+        ? membros.filter((m) => selectedUserIds.includes(m.userId))
+        : membros,
+    [membros, selectedUserIds],
+  )
+
+  // Toggle a user in/out of the selection
+  function toggleUser(userId: string) {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
+    )
+  }
+
+  // ── Derived stats (instant — no fetch on user toggle) ─────────────────────
+  const { monthStats, totalUniqueIssues, protoByProduct, agByProduct } = React.useMemo(() => {
+    if (Object.keys(rawMemberEntries).length === 0) {
+      return {
+        monthStats: null,
+        totalUniqueIssues: 0,
+        protoByProduct: [] as { label: string; count: number; isOther?: boolean }[],
+        agByProduct: [] as { label: string; count: number; isOther?: boolean }[],
+      }
+    }
+
+    const combined: MonthStats[] = Array.from({ length: 12 }, emptyMonthStats)
+    const allEntries: JiraEntry[] = []
+
+    for (const m of activeMembers) {
+      const entries = rawMemberEntries[m.userId] ?? []
+      allEntries.push(...entries)
+      const history = progressaoMap[m.userId] ?? []
+      const memberStats = aggregateByMonth(entries, history, ano)
+      for (let i = 0; i < 12; i++) {
+        combined[i] = sumStats(combined[i]!, memberStats[i]!)
+      }
+    }
+
+    const protoMap = new Map<string, Set<string>>()
+    const agMap = new Map<string, Set<string>>()
+    for (const e of allEntries) {
+      const tf = (e.typeField ?? "").trim().toLowerCase()
+      const proj = e.projectName?.trim() || e.issueKey.split("-")[0] || "Outros"
+      if (tf === "new" || tf === "redesign") {
+        if (!protoMap.has(proj)) protoMap.set(proj, new Set())
+        protoMap.get(proj)!.add(e.issueKey)
+      }
+      if (e.status?.toLowerCase().trim() === "approval") {
+        if (!agMap.has(proj)) agMap.set(proj, new Set())
+        agMap.get(proj)!.add(e.issueKey)
+      }
+    }
+
+    return {
+      monthStats: combined,
+      totalUniqueIssues: new Set(allEntries.map((e) => e.issueKey)).size,
+      protoByProduct: buildTopItems(protoMap),
+      agByProduct: buildTopItems(agMap),
+    }
+  }, [rawMemberEntries, activeMembers, progressaoMap, ano])
+
+  // ── Derived totals for metric cards ───────────────────────────────────────
   const totalAnual = React.useMemo(
     () => (monthStats ?? []).reduce(sumStats, emptyMonthStats()),
     [monthStats],
   )
 
-  // Média do valorHora dos membros ativos para o ano selecionado.
-  // Quando há um membro selecionado, usa apenas o valorHora dele.
   const avgValorHora = React.useMemo(() => {
     const refMonth = ano === new Date().getFullYear() ? new Date().getMonth() : 11
-    const activeMembros = selectedUserId ? membros.filter((m) => m.userId === selectedUserId) : membros
-    const rates = activeMembros
+    const rates = activeMembers
       .map((m) => getValorHoraForMonth(progressaoMap[m.userId] ?? [], ano, refMonth))
       .filter((v): v is number => v != null)
     return rates.length > 0 ? rates.reduce((s, v) => s + v, 0) / rates.length : null
-  }, [membros, progressaoMap, ano, selectedUserId])
+  }, [activeMembers, progressaoMap, ano])
 
-  // Tempo médio e valor médio por issue única (não por worklog)
-  const avgSecondsPerIssue = totalUniqueIssues > 0 ? Math.round(totalAnual.totalSeconds / totalUniqueIssues) : 0
+  const avgSecondsPerIssue = totalUniqueIssues > 0
+    ? Math.round(totalAnual.totalSeconds / totalUniqueIssues)
+    : 0
   const avgInvestimentoCentavos =
     avgValorHora != null ? Math.round(avgValorHora * (avgSecondsPerIssue / 3600)) : 0
 
-  // ── Product breakdown for cards ─────────────────────────────────────────
-  const [protoByProduct, setProtoByProduct] = React.useState<{ label: string; count: number; isOther?: boolean }[]>([])
-  const [agByProduct, setAgByProduct] = React.useState<{ label: string; count: number; isOther?: boolean }[]>([])
-
-  const fetchDataWithProducts = React.useCallback(
-    async (year: number, filterUserId: string | null) => {
-      const activeMembros = filterUserId ? membros.filter((m) => m.userId === filterUserId) : membros
-      if (activeMembros.length === 0) {
-        setMonthStats(Array.from({ length: 12 }, emptyMonthStats))
-        setTotalEntries(0)
-        setTotalUniqueIssues(0)
-        setProtoByProduct([])
-        setAgByProduct([])
+  // ── Fetch all members on year change (uses cache) ─────────────────────────
+  const fetchAll = React.useCallback(
+    async (year: number) => {
+      if (membros.length === 0) {
+        setRawMemberEntries({})
         return
       }
+      setRawMemberEntries({})
       setLoading(true)
       try {
-        // A API limita a 92 dias por chamada — buscar 4 trimestres separados por membro.
-        const QUARTERS_RANGES = [
-          { from: `${year}-01-01`, to: `${year}-03-31` },
-          { from: `${year}-04-01`, to: `${year}-06-30` },
-          { from: `${year}-07-01`, to: `${year}-09-30` },
-          { from: `${year}-10-01`, to: `${year}-12-31` },
-        ]
-
-        async function fetchMemberEntries(userId: string): Promise<JiraEntry[]> {
-          const allEntries: JiraEntry[] = []
-          for (const { from, to } of QUARTERS_RANGES) {
-            const url = `/api/jira/lancamentos?userId=${encodeURIComponent(userId)}&from=${from}&to=${to}`
-            try {
-              const res = await fetch(url)
-              if (!res.ok) continue
-              const json = (await res.json()) as { entries?: JiraEntry[] }
-              allEntries.push(...(json.entries ?? []))
-            } catch {
-              // silently skip failed quarters
-            }
-          }
-          return allEntries
-        }
-
         const results = await Promise.all(
-          activeMembros.map(async (m) => ({
-            userId: m.userId,
-            entries: await fetchMemberEntries(m.userId),
-          })),
+          membros.map(async (m) => {
+            try {
+              const { entries } = await getUxWorklogsForYear(m.userId, year)
+              return [m.userId, entries] as const
+            } catch {
+              return [m.userId, [] as JiraEntry[]] as const
+            }
+          }),
         )
-
-        const allEntries: JiraEntry[] = results.flatMap((r) => r.entries)
-
-        // Monthly stats — valorHora determinado por mês a partir do histórico de progressão
-        const combined: MonthStats[] = Array.from({ length: 12 }, emptyMonthStats)
-        let entryCount = 0
-        for (const { entries, userId } of results) {
-          const history = progressaoMap[userId] ?? []
-          const memberStats = aggregateByMonth(entries, history, year)
-          entryCount += entries.length
-          for (let i = 0; i < 12; i++) {
-            combined[i] = sumStats(combined[i]!, memberStats[i]!)
-          }
-        }
-        setMonthStats(combined)
-        setTotalEntries(entryCount)
-        setTotalUniqueIssues(new Set(allEntries.map((e) => e.issueKey)).size)
-
-        // Product breakdown — protótipos e aguardando aprovação
-        const protoMap = new Map<string, Set<string>>() // projectName → unique issueKeys
-        const agMap = new Map<string, Set<string>>()
-        for (const e of allEntries) {
-          const tf = (e.typeField ?? "").trim().toLowerCase()
-          const proj = e.projectName?.trim() || e.issueKey.split("-")[0] || "Outros"
-          if (tf === "new" || tf === "redesign") {
-            if (!protoMap.has(proj)) protoMap.set(proj, new Set())
-            protoMap.get(proj)!.add(e.issueKey)
-          }
-          if (e.status?.toLowerCase().trim() === "approval") {
-            if (!agMap.has(proj)) agMap.set(proj, new Set())
-            agMap.get(proj)!.add(e.issueKey)
-          }
-        }
-
-        function buildTopItems(map: Map<string, Set<string>>) {
-          const sorted = [...map.entries()]
-            .map(([label, keys]) => ({ label, count: keys.size }))
-            .sort((a, b) => b.count - a.count)
-          if (sorted.length <= 5) return sorted
-          const top4 = sorted.slice(0, 4)
-          const otherCount = sorted.slice(4).reduce((s, x) => s + x.count, 0)
-          return [...top4, { label: "Outros", count: otherCount, isOther: true }]
-        }
-
-        setProtoByProduct(buildTopItems(protoMap))
-        setAgByProduct(buildTopItems(agMap))
+        setRawMemberEntries(Object.fromEntries(results))
       } finally {
         setLoading(false)
       }
     },
-    [membros, progressaoMap],
+    [membros],
   )
 
   React.useEffect(() => {
-    void fetchDataWithProducts(ano, selectedUserId)
+    void fetchAll(ano)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ano, selectedUserId])
+  }, [ano])
 
   // ── Render ───────────────────────────────────────────────────────────────
+  const hasSelection = selectedUserIds.length > 0
+
   return (
     <div className="min-w-0 space-y-6">
-      {/* Header */}
+      {/* Header row: title + year selector */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-text-primary">Visão geral — UX</h1>
@@ -606,24 +612,30 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
             Lançamentos, protótipos e investimento da equipe UX
           </p>
         </div>
-        {/* Year selector */}
-        <select
-          value={ano}
-          onChange={(e) => setAno(Number(e.target.value))}
-          className="rounded-lg border border-border-default bg-surface-card px-3 py-1.5 text-sm font-medium text-text-primary shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+        <Select
+          value={String(ano)}
+          onValueChange={(v) => { if (v) setAno(Number(v)) }}
         >
-          {yearOptions.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
+          <SelectTrigger
+            className="h-8 w-auto shrink-0 text-xs"
+            aria-label="Selecionar ano"
+          >
+            <SelectValue>{ano}</SelectValue>
+          </SelectTrigger>
+          <SelectPopup>
+            {yearOptions.map((y) => (
+              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
       </div>
 
       {/* Avatar strip — filtro por membro */}
       {membros.length > 0 && (
         <UxAvatarStrip
           membros={membros}
-          selectedUserId={selectedUserId}
-          onSelect={setSelectedUserId}
+          selectedUserIds={selectedUserIds}
+          onToggle={toggleUser}
         />
       )}
 

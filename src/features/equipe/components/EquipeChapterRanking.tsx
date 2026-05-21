@@ -2,10 +2,11 @@
 
 import * as React from "react"
 import Image from "next/image"
-import { Trophy } from "lucide-react"
+import { Gift, Trophy } from "lucide-react"
 import type { EquipeChapterRankingPage } from "@/features/equipe/lib/equipe-chapters-shared"
 import { RankingPositionBadge } from "@/components/shared/RankingPositionBadge"
 import { TablePagination } from "@/components/shared/TablePagination"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/core/utils"
 import { EmptyState } from "@/components/shared/EmptyState"
 
@@ -59,10 +60,10 @@ export function EquipeChapterRanking({ data, loading, onPageChange, onOpenPremio
                     <th className="px-2 py-2 text-left text-[10px] font-semibold text-text-secondary sm:px-3 sm:py-2.5 sm:text-[11px]">
                       Usuário
                     </th>
-                    <th className="w-16 px-2 py-2 text-right text-[10px] font-semibold text-text-secondary sm:w-18 sm:px-3 sm:py-2.5 sm:text-[11px]">
+                    <th className="w-16 px-2 py-2 text-center text-[10px] font-semibold text-text-secondary sm:w-18 sm:px-3 sm:py-2.5 sm:text-[11px]">
                       Chapters
                     </th>
-                    <th className="w-12 pl-2 pr-4 py-2 text-right text-[10px] font-semibold text-text-secondary sm:w-14 sm:pr-5 sm:py-2.5 sm:text-[11px]">
+                    <th className="w-16 px-2 py-2 text-center text-[10px] font-semibold text-text-secondary sm:w-20 sm:px-3 sm:py-2.5 sm:text-[11px]">
                       Pts.
                     </th>
                   </tr>
@@ -109,21 +110,24 @@ export function EquipeChapterRanking({ data, loading, onPageChange, onOpenPremio
                           </span>
                         </div>
                       </td>
-                      <td className="px-2 py-1.5 text-right align-middle sm:px-3 sm:py-2">
+                      <td className="px-2 py-1.5 text-center align-middle sm:px-3 sm:py-2">
                         <span className="text-[11px] font-normal tabular-nums text-text-primary sm:text-xs">
                           {e.chapterCount}
                         </span>
                       </td>
-                      <td className="pl-2 pr-4 py-1.5 text-right align-middle sm:pr-5 sm:py-2">
+                      <td className="px-2 py-1.5 text-center align-middle sm:px-3 sm:py-2">
                         {e.isCurrentUser && e.points >= 2 && onOpenPremios ? (
-                          <button
+                          <Button
                             type="button"
+                            variant="outline"
+                            size="xs"
                             onClick={onOpenPremios}
                             title="Ver prêmios disponíveis"
-                            className="text-[11px] font-semibold tabular-nums text-brand-primary underline decoration-dotted underline-offset-2 hover:text-brand-primary/80 sm:text-xs"
+                            className="gap-1"
                           >
+                            <Gift className="size-3 shrink-0" aria-hidden />
                             {e.points}
-                          </button>
+                          </Button>
                         ) : (
                           <span className="text-[11px] font-normal tabular-nums text-text-primary sm:text-xs">
                             {e.points}
