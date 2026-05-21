@@ -566,22 +566,11 @@ function ProductRankCard({
 
 // ─── YearTable ────────────────────────────────────────────────────────────────
 
-function YearTable({
-  monthStats,
-  quarterTypeTotals,
-  quarterUniqueIssues,
-  yearTotals,
-  totalUniqueIssues,
-  hideValues,
-}: {
-  monthStats: MonthStats[]
-  quarterTypeTotals: YearTypeTotals[]
-  quarterUniqueIssues: number[]
-  yearTotals: YearTypeTotals
-  totalUniqueIssues: number
-  hideValues: boolean
-}) {
-  // Hours and investimento are genuinely additive across months — use sumStats only for those
+// YearTable is fully additive: quarterly row = sum of its months, total row = sum of all months.
+// Each unique issue can appear in multiple months if it had worklogs in multiple months,
+// so quarterly/annual sums may exceed the global unique count shown in the cards.
+// Cards use global Sets (true unique) — table uses per-period activity counts.
+function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideValues: boolean }) {
   const totalAnual = monthStats.reduce(sumStats, emptyMonthStats())
   const inv = (v: number) =>
     hideValues ? <span className="tracking-widest text-text-disabled">••••</span> : formatBRL(v)
@@ -615,35 +604,28 @@ function YearTable({
           </tr>
         </thead>
         <tbody>
-          {QUARTERS.map((q, qi) => {
-            // Additive values (hours, investimento) — safe to sum across months
-            const qTimeStats = q.months.reduce(
+          {QUARTERS.map((q) => {
+            // All values summed additively — quarterly = sum of its months
+            const qStats = q.months.reduce(
               (acc, mi) => sumStats(acc, monthStats[mi]!),
               emptyMonthStats(),
             )
-            // Type counts — use deduplicated quarter totals (no double-counting)
-            const qt = quarterTypeTotals[qi]!
-            const qIssues = quarterUniqueIssues[qi]!
             return (
               <React.Fragment key={q.label}>
                 <tr className="border-b border-border-default bg-neutral-grey-50">
                   <td className="px-4 py-2.5 font-semibold text-text-primary">{q.label}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">
-                    {formatHHMM(qTimeStats.totalSeconds)}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">
-                    {inv(qTimeStats.investimentoCentavos)}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qIssues}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.novosPrototipos + qt.melhorias + qt.ajustes}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.pesquisa}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.usabilidade}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.outros}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.novosPrototipos}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.melhorias}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.ajustes}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.retornos}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.aguardando}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{formatHHMM(qStats.totalSeconds)}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{inv(qStats.investimentoCentavos)}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.totalIssues}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.novosPrototipos + qStats.melhorias + qStats.ajustes}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.pesquisa}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.usabilidade}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.outros}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.novosPrototipos}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.melhorias}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.ajustes}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.retornos}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.aguardando}</td>
                 </tr>
                 {q.months.map((mi) => {
                   const ms = monthStats[mi]!
@@ -672,21 +654,20 @@ function YearTable({
             )
           })}
 
-          {/* Annual total — uses yearTotals (global Sets) to avoid cross-month double-counting */}
           <tr className="border-t-2 border-border-default bg-neutral-grey-50">
             <td className="px-4 py-2.5 font-bold text-text-primary">Total</td>
             <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{formatHHMM(totalAnual.totalSeconds)}</td>
             <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{inv(totalAnual.investimentoCentavos)}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalUniqueIssues}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.pesquisa}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.usabilidade}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.outros}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.novosPrototipos}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.melhorias}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.ajustes}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.retornos}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.aguardando}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.totalIssues}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.novosPrototipos + totalAnual.melhorias + totalAnual.ajustes}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.pesquisa}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.usabilidade}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.outros}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.novosPrototipos}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.melhorias}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.ajustes}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.retornos}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.aguardando}</td>
           </tr>
         </tbody>
       </table>
@@ -764,7 +745,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
   }
 
   // ── Derived stats (instant — no fetch on user toggle) ─────────────────────
-  const { monthStats, totalUniqueIssues, yearTotals, quarterTypeTotals, quarterUniqueIssues, protoByProduct, agByProduct } = React.useMemo(() => {
+  const { monthStats, totalUniqueIssues, yearTotals, protoByProduct, agByProduct } = React.useMemo(() => {
     const empty: YearTypeTotals = {
       novosPrototipos: 0, melhorias: 0, ajustes: 0, pesquisa: 0,
       usabilidade: 0, criticos: 0, outros: 0, aguardando: 0, retornos: 0,
@@ -774,8 +755,6 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         monthStats: null,
         totalUniqueIssues: 0,
         yearTotals: empty,
-        quarterTypeTotals: QUARTERS.map(() => empty),
-        quarterUniqueIssues: QUARTERS.map(() => 0),
         protoByProduct: [] as { label: string; count: number; isOther?: boolean }[],
         agByProduct: [] as { label: string; count: number; isOther?: boolean }[],
       }
@@ -802,7 +781,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       filterAccountId = firstEntry?.authorJiraAccountId ?? undefined
     }
 
-    // Year-level unique counts (correct: global Sets, no double-counting across months)
+    // Year-level unique counts for the cards (global Sets — true unique, no double-counting)
     const yTotals = aggregateYearTotals(allEntries, filterAccountId)
 
     const protoMap = new Map<string, Set<string>>()
@@ -820,32 +799,10 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       }
     }
 
-    // Quarterly type totals with proper deduplication (same issue in multiple months
-    // of a quarter is only counted once, not additive via sumStats)
-    const quarterTypeTotals = QUARTERS.map((q) => {
-      const qMonthSet = new Set(q.months)
-      const qEntries = allEntries.filter((e) => {
-        const month = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-        return qMonthSet.has(month)
-      })
-      return aggregateYearTotals(qEntries, filterAccountId)
-    })
-    const quarterUniqueIssues = QUARTERS.map((q) => {
-      const qMonthSet = new Set(q.months)
-      const qKeys = new Set(
-        allEntries
-          .filter((e) => qMonthSet.has(new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()))
-          .map((e) => e.issueKey),
-      )
-      return qKeys.size
-    })
-
     return {
       monthStats: combined,
       totalUniqueIssues: new Set(allEntries.map((e) => e.issueKey)).size,
       yearTotals: yTotals,
-      quarterTypeTotals,
-      quarterUniqueIssues,
       protoByProduct: buildTopItems(protoMap),
       agByProduct: buildTopItems(agMap),
     }
@@ -1085,14 +1042,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       {loading || monthStats === null ? (
         <SectionSpinner minHeight="min-h-[300px]" />
       ) : (
-        <YearTable
-          monthStats={monthStats}
-          quarterTypeTotals={quarterTypeTotals}
-          quarterUniqueIssues={quarterUniqueIssues}
-          yearTotals={yearTotals}
-          totalUniqueIssues={totalUniqueIssues}
-          hideValues={hideValues}
-        />
+        <YearTable monthStats={monthStats} hideValues={hideValues} />
       )}
     </div>
   )
