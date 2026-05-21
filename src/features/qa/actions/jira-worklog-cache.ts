@@ -18,6 +18,7 @@ export interface UxJiraEntry {
   projectName: string | null
   typeField: string | null
   status: string | null
+  priority: string | null
   started: string
   timeSpentSeconds: number
 }
@@ -103,6 +104,7 @@ async function syncMonthsForUser(
           ...e,
           typeField: patch.typeField?.trim() ? patch.typeField.trim() : e.typeField,
           projectName: patch.projectName?.trim() ? patch.projectName.trim() : e.projectName,
+          priority: patch.priority?.trim() ? patch.priority.trim() : (e.priority ?? null),
         }
       })
     }
@@ -124,6 +126,7 @@ async function syncMonthsForUser(
             projectName: e.projectName ?? null,
             typeField: e.typeField ?? null,
             status: e.status ?? null,
+            priority: (e as { priority?: string | null }).priority ?? null,
             timeSpentSeconds: e.timeSpentSeconds,
             year,
             month,
@@ -134,6 +137,7 @@ async function syncMonthsForUser(
             projectName: e.projectName ?? null,
             typeField: e.typeField ?? null,
             status: e.status ?? null,
+            priority: (e as { priority?: string | null }).priority ?? null,
             startedAt,
             timeSpentSeconds: e.timeSpentSeconds,
             year,
@@ -226,6 +230,7 @@ export async function getUxWorklogsForYear(
       projectName: true,
       typeField: true,
       status: true,
+      priority: true,
       startedAt: true,
       timeSpentSeconds: true,
     },
@@ -239,6 +244,7 @@ export async function getUxWorklogsForYear(
         projectName: string | null
         typeField: string | null
         status: string | null
+        priority: string | null
         startedAt: Date
         timeSpentSeconds: number
       }[]
@@ -247,6 +253,7 @@ export async function getUxWorklogsForYear(
       projectName: r.projectName,
       typeField: r.typeField,
       status: r.status,
+      priority: r.priority,
       started: r.startedAt.toISOString().slice(0, 10),
       timeSpentSeconds: r.timeSpentSeconds,
     })),

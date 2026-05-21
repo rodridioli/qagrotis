@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Clock, DollarSign, Layers, MousePointer, RefreshCw, Search, Wrench } from "lucide-react"
+import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, Layers, MoreHorizontal, MousePointer, RefreshCw, Search, TrendingUp, Wrench } from "lucide-react"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -35,16 +35,21 @@ interface JiraEntry {
   projectName?: string | null
   typeField?: string | null
   status?: string | null
+  priority?: string | null
   started: string
   timeSpentSeconds: number
 }
 
 interface MonthStats {
   totalSeconds: number
+  totalIssues: number
   novosPrototipos: number
   melhorias: number
+  ajustes: number
   pesquisa: number
   usabilidade: number
+  criticos: number
+  outros: number
   aguardando: number
   investimentoCentavos: number
 }
@@ -90,10 +95,14 @@ function formatDurationAvg(seconds: number): string {
 function emptyMonthStats(): MonthStats {
   return {
     totalSeconds: 0,
+    totalIssues: 0,
     novosPrototipos: 0,
     melhorias: 0,
+    ajustes: 0,
     pesquisa: 0,
     usabilidade: 0,
+    criticos: 0,
+    outros: 0,
     aguardando: 0,
     investimentoCentavos: 0,
   }
@@ -102,10 +111,14 @@ function emptyMonthStats(): MonthStats {
 function sumStats(a: MonthStats, b: MonthStats): MonthStats {
   return {
     totalSeconds: a.totalSeconds + b.totalSeconds,
+    totalIssues: a.totalIssues + b.totalIssues,
     novosPrototipos: a.novosPrototipos + b.novosPrototipos,
     melhorias: a.melhorias + b.melhorias,
+    ajustes: a.ajustes + b.ajustes,
     pesquisa: a.pesquisa + b.pesquisa,
     usabilidade: a.usabilidade + b.usabilidade,
+    criticos: a.criticos + b.criticos,
+    outros: a.outros + b.outros,
     aguardando: a.aguardando + b.aguardando,
     investimentoCentavos: a.investimentoCentavos + b.investimentoCentavos,
   }
@@ -139,20 +152,28 @@ function aggregateByMonth(
 ): MonthStats[] {
   type Bucket = {
     seconds: number
+    all: Set<string>
     novosProto: Set<string>
     melhorias: Set<string>
+    ajustes: Set<string>
     pesq: Set<string>
     usabilidade: Set<string>
+    criticos: Set<string>
+    outros: Set<string>
     ag: Set<string>
   }
   const byMonth: Map<number, Bucket> = new Map()
   for (let i = 0; i < 12; i++) {
     byMonth.set(i, {
       seconds: 0,
+      all: new Set(),
       novosProto: new Set(),
       melhorias: new Set(),
+      ajustes: new Set(),
       pesq: new Set(),
       usabilidade: new Set(),
+      criticos: new Set(),
+      outros: new Set(),
       ag: new Set(),
     })
   }
@@ -163,11 +184,15 @@ function aggregateByMonth(
     if (month < 0 || month > 11) continue
     const bucket = byMonth.get(month)!
     bucket.seconds += e.timeSpentSeconds
+    bucket.all.add(e.issueKey)
     const tf = (e.typeField ?? "").trim().toLowerCase()
     if (tf === "new" || tf === "redesign") bucket.novosProto.add(e.issueKey)
-    if (tf === "ajust/return" || tf === "improvement") bucket.melhorias.add(e.issueKey)
+    if (tf === "improvement") bucket.melhorias.add(e.issueKey)
+    if (tf === "ajust/return") bucket.ajustes.add(e.issueKey)
     if (tf === "research") bucket.pesq.add(e.issueKey)
     if (tf === "usability") bucket.usabilidade.add(e.issueKey)
+    if (tf === "others") bucket.outros.add(e.issueKey)
+    if (e.priority?.toLowerCase().trim() === "critical") bucket.criticos.add(e.issueKey)
     if (e.status?.toLowerCase().trim() === "approval") bucket.ag.add(e.issueKey)
   }
 
@@ -178,10 +203,14 @@ function aggregateByMonth(
     const investimento = valorHora != null ? Math.round(hours * valorHora) : 0
     return {
       totalSeconds: bucket.seconds,
+      totalIssues: bucket.all.size,
       novosPrototipos: bucket.novosProto.size,
       melhorias: bucket.melhorias.size,
+      ajustes: bucket.ajustes.size,
       pesquisa: bucket.pesq.size,
       usabilidade: bucket.usabilidade.size,
+      criticos: bucket.criticos.size,
+      outros: bucket.outros.size,
       aguardando: bucket.ag.size,
       investimentoCentavos: investimento,
     }
@@ -261,12 +290,18 @@ function MetricCard({
   sub,
   icon: Icon,
   iconVariant,
+  sensitive,
+  hidden,
+  onToggleHidden,
 }: {
   label: string
   value: string
   sub?: string
   icon: React.ElementType
   iconVariant: "brand" | "warning" | "success" | "info"
+  sensitive?: boolean
+  hidden?: boolean
+  onToggleHidden?: () => void
 }) {
   const iconCls = cn(
     "hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg",
@@ -279,8 +314,24 @@ function MetricCard({
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm text-text-secondary">{label}</p>
-          <p className="mt-1 text-2xl font-bold text-text-primary">{value}</p>
+          {sensitive ? (
+            <button
+              type="button"
+              onClick={onToggleHidden}
+              aria-label={hidden ? "Exibir valor" : "Ocultar valor"}
+              className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
+            >
+              {label}
+              {hidden ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+            </button>
+          ) : (
+            <p className="text-sm text-text-secondary">{label}</p>
+          )}
+          <p className="mt-1 text-2xl font-bold text-text-primary">
+            {sensitive && hidden
+              ? <span className="tracking-widest text-text-disabled">••••</span>
+              : value}
+          </p>
           {sub && <p className="mt-0.5 text-xs text-text-secondary">{sub}</p>}
         </div>
         <div className={iconCls}>
@@ -335,8 +386,10 @@ function ProductRankCard({
 
 // ─── YearTable ────────────────────────────────────────────────────────────────
 
-function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
+function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideValues: boolean }) {
   const totalAnual = monthStats.reduce(sumStats, emptyMonthStats())
+  const inv = (v: number) =>
+    hideValues ? <span className="tracking-widest text-text-disabled">••••</span> : formatBRL(v)
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
@@ -383,7 +436,7 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
                     {formatHHMM(qStats.totalSeconds)}
                   </td>
                   <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
-                    {formatBRL(qStats.investimentoCentavos)}
+                    {inv(qStats.investimentoCentavos)}
                   </td>
                   <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
                     {qStats.novosPrototipos}
@@ -413,7 +466,7 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
                         {formatHHMM(ms.totalSeconds)}
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums text-text-primary">
-                        {formatBRL(ms.investimentoCentavos)}
+                        {inv(ms.investimentoCentavos)}
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums text-text-primary">
                         {ms.novosPrototipos}
@@ -443,7 +496,7 @@ function YearTable({ monthStats }: { monthStats: MonthStats[] }) {
               {formatHHMM(totalAnual.totalSeconds)}
             </td>
             <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
-              {formatBRL(totalAnual.investimentoCentavos)}
+              {inv(totalAnual.investimentoCentavos)}
             </td>
             <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
               {totalAnual.novosPrototipos}
@@ -473,6 +526,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
   const currentYear = new Date().getFullYear()
   const [ano, setAno] = React.useState(currentYear)
   const [loading, setLoading] = React.useState(false)
+  const [hideValues, setHideValues] = React.useState(true)
   const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([])
   // Raw entries per userId — fetched once per year, filtered in useMemo
   const [rawMemberEntries, setRawMemberEntries] = React.useState<Record<string, JiraEntry[]>>({})
@@ -644,8 +698,8 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         </div>
       </div>
 
-      {/* Metric cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      {/* Metric cards — linha 1 */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <MetricCard
           label="Tempo Médio por Atividade"
           value={loading ? "—" : formatDurationAvg(avgSecondsPerIssue)}
@@ -653,19 +707,44 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           iconVariant="brand"
         />
         <MetricCard
-          label="Valor Médio Investido"
+          label="Valor Médio por Atividade"
           value={loading ? "—" : formatBRL(avgInvestimentoCentavos)}
-          icon={DollarSign}
+          icon={TrendingUp}
           iconVariant="success"
+          sensitive
+          hidden={hideValues}
+          onToggleHidden={() => setHideValues((v) => !v)}
         />
         <MetricCard
-          label="Protótipos Novos"
-          value={loading ? "—" : String(totalAnual.novosPrototipos)}
-          icon={Layers}
+          label="Total de Jiras"
+          value={loading ? "—" : String(totalUniqueIssues)}
+          icon={BarChart2}
+          iconVariant="info"
+        />
+        <MetricCard
+          label="Total de Críticos"
+          value={loading ? "—" : String(totalAnual.criticos)}
+          icon={AlertTriangle}
           iconVariant="warning"
         />
         <MetricCard
-          label="Pesquisas no período"
+          label="Total de Outros"
+          value={loading ? "—" : String(totalAnual.outros)}
+          icon={MoreHorizontal}
+          iconVariant="info"
+        />
+      </div>
+
+      {/* Metric cards — linha 2 */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+        <MetricCard
+          label="Protótipos"
+          value={loading ? "—" : String(totalAnual.novosPrototipos + totalAnual.melhorias + totalAnual.ajustes)}
+          icon={Layers}
+          iconVariant="brand"
+        />
+        <MetricCard
+          label="Pesquisas"
           value={loading ? "—" : String(totalAnual.pesquisa)}
           icon={Search}
           iconVariant="info"
@@ -680,6 +759,18 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           label="Melhorias"
           value={loading ? "—" : String(totalAnual.melhorias)}
           icon={Wrench}
+          iconVariant="success"
+        />
+        <MetricCard
+          label="Ajustes"
+          value={loading ? "—" : String(totalAnual.ajustes)}
+          icon={Wrench}
+          iconVariant="warning"
+        />
+        <MetricCard
+          label="Novos"
+          value={loading ? "—" : String(totalAnual.novosPrototipos)}
+          icon={Layers}
           iconVariant="warning"
         />
       </div>
@@ -702,7 +793,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       {loading || monthStats === null ? (
         <SectionSpinner minHeight="min-h-[300px]" />
       ) : (
-        <YearTable monthStats={monthStats} />
+        <YearTable monthStats={monthStats} hideValues={hideValues} />
       )}
     </div>
   )

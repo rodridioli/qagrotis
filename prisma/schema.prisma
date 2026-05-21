@@ -622,6 +622,7 @@ model JiraWorklogCache {
   projectName      String?
   typeField        String?
   status           String?
+  priority         String?
   startedAt        DateTime
   timeSpentSeconds Int
   year             Int
