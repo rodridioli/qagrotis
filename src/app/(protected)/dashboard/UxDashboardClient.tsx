@@ -330,7 +330,7 @@ function UxAvatarStrip({
 
 // ─── SparklineChart ───────────────────────────────────────────────────────────
 
-const SPARK_MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
+const SPARK_MONTHS = ["J","F","M","A","M","J","J","A","S","O","N","D"]
 
 function SparklineChart({
   data,
@@ -438,7 +438,7 @@ function MetricCard({
     iconVariant === "success" && "bg-badge-success/10 text-badge-success-text",
     iconVariant === "info"    && "bg-badge-info/10 text-badge-info-text",
   )
-  const showSpark = sparkData && !(sensitive && hidden) && sparkData.some(v => v > 0)
+  const showSpark = sparkData && sparkData.length > 0 && !(sensitive && hidden)
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-2">
