@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, Layers, MoreHorizontal, MousePointer, RefreshCw, Search, TrendingUp, Wrench } from "lucide-react"
+import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, Layers, MoreHorizontal, MousePointer, RefreshCw, RotateCcw, Search, TrendingUp, Wrench } from "lucide-react"
 import { AreaChart, Area, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -37,6 +37,7 @@ interface JiraEntry {
   typeField?: string | null
   status?: string | null
   priority?: string | null
+  retornos?: number
   started: string
   timeSpentSeconds: number
 }
@@ -155,6 +156,7 @@ interface YearTypeTotals {
   criticos: number
   outros: number
   aguardando: number
+  retornos: number
 }
 
 function aggregateYearTotals(entries: JiraEntry[]): YearTypeTotals {
@@ -166,6 +168,8 @@ function aggregateYearTotals(entries: JiraEntry[]): YearTypeTotals {
   const criticos = new Set<string>()
   const outros = new Set<string>()
   const ag = new Set<string>()
+  // retornos: sum per unique issue (take the max value seen for each key)
+  const retornosPerIssue = new Map<string, number>()
 
   for (const e of entries) {
     const tf = (e.typeField ?? "").trim().toLowerCase()
@@ -177,7 +181,13 @@ function aggregateYearTotals(entries: JiraEntry[]): YearTypeTotals {
     if (tf === "others" || tf === "other") outros.add(e.issueKey)
     if (e.priority?.toLowerCase().trim() === "critical") criticos.add(e.issueKey)
     if (e.status?.toLowerCase().trim() === "approval") ag.add(e.issueKey)
+    const r = e.retornos ?? 0
+    if (r > 0) {
+      retornosPerIssue.set(e.issueKey, Math.max(retornosPerIssue.get(e.issueKey) ?? 0, r))
+    }
   }
+
+  const retornos = Array.from(retornosPerIssue.values()).reduce((s, v) => s + v, 0)
 
   return {
     novosPrototipos: novosProto.size,
@@ -188,6 +198,7 @@ function aggregateYearTotals(entries: JiraEntry[]): YearTypeTotals {
     criticos: criticos.size,
     outros: outros.size,
     aguardando: ag.size,
+    retornos,
   }
 }
 
@@ -691,7 +702,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
   const { monthStats, totalUniqueIssues, yearTotals, protoByProduct, agByProduct } = React.useMemo(() => {
     const empty: YearTypeTotals = {
       novosPrototipos: 0, melhorias: 0, ajustes: 0, pesquisa: 0,
-      usabilidade: 0, criticos: 0, outros: 0, aguardando: 0,
+      usabilidade: 0, criticos: 0, outros: 0, aguardando: 0, retornos: 0,
     }
     if (Object.keys(rawMemberEntries).length === 0) {
       return {
@@ -890,8 +901,8 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         />
       </div>
 
-      {/* Metric cards — linha 2 (7 cards, Outros após Usabilidade) */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-7">
+      {/* Metric cards — linha 2 (8 cards, Outros após Usabilidade, Retornos após Novos) */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
         <MetricCard
           label="Protótipos"
           value={loading ? "—" : String(yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes)}
@@ -911,7 +922,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           iconVariant="brand"
         />
         <MetricCard
-          label="Total de Outros"
+          label="Outros"
           value={loading ? "—" : String(yearTotals.outros)}
           icon={MoreHorizontal}
           iconVariant="info"
@@ -932,6 +943,12 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           label="Novos"
           value={loading ? "—" : String(yearTotals.novosPrototipos)}
           icon={Layers}
+          iconVariant="warning"
+        />
+        <MetricCard
+          label="Retornos"
+          value={loading ? "—" : String(yearTotals.retornos)}
+          icon={RotateCcw}
           iconVariant="warning"
         />
       </div>

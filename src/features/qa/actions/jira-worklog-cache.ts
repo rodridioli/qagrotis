@@ -9,6 +9,7 @@ import {
   fetchWorklogsForAuthorInRange,
   fetchIssueFieldsForKeys,
   augmentFieldMapWithGetIssueFallback,
+  fetchRetornosForKeys,
   type JiraLancamentoEntry,
 } from "@/features/qa/lib/jira-worklogs-fetch"
 import { resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
@@ -19,6 +20,7 @@ export interface UxJiraEntry {
   typeField: string | null
   status: string | null
   priority: string | null
+  retornos: number
   started: string
   timeSpentSeconds: number
 }
@@ -97,14 +99,18 @@ async function syncMonthsForUser(
         () => new Map<string, import("@/features/qa/lib/jira-worklogs-fetch").LancamentoIssueFieldsPatch>(),
       )
       await augmentFieldMapWithGetIssueFallback(base, credentials, fieldMap, validKeys).catch(() => undefined)
+      const retornosMap = await fetchRetornosForKeys(base, credentials, validKeys).catch(
+        () => new Map<string, number>(),
+      )
       entries = rawEntries.map((e) => {
-        const patch = fieldMap.get(e.issueKey.trim().toUpperCase())
-        if (!patch) return e
+        const key = e.issueKey.trim().toUpperCase()
+        const patch = fieldMap.get(key)
         return {
           ...e,
-          typeField: patch.typeField?.trim() ? patch.typeField.trim() : e.typeField,
-          projectName: patch.projectName?.trim() ? patch.projectName.trim() : e.projectName,
-          priority: patch.priority?.trim() ? patch.priority.trim() : (e.priority ?? null),
+          typeField: patch?.typeField?.trim() ? patch.typeField.trim() : e.typeField,
+          projectName: patch?.projectName?.trim() ? patch.projectName.trim() : e.projectName,
+          priority: patch?.priority?.trim() ? patch.priority.trim() : (e.priority ?? null),
+          retornos: retornosMap.get(key) ?? 0,
         }
       })
     }
@@ -127,6 +133,7 @@ async function syncMonthsForUser(
             typeField: e.typeField ?? null,
             status: e.status ?? null,
             priority: (e as { priority?: string | null }).priority ?? null,
+            retornos: (e as { retornos?: number }).retornos ?? 0,
             timeSpentSeconds: e.timeSpentSeconds,
             year,
             month,
@@ -138,6 +145,7 @@ async function syncMonthsForUser(
             typeField: e.typeField ?? null,
             status: e.status ?? null,
             priority: (e as { priority?: string | null }).priority ?? null,
+            retornos: (e as { retornos?: number }).retornos ?? 0,
             startedAt,
             timeSpentSeconds: e.timeSpentSeconds,
             year,
@@ -241,6 +249,7 @@ export async function getUxWorklogsForYear(
       typeField: true,
       status: true,
       priority: true,
+      retornos: true,
       startedAt: true,
       timeSpentSeconds: true,
     },
@@ -255,6 +264,7 @@ export async function getUxWorklogsForYear(
         typeField: string | null
         status: string | null
         priority: string | null
+        retornos: number
         startedAt: Date
         timeSpentSeconds: number
       }[]
@@ -264,6 +274,7 @@ export async function getUxWorklogsForYear(
       typeField: r.typeField,
       status: r.status,
       priority: r.priority,
+      retornos: r.retornos,
       started: r.startedAt.toISOString().slice(0, 10),
       timeSpentSeconds: r.timeSpentSeconds,
     })),
