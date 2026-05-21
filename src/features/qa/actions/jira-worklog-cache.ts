@@ -35,6 +35,7 @@ function needsSync(
   syncedAt: Date | null,
   year: number,
   month: number,
+  force = false,
 ): boolean {
   if (!syncedAt) return true
 
@@ -42,11 +43,13 @@ function needsSync(
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth()
 
-  // Any month before the current month is immutable — serve from cache forever
+  // Months older than the previous month are immutable — serve from cache forever
   if (year < currentYear) return false
-  if (year === currentYear && month < currentMonth) return false
+  if (year === currentYear && month < currentMonth - 1) return false
 
-  // Current month: re-sync once per day
+  // Last two months (previous + current): forced sync always re-syncs;
+  // otherwise re-sync once per day
+  if (force) return true
   const elapsed = Date.now() - syncedAt.getTime()
   return elapsed > 24 * 60 * 60 * 1000
 }
@@ -158,6 +161,7 @@ async function syncMonthsForUser(
 export async function getUxWorklogsForYear(
   targetUserId: string,
   year: number,
+  force = false,
 ): Promise<{ entries: UxJiraEntry[] }> {
   const session = await requireSession()
   const role = buildRole(session.user.type, session.user.accessProfile)
@@ -196,7 +200,7 @@ export async function getUxWorklogsForYear(
 
   // Determine which months need a Jira sync
   const monthsToSync = relevantMonths.filter((m) =>
-    needsSync((markerMap.get(m) as Date | undefined) ?? null, year, m),
+    needsSync((markerMap.get(m) as Date | undefined) ?? null, year, m, force),
   )
 
   if (monthsToSync.length > 0) {

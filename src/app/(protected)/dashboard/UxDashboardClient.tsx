@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Clock, DollarSign, Layers, MousePointer, Search, Wrench } from "lucide-react"
+import { Clock, DollarSign, Layers, MousePointer, RefreshCw, Search, Wrench } from "lucide-react"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -568,7 +568,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
 
   // ── Fetch all members on year change (uses cache) ─────────────────────────
   const fetchAll = React.useCallback(
-    async (year: number) => {
+    async (year: number, force = false) => {
       if (membros.length === 0) {
         setRawMemberEntries({})
         return
@@ -579,7 +579,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         const results = await Promise.all(
           membros.map(async (m) => {
             try {
-              const { entries } = await getUxWorklogsForYear(m.userId, year)
+              const { entries } = await getUxWorklogsForYear(m.userId, year, force)
               return [m.userId, entries] as const
             } catch {
               return [m.userId, [] as JiraEntry[]] as const
@@ -615,22 +615,33 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
             />
           )}
         </div>
-        <Select
-          value={String(ano)}
-          onValueChange={(v) => { if (v) setAno(Number(v)) }}
-        >
-          <SelectTrigger
-            className="h-8 w-auto shrink-0 text-xs"
-            aria-label="Selecionar ano"
+        <div className="flex shrink-0 items-center gap-2">
+          <Select
+            value={String(ano)}
+            onValueChange={(v) => { if (v) setAno(Number(v)) }}
           >
-            <SelectValue>{ano}</SelectValue>
-          </SelectTrigger>
-          <SelectPopup>
-            {yearOptions.map((y) => (
-              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-            ))}
-          </SelectPopup>
-        </Select>
+            <SelectTrigger
+              className="h-8 w-auto text-xs"
+              aria-label="Selecionar ano"
+            >
+              <SelectValue>{ano}</SelectValue>
+            </SelectTrigger>
+            <SelectPopup>
+              {yearOptions.map((y) => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+          <button
+            type="button"
+            aria-label="Sincronizar dados"
+            disabled={loading}
+            onClick={() => void fetchAll(ano, true)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default bg-surface-card text-text-secondary shadow-sm transition-colors hover:bg-neutral-grey-50 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw className={cn("size-3.5", loading && "animate-spin")} aria-hidden />
+          </button>
+        </div>
       </div>
 
       {/* Metric cards */}
