@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, Layers, MoreHorizontal, MousePointer, RefreshCw, Search, TrendingUp, Wrench } from "lucide-react"
+import { AreaChart, Area, ResponsiveContainer } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -327,6 +328,48 @@ function UxAvatarStrip({
   )
 }
 
+// ─── SparklineChart ───────────────────────────────────────────────────────────
+
+function SparklineChart({
+  data,
+  variant,
+}: {
+  data: number[]
+  variant: "brand" | "warning" | "success" | "info"
+}) {
+  const uid = React.useId().replace(/:/g, "")
+  const gradientId = `spark-${uid}`
+  const colorMap: Record<string, string> = {
+    brand: "#3b82f6",
+    success: "#22c55e",
+    warning: "#f59e0b",
+    info: "#06b6d4",
+  }
+  const color = colorMap[variant] ?? "#3b82f6"
+  const chartData = data.map((v, i) => ({ i, v }))
+  return (
+    <ResponsiveContainer width="100%" height={44}>
+      <AreaChart data={chartData} margin={{ top: 2, right: 2, bottom: 0, left: 2 }}>
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={color} stopOpacity={0.25} />
+            <stop offset="95%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area
+          type="monotone"
+          dataKey="v"
+          stroke={color}
+          fill={`url(#${gradientId})`}
+          strokeWidth={1.5}
+          dot={false}
+          isAnimationActive={false}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  )
+}
+
 // ─── MetricCard ────────────────────────────────────────────────────────────────
 
 function MetricCard({
@@ -338,6 +381,7 @@ function MetricCard({
   sensitive,
   hidden,
   onToggleHidden,
+  sparkData,
 }: {
   label: string
   value: string
@@ -347,6 +391,7 @@ function MetricCard({
   sensitive?: boolean
   hidden?: boolean
   onToggleHidden?: () => void
+  sparkData?: number[]
 }) {
   const iconCls = cn(
     "hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg",
@@ -355,6 +400,7 @@ function MetricCard({
     iconVariant === "success" && "bg-badge-success/10 text-badge-success-text",
     iconVariant === "info"    && "bg-badge-info/10 text-badge-info-text",
   )
+  const showSpark = sparkData && !(sensitive && hidden) && sparkData.some(v => v > 0)
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-2">
@@ -383,6 +429,11 @@ function MetricCard({
           <Icon className="size-5" aria-hidden />
         </div>
       </div>
+      {showSpark && (
+        <div className="-mx-1 mt-2">
+          <SparklineChart data={sparkData} variant={iconVariant} />
+        </div>
+      )}
     </div>
   )
 }
@@ -674,6 +725,16 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
   const avgInvestimentoCentavos =
     avgValorHora != null ? Math.round(avgValorHora * (avgSecondsPerIssue / 3600)) : 0
 
+  // ── Sparkline arrays (month-by-month trend, 12 points) ────────────────────
+  const sparkJiras    = (monthStats ?? []).map(ms => ms.totalIssues)
+  const sparkCriticos = (monthStats ?? []).map(ms => ms.criticos)
+  const sparkTempo    = (monthStats ?? []).map(ms =>
+    ms.totalIssues > 0 ? Math.round(ms.totalSeconds / ms.totalIssues) : 0)
+  const sparkValor    = (monthStats ?? []).map(ms =>
+    ms.totalIssues > 0 && avgValorHora != null
+      ? Math.round(avgValorHora * (ms.totalSeconds / ms.totalIssues / 3600))
+      : 0)
+
   // ── Fetch all members on year change (uses cache) ─────────────────────────
   const fetchAll = React.useCallback(
     async (year: number, force = false) => {
@@ -752,13 +813,14 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         </div>
       </div>
 
-      {/* Metric cards — linha 1 */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      {/* Metric cards — linha 1 (4 cards com sparkline) */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard
           label="Tempo Médio por Atividade"
           value={loading ? "—" : formatDurationAvg(avgSecondsPerIssue)}
           icon={Clock}
           iconVariant="brand"
+          sparkData={loading ? undefined : sparkTempo}
         />
         <MetricCard
           label="Valor Médio por Atividade"
@@ -768,29 +830,26 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           sensitive
           hidden={hideValues}
           onToggleHidden={() => setHideValues((v) => !v)}
+          sparkData={loading ? undefined : sparkValor}
         />
         <MetricCard
           label="Total de Jiras"
           value={loading ? "—" : String(totalUniqueIssues)}
           icon={BarChart2}
           iconVariant="info"
+          sparkData={loading ? undefined : sparkJiras}
         />
         <MetricCard
           label="Total de Críticos"
           value={loading ? "—" : String(yearTotals.criticos)}
           icon={AlertTriangle}
           iconVariant="warning"
-        />
-        <MetricCard
-          label="Total de Outros"
-          value={loading ? "—" : String(yearTotals.outros)}
-          icon={MoreHorizontal}
-          iconVariant="info"
+          sparkData={loading ? undefined : sparkCriticos}
         />
       </div>
 
-      {/* Metric cards — linha 2 */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      {/* Metric cards — linha 2 (7 cards, Outros após Usabilidade) */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-7">
         <MetricCard
           label="Protótipos"
           value={loading ? "—" : String(yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes)}
@@ -808,6 +867,12 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           value={loading ? "—" : String(yearTotals.usabilidade)}
           icon={MousePointer}
           iconVariant="brand"
+        />
+        <MetricCard
+          label="Total de Outros"
+          value={loading ? "—" : String(yearTotals.outros)}
+          icon={MoreHorizontal}
+          iconVariant="info"
         />
         <MetricCard
           label="Melhorias"
