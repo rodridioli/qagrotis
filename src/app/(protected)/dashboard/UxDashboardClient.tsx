@@ -378,6 +378,14 @@ function UxAvatarStrip({
 const SPARK_MONTHS      = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
 const SPARK_MONTHS_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
 
+// Single source of truth for variant colours — shared by SparklineChart and MetricCard icon
+const VARIANT_COLOR: Record<"brand" | "warning" | "success" | "info", string> = {
+  brand:   "#3b82f6",
+  success: "#22c55e",
+  warning: "#f59e0b",
+  info:    "#06b6d4",
+}
+
 function SparklineChart({
   data,
   variant,
@@ -391,13 +399,7 @@ function SparklineChart({
 }) {
   const uid = React.useId().replace(/:/g, "")
   const gradientId = `spark-${uid}`
-  const colorMap: Record<string, string> = {
-    brand: "#3b82f6",
-    success: "#22c55e",
-    warning: "#f59e0b",
-    info: "#06b6d4",
-  }
-  const color = colorMap[variant] ?? "#3b82f6"
+  const color = VARIANT_COLOR[variant]
   const chartData = data.map((v, i) => ({
     month: SPARK_MONTHS[i] ?? String(i + 1),
     monthFull: SPARK_MONTHS_FULL[i] ?? String(i + 1),
@@ -484,13 +486,11 @@ function MetricCard({
   sparkData?: number[]
   sparkFormatter?: (v: number) => string
 }) {
-  const iconCls = cn(
-    "hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg",
-    iconVariant === "brand"   && "bg-brand-primary/10 text-brand-primary",
-    iconVariant === "warning" && "bg-badge-warning/10 text-badge-warning-text",
-    iconVariant === "success" && "bg-badge-success/10 text-badge-success-text",
-    iconVariant === "info"    && "bg-badge-info/10 text-badge-info-text",
-  )
+  const iconColor = VARIANT_COLOR[iconVariant]
+  const iconStyle: React.CSSProperties = {
+    backgroundColor: `${iconColor}1a`,
+    color: iconColor,
+  }
   const showSpark = sparkData && sparkData.length > 0
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
@@ -504,7 +504,10 @@ function MetricCard({
           </p>
           {sub && <p className="mt-0.5 text-xs text-text-secondary">{sub}</p>}
         </div>
-        <div className={iconCls}>
+        <div
+          className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg"
+          style={iconStyle}
+        >
           <Icon className="size-5" aria-hidden />
         </div>
       </div>
@@ -576,7 +579,7 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
     hideValues ? <span className="tracking-widest text-text-disabled">••••</span> : formatBRL(v)
 
   const TH = ({ children }: { children: React.ReactNode }) => (
-    <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
+    <th className="px-3 py-3 text-right text-xs font-semibold text-text-secondary">
       {children}
     </th>
   )
@@ -586,7 +589,7 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
       <table className="w-full min-w-[900px] text-sm">
         <thead>
           <tr className="border-b border-border-default bg-neutral-grey-50">
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
+            <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">
               Trimestre
             </th>
             <TH>Horas</TH>
@@ -677,25 +680,33 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
 
 // ─── TypeCard ─────────────────────────────────────────────────────────────────
 
+const TYPE_CARD_TINT: Record<string, string> = {
+  blue:   "bg-blue-50/80 border border-blue-100",
+  violet: "bg-violet-50/80 border border-violet-100",
+  amber:  "bg-amber-50/80 border border-amber-100",
+}
+
 function TypeCard({
   label,
   count,
   totalIssues,
   totalInvestimentoCentavos,
   hideValues,
+  tint,
 }: {
   label: string
   count: number
   totalIssues: number
   totalInvestimentoCentavos: number
   hideValues: boolean
+  tint?: "blue" | "violet" | "amber"
 }) {
   const pct = totalIssues > 0 ? Math.round((count / totalIssues) * 100) : 0
   const costCentavos = totalIssues > 0
     ? Math.round((count / totalIssues) * totalInvestimentoCentavos)
     : 0
   return (
-    <div className="rounded-xl bg-surface-card p-4 shadow-card">
+    <div className={cn("rounded-xl p-4 shadow-card", tint ? TYPE_CARD_TINT[tint] : "bg-surface-card")}>
       <p className="text-xs font-medium text-text-secondary">{label}</p>
       <p className="mt-1 text-xl font-bold text-text-primary tabular-nums">{count}</p>
       <div className="mt-1.5 flex items-center gap-2 text-xs text-text-secondary">
@@ -965,62 +976,17 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       {/* Metric cards — linha 2: Protótipos, Pesquisas, Usabilidade, Outros, Novos, Melhorias, Ajustes, Retornos */}
       {!loading && (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
-          <TypeCard
-            label="Protótipos"
-            count={yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            hideValues={hideValues}
-          />
-          <TypeCard
-            label="Pesquisas"
-            count={yearTotals.pesquisa}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            hideValues={hideValues}
-          />
-          <TypeCard
-            label="Usabilidade"
-            count={yearTotals.usabilidade}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            hideValues={hideValues}
-          />
-          <TypeCard
-            label="Outros"
-            count={yearTotals.outros}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            hideValues={hideValues}
-          />
-          <TypeCard
-            label="Novos"
-            count={yearTotals.novosPrototipos}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            hideValues={hideValues}
-          />
-          <TypeCard
-            label="Melhorias"
-            count={yearTotals.melhorias}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            hideValues={hideValues}
-          />
-          <TypeCard
-            label="Ajustes"
-            count={yearTotals.ajustes}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            hideValues={hideValues}
-          />
-          <TypeCard
-            label="Retornos"
-            count={yearTotals.retornos}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            hideValues={hideValues}
-          />
+          {/* Group: scope / visão global — blue tint */}
+          <TypeCard label="Protótipos"  count={yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
+          <TypeCard label="Pesquisas"   count={yearTotals.pesquisa}      totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
+          <TypeCard label="Usabilidade" count={yearTotals.usabilidade}   totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
+          <TypeCard label="Outros"      count={yearTotals.outros}        totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
+          {/* Group: delivery sub-types — violet tint */}
+          <TypeCard label="Novos"     count={yearTotals.novosPrototipos} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
+          <TypeCard label="Melhorias" count={yearTotals.melhorias}       totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
+          <TypeCard label="Ajustes"   count={yearTotals.ajustes}         totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
+          {/* Isolated: returns — amber tint */}
+          <TypeCard label="Retornos" count={yearTotals.retornos} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="amber" />
         </div>
       )}
 
