@@ -215,114 +215,6 @@ function aggregateYearTotals(entries: JiraEntry[], filterAccountId?: string): Ye
   }
 }
 
-function aggregateByMonth(
-  entries: JiraEntry[],
-  progressaoHistory: ProgressaoHistoricoEntry[],
-  year: number,
-): MonthStats[] {
-  // Pre-compute the first worklog month for each issue within this year.
-  // Issue counts are assigned to this "anchor" month so that every issue is
-  // counted exactly once → monthly counts are additive (sum of months = annual
-  // unique total, matching the card values).
-  // Hours and investment are always accumulated in the actual worklog month.
-  const issueFirstMonth = new Map<string, number>()
-  for (const e of entries) {
-    const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-    if (m < 0 || m > 11) continue
-    const cur = issueFirstMonth.get(e.issueKey)
-    if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
-  }
-
-  type Bucket = {
-    seconds: number
-    investimentoCentavos: number
-    all: Set<string>
-    novosProto: Set<string>
-    melhorias: Set<string>
-    ajustes: Set<string>
-    pesq: Set<string>
-    usabilidade: Set<string>
-    criticos: Set<string>
-    outros: Set<string>
-    ag: Set<string>
-    retornosPerIssue: Map<string, number>
-  }
-  const byMonth: Map<number, Bucket> = new Map()
-  for (let i = 0; i < 12; i++) {
-    byMonth.set(i, {
-      seconds: 0,
-      investimentoCentavos: 0,
-      all: new Set(),
-      novosProto: new Set(),
-      melhorias: new Set(),
-      ajustes: new Set(),
-      pesq: new Set(),
-      usabilidade: new Set(),
-      criticos: new Set(),
-      outros: new Set(),
-      ag: new Set(),
-      retornosPerIssue: new Map(),
-    })
-  }
-
-  for (const e of entries) {
-    const actualMonth = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-    if (actualMonth < 0 || actualMonth > 11) continue
-
-    // Hours and investment always go to the actual worklog month
-    const actualBucket = byMonth.get(actualMonth)!
-    actualBucket.seconds += e.timeSpentSeconds
-    const valorHora = getValorHoraForMonth(progressaoHistory, year, actualMonth)
-    if (valorHora != null) {
-      actualBucket.investimentoCentavos += Math.round((e.timeSpentSeconds / 3600) * valorHora)
-    }
-
-    // Issue counts go to the issue's first worklog month (anchor month)
-    const countMonth = issueFirstMonth.get(e.issueKey) ?? actualMonth
-    const cb = byMonth.get(countMonth)!
-    const tf = (e.typeField ?? "").trim().toLowerCase()
-    cb.all.add(e.issueKey)
-    if (tf === "new/redesign" || tf === "new" || tf === "redesign") cb.novosProto.add(e.issueKey)
-    if (tf === "improvement") cb.melhorias.add(e.issueKey)
-    if (tf === "ajust/return" || tf === "adjustment/return") cb.ajustes.add(e.issueKey)
-    if (tf === "research") cb.pesq.add(e.issueKey)
-    if (tf === "usability") cb.usabilidade.add(e.issueKey)
-    if (tf === "others" || tf === "other") cb.outros.add(e.issueKey)
-    if (e.priority?.toLowerCase().trim() === "critical") cb.criticos.add(e.issueKey)
-    if (e.status?.toLowerCase().trim() === "approval") cb.ag.add(e.issueKey)
-    const r = e.retornos ?? 0
-    if (r > 0) cb.retornosPerIssue.set(e.issueKey, Math.max(cb.retornosPerIssue.get(e.issueKey) ?? 0, r))
-  }
-
-  // Merge untyped issues (not classified into any known type) into "outros" per month
-  for (const bucket of byMonth.values()) {
-    const typed = new Set([
-      ...bucket.novosProto, ...bucket.melhorias, ...bucket.ajustes,
-      ...bucket.pesq, ...bucket.usabilidade, ...bucket.outros,
-    ])
-    for (const key of bucket.all) {
-      if (!typed.has(key)) bucket.outros.add(key)
-    }
-  }
-
-  return Array.from({ length: 12 }, (_, i) => {
-    const b = byMonth.get(i)!
-    return {
-      totalSeconds: b.seconds,
-      totalIssues: b.all.size,
-      novosPrototipos: b.novosProto.size,
-      melhorias: b.melhorias.size,
-      ajustes: b.ajustes.size,
-      pesquisa: b.pesq.size,
-      usabilidade: b.usabilidade.size,
-      criticos: b.criticos.size,
-      outros: b.outros.size,
-      aguardando: b.ag.size,
-      retornos: Array.from(b.retornosPerIssue.values()).reduce((s, v) => s + v, 0),
-      investimentoCentavos: b.investimentoCentavos,
-    }
-  })
-}
 
 function buildTopItems(map: Map<string, Set<string>>) {
   const sorted = [...map.entries()]
@@ -790,13 +682,85 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
     const combined: MonthStats[] = Array.from({ length: 12 }, emptyMonthStats)
     const allEntries: JiraEntry[] = []
 
+    // Pass 1 — per-member: accumulate hours and investment only.
+    // valorHora differs per member so this must stay per-member.
     for (const m of activeMembers) {
       const entries = rawMemberEntries[m.userId] ?? []
       allEntries.push(...entries)
       const history = progressaoMap[m.userId] ?? []
-      const memberStats = aggregateByMonth(entries, history, ano)
+      for (const e of entries) {
+        const month = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+        if (month < 0 || month > 11) continue
+        combined[month]!.totalSeconds += e.timeSpentSeconds
+        const valorHora = getValorHoraForMonth(history, ano, month)
+        if (valorHora != null) {
+          combined[month]!.investimentoCentavos += Math.round((e.timeSpentSeconds / 3600) * valorHora)
+        }
+      }
+    }
+
+    // Pass 2 — global: assign issue counts using a cross-member first-month anchor.
+    // issueFirstMonth is computed across ALL members so UX-100 worked on by
+    // Barbara (April) and Bruno (May) is anchored to April for both — counted once.
+    {
+      const issueFirstMonth = new Map<string, number>()
+      for (const e of allEntries) {
+        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+        if (m < 0 || m > 11) continue
+        const cur = issueFirstMonth.get(e.issueKey)
+        if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
+      }
+
+      type CB = {
+        all: Set<string>; novosProto: Set<string>; melhorias: Set<string>
+        ajustes: Set<string>; pesq: Set<string>; usab: Set<string>
+        criticos: Set<string>; outros: Set<string>; ag: Set<string>
+        retornosPerIssue: Map<string, number>
+      }
+      const buckets: CB[] = Array.from({ length: 12 }, () => ({
+        all: new Set(), novosProto: new Set(), melhorias: new Set(),
+        ajustes: new Set(), pesq: new Set(), usab: new Set(),
+        criticos: new Set(), outros: new Set(), ag: new Set(),
+        retornosPerIssue: new Map(),
+      }))
+
+      for (const e of allEntries) {
+        const countMonth = issueFirstMonth.get(e.issueKey)
+        if (countMonth === undefined) continue
+        const cb = buckets[countMonth]!
+        const tf = (e.typeField ?? "").trim().toLowerCase()
+        cb.all.add(e.issueKey)
+        if (tf === "new/redesign" || tf === "new" || tf === "redesign") cb.novosProto.add(e.issueKey)
+        if (tf === "improvement") cb.melhorias.add(e.issueKey)
+        if (tf === "ajust/return" || tf === "adjustment/return") cb.ajustes.add(e.issueKey)
+        if (tf === "research") cb.pesq.add(e.issueKey)
+        if (tf === "usability") cb.usab.add(e.issueKey)
+        if (tf === "others" || tf === "other") cb.outros.add(e.issueKey)
+        if (e.priority?.toLowerCase().trim() === "critical") cb.criticos.add(e.issueKey)
+        if (e.status?.toLowerCase().trim() === "approval") cb.ag.add(e.issueKey)
+        const r = e.retornos ?? 0
+        if (r > 0) cb.retornosPerIssue.set(e.issueKey, Math.max(cb.retornosPerIssue.get(e.issueKey) ?? 0, r))
+      }
+
+      // Merge untyped issues into "outros"
+      for (const cb of buckets) {
+        const typed = new Set([...cb.novosProto, ...cb.melhorias, ...cb.ajustes, ...cb.pesq, ...cb.usab, ...cb.outros])
+        for (const key of cb.all) { if (!typed.has(key)) cb.outros.add(key) }
+      }
+
+      // Overlay issue counts onto combined (hours/investment already set in pass 1)
       for (let i = 0; i < 12; i++) {
-        combined[i] = sumStats(combined[i]!, memberStats[i]!)
+        const cb = buckets[i]!
+        combined[i]!.totalIssues = cb.all.size
+        combined[i]!.novosPrototipos = cb.novosProto.size
+        combined[i]!.melhorias = cb.melhorias.size
+        combined[i]!.ajustes = cb.ajustes.size
+        combined[i]!.pesquisa = cb.pesq.size
+        combined[i]!.usabilidade = cb.usab.size
+        combined[i]!.criticos = cb.criticos.size
+        combined[i]!.outros = cb.outros.size
+        combined[i]!.aguardando = cb.ag.size
+        combined[i]!.retornos = Array.from(cb.retornosPerIssue.values()).reduce((s, v) => s + v, 0)
       }
     }
 
