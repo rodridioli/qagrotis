@@ -193,19 +193,29 @@ export async function getUxWorklogsForYear(
     relevantMonths.push(m)
   }
 
+  // When forcing, wipe the entire year cache so all months are re-fetched from Jira
+  if (force) {
+    await prisma.jiraWorklogCache.deleteMany({ where: { userId: targetUserId, year } })
+    await prisma.jiraWorklogSyncMarker.deleteMany({ where: { userId: targetUserId, year } })
+  }
+
   // Load sync markers for all relevant months in one query
-  const markers = await prisma.jiraWorklogSyncMarker.findMany({
-    where: { userId: targetUserId, year, month: { in: relevantMonths } },
-    select: { month: true, syncedAt: true },
-  })
+  const markers = force
+    ? []
+    : await prisma.jiraWorklogSyncMarker.findMany({
+        where: { userId: targetUserId, year, month: { in: relevantMonths } },
+        select: { month: true, syncedAt: true },
+      })
   const markerMap = new Map(
     (markers as { month: number; syncedAt: Date }[]).map((mk) => [mk.month, mk.syncedAt]),
   )
 
   // Determine which months need a Jira sync
-  const monthsToSync = relevantMonths.filter((m) =>
-    needsSync((markerMap.get(m) as Date | undefined) ?? null, year, m, force),
-  )
+  const monthsToSync = force
+    ? relevantMonths
+    : relevantMonths.filter((m) =>
+        needsSync((markerMap.get(m) as Date | undefined) ?? null, year, m, false),
+      )
 
   if (monthsToSync.length > 0) {
     const targetEmail = await resolveEmailForQaUserId(targetUserId)
