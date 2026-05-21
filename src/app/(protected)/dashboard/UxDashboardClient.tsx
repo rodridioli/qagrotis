@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, Layers, MoreHorizontal, MousePointer, RefreshCw, RotateCcw, Search, TrendingUp, Wrench } from "lucide-react"
+import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, RefreshCw, TrendingUp } from "lucide-react"
 import { AreaChart, Area, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -38,6 +38,8 @@ interface JiraEntry {
   status?: string | null
   priority?: string | null
   retornos?: number
+  retornosByAssignee?: Record<string, number>
+  authorJiraAccountId?: string | null
   started: string
   timeSpentSeconds: number
 }
@@ -53,6 +55,7 @@ interface MonthStats {
   criticos: number
   outros: number
   aguardando: number
+  retornos: number
   investimentoCentavos: number
 }
 
@@ -106,6 +109,7 @@ function emptyMonthStats(): MonthStats {
     criticos: 0,
     outros: 0,
     aguardando: 0,
+    retornos: 0,
     investimentoCentavos: 0,
   }
 }
@@ -122,6 +126,7 @@ function sumStats(a: MonthStats, b: MonthStats): MonthStats {
     criticos: a.criticos + b.criticos,
     outros: a.outros + b.outros,
     aguardando: a.aguardando + b.aguardando,
+    retornos: a.retornos + b.retornos,
     investimentoCentavos: a.investimentoCentavos + b.investimentoCentavos,
   }
 }
@@ -159,14 +164,14 @@ interface YearTypeTotals {
   retornos: number
 }
 
-function aggregateYearTotals(entries: JiraEntry[]): YearTypeTotals {
+function aggregateYearTotals(entries: JiraEntry[], filterAccountId?: string): YearTypeTotals {
   const novosProto = new Set<string>()
   const melhorias = new Set<string>()
   const ajustes = new Set<string>()
   const pesq = new Set<string>()
   const usab = new Set<string>()
   const criticos = new Set<string>()
-  const outros = new Set<string>()
+  let outros = new Set<string>()
   const ag = new Set<string>()
   // retornos: sum per unique issue (take the max value seen for each key)
   const retornosPerIssue = new Map<string, number>()
@@ -181,10 +186,18 @@ function aggregateYearTotals(entries: JiraEntry[]): YearTypeTotals {
     if (tf === "others" || tf === "other") outros.add(e.issueKey)
     if (e.priority?.toLowerCase().trim() === "critical") criticos.add(e.issueKey)
     if (e.status?.toLowerCase().trim() === "approval") ag.add(e.issueKey)
-    const r = e.retornos ?? 0
+    const r = filterAccountId
+      ? ((e.retornosByAssignee?.[filterAccountId] ?? 0))
+      : (e.retornos ?? 0)
     if (r > 0) {
       retornosPerIssue.set(e.issueKey, Math.max(retornosPerIssue.get(e.issueKey) ?? 0, r))
     }
+  }
+
+  // Merge untyped issues (not in any known type bucket) into "outros"
+  const typedIssues = new Set([...novosProto, ...melhorias, ...ajustes, ...pesq, ...usab, ...outros])
+  for (const e of entries) {
+    if (!typedIssues.has(e.issueKey)) outros.add(e.issueKey)
   }
 
   const retornos = Array.from(retornosPerIssue.values()).reduce((s, v) => s + v, 0)
@@ -218,6 +231,7 @@ function aggregateByMonth(
     criticos: Set<string>
     outros: Set<string>
     ag: Set<string>
+    retornosPerIssue: Map<string, number>
   }
   const byMonth: Map<number, Bucket> = new Map()
   for (let i = 0; i < 12; i++) {
@@ -232,6 +246,7 @@ function aggregateByMonth(
       criticos: new Set(),
       outros: new Set(),
       ag: new Set(),
+      retornosPerIssue: new Map(),
     })
   }
 
@@ -251,6 +266,24 @@ function aggregateByMonth(
     if (tf === "others" || tf === "other") bucket.outros.add(e.issueKey)
     if (e.priority?.toLowerCase().trim() === "critical") bucket.criticos.add(e.issueKey)
     if (e.status?.toLowerCase().trim() === "approval") bucket.ag.add(e.issueKey)
+    const r = e.retornos ?? 0
+    if (r > 0) {
+      bucket.retornosPerIssue.set(
+        e.issueKey,
+        Math.max(bucket.retornosPerIssue.get(e.issueKey) ?? 0, r),
+      )
+    }
+  }
+
+  // Merge untyped issues (not in any known type bucket) into "outros" per month
+  for (const bucket of byMonth.values()) {
+    const typedInMonth = new Set([
+      ...bucket.novosProto, ...bucket.melhorias, ...bucket.ajustes,
+      ...bucket.pesq, ...bucket.usabilidade, ...bucket.outros,
+    ])
+    for (const key of bucket.all) {
+      if (!typedInMonth.has(key)) bucket.outros.add(key)
+    }
   }
 
   return Array.from({ length: 12 }, (_, i) => {
@@ -269,6 +302,7 @@ function aggregateByMonth(
       criticos: bucket.criticos.size,
       outros: bucket.outros.size,
       aguardando: bucket.ag.size,
+      retornos: Array.from(bucket.retornosPerIssue.values()).reduce((s, v) => s + v, 0),
       investimentoCentavos: investimento,
     }
   })
@@ -286,7 +320,7 @@ function buildTopItems(map: Map<string, Set<string>>) {
 
 // ─── UxAvatarStrip ─────────────────────────────────────────────────────────────
 
-const AVATAR_STRIP_SIZE = 44
+const AVATAR_STRIP_SIZE = 38
 
 function UxAvatarStrip({
   membros,
@@ -348,10 +382,12 @@ function SparklineChart({
   data,
   variant,
   valueFormatter,
+  hideValue,
 }: {
   data: number[]
   variant: "brand" | "warning" | "success" | "info"
   valueFormatter?: (v: number) => string
+  hideValue?: boolean
 }) {
   const uid = React.useId().replace(/:/g, "")
   const gradientId = `spark-${uid}`
@@ -400,7 +436,9 @@ function SparklineChart({
               <div className="rounded-lg border border-border-default bg-surface-card px-2.5 py-1.5 text-xs shadow-card">
                 <p className="font-semibold text-text-primary">{entry.monthFull}</p>
                 <p className="text-text-secondary">
-                  {valueFormatter ? valueFormatter(entry.v) : String(entry.v)}
+                  {hideValue
+                    ? <span className="tracking-widest text-text-disabled">••••</span>
+                    : valueFormatter ? valueFormatter(entry.v) : String(entry.v)}
                 </p>
               </div>
             )
@@ -453,19 +491,16 @@ function MetricCard({
     iconVariant === "success" && "bg-badge-success/10 text-badge-success-text",
     iconVariant === "info"    && "bg-badge-info/10 text-badge-info-text",
   )
-  const showSpark = sparkData && sparkData.length > 0 && !(sensitive && hidden)
+  const showSpark = sparkData && sparkData.length > 0
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm text-text-secondary">{label}</p>
-          <p
-            className={cn(
-              "mt-1 select-none text-2xl font-bold text-text-primary transition-all",
-              sensitive && hidden && "blur-md",
-            )}
-          >
-            {value}
+          <p className="mt-1 select-none text-2xl font-bold text-text-primary">
+            {sensitive && hidden
+              ? <span className="tracking-widest text-text-disabled">••••</span>
+              : value}
           </p>
           {sub && <p className="mt-0.5 text-xs text-text-secondary">{sub}</p>}
         </div>
@@ -475,7 +510,12 @@ function MetricCard({
       </div>
       {showSpark && (
         <div className="-mx-1 mt-3">
-          <SparklineChart data={sparkData} variant={iconVariant} valueFormatter={sparkFormatter} />
+          <SparklineChart
+            data={sparkData}
+            variant={iconVariant}
+            valueFormatter={sparkFormatter}
+            hideValue={sensitive && hidden}
+          />
         </div>
       )}
     </div>
@@ -526,73 +566,84 @@ function ProductRankCard({
 
 // ─── YearTable ────────────────────────────────────────────────────────────────
 
-function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideValues: boolean }) {
+function YearTable({
+  monthStats,
+  quarterTypeTotals,
+  quarterUniqueIssues,
+  yearTotals,
+  totalUniqueIssues,
+  hideValues,
+}: {
+  monthStats: MonthStats[]
+  quarterTypeTotals: YearTypeTotals[]
+  quarterUniqueIssues: number[]
+  yearTotals: YearTypeTotals
+  totalUniqueIssues: number
+  hideValues: boolean
+}) {
+  // Hours and investimento are genuinely additive across months — use sumStats only for those
   const totalAnual = monthStats.reduce(sumStats, emptyMonthStats())
   const inv = (v: number) =>
     hideValues ? <span className="tracking-widest text-text-disabled">••••</span> : formatBRL(v)
 
+  const TH = ({ children }: { children: React.ReactNode }) => (
+    <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
+      {children}
+    </th>
+  )
+
   return (
     <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
-      <table className="w-full min-w-[640px] text-sm">
+      <table className="w-full min-w-[900px] text-sm">
         <thead>
           <tr className="border-b border-border-default bg-neutral-grey-50">
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
               Trimestre
             </th>
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Horas
-            </th>
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Investimento
-            </th>
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Novos Protótipos
-            </th>
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Melhorias
-            </th>
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Pesquisa
-            </th>
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Usabilidade
-            </th>
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Aguardando
-            </th>
+            <TH>Horas</TH>
+            <TH>Investimento</TH>
+            <TH>Jiras</TH>
+            <TH>Protótipos</TH>
+            <TH>Pesquisas</TH>
+            <TH>Usabilidade</TH>
+            <TH>Outros</TH>
+            <TH>Novos</TH>
+            <TH>Melhorias</TH>
+            <TH>Ajustes</TH>
+            <TH>Retornos</TH>
+            <TH>Aguardando</TH>
           </tr>
         </thead>
         <tbody>
-          {QUARTERS.map((q) => {
-            const qStats = q.months.reduce(
+          {QUARTERS.map((q, qi) => {
+            // Additive values (hours, investimento) — safe to sum across months
+            const qTimeStats = q.months.reduce(
               (acc, mi) => sumStats(acc, monthStats[mi]!),
               emptyMonthStats(),
             )
+            // Type counts — use deduplicated quarter totals (no double-counting)
+            const qt = quarterTypeTotals[qi]!
+            const qIssues = quarterUniqueIssues[qi]!
             return (
               <React.Fragment key={q.label}>
                 <tr className="border-b border-border-default bg-neutral-grey-50">
                   <td className="px-4 py-2.5 font-semibold text-text-primary">{q.label}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
-                    {formatHHMM(qStats.totalSeconds)}
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">
+                    {formatHHMM(qTimeStats.totalSeconds)}
                   </td>
-                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
-                    {inv(qStats.investimentoCentavos)}
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">
+                    {inv(qTimeStats.investimentoCentavos)}
                   </td>
-                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
-                    {qStats.novosPrototipos}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
-                    {qStats.melhorias}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
-                    {qStats.pesquisa}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
-                    {qStats.usabilidade}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-primary">
-                    {qStats.aguardando}
-                  </td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qIssues}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.novosPrototipos + qt.melhorias + qt.ajustes}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.pesquisa}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.usabilidade}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.outros}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.novosPrototipos}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.melhorias}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.ajustes}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.retornos}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qt.aguardando}</td>
                 </tr>
                 {q.months.map((mi) => {
                   const ms = monthStats[mi]!
@@ -602,27 +653,18 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
                       className="border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50"
                     >
                       <td className="px-4 py-2 pl-8 text-text-secondary">{MONTHS_PT[mi]}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-text-primary">
-                        {formatHHMM(ms.totalSeconds)}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-text-primary">
-                        {inv(ms.investimentoCentavos)}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-text-primary">
-                        {ms.novosPrototipos}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-text-primary">
-                        {ms.melhorias}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-text-primary">
-                        {ms.pesquisa}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-text-primary">
-                        {ms.usabilidade}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-text-primary">
-                        {ms.aguardando}
-                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{formatHHMM(ms.totalSeconds)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{inv(ms.investimentoCentavos)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.totalIssues}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.novosPrototipos + ms.melhorias + ms.ajustes}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.pesquisa}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.usabilidade}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.outros}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.novosPrototipos}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.melhorias}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.ajustes}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.retornos}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.aguardando}</td>
                     </tr>
                   )
                 })}
@@ -630,32 +672,60 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
             )
           })}
 
+          {/* Annual total — uses yearTotals (global Sets) to avoid cross-month double-counting */}
           <tr className="border-t-2 border-border-default bg-neutral-grey-50">
             <td className="px-4 py-2.5 font-bold text-text-primary">Total</td>
-            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
-              {formatHHMM(totalAnual.totalSeconds)}
-            </td>
-            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
-              {inv(totalAnual.investimentoCentavos)}
-            </td>
-            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
-              {totalAnual.novosPrototipos}
-            </td>
-            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
-              {totalAnual.melhorias}
-            </td>
-            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
-              {totalAnual.pesquisa}
-            </td>
-            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
-              {totalAnual.usabilidade}
-            </td>
-            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-text-primary">
-              {totalAnual.aguardando}
-            </td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{formatHHMM(totalAnual.totalSeconds)}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{inv(totalAnual.investimentoCentavos)}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalUniqueIssues}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.pesquisa}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.usabilidade}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.outros}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.novosPrototipos}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.melhorias}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.ajustes}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.retornos}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{yearTotals.aguardando}</td>
           </tr>
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// ─── TypeCard ─────────────────────────────────────────────────────────────────
+
+function TypeCard({
+  label,
+  count,
+  totalIssues,
+  totalInvestimentoCentavos,
+  hideValues,
+}: {
+  label: string
+  count: number
+  totalIssues: number
+  totalInvestimentoCentavos: number
+  hideValues: boolean
+}) {
+  const pct = totalIssues > 0 ? Math.round((count / totalIssues) * 100) : 0
+  const costCentavos = totalIssues > 0
+    ? Math.round((count / totalIssues) * totalInvestimentoCentavos)
+    : 0
+  return (
+    <div className="rounded-xl bg-surface-card p-4 shadow-card">
+      <p className="text-xs font-medium text-text-secondary">{label}</p>
+      <p className="mt-1 text-xl font-bold text-text-primary tabular-nums">{count}</p>
+      <div className="mt-1.5 flex items-center gap-2 text-xs text-text-secondary">
+        <span className="tabular-nums">{pct}%</span>
+        <span className="text-border-default">·</span>
+        <span className="tabular-nums">
+          {hideValues
+            ? <span className="tracking-widest text-text-disabled">••••</span>
+            : formatBRL(costCentavos)}
+        </span>
+      </div>
     </div>
   )
 }
@@ -694,7 +764,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
   }
 
   // ── Derived stats (instant — no fetch on user toggle) ─────────────────────
-  const { monthStats, totalUniqueIssues, yearTotals, protoByProduct, agByProduct } = React.useMemo(() => {
+  const { monthStats, totalUniqueIssues, yearTotals, quarterTypeTotals, quarterUniqueIssues, protoByProduct, agByProduct } = React.useMemo(() => {
     const empty: YearTypeTotals = {
       novosPrototipos: 0, melhorias: 0, ajustes: 0, pesquisa: 0,
       usabilidade: 0, criticos: 0, outros: 0, aguardando: 0, retornos: 0,
@@ -704,6 +774,8 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         monthStats: null,
         totalUniqueIssues: 0,
         yearTotals: empty,
+        quarterTypeTotals: QUARTERS.map(() => empty),
+        quarterUniqueIssues: QUARTERS.map(() => 0),
         protoByProduct: [] as { label: string; count: number; isOther?: boolean }[],
         agByProduct: [] as { label: string; count: number; isOther?: boolean }[],
       }
@@ -722,8 +794,16 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       }
     }
 
+    // When exactly one user is selected, filter retornos by their Jira accountId
+    let filterAccountId: string | undefined
+    if (activeMembers.length === 1) {
+      const memberId = activeMembers[0]!.userId
+      const firstEntry = (rawMemberEntries[memberId] ?? []).find((e) => e.authorJiraAccountId)
+      filterAccountId = firstEntry?.authorJiraAccountId ?? undefined
+    }
+
     // Year-level unique counts (correct: global Sets, no double-counting across months)
-    const yTotals = aggregateYearTotals(allEntries)
+    const yTotals = aggregateYearTotals(allEntries, filterAccountId)
 
     const protoMap = new Map<string, Set<string>>()
     const agMap = new Map<string, Set<string>>()
@@ -740,10 +820,32 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       }
     }
 
+    // Quarterly type totals with proper deduplication (same issue in multiple months
+    // of a quarter is only counted once, not additive via sumStats)
+    const quarterTypeTotals = QUARTERS.map((q) => {
+      const qMonthSet = new Set(q.months)
+      const qEntries = allEntries.filter((e) => {
+        const month = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+        return qMonthSet.has(month)
+      })
+      return aggregateYearTotals(qEntries, filterAccountId)
+    })
+    const quarterUniqueIssues = QUARTERS.map((q) => {
+      const qMonthSet = new Set(q.months)
+      const qKeys = new Set(
+        allEntries
+          .filter((e) => qMonthSet.has(new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()))
+          .map((e) => e.issueKey),
+      )
+      return qKeys.size
+    })
+
     return {
       monthStats: combined,
       totalUniqueIssues: new Set(allEntries.map((e) => e.issueKey)).size,
       yearTotals: yTotals,
+      quarterTypeTotals,
+      quarterUniqueIssues,
       protoByProduct: buildTopItems(protoMap),
       agByProduct: buildTopItems(agMap),
     }
@@ -903,57 +1005,67 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         />
       </div>
 
-      {/* Metric cards — linha 2 (8 cards, Outros após Usabilidade, Retornos após Novos) */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
-        <MetricCard
-          label="Protótipos"
-          value={loading ? "—" : String(yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes)}
-          icon={Layers}
-          iconVariant="brand"
-        />
-        <MetricCard
-          label="Pesquisas"
-          value={loading ? "—" : String(yearTotals.pesquisa)}
-          icon={Search}
-          iconVariant="info"
-        />
-        <MetricCard
-          label="Usabilidade"
-          value={loading ? "—" : String(yearTotals.usabilidade)}
-          icon={MousePointer}
-          iconVariant="brand"
-        />
-        <MetricCard
-          label="Outros"
-          value={loading ? "—" : String(yearTotals.outros)}
-          icon={MoreHorizontal}
-          iconVariant="info"
-        />
-        <MetricCard
-          label="Melhorias"
-          value={loading ? "—" : String(yearTotals.melhorias)}
-          icon={Wrench}
-          iconVariant="success"
-        />
-        <MetricCard
-          label="Ajustes"
-          value={loading ? "—" : String(yearTotals.ajustes)}
-          icon={Wrench}
-          iconVariant="warning"
-        />
-        <MetricCard
-          label="Novos"
-          value={loading ? "—" : String(yearTotals.novosPrototipos)}
-          icon={Layers}
-          iconVariant="warning"
-        />
-        <MetricCard
-          label="Retornos"
-          value={loading ? "—" : String(yearTotals.retornos)}
-          icon={RotateCcw}
-          iconVariant="warning"
-        />
-      </div>
+      {/* Metric cards — linha 2: Protótipos, Pesquisas, Usabilidade, Outros, Novos, Melhorias, Ajustes, Retornos */}
+      {!loading && (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
+          <TypeCard
+            label="Protótipos"
+            count={yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes}
+            totalIssues={totalUniqueIssues}
+            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+            hideValues={hideValues}
+          />
+          <TypeCard
+            label="Pesquisas"
+            count={yearTotals.pesquisa}
+            totalIssues={totalUniqueIssues}
+            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+            hideValues={hideValues}
+          />
+          <TypeCard
+            label="Usabilidade"
+            count={yearTotals.usabilidade}
+            totalIssues={totalUniqueIssues}
+            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+            hideValues={hideValues}
+          />
+          <TypeCard
+            label="Outros"
+            count={yearTotals.outros}
+            totalIssues={totalUniqueIssues}
+            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+            hideValues={hideValues}
+          />
+          <TypeCard
+            label="Novos"
+            count={yearTotals.novosPrototipos}
+            totalIssues={totalUniqueIssues}
+            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+            hideValues={hideValues}
+          />
+          <TypeCard
+            label="Melhorias"
+            count={yearTotals.melhorias}
+            totalIssues={totalUniqueIssues}
+            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+            hideValues={hideValues}
+          />
+          <TypeCard
+            label="Ajustes"
+            count={yearTotals.ajustes}
+            totalIssues={totalUniqueIssues}
+            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+            hideValues={hideValues}
+          />
+          <TypeCard
+            label="Retornos"
+            count={yearTotals.retornos}
+            totalIssues={totalUniqueIssues}
+            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+            hideValues={hideValues}
+          />
+        </div>
+      )}
 
       {/* Product breakdown cards */}
       {!loading && (
@@ -973,7 +1085,14 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       {loading || monthStats === null ? (
         <SectionSpinner minHeight="min-h-[300px]" />
       ) : (
-        <YearTable monthStats={monthStats} hideValues={hideValues} />
+        <YearTable
+          monthStats={monthStats}
+          quarterTypeTotals={quarterTypeTotals}
+          quarterUniqueIssues={quarterUniqueIssues}
+          yearTotals={yearTotals}
+          totalUniqueIssues={totalUniqueIssues}
+          hideValues={hideValues}
+        />
       )}
     </div>
   )

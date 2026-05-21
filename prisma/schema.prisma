@@ -616,18 +616,20 @@ model ChapterRedemption {
 /// Armazenada por (userId, issueKey, startedAt) — garante histórico permanente
 /// independente do limite de 92 dias da API Jira.
 model JiraWorklogCache {
-  id               String   @id @default(cuid())
-  userId           String
-  issueKey         String
-  projectName      String?
-  typeField        String?
-  status           String?
-  priority         String?
-  retornos         Int      @default(0)
-  startedAt        DateTime
-  timeSpentSeconds Int
-  year             Int
-  month            Int
+  id                   String   @id @default(cuid())
+  userId               String
+  issueKey             String
+  projectName          String?
+  typeField            String?
+  status               String?
+  priority             String?
+  retornos             Int      @default(0)
+  retornosByAssignee   Json     @default("{}")
+  authorJiraAccountId  String?
+  startedAt            DateTime
+  timeSpentSeconds     Int
+  year                 Int
+  month                Int
 
   @@unique([userId, issueKey, startedAt])
   @@index([userId, year, month])

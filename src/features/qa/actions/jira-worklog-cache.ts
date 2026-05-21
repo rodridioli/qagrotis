@@ -11,6 +11,7 @@ import {
   augmentFieldMapWithGetIssueFallback,
   fetchRetornosForKeys,
   type JiraLancamentoEntry,
+  type RetornosResult,
 } from "@/features/qa/lib/jira-worklogs-fetch"
 import { resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
 
@@ -21,6 +22,8 @@ export interface UxJiraEntry {
   status: string | null
   priority: string | null
   retornos: number
+  retornosByAssignee: Record<string, number>
+  authorJiraAccountId: string | null
   started: string
   timeSpentSeconds: number
 }
@@ -100,17 +103,21 @@ async function syncMonthsForUser(
       )
       await augmentFieldMapWithGetIssueFallback(base, credentials, fieldMap, validKeys).catch(() => undefined)
       const retornosMap = await fetchRetornosForKeys(base, credentials, validKeys).catch(
-        () => new Map<string, number>(),
+        () => new Map<string, RetornosResult>(),
       )
       entries = rawEntries.map((e) => {
         const key = e.issueKey.trim().toUpperCase()
         const patch = fieldMap.get(key)
+        const retornosData = retornosMap.get(key)
         return {
           ...e,
           typeField: patch?.typeField?.trim() ? patch.typeField.trim() : e.typeField,
           projectName: patch?.projectName?.trim() ? patch.projectName.trim() : e.projectName,
           priority: patch?.priority?.trim() ? patch.priority.trim() : (e.priority ?? null),
-          retornos: retornosMap.get(key) ?? 0,
+          status: patch?.status?.trim() ? patch.status.trim() : (e.status ?? null),
+          retornos: retornosData?.total ?? 0,
+          retornosByAssignee: retornosData?.byAssignee ?? {},
+          authorJiraAccountId: jiraUser.accountId,
         }
       })
     }
@@ -134,6 +141,8 @@ async function syncMonthsForUser(
             status: e.status ?? null,
             priority: (e as { priority?: string | null }).priority ?? null,
             retornos: (e as { retornos?: number }).retornos ?? 0,
+            retornosByAssignee: (e as { retornosByAssignee?: Record<string, number> }).retornosByAssignee ?? {},
+            authorJiraAccountId: (e as { authorJiraAccountId?: string | null }).authorJiraAccountId ?? null,
             timeSpentSeconds: e.timeSpentSeconds,
             year,
             month,
@@ -146,6 +155,8 @@ async function syncMonthsForUser(
             status: e.status ?? null,
             priority: (e as { priority?: string | null }).priority ?? null,
             retornos: (e as { retornos?: number }).retornos ?? 0,
+            retornosByAssignee: (e as { retornosByAssignee?: Record<string, number> }).retornosByAssignee ?? {},
+            authorJiraAccountId: (e as { authorJiraAccountId?: string | null }).authorJiraAccountId ?? null,
             startedAt,
             timeSpentSeconds: e.timeSpentSeconds,
             year,
@@ -250,6 +261,8 @@ export async function getUxWorklogsForYear(
       status: true,
       priority: true,
       retornos: true,
+      retornosByAssignee: true,
+      authorJiraAccountId: true,
       startedAt: true,
       timeSpentSeconds: true,
     },
@@ -265,6 +278,8 @@ export async function getUxWorklogsForYear(
         status: string | null
         priority: string | null
         retornos: number
+        retornosByAssignee: unknown
+        authorJiraAccountId: string | null
         startedAt: Date
         timeSpentSeconds: number
       }[]
@@ -275,6 +290,11 @@ export async function getUxWorklogsForYear(
       status: r.status,
       priority: r.priority,
       retornos: r.retornos,
+      retornosByAssignee:
+        r.retornosByAssignee && typeof r.retornosByAssignee === "object" && !Array.isArray(r.retornosByAssignee)
+          ? (r.retornosByAssignee as Record<string, number>)
+          : {},
+      authorJiraAccountId: r.authorJiraAccountId,
       started: r.startedAt.toISOString().slice(0, 10),
       timeSpentSeconds: r.timeSpentSeconds,
     })),

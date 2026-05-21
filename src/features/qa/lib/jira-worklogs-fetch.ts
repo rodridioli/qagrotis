@@ -1038,12 +1038,14 @@ export async function fetchWorklogsForAuthorInRange(
  * Uses the dedicated GET /rest/api/3/issue/{key}/changelog endpoint (reliable,
  * paginated) instead of search+expand which is inconsistent in Jira Cloud.
  */
+export type RetornosResult = { total: number; byAssignee: Record<string, number> }
+
 export async function fetchRetornosForKeys(
   base: string,
   credentials: string,
   keys: string[],
-): Promise<Map<string, number>> {
-  const result = new Map<string, number>()
+): Promise<Map<string, RetornosResult>> {
+  const result = new Map<string, RetornosResult>()
   if (!keys.length) return result
 
   const CONCURRENCY = 10
@@ -1053,15 +1055,36 @@ export async function fetchRetornosForKeys(
       batch.map(async (key) => {
         const { ok, data } = await jiraJson<{
           values?: {
-            items: { field: string; fromString: string | null; toString: string | null }[]
+            items: {
+              field: string
+              from: string | null
+              fromString: string | null
+              to: string | null
+              toString: string | null
+            }[]
           }[]
         }>(
           `${base}/rest/api/3/issue/${encodeURIComponent(key)}/changelog?maxResults=200`,
           credentials,
         )
         if (!ok || !data?.values) return
-        let count = 0
-        for (const history of data.values) {
+
+        // Jira returns changelog newest-first; reverse for chronological traversal
+        const chronological = [...data.values].reverse()
+
+        let currentAssignee: string | null = null
+        let total = 0
+        const byAssignee: Record<string, number> = {}
+
+        for (const history of chronological) {
+          const assigneeItem = history.items.find((i) => i.field === "assignee")
+
+          // If we haven't established who the initial assignee is yet, use this
+          // change's "from" value (which is the accountId of the previous assignee)
+          if (assigneeItem && currentAssignee === null) {
+            currentAssignee = assigneeItem.from ?? null
+          }
+
           for (const item of history.items) {
             const from = (item.fromString ?? "").toLowerCase()
             const to   = (item.toString  ?? "").toLowerCase()
@@ -1070,11 +1093,20 @@ export async function fetchRetornosForKeys(
               from.includes("approval") &&
               (to.includes("pending") || to === "in progress")
             ) {
-              count++
+              total++
+              if (currentAssignee) {
+                byAssignee[currentAssignee] = (byAssignee[currentAssignee] ?? 0) + 1
+              }
             }
           }
+
+          // Update assignee after recording transitions in this entry
+          if (assigneeItem) {
+            currentAssignee = assigneeItem.to ?? null
+          }
         }
-        result.set(key.toUpperCase(), count)
+
+        result.set(key.toUpperCase(), { total, byAssignee })
       }),
     )
   }

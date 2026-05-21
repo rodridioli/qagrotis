@@ -25,7 +25,7 @@ interface Props {
   selectedUserId: string
 }
 
-const AVATAR_SIZE = 44
+const AVATAR_SIZE = 38
 
 export function IndividualActiveUserAvatarStrip({ secao, users, selectedUserId }: Props) {
   const router = useRouter()

@@ -42,7 +42,7 @@ const ALL_PROFILE_OPTIONS: { value: AccessProfileId; label: string }[] = [
   { value: "MGR", label: "Manager" },
 ]
 
-const AVATAR_SIZE = 44
+const AVATAR_SIZE = 38
 
 interface Props {
   userAccessProfile: AccessProfileId
