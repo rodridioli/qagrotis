@@ -145,6 +145,51 @@ function getValorHoraForMonth(
  * Agrega entries de um único membro por mês.
  * O valorHora é determinado dinamicamente para cada mês com base no histórico de progressão.
  */
+interface YearTypeTotals {
+  novosPrototipos: number
+  melhorias: number
+  ajustes: number
+  pesquisa: number
+  usabilidade: number
+  criticos: number
+  outros: number
+  aguardando: number
+}
+
+function aggregateYearTotals(entries: JiraEntry[]): YearTypeTotals {
+  const novosProto = new Set<string>()
+  const melhorias = new Set<string>()
+  const ajustes = new Set<string>()
+  const pesq = new Set<string>()
+  const usab = new Set<string>()
+  const criticos = new Set<string>()
+  const outros = new Set<string>()
+  const ag = new Set<string>()
+
+  for (const e of entries) {
+    const tf = (e.typeField ?? "").trim().toLowerCase()
+    if (tf === "new/redesign" || tf === "new" || tf === "redesign") novosProto.add(e.issueKey)
+    if (tf === "improvement") melhorias.add(e.issueKey)
+    if (tf === "ajust/return" || tf === "adjustment/return") ajustes.add(e.issueKey)
+    if (tf === "research") pesq.add(e.issueKey)
+    if (tf === "usability") usab.add(e.issueKey)
+    if (tf === "others" || tf === "other") outros.add(e.issueKey)
+    if (e.priority?.toLowerCase().trim() === "critical") criticos.add(e.issueKey)
+    if (e.status?.toLowerCase().trim() === "approval") ag.add(e.issueKey)
+  }
+
+  return {
+    novosPrototipos: novosProto.size,
+    melhorias: melhorias.size,
+    ajustes: ajustes.size,
+    pesquisa: pesq.size,
+    usabilidade: usab.size,
+    criticos: criticos.size,
+    outros: outros.size,
+    aguardando: ag.size,
+  }
+}
+
 function aggregateByMonth(
   entries: JiraEntry[],
   progressaoHistory: ProgressaoHistoricoEntry[],
@@ -186,12 +231,12 @@ function aggregateByMonth(
     bucket.seconds += e.timeSpentSeconds
     bucket.all.add(e.issueKey)
     const tf = (e.typeField ?? "").trim().toLowerCase()
-    if (tf === "new" || tf === "redesign") bucket.novosProto.add(e.issueKey)
+    if (tf === "new/redesign" || tf === "new" || tf === "redesign") bucket.novosProto.add(e.issueKey)
     if (tf === "improvement") bucket.melhorias.add(e.issueKey)
-    if (tf === "ajust/return") bucket.ajustes.add(e.issueKey)
+    if (tf === "ajust/return" || tf === "adjustment/return") bucket.ajustes.add(e.issueKey)
     if (tf === "research") bucket.pesq.add(e.issueKey)
     if (tf === "usability") bucket.usabilidade.add(e.issueKey)
-    if (tf === "others") bucket.outros.add(e.issueKey)
+    if (tf === "others" || tf === "other") bucket.outros.add(e.issueKey)
     if (e.priority?.toLowerCase().trim() === "critical") bucket.criticos.add(e.issueKey)
     if (e.status?.toLowerCase().trim() === "approval") bucket.ag.add(e.issueKey)
   }
@@ -554,11 +599,16 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
   }
 
   // ── Derived stats (instant — no fetch on user toggle) ─────────────────────
-  const { monthStats, totalUniqueIssues, protoByProduct, agByProduct } = React.useMemo(() => {
+  const { monthStats, totalUniqueIssues, yearTotals, protoByProduct, agByProduct } = React.useMemo(() => {
+    const empty: YearTypeTotals = {
+      novosPrototipos: 0, melhorias: 0, ajustes: 0, pesquisa: 0,
+      usabilidade: 0, criticos: 0, outros: 0, aguardando: 0,
+    }
     if (Object.keys(rawMemberEntries).length === 0) {
       return {
         monthStats: null,
         totalUniqueIssues: 0,
+        yearTotals: empty,
         protoByProduct: [] as { label: string; count: number; isOther?: boolean }[],
         agByProduct: [] as { label: string; count: number; isOther?: boolean }[],
       }
@@ -577,12 +627,15 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       }
     }
 
+    // Year-level unique counts (correct: global Sets, no double-counting across months)
+    const yTotals = aggregateYearTotals(allEntries)
+
     const protoMap = new Map<string, Set<string>>()
     const agMap = new Map<string, Set<string>>()
     for (const e of allEntries) {
       const tf = (e.typeField ?? "").trim().toLowerCase()
       const proj = e.projectName?.trim() || e.issueKey.split("-")[0] || "Outros"
-      if (tf === "new" || tf === "redesign") {
+      if (tf === "new/redesign" || tf === "new" || tf === "redesign") {
         if (!protoMap.has(proj)) protoMap.set(proj, new Set())
         protoMap.get(proj)!.add(e.issueKey)
       }
@@ -595,6 +648,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
     return {
       monthStats: combined,
       totalUniqueIssues: new Set(allEntries.map((e) => e.issueKey)).size,
+      yearTotals: yTotals,
       protoByProduct: buildTopItems(protoMap),
       agByProduct: buildTopItems(agMap),
     }
@@ -723,13 +777,13 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         />
         <MetricCard
           label="Total de Críticos"
-          value={loading ? "—" : String(totalAnual.criticos)}
+          value={loading ? "—" : String(yearTotals.criticos)}
           icon={AlertTriangle}
           iconVariant="warning"
         />
         <MetricCard
           label="Total de Outros"
-          value={loading ? "—" : String(totalAnual.outros)}
+          value={loading ? "—" : String(yearTotals.outros)}
           icon={MoreHorizontal}
           iconVariant="info"
         />
@@ -739,37 +793,37 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <MetricCard
           label="Protótipos"
-          value={loading ? "—" : String(totalAnual.novosPrototipos + totalAnual.melhorias + totalAnual.ajustes)}
+          value={loading ? "—" : String(yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes)}
           icon={Layers}
           iconVariant="brand"
         />
         <MetricCard
           label="Pesquisas"
-          value={loading ? "—" : String(totalAnual.pesquisa)}
+          value={loading ? "—" : String(yearTotals.pesquisa)}
           icon={Search}
           iconVariant="info"
         />
         <MetricCard
           label="Usabilidade"
-          value={loading ? "—" : String(totalAnual.usabilidade)}
+          value={loading ? "—" : String(yearTotals.usabilidade)}
           icon={MousePointer}
           iconVariant="brand"
         />
         <MetricCard
           label="Melhorias"
-          value={loading ? "—" : String(totalAnual.melhorias)}
+          value={loading ? "—" : String(yearTotals.melhorias)}
           icon={Wrench}
           iconVariant="success"
         />
         <MetricCard
           label="Ajustes"
-          value={loading ? "—" : String(totalAnual.ajustes)}
+          value={loading ? "—" : String(yearTotals.ajustes)}
           icon={Wrench}
           iconVariant="warning"
         />
         <MetricCard
           label="Novos"
-          value={loading ? "—" : String(totalAnual.novosPrototipos)}
+          value={loading ? "—" : String(yearTotals.novosPrototipos)}
           icon={Layers}
           iconVariant="warning"
         />
