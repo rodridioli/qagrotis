@@ -598,6 +598,7 @@ function TypeCard({
   label,
   count,
   totalIssues,
+  pctDenominator,
   totalInvestimentoCentavos,
   hideValues,
   tint,
@@ -605,11 +606,15 @@ function TypeCard({
   label: string
   count: number
   totalIssues: number
+  /** When provided, percentage is calculated against this value instead of totalIssues.
+   *  Use for sub-group cards (e.g. Novos/Melhorias/Ajustes within Protótipos) so they sum to 100%. */
+  pctDenominator?: number
   totalInvestimentoCentavos: number
   hideValues: boolean
   tint?: "blue" | "violet" | "amber"
 }) {
-  const pct = totalIssues > 0 ? Math.round((count / totalIssues) * 100) : 0
+  const denomPct = pctDenominator ?? totalIssues
+  const pct = denomPct > 0 ? Math.round((count / denomPct) * 100) : 0
   const costCentavos = totalIssues > 0
     ? Math.round((count / totalIssues) * totalInvestimentoCentavos)
     : 0
@@ -961,10 +966,17 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           <TypeCard label="Pesquisas"   count={yearTotals.pesquisa}      totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
           <TypeCard label="Usabilidade" count={yearTotals.usabilidade}   totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
           <TypeCard label="Outros"      count={yearTotals.outros}        totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
-          {/* Group: delivery sub-types — violet tint */}
-          <TypeCard label="Novos"     count={yearTotals.novosPrototipos} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
-          <TypeCard label="Melhorias" count={yearTotals.melhorias}       totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
-          <TypeCard label="Ajustes"   count={yearTotals.ajustes}         totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
+          {/* Group: delivery sub-types — violet tint; pct relative to Protótipos so they sum to 100% */}
+          {(() => {
+            const prototiposTotal = yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes
+            return (
+              <>
+                <TypeCard label="Novos"     count={yearTotals.novosPrototipos} totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
+                <TypeCard label="Melhorias" count={yearTotals.melhorias}       totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
+                <TypeCard label="Ajustes"   count={yearTotals.ajustes}         totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
+              </>
+            )
+          })()}
           {/* Isolated: returns — amber tint */}
           <TypeCard label="Retornos" count={yearTotals.retornos} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="amber" />
         </div>
