@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, Layers, MoreHorizontal, MousePointer, RefreshCw, Search, TrendingUp, Wrench } from "lucide-react"
-import { AreaChart, Area, ResponsiveContainer } from "recharts"
+import { AreaChart, Area, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -330,12 +330,16 @@ function UxAvatarStrip({
 
 // ─── SparklineChart ───────────────────────────────────────────────────────────
 
+const SPARK_MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
+
 function SparklineChart({
   data,
   variant,
+  valueFormatter,
 }: {
   data: number[]
   variant: "brand" | "warning" | "success" | "info"
+  valueFormatter?: (v: number) => string
 }) {
   const uid = React.useId().replace(/:/g, "")
   const gradientId = `spark-${uid}`
@@ -346,16 +350,45 @@ function SparklineChart({
     info: "#06b6d4",
   }
   const color = colorMap[variant] ?? "#3b82f6"
-  const chartData = data.map((v, i) => ({ i, v }))
+  const chartData = data.map((v, i) => ({ month: SPARK_MONTHS[i] ?? String(i + 1), v }))
   return (
-    <ResponsiveContainer width="100%" height={44}>
-      <AreaChart data={chartData} margin={{ top: 2, right: 2, bottom: 0, left: 2 }}>
+    <ResponsiveContainer width="100%" height={88}>
+      <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor={color} stopOpacity={0.25} />
             <stop offset="95%" stopColor={color} stopOpacity={0} />
           </linearGradient>
         </defs>
+        <CartesianGrid
+          vertical={true}
+          horizontal={false}
+          stroke={color}
+          strokeOpacity={0.12}
+          strokeDasharray="3 3"
+        />
+        <XAxis
+          dataKey="month"
+          axisLine={false}
+          tickLine={false}
+          interval={0}
+          tick={{ fontSize: 9, fill: "#94a3b8" }}
+        />
+        <RechartsTooltip
+          cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: "3 3" }}
+          content={({ active, payload, label }) => {
+            if (!active || !payload?.length) return null
+            const val = payload[0]?.value as number
+            return (
+              <div className="rounded-lg border border-border-default bg-surface-card px-2.5 py-1.5 text-xs shadow-card">
+                <p className="font-semibold text-text-primary">{label}</p>
+                <p className="text-text-secondary">
+                  {valueFormatter ? valueFormatter(val) : String(val)}
+                </p>
+              </div>
+            )
+          }}
+        />
         <Area
           type="monotone"
           dataKey="v"
@@ -363,7 +396,10 @@ function SparklineChart({
           fill={`url(#${gradientId})`}
           strokeWidth={1.5}
           dot={false}
-          isAnimationActive={false}
+          activeDot={{ r: 3, fill: color, strokeWidth: 0 }}
+          isAnimationActive={true}
+          animationDuration={800}
+          animationEasing="ease-out"
         />
       </AreaChart>
     </ResponsiveContainer>
@@ -382,6 +418,7 @@ function MetricCard({
   hidden,
   onToggleHidden,
   sparkData,
+  sparkFormatter,
 }: {
   label: string
   value: string
@@ -392,6 +429,7 @@ function MetricCard({
   hidden?: boolean
   onToggleHidden?: () => void
   sparkData?: number[]
+  sparkFormatter?: (v: number) => string
 }) {
   const iconCls = cn(
     "hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg",
@@ -430,8 +468,8 @@ function MetricCard({
         </div>
       </div>
       {showSpark && (
-        <div className="-mx-1 mt-2">
-          <SparklineChart data={sparkData} variant={iconVariant} />
+        <div className="-mx-1 mt-3">
+          <SparklineChart data={sparkData} variant={iconVariant} valueFormatter={sparkFormatter} />
         </div>
       )}
     </div>
@@ -821,6 +859,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           icon={Clock}
           iconVariant="brand"
           sparkData={loading ? undefined : sparkTempo}
+          sparkFormatter={formatDurationAvg}
         />
         <MetricCard
           label="Valor Médio por Atividade"
@@ -831,6 +870,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           hidden={hideValues}
           onToggleHidden={() => setHideValues((v) => !v)}
           sparkData={loading ? undefined : sparkValor}
+          sparkFormatter={formatBRL}
         />
         <MetricCard
           label="Total de Jiras"
@@ -838,6 +878,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           icon={BarChart2}
           iconVariant="info"
           sparkData={loading ? undefined : sparkJiras}
+          sparkFormatter={(v) => `${v} jira${v !== 1 ? "s" : ""}`}
         />
         <MetricCard
           label="Total de Críticos"
@@ -845,6 +886,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           icon={AlertTriangle}
           iconVariant="warning"
           sparkData={loading ? undefined : sparkCriticos}
+          sparkFormatter={(v) => `${v} crítico${v !== 1 ? "s" : ""}`}
         />
       </div>
 
