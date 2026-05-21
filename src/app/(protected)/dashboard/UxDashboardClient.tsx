@@ -341,7 +341,8 @@ function UxAvatarStrip({
 
 // ─── SparklineChart ───────────────────────────────────────────────────────────
 
-const SPARK_MONTHS = ["J","F","M","A","M","J","J","A","S","O","N","D"]
+const SPARK_MONTHS      = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
+const SPARK_MONTHS_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
 
 function SparklineChart({
   data,
@@ -361,10 +362,14 @@ function SparklineChart({
     info: "#06b6d4",
   }
   const color = colorMap[variant] ?? "#3b82f6"
-  const chartData = data.map((v, i) => ({ month: SPARK_MONTHS[i] ?? String(i + 1), v }))
+  const chartData = data.map((v, i) => ({
+    month: SPARK_MONTHS[i] ?? String(i + 1),
+    monthFull: SPARK_MONTHS_FULL[i] ?? String(i + 1),
+    v,
+  }))
   return (
     <ResponsiveContainer width="100%" height={88}>
-      <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+      <AreaChart data={chartData} margin={{ top: 4, right: 16, bottom: 0, left: 16 }}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor={color} stopOpacity={0.25} />
@@ -384,17 +389,18 @@ function SparklineChart({
           tickLine={false}
           interval={0}
           tick={{ fontSize: 9, fill: "#94a3b8" }}
+          padding={{ left: 8, right: 8 }}
         />
         <RechartsTooltip
           cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: "3 3" }}
-          content={({ active, payload, label }) => {
+          content={({ active, payload }) => {
             if (!active || !payload?.length) return null
-            const val = payload[0]?.value as number
+            const entry = payload[0]?.payload as { month: string; monthFull: string; v: number }
             return (
               <div className="rounded-lg border border-border-default bg-surface-card px-2.5 py-1.5 text-xs shadow-card">
-                <p className="font-semibold text-text-primary">{label}</p>
+                <p className="font-semibold text-text-primary">{entry.monthFull}</p>
                 <p className="text-text-secondary">
-                  {valueFormatter ? valueFormatter(val) : String(val)}
+                  {valueFormatter ? valueFormatter(entry.v) : String(entry.v)}
                 </p>
               </div>
             )
@@ -427,7 +433,6 @@ function MetricCard({
   iconVariant,
   sensitive,
   hidden,
-  onToggleHidden,
   sparkData,
   sparkFormatter,
 }: {
@@ -438,7 +443,6 @@ function MetricCard({
   iconVariant: "brand" | "warning" | "success" | "info"
   sensitive?: boolean
   hidden?: boolean
-  onToggleHidden?: () => void
   sparkData?: number[]
   sparkFormatter?: (v: number) => string
 }) {
@@ -454,23 +458,14 @@ function MetricCard({
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          {sensitive ? (
-            <button
-              type="button"
-              onClick={onToggleHidden}
-              aria-label={hidden ? "Exibir valor" : "Ocultar valor"}
-              className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
-            >
-              {label}
-              {hidden ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-            </button>
-          ) : (
-            <p className="text-sm text-text-secondary">{label}</p>
-          )}
-          <p className="mt-1 text-2xl font-bold text-text-primary">
-            {sensitive && hidden
-              ? <span className="tracking-widest text-text-disabled">••••</span>
-              : value}
+          <p className="text-sm text-text-secondary">{label}</p>
+          <p
+            className={cn(
+              "mt-1 select-none text-2xl font-bold text-text-primary transition-all",
+              sensitive && hidden && "blur-md",
+            )}
+          >
+            {value}
           </p>
           {sub && <p className="mt-0.5 text-xs text-text-secondary">{sub}</p>}
         </div>
@@ -859,6 +854,14 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           >
             <RefreshCw className={cn("size-3.5", loading && "animate-spin")} aria-hidden />
           </button>
+          <button
+            type="button"
+            aria-label={hideValues ? "Exibir valores monetários" : "Ocultar valores monetários"}
+            onClick={() => setHideValues((v) => !v)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default bg-surface-card text-text-secondary shadow-sm transition-colors hover:bg-neutral-grey-50 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          >
+            {hideValues ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+          </button>
         </div>
       </div>
 
@@ -879,7 +882,6 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           iconVariant="success"
           sensitive
           hidden={hideValues}
-          onToggleHidden={() => setHideValues((v) => !v)}
           sparkData={loading ? undefined : sparkValor}
           sparkFormatter={formatBRL}
         />
