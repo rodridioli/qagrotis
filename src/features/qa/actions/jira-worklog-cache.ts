@@ -42,17 +42,13 @@ function needsSync(
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth()
 
-  // Months that are fully in the past (never touched again)
+  // Any month before the current month is immutable — serve from cache forever
   if (year < currentYear) return false
-  if (year === currentYear && month < currentMonth - 1) return false
+  if (year === currentYear && month < currentMonth) return false
 
+  // Current month: re-sync once per day
   const elapsed = Date.now() - syncedAt.getTime()
-  // Previous month: re-sync if > 24 h
-  if (year === currentYear && month === currentMonth - 1) {
-    return elapsed > 24 * 60 * 60 * 1000
-  }
-  // Current month: re-sync if > 1 h
-  return elapsed > 60 * 60 * 1000
+  return elapsed > 24 * 60 * 60 * 1000
 }
 
 // ── Sync logic ────────────────────────────────────────────────────────────────
