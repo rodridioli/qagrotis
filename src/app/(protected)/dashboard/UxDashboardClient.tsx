@@ -604,13 +604,16 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
 
   return (
     <div className="min-w-0 space-y-6">
-      {/* Header row: title + year selector */}
+      {/* Avatar strip + year selector na mesma linha */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-text-primary">Visão geral — UX</h1>
-          <p className="mt-0.5 text-sm text-text-secondary">
-            Lançamentos, protótipos e investimento da equipe UX
-          </p>
+        <div className="min-w-0 flex-1">
+          {membros.length > 0 && (
+            <UxAvatarStrip
+              membros={membros}
+              selectedUserIds={selectedUserIds}
+              onToggle={toggleUser}
+            />
+          )}
         </div>
         <Select
           value={String(ano)}
@@ -629,15 +632,6 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           </SelectPopup>
         </Select>
       </div>
-
-      {/* Avatar strip — filtro por membro */}
-      {membros.length > 0 && (
-        <UxAvatarStrip
-          membros={membros}
-          selectedUserIds={selectedUserIds}
-          onToggle={toggleUser}
-        />
-      )}
 
       {/* Metric cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
