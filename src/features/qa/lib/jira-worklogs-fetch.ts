@@ -1032,14 +1032,11 @@ export async function fetchWorklogsForAuthorInRange(
 
 // ─── Changelog / Retornos ─────────────────────────────────────────────────────
 
-type ChangelogHistory = {
-  items: { field: string; fromString: string | null; toString: string | null }[]
-}
-
 /**
  * For each issue key, counts how many times it transitioned FROM a status
  * containing "approval" BACK TO a status containing "pending" or "in progress".
- * Uses the Jira search API with expand=changelog to batch-fetch history.
+ * Uses the dedicated GET /rest/api/3/issue/{key}/changelog endpoint (reliable,
+ * paginated) instead of search+expand which is inconsistent in Jira Cloud.
  */
 export async function fetchRetornosForKeys(
   base: string,
@@ -1049,48 +1046,37 @@ export async function fetchRetornosForKeys(
   const result = new Map<string, number>()
   if (!keys.length) return result
 
-  const PAGE = 50
-  for (let i = 0; i < keys.length; i += PAGE) {
-    const batch = keys.slice(i, i + PAGE)
-    const jql = `issue in (${batch.join(",")})`
-    const { ok, data } = await jiraJson<{
-      issues?: {
-        key: string
-        changelog?: { histories?: ChangelogHistory[] }
-      }[]
-    }>(
-      `${base}/rest/api/3/search`,
-      credentials,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          jql,
-          maxResults: PAGE,
-          fields: ["summary"],
-          expand: ["changelog"],
-        }),
-      },
-    )
-    if (!ok || !data?.issues) continue
-
-    for (const issue of data.issues) {
-      const key = issue.key.trim().toUpperCase()
-      let count = 0
-      for (const history of issue.changelog?.histories ?? []) {
-        for (const item of history.items) {
-          const from = (item.fromString ?? "").toLowerCase()
-          const to = (item.toString ?? "").toLowerCase()
-          if (
-            item.field === "status" &&
-            from.includes("approval") &&
-            (to.includes("pending") || to === "in progress")
-          ) {
-            count++
+  const CONCURRENCY = 10
+  for (let i = 0; i < keys.length; i += CONCURRENCY) {
+    const batch = keys.slice(i, i + CONCURRENCY)
+    await Promise.allSettled(
+      batch.map(async (key) => {
+        const { ok, data } = await jiraJson<{
+          values?: {
+            items: { field: string; fromString: string | null; toString: string | null }[]
+          }[]
+        }>(
+          `${base}/rest/api/3/issue/${encodeURIComponent(key)}/changelog?maxResults=200`,
+          credentials,
+        )
+        if (!ok || !data?.values) return
+        let count = 0
+        for (const history of data.values) {
+          for (const item of history.items) {
+            const from = (item.fromString ?? "").toLowerCase()
+            const to   = (item.toString  ?? "").toLowerCase()
+            if (
+              item.field === "status" &&
+              from.includes("approval") &&
+              (to.includes("pending") || to === "in progress")
+            ) {
+              count++
+            }
           }
         }
-      }
-      result.set(key, count)
-    }
+        result.set(key.toUpperCase(), count)
+      }),
+    )
   }
 
   return result
