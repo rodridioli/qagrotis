@@ -181,6 +181,7 @@ type IssueFields = {
   labels?: string[]
   project?: { name?: string; key?: string }
   status?: { name?: string }
+  assignee?: { accountId?: string } | null
   [key: string]: unknown
 }
 
@@ -245,6 +246,7 @@ export type LancamentoIssueFieldsPatch = {
   typeField: string | null
   status: string | null
   tag: string | null
+  assigneeAccountId: string | null
 }
 
 function parseQtdCenariosQAFieldValue(raw: unknown): number | null {
@@ -285,9 +287,9 @@ function parseTypeFieldValue(raw: unknown): string | null {
 
 function issueFieldsToLancamentoPatch(
   fields: IssueFields | undefined,
-  qtdFieldId: string | null,
+  qtdFieldIds: string[],
   typeFieldId: string | null,
-  qtdErroFieldId: string | null,
+  qtdErroFieldIds: string[],
   tagFieldId: string | null,
 ): LancamentoIssueFieldsPatch {
   const f = fields ?? {}
@@ -298,17 +300,30 @@ function issueFieldsToLancamentoPatch(
   const labels = Array.isArray(f.labels) ? (f.labels as string[]) : []
   const projectName =
     typeof f.project?.name === "string" && f.project.name.trim() ? f.project.name.trim() : null
+  // Itera todos os IDs resolvidos e usa o primeiro valor não-nulo encontrado.
+  // Necessário porque projetos distintos podem ter campos custom com o mesmo
+  // nome mas IDs diferentes (criados separadamente no Jira Cloud).
   let qtdCenariosQA: number | null = null
-  if (qtdFieldId && f[qtdFieldId] != null) {
-    qtdCenariosQA = parseQtdCenariosQAFieldValue(f[qtdFieldId])
+  for (const id of qtdFieldIds) {
+    if (f[id] != null) {
+      const v = parseQtdCenariosQAFieldValue(f[id])
+      if (v != null) { qtdCenariosQA = v; break }
+    }
   }
   let qtdCenariosErro: number | null = null
-  if (qtdErroFieldId && f[qtdErroFieldId] != null) {
-    qtdCenariosErro = parseQtdCenariosQAFieldValue(f[qtdErroFieldId])
+  for (const id of qtdErroFieldIds) {
+    if (f[id] != null) {
+      const v = parseQtdCenariosQAFieldValue(f[id])
+      if (v != null) { qtdCenariosErro = v; break }
+    }
   }
   const typeField = typeFieldId ? parseTypeFieldValue(f[typeFieldId]) : null
   const tag = tagFieldId ? parseTypeFieldValue(f[tagFieldId]) : null
   const status = typeof f.status?.name === "string" && f.status.name.trim() ? f.status.name.trim() : null
+  const assigneeAccountId =
+    f.assignee && typeof f.assignee === "object" && typeof f.assignee.accountId === "string" && f.assignee.accountId.trim()
+      ? f.assignee.accountId.trim()
+      : null
   return {
     summary,
     issueType,
@@ -320,6 +335,7 @@ function issueFieldsToLancamentoPatch(
     typeField,
     status,
     tag,
+    assigneeAccountId,
   }
 }
 /**
@@ -332,17 +348,15 @@ export async function fetchIssueFieldsForKeys(
   keys: string[],
 ): Promise<Map<string, LancamentoIssueFieldsPatch>> {
   const unique = Array.from(new Set(keys.map((k) => k.trim().toUpperCase()).filter((k) => /^[A-Z][A-Z0-9]*-\d+$/i.test(k))))
-  const [qtdFieldId, typeFieldId, qtdErroFieldId, tagFieldId] = await Promise.all([
-    resolveQtdCenariosQAFieldId(base, credentials),
+  const [qtdFieldIds, typeFieldId, qtdErroFieldIds, tagFieldId] = await Promise.all([
+    resolveQtdCenariosQAFieldIds(base, credentials),
     resolveTypeFieldId(base, credentials),
-    resolveQtdCenariosErroFieldId(base, credentials),
+    resolveQtdCenariosErroFieldIds(base, credentials),
     resolveTagFieldId(base, credentials),
   ])
-  const baseFields = ["summary", "issuetype", "priority", "labels", "project", "status"]
-  const fieldsParam = [...baseFields]
-  if (qtdFieldId) fieldsParam.push(qtdFieldId)
+  const baseFields = ["summary", "issuetype", "priority", "labels", "project", "status", "assignee"]
+  const fieldsParam = [...baseFields, ...qtdFieldIds, ...qtdErroFieldIds]
   if (typeFieldId) fieldsParam.push(typeFieldId)
-  if (qtdErroFieldId) fieldsParam.push(qtdErroFieldId)
   if (tagFieldId) fieldsParam.push(tagFieldId)
 
   const result = new Map<string, LancamentoIssueFieldsPatch>()
@@ -366,7 +380,7 @@ export async function fetchIssueFieldsForKeys(
         for (const issue of data.issues) {
           result.set(
             issue.key.trim().toUpperCase(),
-            issueFieldsToLancamentoPatch(issue.fields, qtdFieldId, typeFieldId, qtdErroFieldId, tagFieldId),
+            issueFieldsToLancamentoPatch(issue.fields, qtdFieldIds, typeFieldId, qtdErroFieldIds, tagFieldId),
           )
         }
       }
@@ -512,6 +526,11 @@ export function mergeLancamentoIssuePatches(
       : prev?.tag?.trim()
         ? prev.tag.trim()
         : null,
+    assigneeAccountId: next.assigneeAccountId?.trim()
+      ? next.assigneeAccountId.trim()
+      : prev?.assigneeAccountId?.trim()
+        ? prev.assigneeAccountId.trim()
+        : null,
   }
 }
 
@@ -524,10 +543,10 @@ export async function augmentFieldMapWithGetIssueFallback(
   fieldMap: Map<string, LancamentoIssueFieldsPatch>,
   allKeysUppercase: string[],
 ): Promise<void> {
-  const [qtdFieldId, typeFieldId, qtdErroFieldId, tagFieldId] = await Promise.all([
-    resolveQtdCenariosQAFieldId(base, credentials),
+  const [qtdFieldIds, typeFieldId, qtdErroFieldIds, tagFieldId] = await Promise.all([
+    resolveQtdCenariosQAFieldIds(base, credentials),
     resolveTypeFieldId(base, credentials),
-    resolveQtdCenariosErroFieldId(base, credentials),
+    resolveQtdCenariosErroFieldIds(base, credentials),
     resolveTagFieldId(base, credentials),
   ])
 
@@ -539,10 +558,10 @@ export async function augmentFieldMapWithGetIssueFallback(
       if (!p) return true
       const missMeta = !p.summary?.trim() || !p.priority?.trim()
       const missQtd =
-        qtdFieldId != null &&
+        qtdFieldIds.length > 0 &&
         (p.qtdCenariosQA == null || !Number.isFinite(p.qtdCenariosQA))
       const missErro =
-        qtdErroFieldId != null &&
+        qtdErroFieldIds.length > 0 &&
         (p.qtdCenariosErro == null || !Number.isFinite(p.qtdCenariosErro))
       return missMeta || missQtd || missErro
     })
@@ -550,10 +569,9 @@ export async function augmentFieldMapWithGetIssueFallback(
 
   if (need.length === 0) return
 
-  const fieldNames = ["summary", "issuetype", "priority", "labels", "project"]
-  if (qtdFieldId) fieldNames.push(qtdFieldId)
+  const fieldNames = ["summary", "issuetype", "priority", "labels", "project", "assignee",
+    ...qtdFieldIds, ...qtdErroFieldIds]
   if (typeFieldId) fieldNames.push(typeFieldId)
-  if (qtdErroFieldId) fieldNames.push(qtdErroFieldId)
   if (tagFieldId) fieldNames.push(tagFieldId)
   const fieldsComma = fieldNames.join(",")
 
@@ -565,7 +583,7 @@ export async function augmentFieldMapWithGetIssueFallback(
           const url = `${base}/rest/api/3/issue/${encodeURIComponent(key)}?fields=${fieldsComma}`
           const { ok, data } = await jiraJson<{ fields?: IssueFields }>(url, credentials)
           if (!ok || !data?.fields) return
-          const patch = issueFieldsToLancamentoPatch(data.fields, qtdFieldId, typeFieldId, qtdErroFieldId, tagFieldId)
+          const patch = issueFieldsToLancamentoPatch(data.fields, qtdFieldIds, typeFieldId, qtdErroFieldIds, tagFieldId)
           fieldMap.set(key, mergeLancamentoIssuePatches(fieldMap.get(key), patch))
         } catch {
           // non-fatal
@@ -713,28 +731,39 @@ export async function countReporterIssuesByTypes(
 }
 
 // ── Custom field discovery ────────────────────────────────────────────────────
-// Cache the resolved field ID for the lifetime of the process to avoid
+// Cache the resolved field IDs for the lifetime of the process to avoid
 // repeated GET /rest/api/3/field calls on every request.
-/** Override com ID fixo (`customfield_123`), útil quando o nome no Jira diverge do padrão. */
-const QTD_ENV_FIELD_ID = process.env.JIRA_QTD_CENARIOS_QA_FIELD_ID?.trim()
+//
+// IMPORTANTE: retornamos ARRAYS porque projetos distintos (ex: AGROPRR vs B1R)
+// podem criar campos custom com o mesmo nome mas IDs diferentes. Usar apenas o
+// primeiro ID faz com que issues do outro projeto retornem null para o campo.
+// Iteramos todos os IDs e usamos o primeiro valor não-nulo encontrado.
 
-let cachedQtdCenariosQAFieldId: string | null | undefined = undefined
+function parseEnvFieldIds(raw: string | undefined): string[] {
+  if (!raw?.trim()) return []
+  return raw.split(",").map((s) => s.trim()).filter(Boolean)
+}
 
-export async function resolveQtdCenariosQAFieldId(
+/** Override com IDs fixos (vírgula-separados), útil quando o nome no Jira diverge do padrão. */
+const QTD_ENV_FIELD_IDS = parseEnvFieldIds(process.env.JIRA_QTD_CENARIOS_QA_FIELD_ID)
+
+let cachedQtdCenariosQAFieldIds: string[] | undefined = undefined
+
+export async function resolveQtdCenariosQAFieldIds(
   base: string,
   credentials: string,
-): Promise<string | null> {
-  if (QTD_ENV_FIELD_ID) return QTD_ENV_FIELD_ID
-  if (cachedQtdCenariosQAFieldId !== undefined) return cachedQtdCenariosQAFieldId
+): Promise<string[]> {
+  if (QTD_ENV_FIELD_IDS.length > 0) return QTD_ENV_FIELD_IDS
+  if (cachedQtdCenariosQAFieldIds !== undefined) return cachedQtdCenariosQAFieldIds
 
   try {
-    const { ok, data } = await jiraJson<{ id: string; name: string }[]>(
+    const { ok, data } = await jiraJson<{ id: string; name: string; custom?: boolean }[]>(
       `${base}/rest/api/3/field`,
       credentials,
     )
     if (!ok || !Array.isArray(data)) {
-      cachedQtdCenariosQAFieldId = null
-      return null
+      cachedQtdCenariosQAFieldIds = []
+      return []
     }
     const patterns = [
       /qtd\.?\s*cen[aá]rios\s*qa\b/i,
@@ -742,47 +771,67 @@ export async function resolveQtdCenariosQAFieldId(
       /\bcen[aá]rios\s*qa\b/i,
       /\bqa\s*cen[aá]rios\b/i,
     ]
-    const found = data.find((f) => patterns.some((re) => re.test(f.name)))
-    cachedQtdCenariosQAFieldId = found?.id ?? null
+    cachedQtdCenariosQAFieldIds = data
+      .filter((f) => f.custom !== false && patterns.some((re) => re.test(f.name)))
+      .map((f) => f.id)
   } catch {
-    cachedQtdCenariosQAFieldId = null
+    cachedQtdCenariosQAFieldIds = []
   }
 
-  return cachedQtdCenariosQAFieldId
+  return cachedQtdCenariosQAFieldIds
 }
 
-const QTD_ERRO_ENV_FIELD_ID = process.env.JIRA_QTD_CENARIOS_ERRO_FIELD_ID?.trim()
-
-let cachedQtdCenariosErroFieldId: string | null | undefined = undefined
-
-export async function resolveQtdCenariosErroFieldId(
+/** @deprecated Use resolveQtdCenariosQAFieldIds — mantido apenas para retrocompatibilidade pontual. */
+export async function resolveQtdCenariosQAFieldId(
   base: string,
   credentials: string,
 ): Promise<string | null> {
-  if (QTD_ERRO_ENV_FIELD_ID) return QTD_ERRO_ENV_FIELD_ID
-  if (cachedQtdCenariosErroFieldId !== undefined) return cachedQtdCenariosErroFieldId
+  const ids = await resolveQtdCenariosQAFieldIds(base, credentials)
+  return ids[0] ?? null
+}
+
+const QTD_ERRO_ENV_FIELD_IDS = parseEnvFieldIds(process.env.JIRA_QTD_CENARIOS_ERRO_FIELD_ID)
+
+let cachedQtdCenariosErroFieldIds: string[] | undefined = undefined
+
+export async function resolveQtdCenariosErroFieldIds(
+  base: string,
+  credentials: string,
+): Promise<string[]> {
+  if (QTD_ERRO_ENV_FIELD_IDS.length > 0) return QTD_ERRO_ENV_FIELD_IDS
+  if (cachedQtdCenariosErroFieldIds !== undefined) return cachedQtdCenariosErroFieldIds
 
   try {
-    const { ok, data } = await jiraJson<{ id: string; name: string }[]>(
+    const { ok, data } = await jiraJson<{ id: string; name: string; custom?: boolean }[]>(
       `${base}/rest/api/3/field`,
       credentials,
     )
     if (!ok || !Array.isArray(data)) {
-      cachedQtdCenariosErroFieldId = null
-      return null
+      cachedQtdCenariosErroFieldIds = []
+      return []
     }
     const patterns = [
       /qtd\.?\s*cen[aá]rios\s*com\s*erro\b/i,
       /cen[aá]rios\s*com\s*erro\b/i,
       /qtd\.?\s*cen[aá]rios\s*erro\b/i,
     ]
-    const found = data.find((f) => patterns.some((re) => re.test(f.name)))
-    cachedQtdCenariosErroFieldId = found?.id ?? null
+    cachedQtdCenariosErroFieldIds = data
+      .filter((f) => f.custom !== false && patterns.some((re) => re.test(f.name)))
+      .map((f) => f.id)
   } catch {
-    cachedQtdCenariosErroFieldId = null
+    cachedQtdCenariosErroFieldIds = []
   }
 
-  return cachedQtdCenariosErroFieldId
+  return cachedQtdCenariosErroFieldIds
+}
+
+/** @deprecated Use resolveQtdCenariosErroFieldIds — mantido apenas para retrocompatibilidade pontual. */
+export async function resolveQtdCenariosErroFieldId(
+  base: string,
+  credentials: string,
+): Promise<string | null> {
+  const ids = await resolveQtdCenariosErroFieldIds(base, credentials)
+  return ids[0] ?? null
 }
 
 const TYPE_ENV_FIELD_ID = process.env.JIRA_TYPE_FIELD_ID?.trim()
@@ -967,16 +1016,16 @@ export async function fetchWorklogsForAuthorInRange(
     return { entries: [], truncatedIssues: false, truncatedWorklogs: false }
   }
 
-  const [qtdFieldId, typeFieldId, qtdErroFieldId, tagFieldId] = await Promise.all([
-    resolveQtdCenariosQAFieldId(base, credentials),
+  const [qtdFieldIds, typeFieldId, qtdErroFieldIds, tagFieldId] = await Promise.all([
+    resolveQtdCenariosQAFieldIds(base, credentials),
     resolveTypeFieldId(base, credentials),
-    resolveQtdCenariosErroFieldId(base, credentials),
+    resolveQtdCenariosErroFieldIds(base, credentials),
     resolveTagFieldId(base, credentials),
   ])
   const extraFields = [
-    ...(qtdFieldId ? [qtdFieldId] : []),
+    ...qtdFieldIds,
+    ...qtdErroFieldIds,
     ...(typeFieldId ? [typeFieldId] : []),
-    ...(qtdErroFieldId ? [qtdErroFieldId] : []),
   ]
 
   const escaped = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
@@ -1020,7 +1069,7 @@ export async function fetchWorklogsForAuthorInRange(
   for (const issueKey of issueKeys) {
     if (entries.length >= MAX_WORKLOGS_TOTAL) break
     const fields = issueFieldsMap.get(issueKey) ?? {}
-    const patch = issueFieldsToLancamentoPatch(fields, qtdFieldId, typeFieldId, qtdErroFieldId, tagFieldId)
+    const patch = issueFieldsToLancamentoPatch(fields, qtdFieldIds, typeFieldId, qtdErroFieldIds, tagFieldId)
     const projectKey = issueKey.split("-")[0] ?? issueKey
 
     let wlStart = 0
