@@ -461,17 +461,24 @@ function TagBarChart({
   items,
   ariaLabel,
   hideValues,
+  totalCount,
 }: {
   title: string
   items: { tag: string; count: number; investimentoCentavos: number }[]
   ariaLabel: string
   hideValues?: boolean
+  totalCount?: number
 }) {
   const chartHeight = Math.max(300, items.length * 28)
 
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
-      <p className="mb-4 text-sm font-semibold text-text-primary">{title}</p>
+      <p className="mb-4 text-sm font-semibold text-text-primary">
+        {title}
+        {totalCount != null && totalCount > 0 && (
+          <span className="ml-1.5 font-normal text-text-secondary">({totalCount})</span>
+        )}
+      </p>
       {items.length === 0 ? (
         <p className="text-sm text-text-secondary">Sem dados no período.</p>
       ) : (
@@ -1173,17 +1180,18 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
           <div className="lg:col-span-3">
             <TagBarChart
-              title="Distribuição por Produto"
+              title="Distribuição de Jiras por Produto"
               items={distribByTag}
               ariaLabel="Distribuição de jiras por tag"
               hideValues={hideValues}
+              totalCount={totalUniqueIssues > 0 ? totalUniqueIssues : undefined}
             />
           </div>
           <div className="lg:col-span-1">
             <TagPieChart
-              title="Atividades em Aprovação"
+              title="Jiras aguardando aprovação"
               items={approvalByTag}
-              ariaLabel="Protótipos em aprovação por tag"
+              ariaLabel="Jiras aguardando aprovação por tag"
               totalCount={approvalByTag.reduce((s, i) => s + i.count, 0)}
             />
           </div>
