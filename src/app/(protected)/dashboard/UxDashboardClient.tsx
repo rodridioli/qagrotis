@@ -937,7 +937,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
             onClick={() => void fetchAll(ano, true)}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default bg-surface-card text-text-secondary shadow-sm transition-colors hover:bg-neutral-grey-50 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <RefreshCw className={cn("size-3.5", loading && "animate-spin")} aria-hidden />
+            <RefreshCw className={cn("size-4", loading && "animate-spin")} aria-hidden />
           </button>
           <button
             type="button"
@@ -945,7 +945,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
             onClick={() => setHideValues((v) => !v)}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default bg-surface-card text-text-secondary shadow-sm transition-colors hover:bg-neutral-grey-50 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
           >
-            {hideValues ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+            {hideValues ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
           </button>
         </div>
       </div>
