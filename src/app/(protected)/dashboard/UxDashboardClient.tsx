@@ -919,7 +919,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
             onValueChange={(v) => { if (v) setAno(Number(v)) }}
           >
             <SelectTrigger
-              className="h-9 w-auto"
+              className="w-28"
               aria-label="Selecionar ano"
             >
               <SelectValue>{ano}</SelectValue>
