@@ -294,10 +294,10 @@ const SPARK_MONTHS_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho"
 // Single source of truth for variant colours — shared by SparklineChart and MetricCard icon.
 // "brand" uses the Agrotis primary (#00735D) from the design-system scale.
 const VARIANT_COLOR: Record<"brand" | "warning" | "success" | "info", string> = {
-  brand:   "#00735D",
-  success: "#059669",
-  warning: "#f59e0b",
-  info:    "#0ea5e9",
+  brand:   "#5C9E8D",
+  success: "#83B8A8",
+  warning: "#CB8275",
+  info:    "#5C7FA0",
 }
 
 function SparklineChart({
@@ -340,7 +340,7 @@ function SparklineChart({
           axisLine={false}
           tickLine={false}
           interval={0}
-          tick={{ fontSize: 9, fill: "#94a3b8" }}
+          tick={{ fontSize: 9, fill: "#8BAFC5" }}
           padding={{ left: 8, right: 8 }}
         />
         <RechartsTooltip
@@ -443,16 +443,16 @@ function MetricCard({
 
 // Brand-primary green for bars; individual Cell overrides give per-bar depth variation.
 const BAR_PALETTE = [
-  "#00735D", // primary-700 (brand)
-  "#008068", // primary-600
-  "#009e83", // primary-500
-  "#2ab89e", // primary-400
-  "#5cd0b8", // primary-300
-  "#005c4b", // primary-800
-  "#3dc4ac", // interpolated 400↔500
-  "#003d32", // primary-900
-  "#70d4bc", // interpolated 300↔400
-  "#1a5e49", // interpolated 700↔800
+  "#5C9E8D", // teal primary
+  "#5C7FA0", // slate primary
+  "#C9A870", // amber primary
+  "#CB8275", // coral primary
+  "#83B8A8", // teal light
+  "#8BAFC5", // slate light
+  "#9A7835", // amber dark
+  "#E8ADA3", // coral light
+  "#3D7A6C", // teal dark
+  "#3D5E7A", // slate dark
 ]
 const BAR_COLOR = BAR_PALETTE[0]
 
@@ -486,7 +486,7 @@ function TagBarChart({
                 dataKey="tag"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 11, fill: "#64748b" }}
+                tick={{ fontSize: 11, fill: "#5C7FA0" }}
                 interval={0}
                 angle={-35}
                 textAnchor="end"
@@ -495,7 +495,7 @@ function TagBarChart({
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 10, fill: "#94a3b8" }}
+                tick={{ fontSize: 10, fill: "#8BAFC5" }}
                 allowDecimals={false}
                 width={28}
               />
@@ -536,18 +536,18 @@ function TagBarChart({
 
 // Palette for pie segments — rotates across the three brand accent colours.
 const PIE_COLORS = [
-  "#409686", // teal primary
-  "#f8ba50", // amber primary
-  "#4abcef", // blue primary
-  "#2d7a6b", // teal dark
-  "#f5a623", // amber dark
-  "#2aa3d8", // blue dark
-  "#5ab8a8", // teal light
-  "#faca7a", // amber light
-  "#74cef5", // blue light
-  "#1f5c50", // teal darkest
-  "#e89520", // amber darkest
-  "#1a90c5", // blue darkest
+  "#5C9E8D", // teal primary
+  "#5C7FA0", // slate primary
+  "#C9A870", // amber primary
+  "#CB8275", // coral primary
+  "#83B8A8", // teal light
+  "#8BAFC5", // slate light
+  "#E8ADA3", // coral light
+  "#DFC898", // amber light
+  "#3D7A6C", // teal dark
+  "#9A7835", // amber dark
+  "#3D5E7A", // slate dark
+  "#B56A5E", // coral dark
 ]
 
 function TagPieChart({
@@ -630,12 +630,12 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
   // "blue"   → lighter primary-50 tint   (Protótipos / Pesquisas / Usabilidade / Outros)
   // "violet" → primary-100 tint           (Novos / Melhorias / Ajustes)
   const TH = ({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" | "violet" }) => (
-    <th className={cn(thBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#edfaf6]/80 dark:bg-[#062019]/60", group === "violet" && "bg-[#d0f2e8]/70 dark:bg-[#0a2f24]/60")}>
+    <th className={cn(thBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60", group === "violet" && "bg-[#EEF3F7]/70 dark:bg-[#101e2c]/60")}>
       {children}
     </th>
   )
   const tdCls = (base: string, group?: "blue" | "violet") =>
-    cn(base, group === "blue" && "bg-[#edfaf6]/80 dark:bg-[#062019]/60", group === "violet" && "bg-[#d0f2e8]/70 dark:bg-[#0a2f24]/60")
+    cn(base, group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60", group === "violet" && "bg-[#EEF3F7]/70 dark:bg-[#101e2c]/60")
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
@@ -688,7 +688,7 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
                       key={mi}
                       className={cn(
                         "border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50",
-                        mi === currentMonthIndex && "[&_td]:!text-[#f8ba50] [&_td]:font-semibold",
+                        mi === currentMonthIndex && "[&_td]:!text-[#C9A870] [&_td]:font-semibold",
                       )}
                     >
                       <td className="px-4 py-2 pl-8 text-text-secondary">{MONTHS_PT[mi]}</td>
@@ -733,9 +733,9 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
 // ─── TypeCard ─────────────────────────────────────────────────────────────────
 
 const TYPE_CARD_LABEL_COLOR: Record<string, string> = {
-  blue:   "#409686",
-  violet: "#4abcef",
-  amber:  "#f8ba50",
+  blue:   "#5C9E8D",
+  violet: "#5C7FA0",
+  amber:  "#C9A870",
 }
 
 function TypeCard({

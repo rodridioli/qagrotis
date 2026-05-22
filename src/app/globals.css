@@ -207,14 +207,14 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: #00735D;
-  --chart-2: #64748b;
-  --chart-3: #f59e0b;
-  --chart-4: #3b82f6;
-  --chart-5: #10b981;
-  --chart-6: #8b5cf6;
-  --chart-7: #ec4899;
-  --chart-8: #06b6d4;
+  --chart-1: #5C9E8D;  /* teal */
+  --chart-2: #5C7FA0;  /* slate */
+  --chart-3: #C9A870;  /* amber */
+  --chart-4: #CB8275;  /* coral */
+  --chart-5: #83B8A8;  /* teal light */
+  --chart-6: #8BAFC5;  /* slate light */
+  --chart-7: #9A7835;  /* amber dark */
+  --chart-8: #E8ADA3;  /* coral light */
   --radius: var(--radius-control);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -313,15 +313,15 @@
   --input:                #1e2235;
   --ring:                 #2ab89e;
 
-  /* ── Charts (vibrant palette, dark-adapted) ── */
-  --chart-1: #2ab89e;
-  --chart-2: #94a3b8;
-  --chart-3: #fbbf24;
-  --chart-4: #60a5fa;
-  --chart-5: #34d399;
-  --chart-6: #a78bfa;
-  --chart-7: #f472b6;
-  --chart-8: #22d3ee;
+  /* ── Charts (palette harmônica, dark-adapted) ── */
+  --chart-1: #83B8A8;  /* teal light */
+  --chart-2: #8BAFC5;  /* slate light */
+  --chart-3: #DFC898;  /* amber light */
+  --chart-4: #E8ADA3;  /* coral light */
+  --chart-5: #5C9E8D;  /* teal */
+  --chart-6: #5C7FA0;  /* slate */
+  --chart-7: #C9A870;  /* amber */
+  --chart-8: #CB8275;  /* coral */
 
   /* ── Sidebar ── */
   --sidebar:                    #161923;
@@ -488,14 +488,14 @@
   --radius-full: 9999px;
 
   /* ── Chart palette (tokens para gráficos de pizza/barra) ── */
-  --palette-chart-1: var(--brand-primary);
-  --palette-chart-2: #6366f1;
-  --palette-chart-3: #f59e0b;
-  --palette-chart-4: #0ea5e9;
-  --palette-chart-5: #10b981;
-  --palette-chart-6: #f43f5e;
-  --palette-chart-7: #8b5cf6;
-  --palette-chart-8: #14b8a6;
+  --palette-chart-1: #5C9E8D;  /* teal */
+  --palette-chart-2: #5C7FA0;  /* slate */
+  --palette-chart-3: #C9A870;  /* amber */
+  --palette-chart-4: #CB8275;  /* coral */
+  --palette-chart-5: #83B8A8;  /* teal light */
+  --palette-chart-6: #8BAFC5;  /* slate light */
+  --palette-chart-7: #9A7835;  /* amber dark */
+  --palette-chart-8: #E8ADA3;  /* coral light */
 }
 /* [design-system:end] */
 
