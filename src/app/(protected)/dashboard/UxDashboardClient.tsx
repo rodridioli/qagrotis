@@ -919,7 +919,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
             onValueChange={(v) => { if (v) setAno(Number(v)) }}
           >
             <SelectTrigger
-              className="h-8 w-auto text-xs"
+              className="h-9 w-auto"
               aria-label="Selecionar ano"
             >
               <SelectValue>{ano}</SelectValue>
@@ -935,7 +935,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
             aria-label="Sincronizar dados"
             disabled={loading}
             onClick={() => void fetchAll(ano, true)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default bg-surface-card text-text-secondary shadow-sm transition-colors hover:bg-neutral-grey-50 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
+            className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RefreshCw className={cn("size-4", loading && "animate-spin")} aria-hidden />
           </button>
@@ -943,7 +943,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
             type="button"
             aria-label={hideValues ? "Exibir valores monetários" : "Ocultar valores monetários"}
             onClick={() => setHideValues((v) => !v)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default bg-surface-card text-text-secondary shadow-sm transition-colors hover:bg-neutral-grey-50 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
           >
             {hideValues ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
           </button>
