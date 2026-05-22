@@ -310,6 +310,31 @@ export async function GET(req: NextRequest) {
   const longSessionCount = entries.filter((e) => e.isLongSession).length
   const noJiraUser = !jiraUser
 
+  // Cenários com Erro (servidor) — detecção robusta: nome configurado OU padrão "broken/teste"
+  // para cobrir instâncias onde issuetype.name = "[TESTE]" mas o JQL usa "Broken Test".
+  const _brokenNorm = brokenTestIssueTypeNames.map((t) => t.toLowerCase().trim())
+  const _isLikelyBrokenTest = (issueType: string | null | undefined): boolean => {
+    const t = (issueType ?? "").toLowerCase().trim()
+    if (!t) return false
+    return _brokenNorm.some((n) => t === n) || t.includes("broken") || t.includes("teste")
+  }
+  const _qtdErroPerKey = new Map<string, number>()
+  const _qtdQABrokenPerKey = new Map<string, number>()
+  for (const e of entries) {
+    const k = e.issueKey.trim().toUpperCase()
+    if (e.qtdCenariosErro != null && Number.isFinite(e.qtdCenariosErro)) {
+      _qtdErroPerKey.set(k, Math.max(_qtdErroPerKey.get(k) ?? 0, e.qtdCenariosErro))
+    }
+    if (_isLikelyBrokenTest(e.issueType) && e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)) {
+      _qtdQABrokenPerKey.set(k, Math.max(_qtdQABrokenPerKey.get(k) ?? 0, e.qtdCenariosQA))
+    }
+  }
+  let cenariosComErroFinalTotal = 0
+  for (const v of _qtdErroPerKey.values()) cenariosComErroFinalTotal += v
+  for (const [k, v] of _qtdQABrokenPerKey.entries()) {
+    if (!_qtdErroPerKey.has(k)) cenariosComErroFinalTotal += v
+  }
+
   const _debug = {
     targetEmail,
     targetName,
@@ -338,6 +363,7 @@ export async function GET(req: NextRequest) {
       clockworkMergedCount: 0,
       reporterBrokenTestIssueCount: reporterDiagnostics.count,
       brokenTestIssueTypeNames,
+      qtdCenariosErroTotal: 0,
       researchCount: 0,
       usabilityCount: 0,
       docReviewCount: 0,
@@ -362,6 +388,7 @@ export async function GET(req: NextRequest) {
     clockworkMergedCount: clockworkAdded,
     reporterBrokenTestIssueCount,
     brokenTestIssueTypeNames,
+    qtdCenariosErroTotal: cenariosComErroFinalTotal,
     researchCount,
     usabilityCount,
     docReviewCount,

@@ -179,14 +179,15 @@ function computeStats(entries: LancamentoRow[], brokenTestTypeNames?: string[]) 
   const qtdErroByIssue = new Map<string, number>()
   const qtdBrokenTestQAByIssue = new Map<string, number>()
 
-  // Usa os nomes reais configurados no servidor (mesmo env var do JQL).
-  // Fallback para "includes broken" garante retrocompat sem config.
+  // Detecção robusta: nome exato configurado OU padrão "broken/teste" para cobrir
+  // instâncias Jira onde issuetype.name retorna "[TESTE]" mas o JQL usa "Broken Test".
   const normalizedBrokenTypes = (brokenTestTypeNames ?? []).map((t) => t.toLowerCase().trim())
   const isBrokenTest = (e: LancamentoRow) => {
     const t = (e.issueType ?? "").toLowerCase().trim()
+    const byPattern = t.includes("broken") || t.includes("teste")
     return normalizedBrokenTypes.length > 0
-      ? normalizedBrokenTypes.some((n) => t === n)
-      : t.includes("broken")
+      ? normalizedBrokenTypes.some((n) => t === n) || byPattern
+      : byPattern
   }
   const isDocReview = (e: LancamentoRow) =>
     (e.issueType ?? "").toLowerCase() === "documentation review"
