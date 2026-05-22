@@ -18,6 +18,7 @@ import type { QaUserRecord } from "@/features/usuarios/actions/usuarios"
 import type { SuiteDashboardRecord } from "@/features/qa/actions/suites"
 import { getEquipeMembrosParaLancamentos } from "@/features/equipe/actions/equipe"
 import { getProgressaoHistoricoBatch } from "@/features/individual/actions/individual-progressao"
+import { getUxApprovalIssuesByTag } from "@/features/qa/actions/jira-worklog-cache"
 
 export default async function DashboardPage({
   searchParams,
@@ -34,13 +35,17 @@ export default async function DashboardPage({
   if (perfil === "UX") {
     if (!isMgr) redirect("/dashboard")
 
-    const membros = await getEquipeMembrosParaLancamentos("UX")
+    const [membros, approvalByTag] = await Promise.all([
+      getEquipeMembrosParaLancamentos("UX"),
+      getUxApprovalIssuesByTag(),
+    ])
     const progressaoMap = await getProgressaoHistoricoBatch(membros.map((m) => m.userId))
 
     return (
       <UxDashboardClient
         membros={serializeRscProps(membros)}
         progressaoMap={serializeRscProps(progressaoMap)}
+        approvalByTag={approvalByTag}
       />
     )
   }

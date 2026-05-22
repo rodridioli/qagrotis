@@ -1163,3 +1163,42 @@ export async function fetchRetornosForKeys(
 
   return result
 }
+
+// ── Approval issues by tag (live JQL query, no cache) ─────────────────────────
+
+/**
+ * Queries Jira directly for all issues in the UX project with status = "Approval"
+ * and groups them by tag. Always returns current data — no worklog cache involved.
+ */
+export async function fetchApprovalIssuesByTag(
+  base: string,
+  credentials: string,
+): Promise<{ tag: string; count: number }[]> {
+  const tagFieldId = await resolveTagFieldId(base, credentials)
+  const extraFields: string[] = ["status", ...(tagFieldId ? [tagFieldId] : [])]
+
+  const tagMap = new Map<string, number>()
+  let nextPageToken: string | null = null
+
+  for (;;) {
+    const page = await searchIssuesByJql(
+      base,
+      credentials,
+      'project = UX AND status = "Approval" ORDER BY updated DESC',
+      nextPageToken,
+      extraFields,
+    )
+    if (!page) break
+    for (const issue of page.issues) {
+      const raw = tagFieldId ? (issue.fields as Record<string, unknown>)?.[tagFieldId] : undefined
+      const tag = parseTypeFieldValue(raw) ?? "Sem tag"
+      tagMap.set(tag, (tagMap.get(tag) ?? 0) + 1)
+    }
+    if (page.isLast) break
+    nextPageToken = page.nextPageToken
+  }
+
+  return [...tagMap.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count)
+}
