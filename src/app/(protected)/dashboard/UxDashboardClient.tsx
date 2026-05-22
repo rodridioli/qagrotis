@@ -164,7 +164,7 @@ interface YearTypeTotals {
   retornos: number
 }
 
-function aggregateYearTotals(entries: JiraEntry[], filterAccountId?: string): YearTypeTotals {
+function aggregateYearTotals(entries: JiraEntry[], activeAccountIds?: Set<string>): YearTypeTotals {
   const novosProto = new Set<string>()
   const melhorias = new Set<string>()
   const ajustes = new Set<string>()
@@ -186,8 +186,8 @@ function aggregateYearTotals(entries: JiraEntry[], filterAccountId?: string): Ye
     if (tf === "others" || tf === "other") outros.add(e.issueKey)
     if (e.priority?.toLowerCase().trim() === "critical") criticos.add(e.issueKey)
     if (e.status?.toLowerCase().trim() === "approval") ag.add(e.issueKey)
-    const r = filterAccountId
-      ? ((e.retornosByAssignee?.[filterAccountId] ?? 0))
+    const r = activeAccountIds && activeAccountIds.size > 0
+      ? Array.from(activeAccountIds).reduce((s, id) => s + (e.retornosByAssignee?.[id] ?? 0), 0)
       : (e.retornos ?? 0)
     if (r > 0) {
       retornosPerIssue.set(e.issueKey, Math.max(retornosPerIssue.get(e.issueKey) ?? 0, r))
@@ -494,7 +494,7 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
-      <table className="w-full min-w-[900px] text-sm">
+      <table className="w-full min-w-[820px] text-sm">
         <thead>
           <tr className="border-b border-border-default bg-neutral-grey-50">
             <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">
@@ -511,7 +511,6 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
             <TH>Melhorias</TH>
             <TH>Ajustes</TH>
             <TH>Retornos</TH>
-            <TH>Aguardando</TH>
           </tr>
         </thead>
         <tbody>
@@ -536,7 +535,6 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
                   <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.melhorias}</td>
                   <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.ajustes}</td>
                   <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.retornos}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.aguardando}</td>
                 </tr>
                 {q.months.map((mi) => {
                   const ms = monthStats[mi]!
@@ -557,7 +555,6 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
                       <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.melhorias}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.ajustes}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.retornos}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.aguardando}</td>
                     </tr>
                   )
                 })}
@@ -578,7 +575,6 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
             <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.melhorias}</td>
             <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.ajustes}</td>
             <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.retornos}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.aguardando}</td>
           </tr>
         </tbody>
       </table>
@@ -589,9 +585,9 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
 // ─── TypeCard ─────────────────────────────────────────────────────────────────
 
 const TYPE_CARD_TINT: Record<string, string> = {
-  blue:   "bg-blue-50/80 border border-blue-100",
-  violet: "bg-violet-50/80 border border-violet-100",
-  amber:  "bg-amber-50/80 border border-amber-100",
+  blue:   "bg-surface-card border border-border-default border-l-4 border-l-blue-400",
+  violet: "bg-surface-card border border-border-default border-l-4 border-l-violet-400",
+  amber:  "bg-surface-card border border-border-default border-l-4 border-l-amber-400",
 }
 
 function TypeCard({
@@ -704,6 +700,14 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       }
     }
 
+    // Collect Jira account IDs for all active members — used to filter retornos
+    // consistently in both the table (Pass 2) and the year-total cards.
+    const activeJiraAccountIds = new Set<string>()
+    for (const m of activeMembers) {
+      const firstEntry = (rawMemberEntries[m.userId] ?? []).find((e) => e.authorJiraAccountId)
+      if (firstEntry?.authorJiraAccountId) activeJiraAccountIds.add(firstEntry.authorJiraAccountId)
+    }
+
     // Pass 2 — global: assign issue counts using a cross-member first-month anchor.
     // issueFirstMonth is computed across ALL members so UX-100 worked on by
     // Barbara (April) and Bruno (May) is anchored to April for both — counted once.
@@ -743,7 +747,9 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         if (tf === "others" || tf === "other") cb.outros.add(e.issueKey)
         if (e.priority?.toLowerCase().trim() === "critical") cb.criticos.add(e.issueKey)
         if (e.status?.toLowerCase().trim() === "approval") cb.ag.add(e.issueKey)
-        const r = e.retornos ?? 0
+        const r = activeJiraAccountIds.size > 0
+          ? Array.from(activeJiraAccountIds).reduce((s, id) => s + (e.retornosByAssignee?.[id] ?? 0), 0)
+          : (e.retornos ?? 0)
         if (r > 0) cb.retornosPerIssue.set(e.issueKey, Math.max(cb.retornosPerIssue.get(e.issueKey) ?? 0, r))
       }
 
@@ -769,16 +775,8 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       }
     }
 
-    // When exactly one user is selected, filter retornos by their Jira accountId
-    let filterAccountId: string | undefined
-    if (activeMembers.length === 1) {
-      const memberId = activeMembers[0]!.userId
-      const firstEntry = (rawMemberEntries[memberId] ?? []).find((e) => e.authorJiraAccountId)
-      filterAccountId = firstEntry?.authorJiraAccountId ?? undefined
-    }
-
     // Year-level unique counts for the cards (global Sets — true unique, no double-counting)
-    const yTotals = aggregateYearTotals(allEntries, filterAccountId)
+    const yTotals = aggregateYearTotals(allEntries, activeJiraAccountIds)
 
     const protoMap = new Map<string, Set<string>>()
     const agMap = new Map<string, Set<string>>()
