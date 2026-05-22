@@ -449,7 +449,7 @@ function TagBarChart({
   ariaLabel: string
   hideValues?: boolean
 }) {
-  const chartHeight = Math.max(280, items.length * 28)
+  const chartHeight = Math.max(300, items.length * 28)
 
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
@@ -527,7 +527,10 @@ function TagPieChart({
     <div className="flex h-full flex-col rounded-xl bg-surface-card p-5 shadow-card">
       <p className="mb-3 text-sm font-semibold text-text-primary">{title}</p>
       {items.length === 0 ? (
-        <p className="text-sm text-text-secondary">Sem dados no período.</p>
+        <div>
+          <p className="text-sm text-text-secondary">Sem dados no período.</p>
+          <p className="mt-1 text-xs text-text-secondary">Clique em Atualizar para sincronizar o status atual das jiras.</p>
+        </div>
       ) : (
         <div role="img" aria-label={ariaLabel} className="flex flex-1 items-center justify-center">
           <ResponsiveContainer width="100%" height={220}>
@@ -579,8 +582,10 @@ function TagPieChart({
 // Each unique issue can appear in multiple months if it had worklogs in multiple months,
 // so quarterly/annual sums may exceed the global unique count shown in the cards.
 // Cards use global Sets (true unique) — table uses per-period activity counts.
-function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideValues: boolean }) {
+function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; hideValues: boolean; ano: number }) {
   const totalAnual = monthStats.reduce(sumStats, emptyMonthStats())
+  const today = new Date()
+  const currentMonthIndex = ano === today.getFullYear() ? today.getMonth() : -1
   const inv = (v: number) =>
     hideValues ? <span className="tracking-widest text-text-disabled">••••</span> : formatBRL(v)
 
@@ -643,7 +648,10 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
                   return (
                     <tr
                       key={mi}
-                      className="border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50"
+                      className={cn(
+                        "border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50",
+                        mi === currentMonthIndex && "[&_td]:!text-[var(--brand-primary)] [&_td]:font-semibold",
+                      )}
                     >
                       <td className="px-4 py-2 pl-8 text-text-secondary">{MONTHS_PT[mi]}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-text-primary">{inv(ms.investimentoCentavos)}</td>
@@ -1115,7 +1123,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       {loading || monthStats === null ? (
         <SectionSpinner minHeight="min-h-[300px]" />
       ) : (
-        <YearTable monthStats={monthStats} hideValues={hideValues} />
+        <YearTable monthStats={monthStats} hideValues={hideValues} ano={ano} />
       )}
     </div>
   )
