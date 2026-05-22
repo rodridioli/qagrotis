@@ -203,6 +203,14 @@ export async function GET(req: NextRequest) {
 
   const { merged: rawEntries, clockworkAdded } = mergeJiraAndClockworkWorklogs(jiraEntries, clockworkEntries)
 
+  // Nomes de tipo usados tanto no JQL (countReporterIssuesByTypes) quanto na
+  // detecção client-side de broken test — deve vir da mesma fonte de verdade.
+  const brokenTestIssueTypeNames = (() => {
+    const raw = process.env.JIRA_BROKEN_TEST_ISSUE_TYPES?.trim()
+    const parts = raw ? raw.split(/[,|]/).map((s) => s.trim()).filter(Boolean) : []
+    return parts.length > 0 ? [...new Set(parts)] : ["Broken Test"]
+  })()
+
   // Enriquece TODAS as chaves — o enrichment (busca direta por key) é a fonte
   // mais confiável para summary, priority, issueType e qtdCenariosQA.
   const keysToEnrich = Array.from(
@@ -329,6 +337,7 @@ export async function GET(req: NextRequest) {
       includesClockwork: false,
       clockworkMergedCount: 0,
       reporterBrokenTestIssueCount: reporterDiagnostics.count,
+      brokenTestIssueTypeNames,
       researchCount: 0,
       usabilityCount: 0,
       docReviewCount: 0,
@@ -352,6 +361,7 @@ export async function GET(req: NextRequest) {
     includesClockwork: clockworkAdded > 0,
     clockworkMergedCount: clockworkAdded,
     reporterBrokenTestIssueCount,
+    brokenTestIssueTypeNames,
     researchCount,
     usabilityCount,
     docReviewCount,
