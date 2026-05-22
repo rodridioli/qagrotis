@@ -612,10 +612,10 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
 
 // ─── TypeCard ─────────────────────────────────────────────────────────────────
 
-const TYPE_CARD_TINT: Record<string, string> = {
-  blue:   "bg-surface-card border border-border-default border-l-4 border-l-blue-400",
-  violet: "bg-surface-card border border-border-default border-l-4 border-l-violet-400",
-  amber:  "bg-surface-card border border-border-default border-l-4 border-l-amber-400",
+const TYPE_CARD_LABEL_COLOR: Record<string, string> = {
+  blue:   "text-blue-500",
+  violet: "text-violet-500",
+  amber:  "text-amber-500",
 }
 
 function TypeCard({
@@ -643,8 +643,8 @@ function TypeCard({
     ? Math.round((count / totalIssues) * totalInvestimentoCentavos)
     : 0
   return (
-    <div className={cn("rounded-xl p-4 shadow-card", tint ? TYPE_CARD_TINT[tint] : "bg-surface-card")}>
-      <p className="text-xs font-medium text-text-secondary">{label}</p>
+    <div className="rounded-xl bg-surface-card p-4 shadow-card">
+      <p className={cn("text-xs font-medium", tint ? TYPE_CARD_LABEL_COLOR[tint] : "text-text-secondary")}>{label}</p>
       <p className="mt-1 text-xl font-bold text-text-primary tabular-nums">{count}</p>
       <div className="mt-1.5 flex items-center gap-2 text-xs text-text-secondary">
         <span className="tabular-nums">{pct}%</span>
