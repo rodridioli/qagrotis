@@ -96,6 +96,7 @@ type ApiOk = {
   newDocCount?: number
   pendingUxReturnCount?: number
   qtdCenariosErroTotal?: number
+  brokenTestIssueTypeNames?: string[]
 }
 
 function formatDurationHMin(totalSeconds: number): string {
@@ -167,7 +168,7 @@ function priorityIsCritical(p: string | null | undefined): boolean {
   )
 }
 
-function computeStats(entries: LancamentoRow[]) {
+function computeStats(entries: LancamentoRow[], brokenTestTypeNames?: string[]) {
   const projectMap = new Map<string, number>()
   const projectNameMap = new Map<string, string>()
   const issueSet = new Set<string>()
@@ -177,9 +178,17 @@ function computeStats(entries: LancamentoRow[]) {
   const newDocIssues = new Set<string>()
   const qtdByIssue = new Map<string, number>()
   const qtdErroByIssue = new Map<string, number>()
+  const qtdBrokenTestQAByIssue = new Map<string, number>()
 
-  const isBrokenTest = (e: LancamentoRow) =>
-    (e.issueType ?? "").toLowerCase().includes("broken")
+  // Usa os nomes reais configurados no servidor (mesmo env var do JQL).
+  // Fallback para "includes broken" garante retrocompat sem config.
+  const normalizedBrokenTypes = (brokenTestTypeNames ?? []).map((t) => t.toLowerCase().trim())
+  const isBrokenTest = (e: LancamentoRow) => {
+    const t = (e.issueType ?? "").toLowerCase().trim()
+    return normalizedBrokenTypes.length > 0
+      ? normalizedBrokenTypes.some((n) => t === n)
+      : t.includes("broken")
+  }
   const isDocReview = (e: LancamentoRow) =>
     (e.issueType ?? "").toLowerCase() === "documentation review"
   const isNewDoc = (e: LancamentoRow) =>
@@ -194,6 +203,10 @@ function computeStats(entries: LancamentoRow[]) {
     issueSet.add(e.issueKey)
     if (priorityIsCritical(e.priority)) criticalIssues.add(e.issueKey)
     if (isBrokenTest(e)) brokenTestIssues.add(e.issueKey)
+    if (isBrokenTest(e) && e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)) {
+      const prev = qtdBrokenTestQAByIssue.get(e.issueKey) ?? 0
+      qtdBrokenTestQAByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosQA))
+    }
     if (isDocReview(e)) docReviewIssues.add(e.issueKey)
     if (isNewDoc(e)) newDocIssues.add(e.issueKey)
     if (e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)) {
@@ -230,6 +243,21 @@ function computeStats(entries: LancamentoRow[]) {
     qtdCenariosErroTotal += v
   }
 
+  let qtdCenariosQABrokenTestTotal = 0
+  for (const v of qtdBrokenTestQAByIssue.values()) {
+    qtdCenariosQABrokenTestTotal += v
+  }
+
+  // Regra de negócio: cada Jira contribui com apenas um valor.
+  // Prioridade: "Qtd Cenários com Erro". Fallback: "Qtd. Cenários QA" apenas
+  // para Broken Tests que não possuem o campo principal.
+  let cenariosComErroFinalTotal = qtdCenariosErroTotal
+  for (const [key, v] of qtdBrokenTestQAByIssue.entries()) {
+    if (!qtdErroByIssue.has(key)) {
+      cenariosComErroFinalTotal += v
+    }
+  }
+
   const projectHours: ProjectHours[] = Array.from(projectMap.entries())
     .map(([key, seconds]) => ({ key, name: projectNameMap.get(key) ?? null, seconds }))
     .sort((a, b) => b.seconds - a.seconds)
@@ -243,10 +271,19 @@ function computeStats(entries: LancamentoRow[]) {
     newDocCount: newDocIssues.size,
     qtdCenariosTotal,
     qtdCenariosErroTotal,
+    qtdCenariosQABrokenTestTotal,
+    cenariosComErroFinalTotal,
   }
 }
 
 // ── Dashboard panel ──────────────────────────────────────────────────────────
+
+const STAT_ICON_PALETTE: Record<"brand" | "info" | "warning" | "destructive", { bg: string; fg: string }> = {
+  brand:       { bg: "#5C9E8D1A", fg: "#5C9E8D" },
+  info:        { bg: "#5C7FA01A", fg: "#5C7FA0" },
+  warning:     { bg: "#C9A8701A", fg: "#C9A870" },
+  destructive: { bg: "#CB82751A", fg: "#CB8275" },
+}
 
 function StatCard({
   icon: Icon,
@@ -259,13 +296,7 @@ function StatCard({
   value: React.ReactNode
   iconVariant: "brand" | "info" | "warning" | "destructive"
 }) {
-  const iconCls = cn(
-    "hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg",
-    iconVariant === "brand"       && "bg-brand-primary/10 text-brand-primary",
-    iconVariant === "info"        && "bg-badge-info/10 text-badge-info-text",
-    iconVariant === "warning"     && "bg-badge-warning/10 text-badge-warning-text",
-    iconVariant === "destructive" && "bg-destructive/10 text-destructive",
-  )
+  const palette = STAT_ICON_PALETTE[iconVariant]
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-2">
@@ -273,7 +304,10 @@ function StatCard({
           <p className="text-sm text-text-secondary">{label}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-text-primary">{value}</p>
         </div>
-        <div className={iconCls}>
+        <div
+          className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: palette.bg, color: palette.fg }}
+        >
           <Icon className="size-5" aria-hidden />
         </div>
       </div>
@@ -362,6 +396,7 @@ function DashboardPanel({
   pendingUxReturnCount,
   qtdCenariosErroTotal: qtdCenariosErroTotalProp,
   evaluatedUserAccessProfile,
+  brokenTestIssueTypeNames,
 }: {
   entries: LancamentoRow[]
   brokenTestSubtasksTotalInScope?: number
@@ -375,8 +410,12 @@ function DashboardPanel({
   pendingUxReturnCount?: number
   qtdCenariosErroTotal?: number
   evaluatedUserAccessProfile?: "QA" | "UX" | "TW" | "MGR" | null
+  brokenTestIssueTypeNames?: string[]
 }) {
-  const stats = React.useMemo(() => computeStats(entries), [entries])
+  const stats = React.useMemo(
+    () => computeStats(entries, brokenTestIssueTypeNames),
+    [entries, brokenTestIssueTypeNames],
+  )
   const profile = evaluatedUserAccessProfile ?? null
 
   // Para QA: 5 cards (Jiras abertos, Cenários com Erro, Testes Realizados, Total de Jiras, Jiras críticos).
@@ -397,7 +436,7 @@ function DashboardPanel({
     // QA: dois novos cards, mais Cenários Testados como 5º card
     const retornoValor = reporterBrokenTestIssueCount ?? 0
     card1 = <StatCard icon={Bug}    label="Retorno de Testes (Broken)" value={retornoValor}                                          iconVariant="warning" />
-    card2 = <StatCard icon={AlertTriangle} label="Cenários com Erro" value={qtdCenariosErroTotalProp ?? stats.qtdCenariosErroTotal} iconVariant="destructive" />
+    card2 = <StatCard icon={AlertTriangle} label="Cenários com Erro" value={qtdCenariosErroTotalProp ?? stats.cenariosComErroFinalTotal} iconVariant="destructive" />
   }
 
   const isQA = profile === null || profile === "QA"
@@ -683,6 +722,7 @@ export function IndividualLancamentosSection({
               pendingUxReturnCount={data.pendingUxReturnCount}
               qtdCenariosErroTotal={data.qtdCenariosErroTotal}
               evaluatedUserAccessProfile={evaluatedUserAccessProfile}
+              brokenTestIssueTypeNames={data.brokenTestIssueTypeNames}
             />
           )}
 

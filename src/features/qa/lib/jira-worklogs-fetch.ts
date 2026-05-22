@@ -1310,3 +1310,49 @@ export async function fetchRetornosForKeys(
 
   return result
 }
+
+// ── Approval issues by tag (live JQL query, no cache) ─────────────────────────
+
+export interface ApprovalIssueEntry {
+  tag: string
+  assigneeAccountId: string | null
+}
+
+/**
+ * Queries Jira directly for all issues in the UX project with status = "Approval".
+ * Returns one entry per issue with tag + assignee accountId so the client can
+ * filter by selected member without a re-fetch.
+ */
+export async function fetchApprovalIssuesByTag(
+  base: string,
+  credentials: string,
+): Promise<ApprovalIssueEntry[]> {
+  const tagFieldId = await resolveTagFieldId(base, credentials)
+  const extraFields: string[] = ["status", "assignee", ...(tagFieldId ? [tagFieldId] : [])]
+
+  const issues: ApprovalIssueEntry[] = []
+  let nextPageToken: string | null = null
+
+  for (;;) {
+    const page = await searchIssuesByJql(
+      base,
+      credentials,
+      'project = UX AND status = "Approval" ORDER BY updated DESC',
+      nextPageToken,
+      extraFields,
+    )
+    if (!page) break
+    for (const issue of page.issues) {
+      const f = issue.fields as Record<string, unknown> | undefined
+      const raw = tagFieldId ? f?.[tagFieldId] : undefined
+      const tag = parseTypeFieldValue(raw) ?? "Sem tag"
+      const assignee = f?.assignee as { accountId?: string } | null | undefined
+      const assigneeAccountId = typeof assignee?.accountId === "string" ? assignee.accountId : null
+      issues.push({ tag, assigneeAccountId })
+    }
+    if (page.isLast) break
+    nextPageToken = page.nextPageToken
+  }
+
+  return issues
+}

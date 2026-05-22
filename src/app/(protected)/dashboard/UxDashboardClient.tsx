@@ -19,7 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { getUxWorklogsForYear } from "@/features/qa/actions/jira-worklog-cache"
+import { getUxWorklogsForYear, getUxApprovalIssuesByTag } from "@/features/qa/actions/jira-worklog-cache"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
 import type { ProgressaoHistoricoEntry } from "@/features/individual/actions/individual-progressao"
 
@@ -29,6 +29,10 @@ interface Props {
   membros: EquipeMembroLancamentos[]
   /** Histórico completo de progressão por userId, ordenado por data DESC. */
   progressaoMap: Record<string, ProgressaoHistoricoEntry[]>
+  /** Issues em aprovação com assignee — consultadas ao vivo via JQL, agrupadas no cliente após filtro de membro. */
+  approvalIssues: { tag: string; assigneeAccountId: string | null }[]
+  /** userId → Jira accountId, resolvido por e-mail no servidor. Garante filtragem correta mesmo para membros sem worklogs. */
+  memberJiraIds: Record<string, string>
 }
 
 interface JiraEntry {
@@ -308,12 +312,13 @@ function UxAvatarStrip({
 const SPARK_MONTHS      = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
 const SPARK_MONTHS_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
 
-// Single source of truth for variant colours — shared by SparklineChart and MetricCard icon
+// Single source of truth for variant colours — shared by SparklineChart and MetricCard icon.
+// "brand" uses the Agrotis primary (#00735D) from the design-system scale.
 const VARIANT_COLOR: Record<"brand" | "warning" | "success" | "info", string> = {
-  brand:   "#3b82f6",
-  success: "#22c55e",
-  warning: "#f59e0b",
-  info:    "#06b6d4",
+  brand:   "#5C9E8D",
+  success: "#83B8A8",
+  warning: "#CB8275",
+  info:    "#5C7FA0",
 }
 
 function SparklineChart({
@@ -356,7 +361,7 @@ function SparklineChart({
           axisLine={false}
           tickLine={false}
           interval={0}
-          tick={{ fontSize: 9, fill: "#94a3b8" }}
+          tick={{ fontSize: 9, fill: "#8BAFC5" }}
           padding={{ left: 8, right: 8 }}
         />
         <RechartsTooltip
@@ -457,7 +462,20 @@ function MetricCard({
 
 // ─── TagBarChart ──────────────────────────────────────────────────────────────
 
-const BAR_COLOR = "#3b82f6"
+// Brand-primary green for bars; individual Cell overrides give per-bar depth variation.
+const BAR_PALETTE = [
+  "#5C9E8D", // teal primary
+  "#5C7FA0", // slate primary
+  "#C9A870", // amber primary
+  "#CB8275", // coral primary
+  "#83B8A8", // teal light
+  "#8BAFC5", // slate light
+  "#9A7835", // amber dark
+  "#E8ADA3", // coral light
+  "#3D7A6C", // teal dark
+  "#3D5E7A", // slate dark
+]
+const BAR_COLOR = BAR_PALETTE[0]
 
 function TagBarChart({
   title,
@@ -470,7 +488,7 @@ function TagBarChart({
   ariaLabel: string
   hideValues?: boolean
 }) {
-  const chartHeight = Math.min(260, Math.max(180, items.length * 36))
+  const chartHeight = Math.max(300, items.length * 28)
 
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
@@ -489,7 +507,7 @@ function TagBarChart({
                 dataKey="tag"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 11, fill: "#64748b" }}
+                tick={{ fontSize: 11, fill: "#5C7FA0" }}
                 interval={0}
                 angle={-35}
                 textAnchor="end"
@@ -498,7 +516,7 @@ function TagBarChart({
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 10, fill: "#94a3b8" }}
+                tick={{ fontSize: 10, fill: "#8BAFC5" }}
                 allowDecimals={false}
                 width={28}
               />
@@ -522,7 +540,11 @@ function TagBarChart({
                   )
                 }}
               />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40} fill={BAR_COLOR} fillOpacity={0.85} />
+              <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                {items.map((_, index) => (
+                  <Cell key={index} fill={BAR_PALETTE[index % BAR_PALETTE.length]} fillOpacity={0.9} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -533,22 +555,46 @@ function TagBarChart({
 
 // ─── TagPieChart ──────────────────────────────────────────────────────────────
 
-const PIE_COLORS = ["#3b82f6", "#2563eb", "#60a5fa", "#1d4ed8", "#93c5fd", "#1e40af"]
+// Palette for pie segments — rotates across the three brand accent colours.
+const PIE_COLORS = [
+  "#5C9E8D", // teal primary
+  "#5C7FA0", // slate primary
+  "#C9A870", // amber primary
+  "#CB8275", // coral primary
+  "#83B8A8", // teal light
+  "#8BAFC5", // slate light
+  "#E8ADA3", // coral light
+  "#DFC898", // amber light
+  "#3D7A6C", // teal dark
+  "#9A7835", // amber dark
+  "#3D5E7A", // slate dark
+  "#B56A5E", // coral dark
+]
 
 function TagPieChart({
   title,
   items,
   ariaLabel,
+  totalCount,
 }: {
   title: string
-  items: { tag: string; count: number; investimentoCentavos: number }[]
+  items: { tag: string; count: number }[]
   ariaLabel: string
+  totalCount?: number
 }) {
   return (
     <div className="flex h-full flex-col rounded-xl bg-surface-card p-5 shadow-card">
-      <p className="mb-3 text-sm font-semibold text-text-primary">{title}</p>
+      <p className="mb-3 text-sm font-semibold text-text-primary">
+        {title}
+        {totalCount != null && totalCount > 0 && (
+          <span className="ml-1.5 font-normal text-text-secondary">({totalCount})</span>
+        )}
+      </p>
       {items.length === 0 ? (
-        <p className="text-sm text-text-secondary">Sem dados no período.</p>
+        <div>
+          <p className="text-sm text-text-secondary">Sem dados no período.</p>
+          <p className="mt-1 text-xs text-text-secondary">Clique em Atualizar para sincronizar o status atual das jiras.</p>
+        </div>
       ) : (
         <div role="img" aria-label={ariaLabel} className="flex flex-1 items-center justify-center">
           <ResponsiveContainer width="100%" height={220}>
@@ -576,7 +622,7 @@ function TagPieChart({
                   return (
                     <div className="rounded-lg border border-border-default bg-surface-card px-3 py-2 text-xs shadow-card">
                       <p className="mb-0.5 font-semibold text-text-primary">{d.tag}</p>
-                      <p className="text-text-secondary">{d.count} {d.count === 1 ? "protótipo" : "protótipos"}</p>
+                      <p className="text-text-secondary">{d.count} {d.count === 1 ? "jira" : "jiras"}</p>
                     </div>
                   )
                 }}
@@ -584,7 +630,7 @@ function TagPieChart({
               <Legend
                 iconType="circle"
                 iconSize={8}
-                wrapperStyle={{ fontSize: 11, color: "#64748b", paddingTop: 8 }}
+                wrapperStyle={{ fontSize: 11, color: "#6b7280", paddingTop: 8 }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -600,20 +646,24 @@ function TagPieChart({
 // Each unique issue can appear in multiple months if it had worklogs in multiple months,
 // so quarterly/annual sums may exceed the global unique count shown in the cards.
 // Cards use global Sets (true unique) — table uses per-period activity counts.
-function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideValues: boolean }) {
+function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; hideValues: boolean; ano: number }) {
   const totalAnual = monthStats.reduce(sumStats, emptyMonthStats())
+  const today = new Date()
+  const currentMonthIndex = ano === today.getFullYear() ? today.getMonth() : -1
   const inv = (v: number) =>
     hideValues ? <span className="tracking-widest text-text-disabled">••••</span> : formatBRL(v)
 
   // Column group helpers — applied to <th> and all <td> for the same column
   const thBase = "px-3 py-3 text-xs font-semibold text-text-secondary"
+  // "blue"   → lighter primary-50 tint   (Protótipos / Pesquisas / Usabilidade / Outros)
+  // "violet" → primary-100 tint           (Novos / Melhorias / Ajustes)
   const TH = ({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" | "violet" }) => (
-    <th className={cn(thBase, center ? "text-center" : "text-right", group === "blue" && "bg-blue-50/60", group === "violet" && "bg-violet-50/60")}>
+    <th className={cn(thBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60", group === "violet" && "bg-[#EEF3F7]/70 dark:bg-[#101e2c]/60")}>
       {children}
     </th>
   )
   const tdCls = (base: string, group?: "blue" | "violet") =>
-    cn(base, group === "blue" && "bg-blue-50/60", group === "violet" && "bg-violet-50/60")
+    cn(base, group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60", group === "violet" && "bg-[#EEF3F7]/70 dark:bg-[#101e2c]/60")
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
@@ -664,7 +714,10 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
                   return (
                     <tr
                       key={mi}
-                      className="border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50"
+                      className={cn(
+                        "border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50",
+                        mi === currentMonthIndex && "[&_td]:!text-[#C9A870] [&_td]:font-semibold",
+                      )}
                     >
                       <td className="px-4 py-2 pl-8 text-text-secondary">{MONTHS_PT[mi]}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-text-primary">{inv(ms.investimentoCentavos)}</td>
@@ -781,7 +834,7 @@ function TypeCard({
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function UxDashboardClient({ membros, progressaoMap }: Props) {
+export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memberJiraIds }: Props) {
   const currentYear = new Date().getFullYear()
   const [ano, setAno] = React.useState(currentYear)
   const [loading, setLoading] = React.useState(false)
@@ -789,6 +842,8 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
   const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([])
   // Raw entries per userId — fetched once per year, filtered in useMemo
   const [rawMemberEntries, setRawMemberEntries] = React.useState<Record<string, JiraEntry[]>>({})
+  // Approval issues — initially from SSR prop, refreshed alongside worklogs
+  const [liveApprovalIssues, setLiveApprovalIssues] = React.useState(approvalIssues)
 
   // Only current year and previous year
   const yearOptions = React.useMemo(
@@ -821,12 +876,19 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       pesquisaSeconds: 0, usabilidadeSeconds: 0, outrosSeconds: 0,
     }
     if (Object.keys(rawMemberEntries).length === 0) {
+      // Worklog data not yet loaded — show all approval issues ungrouped by member
+      const approvalTagMap = new Map<string, number>()
+      for (const i of liveApprovalIssues) {
+        approvalTagMap.set(i.tag, (approvalTagMap.get(i.tag) ?? 0) + 1)
+      }
       return {
         monthStats: null,
         totalUniqueIssues: 0,
         yearTotals: empty,
         distribByTag: [] as { tag: string; count: number; investimentoCentavos: number }[],
-        approvalByTag: [] as { tag: string; count: number; investimentoCentavos: number }[],
+        approvalByTag: [...approvalTagMap.entries()]
+          .map(([tag, count]) => ({ tag, count }))
+          .sort((a, b) => b.count - a.count),
       }
     }
 
@@ -900,7 +962,8 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         if (tf === "usability") cb.usab.add(e.issueKey)
         if (tf === "others" || tf === "other") cb.outros.add(e.issueKey)
         if (e.priority?.toLowerCase().trim() === "critical") cb.criticos.add(e.issueKey)
-        if (e.status?.toLowerCase().trim() === "approval") cb.ag.add(e.issueKey)
+        const sl = (e.status ?? "").toLowerCase().trim()
+        if (sl.includes("approval") || sl.includes("aprova")) cb.ag.add(e.issueKey)
         const r = activeJiraAccountIds.size > 0
           ? Array.from(activeJiraAccountIds).reduce((s, id) => s + (e.retornosByAssignee?.[id] ?? 0), 0)
           : (e.retornos ?? 0)
@@ -961,14 +1024,26 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: tagInvestmentMap.get(tag) ?? 0 }))
         .sort((a, b) => b.count - a.count)
 
+    // Compute approvalByTag: always show ALL approval issues from the live JQL query.
+    // The JQL already scopes to project = UX AND status = "Approval", so no additional
+    // member filtering is needed — the Responsável (e.g. PO/MGR) may be the assignee
+    // even though they are not in the UX team member list.
+    const approvalTagMap = new Map<string, number>()
+    for (const i of liveApprovalIssues) {
+      approvalTagMap.set(i.tag, (approvalTagMap.get(i.tag) ?? 0) + 1)
+    }
+    const approvalByTag = [...approvalTagMap.entries()]
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count)
+
     return {
       monthStats: combined,
       totalUniqueIssues: new Set(allEntries.map((e) => e.issueKey)).size,
       yearTotals: yTotals,
       distribByTag: toTagItems(tagDistribMap),
-      approvalByTag: toTagItems(tagApprovalMap),
+      approvalByTag,
     }
-  }, [rawMemberEntries, activeMembers, progressaoMap, ano])
+  }, [rawMemberEntries, activeMembers, progressaoMap, ano, liveApprovalIssues])
 
   // ── Derived totals for metric cards ───────────────────────────────────────
   const totalAnual = React.useMemo(
@@ -1003,24 +1078,26 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
   // ── Fetch all members on year change (uses cache) ─────────────────────────
   const fetchAll = React.useCallback(
     async (year: number, force = false) => {
-      if (membros.length === 0) {
-        setRawMemberEntries({})
-        return
-      }
       setRawMemberEntries({})
       setLoading(true)
       try {
-        const results = await Promise.all(
-          membros.map(async (m) => {
-            try {
-              const { entries } = await getUxWorklogsForYear(m.userId, year, force)
-              return [m.userId, entries] as const
-            } catch {
-              return [m.userId, [] as JiraEntry[]] as const
-            }
-          }),
-        )
-        setRawMemberEntries(Object.fromEntries(results))
+        const [worklogResults, freshApproval] = await Promise.all([
+          membros.length === 0
+            ? Promise.resolve([] as [string, JiraEntry[]][])
+            : Promise.all(
+                membros.map(async (m) => {
+                  try {
+                    const { entries } = await getUxWorklogsForYear(m.userId, year, force)
+                    return [m.userId, entries] as const
+                  } catch {
+                    return [m.userId, [] as JiraEntry[]] as const
+                  }
+                }),
+              ),
+          getUxApprovalIssuesByTag(),
+        ])
+        setRawMemberEntries(Object.fromEntries(worklogResults))
+        setLiveApprovalIssues(freshApproval)
       } finally {
         setLoading(false)
       }
@@ -1164,6 +1241,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
               title="Atividades em Aprovação"
               items={approvalByTag}
               ariaLabel="Prototipação em aprovação por tag"
+              totalCount={approvalByTag.reduce((s, i) => s + i.count, 0)}
             />
           </div>
         </div>
@@ -1173,7 +1251,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       {loading || monthStats === null ? (
         <SectionSpinner minHeight="min-h-[300px]" />
       ) : (
-        <YearTable monthStats={monthStats} hideValues={hideValues} />
+        <YearTable monthStats={monthStats} hideValues={hideValues} ano={ano} />
       )}
     </div>
   )
