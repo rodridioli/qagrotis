@@ -252,6 +252,13 @@ function computeStats(entries: LancamentoRow[], brokenTestTypeNames?: string[]) 
 
 // ── Dashboard panel ──────────────────────────────────────────────────────────
 
+const STAT_ICON_PALETTE: Record<"brand" | "info" | "warning" | "destructive", { bg: string; fg: string }> = {
+  brand:       { bg: "#5C9E8D1A", fg: "#5C9E8D" },
+  info:        { bg: "#5C7FA01A", fg: "#5C7FA0" },
+  warning:     { bg: "#C9A8701A", fg: "#C9A870" },
+  destructive: { bg: "#CB82751A", fg: "#CB8275" },
+}
+
 function StatCard({
   icon: Icon,
   label,
@@ -263,13 +270,7 @@ function StatCard({
   value: React.ReactNode
   iconVariant: "brand" | "info" | "warning" | "destructive"
 }) {
-  const iconCls = cn(
-    "hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg",
-    iconVariant === "brand"       && "bg-brand-primary/10 text-brand-primary",
-    iconVariant === "info"        && "bg-badge-info/10 text-badge-info-text",
-    iconVariant === "warning"     && "bg-badge-warning/10 text-badge-warning-text",
-    iconVariant === "destructive" && "bg-destructive/10 text-destructive",
-  )
+  const palette = STAT_ICON_PALETTE[iconVariant]
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-2">
@@ -277,7 +278,10 @@ function StatCard({
           <p className="text-sm text-text-secondary">{label}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-text-primary">{value}</p>
         </div>
-        <div className={iconCls}>
+        <div
+          className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: palette.bg, color: palette.fg }}
+        >
           <Icon className="size-5" aria-hidden />
         </div>
       </div>
