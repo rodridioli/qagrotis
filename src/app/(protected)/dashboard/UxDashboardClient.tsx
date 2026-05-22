@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, RefreshCw, TrendingUp } from "lucide-react"
-import { AreaChart, Area, BarChart, Bar, Cell, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts"
+import { AreaChart, Area, BarChart, Bar, Cell, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart, Pie, Legend } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -449,6 +449,8 @@ function TagBarChart({
   ariaLabel: string
   hideValues?: boolean
 }) {
+  const chartHeight = Math.min(260, Math.max(180, items.length * 36))
+
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <p className="mb-4 text-sm font-semibold text-text-primary">{title}</p>
@@ -456,10 +458,10 @@ function TagBarChart({
         <p className="text-sm text-text-secondary">Sem dados no período.</p>
       ) : (
         <div role="img" aria-label={ariaLabel}>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <BarChart
               data={items}
-              margin={{ top: 4, right: 8, bottom: 32, left: 8 }}
+              margin={{ top: 4, right: 8, bottom: 40, left: 8 }}
             >
               <CartesianGrid vertical={false} stroke="#f1f5f9" />
               <XAxis
@@ -501,6 +503,69 @@ function TagBarChart({
               />
               <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40} fill={BAR_COLOR} fillOpacity={0.85} />
             </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── TagPieChart ──────────────────────────────────────────────────────────────
+
+const PIE_COLORS = ["#3b82f6", "#2563eb", "#60a5fa", "#1d4ed8", "#93c5fd", "#1e40af"]
+
+function TagPieChart({
+  title,
+  items,
+  ariaLabel,
+}: {
+  title: string
+  items: { tag: string; count: number; investimentoCentavos: number }[]
+  ariaLabel: string
+}) {
+  return (
+    <div className="flex h-full flex-col rounded-xl bg-surface-card p-5 shadow-card">
+      <p className="mb-3 text-sm font-semibold text-text-primary">{title}</p>
+      {items.length === 0 ? (
+        <p className="text-sm text-text-secondary">Sem dados no período.</p>
+      ) : (
+        <div role="img" aria-label={ariaLabel} className="flex flex-1 items-center justify-center">
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie
+                data={items}
+                dataKey="count"
+                nameKey="tag"
+                innerRadius={50}
+                outerRadius={80}
+                paddingAngle={2}
+              >
+                {items.map((item, index) => (
+                  <Cell
+                    key={item.tag}
+                    fill={PIE_COLORS[index % PIE_COLORS.length]}
+                    fillOpacity={0.9}
+                  />
+                ))}
+              </Pie>
+              <RechartsTooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null
+                  const d = payload[0]?.payload as { tag: string; count: number }
+                  return (
+                    <div className="rounded-lg border border-border-default bg-surface-card px-3 py-2 text-xs shadow-card">
+                      <p className="mb-0.5 font-semibold text-text-primary">{d.tag}</p>
+                      <p className="text-text-secondary">{d.count} {d.count === 1 ? "protótipo" : "protótipos"}</p>
+                    </div>
+                  )
+                }}
+              />
+              <Legend
+                iconType="circle"
+                iconSize={8}
+                wrapperStyle={{ fontSize: 11, color: "#64748b", paddingTop: 8 }}
+              />
+            </PieChart>
           </ResponsiveContainer>
         </div>
       )}
@@ -1027,19 +1092,22 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
 
       {/* Tag breakdown charts */}
       {!loading && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <TagBarChart
-            title="Distribuição por Produto"
-            items={distribByTag}
-            ariaLabel="Distribuição de jiras por tag"
-            hideValues={hideValues}
-          />
-          <TagBarChart
-            title="Atividades em Aprovação"
-            items={approvalByTag}
-            ariaLabel="Atividades em aprovação por tag"
-            hideValues={hideValues}
-          />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+          <div className="lg:col-span-3">
+            <TagBarChart
+              title="Distribuição por Produto"
+              items={distribByTag}
+              ariaLabel="Distribuição de jiras por tag"
+              hideValues={hideValues}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <TagPieChart
+              title="Atividades em Aprovação"
+              items={approvalByTag}
+              ariaLabel="Protótipos em aprovação por tag"
+            />
+          </div>
         </div>
       )}
 
