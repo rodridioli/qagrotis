@@ -233,6 +233,16 @@ function computeStats(entries: LancamentoRow[], brokenTestTypeNames?: string[]) 
     qtdCenariosQABrokenTestTotal += v
   }
 
+  // Regra de negócio: cada Jira contribui com apenas um valor.
+  // Prioridade: "Qtd Cenários com Erro". Fallback: "Qtd. Cenários QA" apenas
+  // para Broken Tests que não possuem o campo principal.
+  let cenariosComErroFinalTotal = qtdCenariosErroTotal
+  for (const [key, v] of qtdBrokenTestQAByIssue.entries()) {
+    if (!qtdErroByIssue.has(key)) {
+      cenariosComErroFinalTotal += v
+    }
+  }
+
   const projectHours: ProjectHours[] = Array.from(projectMap.entries())
     .map(([key, seconds]) => ({ key, name: projectNameMap.get(key) ?? null, seconds }))
     .sort((a, b) => b.seconds - a.seconds)
@@ -247,6 +257,7 @@ function computeStats(entries: LancamentoRow[], brokenTestTypeNames?: string[]) 
     qtdCenariosTotal,
     qtdCenariosErroTotal,
     qtdCenariosQABrokenTestTotal,
+    cenariosComErroFinalTotal,
   }
 }
 
@@ -410,7 +421,7 @@ function DashboardPanel({
     // QA: dois novos cards, mais Cenários Testados como 5º card
     const retornoValor = reporterBrokenTestIssueCount ?? 0
     card1 = <StatCard icon={Bug}    label="Retorno de Testes (Broken)" value={retornoValor}                                          iconVariant="warning" />
-    card2 = <StatCard icon={AlertTriangle} label="Cenários com Erro" value={(qtdCenariosErroTotalProp ?? stats.qtdCenariosErroTotal) + stats.qtdCenariosQABrokenTestTotal} iconVariant="destructive" />
+    card2 = <StatCard icon={AlertTriangle} label="Cenários com Erro" value={qtdCenariosErroTotalProp ?? stats.cenariosComErroFinalTotal} iconVariant="destructive" />
   }
 
   const isQA = profile === null || profile === "QA"
