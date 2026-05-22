@@ -1166,18 +1166,24 @@ export async function fetchRetornosForKeys(
 
 // ── Approval issues by tag (live JQL query, no cache) ─────────────────────────
 
+export interface ApprovalIssueEntry {
+  tag: string
+  assigneeAccountId: string | null
+}
+
 /**
- * Queries Jira directly for all issues in the UX project with status = "Approval"
- * and groups them by tag. Always returns current data — no worklog cache involved.
+ * Queries Jira directly for all issues in the UX project with status = "Approval".
+ * Returns one entry per issue with tag + assignee accountId so the client can
+ * filter by selected member without a re-fetch.
  */
 export async function fetchApprovalIssuesByTag(
   base: string,
   credentials: string,
-): Promise<{ tag: string; count: number }[]> {
+): Promise<ApprovalIssueEntry[]> {
   const tagFieldId = await resolveTagFieldId(base, credentials)
-  const extraFields: string[] = ["status", ...(tagFieldId ? [tagFieldId] : [])]
+  const extraFields: string[] = ["status", "assignee", ...(tagFieldId ? [tagFieldId] : [])]
 
-  const tagMap = new Map<string, number>()
+  const issues: ApprovalIssueEntry[] = []
   let nextPageToken: string | null = null
 
   for (;;) {
@@ -1190,15 +1196,16 @@ export async function fetchApprovalIssuesByTag(
     )
     if (!page) break
     for (const issue of page.issues) {
-      const raw = tagFieldId ? (issue.fields as Record<string, unknown>)?.[tagFieldId] : undefined
+      const f = issue.fields as Record<string, unknown> | undefined
+      const raw = tagFieldId ? f?.[tagFieldId] : undefined
       const tag = parseTypeFieldValue(raw) ?? "Sem tag"
-      tagMap.set(tag, (tagMap.get(tag) ?? 0) + 1)
+      const assignee = f?.assignee as { accountId?: string } | null | undefined
+      const assigneeAccountId = typeof assignee?.accountId === "string" ? assignee.accountId : null
+      issues.push({ tag, assigneeAccountId })
     }
     if (page.isLast) break
     nextPageToken = page.nextPageToken
   }
 
-  return [...tagMap.entries()]
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => b.count - a.count)
+  return issues
 }

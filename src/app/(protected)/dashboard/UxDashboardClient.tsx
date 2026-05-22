@@ -29,8 +29,8 @@ interface Props {
   membros: EquipeMembroLancamentos[]
   /** Histórico completo de progressão por userId, ordenado por data DESC. */
   progressaoMap: Record<string, ProgressaoHistoricoEntry[]>
-  /** Issues em aprovação agrupadas por tag — consultadas ao vivo via JQL, sempre atuais. */
-  approvalByTag: { tag: string; count: number }[]
+  /** Issues em aprovação com assignee — consultadas ao vivo via JQL, agrupadas no cliente após filtro de membro. */
+  approvalIssues: { tag: string; assigneeAccountId: string | null }[]
 }
 
 interface JiraEntry {
@@ -745,7 +745,7 @@ function TypeCard({
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function UxDashboardClient({ membros, progressaoMap, approvalByTag }: Props) {
+export function UxDashboardClient({ membros, progressaoMap, approvalIssues }: Props) {
   const currentYear = new Date().getFullYear()
   const [ano, setAno] = React.useState(currentYear)
   const [loading, setLoading] = React.useState(false)
@@ -777,17 +777,25 @@ export function UxDashboardClient({ membros, progressaoMap, approvalByTag }: Pro
   }
 
   // ── Derived stats (instant — no fetch on user toggle) ─────────────────────
-  const { monthStats, totalUniqueIssues, yearTotals, distribByTag } = React.useMemo(() => {
+  const { monthStats, totalUniqueIssues, yearTotals, distribByTag, approvalByTag } = React.useMemo(() => {
     const empty: YearTypeTotals = {
       novosPrototipos: 0, melhorias: 0, ajustes: 0, pesquisa: 0,
       usabilidade: 0, criticos: 0, outros: 0, aguardando: 0, retornos: 0,
     }
     if (Object.keys(rawMemberEntries).length === 0) {
+      // Worklog data not yet loaded — show all approval issues ungrouped by member
+      const approvalTagMap = new Map<string, number>()
+      for (const i of approvalIssues) {
+        approvalTagMap.set(i.tag, (approvalTagMap.get(i.tag) ?? 0) + 1)
+      }
       return {
         monthStats: null,
         totalUniqueIssues: 0,
         yearTotals: empty,
         distribByTag: [] as { tag: string; count: number; investimentoCentavos: number }[],
+        approvalByTag: [...approvalTagMap.entries()]
+          .map(([tag, count]) => ({ tag, count }))
+          .sort((a, b) => b.count - a.count),
       }
     }
 
@@ -907,13 +915,27 @@ export function UxDashboardClient({ membros, progressaoMap, approvalByTag }: Pro
         .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: tagInvestmentMap.get(tag) ?? 0 }))
         .sort((a, b) => b.count - a.count)
 
+    // Compute approvalByTag: filter the server-fetched approvalIssues by the active
+    // members' Jira account IDs so avatar selection updates the pie chart instantly.
+    const filteredApproval = selectedUserIds.length > 0
+      ? approvalIssues.filter(i => i.assigneeAccountId && activeJiraAccountIds.has(i.assigneeAccountId))
+      : approvalIssues
+    const approvalTagMap = new Map<string, number>()
+    for (const i of filteredApproval) {
+      approvalTagMap.set(i.tag, (approvalTagMap.get(i.tag) ?? 0) + 1)
+    }
+    const approvalByTag = [...approvalTagMap.entries()]
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count)
+
     return {
       monthStats: combined,
       totalUniqueIssues: new Set(allEntries.map((e) => e.issueKey)).size,
       yearTotals: yTotals,
       distribByTag: toTagItems(tagDistribMap),
+      approvalByTag,
     }
-  }, [rawMemberEntries, activeMembers, progressaoMap, ano])
+  }, [rawMemberEntries, activeMembers, progressaoMap, ano, approvalIssues, selectedUserIds])
 
   // ── Derived totals for metric cards ───────────────────────────────────────
   const totalAnual = React.useMemo(

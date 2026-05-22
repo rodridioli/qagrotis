@@ -45,7 +45,7 @@ export default async function DashboardPage({
       <UxDashboardClient
         membros={serializeRscProps(membros)}
         progressaoMap={serializeRscProps(progressaoMap)}
-        approvalByTag={approvalByTag}
+        approvalIssues={approvalByTag}
       />
     )
   }

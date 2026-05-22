@@ -11,6 +11,7 @@ import {
   augmentFieldMapWithGetIssueFallback,
   fetchRetornosForKeys,
   fetchApprovalIssuesByTag,
+  type ApprovalIssueEntry,
   type JiraLancamentoEntry,
   type RetornosResult,
 } from "@/features/qa/lib/jira-worklogs-fetch"
@@ -311,7 +312,7 @@ export async function getUxWorklogsForYear(
 
 // ── Approval issues by tag (live query — always current) ─────────────────────
 
-export async function getUxApprovalIssuesByTag(): Promise<{ tag: string; count: number }[]> {
+export async function getUxApprovalIssuesByTag(): Promise<ApprovalIssueEntry[]> {
   const session = await requireSession()
   const role = buildRole(session.user.type, session.user.accessProfile)
   if (role !== "Administrador:MGR") return []
