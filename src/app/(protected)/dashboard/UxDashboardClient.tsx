@@ -554,14 +554,21 @@ function TagPieChart({
   title,
   items,
   ariaLabel,
+  totalCount,
 }: {
   title: string
   items: { tag: string; count: number }[]
   ariaLabel: string
+  totalCount?: number
 }) {
   return (
     <div className="flex h-full flex-col rounded-xl bg-surface-card p-5 shadow-card">
-      <p className="mb-3 text-sm font-semibold text-text-primary">{title}</p>
+      <p className="mb-3 text-sm font-semibold text-text-primary">
+        {title}
+        {totalCount != null && totalCount > 0 && (
+          <span className="ml-1.5 font-normal text-text-secondary">({totalCount})</span>
+        )}
+      </p>
       {items.length === 0 ? (
         <div>
           <p className="text-sm text-text-secondary">Sem dados no período.</p>
@@ -1176,6 +1183,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
               title="Atividades em Aprovação"
               items={approvalByTag}
               ariaLabel="Protótipos em aprovação por tag"
+              totalCount={approvalByTag.reduce((s, i) => s + i.count, 0)}
             />
           </div>
         </div>
