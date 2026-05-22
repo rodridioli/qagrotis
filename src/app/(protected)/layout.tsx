@@ -1,3 +1,6 @@
+// All protected routes require session (headers) — force dynamic for the entire tree.
+export const dynamic = "force-dynamic"
+
 import { getLayoutMenuData } from "@/core/layout-cache"
 import { checkIsAdmin } from "@/core/session"
 import { checkAndSendBirthdayNotifications, checkAndSendCompanyAnniversaryNotifications } from "@/core/actions/notifications"
