@@ -22,6 +22,7 @@ export type JiraLancamentoEntry = {
   typeField?: string | null
   /** Status atual da issue no Jira (ex: "Approval", "In Progress", "Done"). */
   status?: string | null
+  tag?: string | null
   started: string
   timeSpentSeconds: number
   hours: number
@@ -456,6 +457,103 @@ export async function brokenTestSubtasksCountsInParents(
     totalInScope: Math.min(totalInScope, MAX_BROKEN_TEST_SEARCH_TOTAL),
     createdByReporter: Math.min(createdByReporter, MAX_BROKEN_TEST_SEARCH_TOTAL),
   }
+}
+
+/**
+ * Busca issues do tipo Broken Test criadas pelo accountId (ou displayName) no
+ * intervalo e soma o campo "Qtd. Cenários QA" de cada uma.
+ *
+ * INDEPENDENTE dos worklogs — o QA lança horas na issue-pai ou numa subtarefa
+ * [TESTE], não no Broken Test em si. Por isso o cálculo de Cenários com Erro
+ * deve buscar as issues de Broken Test diretamente por reporter.
+ */
+export async function fetchBrokenTestFieldSumByReporter(
+  base: string,
+  credentials: string,
+  accountId: string,
+  fromIso: string,
+  toIso: string,
+  displayName?: string,
+): Promise<{ cenariosQASum: number; issueCount: number }> {
+  const qtdFieldIds = await resolveQtdCenariosQAFieldIds(base, credentials)
+  if (qtdFieldIds.length === 0) return { cenariosQASum: 0, issueCount: 0 }
+
+  // Coleta candidatos de accountId (igual a countReporterIssuesByTypes)
+  const candidateIds = new Set<string>()
+  if (accountId.trim()) candidateIds.add(accountId.trim())
+  if (displayName?.trim()) {
+    try {
+      const byName = await findJiraAccountIdsByDisplayName(base, credentials, displayName.trim())
+      for (const u of byName) candidateIds.add(u.accountId)
+    } catch {
+      // non-fatal
+    }
+  }
+  if (candidateIds.size === 0) return { cenariosQASum: 0, issueCount: 0 }
+
+  const ids = Array.from(candidateIds)
+    .map((id) => `"${id.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`)
+    .join(", ")
+  const reporterClause = candidateIds.size === 1 ? `reporter = ${ids}` : `reporter in (${ids})`
+
+  // Limite superior: dia seguinte a toIso (igual ao critério de countReporterIssuesByTypes)
+  const upperExclusive = (() => {
+    const d = new Date(`${toIso}T00:00:00.000Z`)
+    d.setUTCDate(d.getUTCDate() + 1)
+    return d.toISOString().slice(0, 10)
+  })()
+
+  const jql =
+    `${reporterClause} AND ${brokenTestIssuetypeClauseJql()} ` +
+    `AND status != "Cancelado" AND created >= "${fromIso}" AND created < "${upperExclusive}"`
+
+  const fieldNames = [...qtdFieldIds, "issuetype"]
+  // issueKey → qtdCenariosQA (0 se nulo/não encontrado)
+  const seen = new Map<string, number>()
+
+  try {
+    let token: string | null = null
+    for (;;) {
+      const body: Record<string, unknown> = { jql, fields: fieldNames, maxResults: 50 }
+      if (token) body.nextPageToken = token
+
+      const { ok, data } = await jiraJson<{
+        issues?: { key: string; fields?: IssueFields }[]
+        nextPageToken?: string
+        isLast?: boolean
+      }>(`${base}/rest/api/3/search/jql`, credentials, {
+        method: "POST",
+        body: JSON.stringify(body),
+      })
+
+      if (!ok || !data?.issues) break
+
+      for (const issue of data.issues) {
+        const key = issue.key.trim().toUpperCase()
+        if (seen.has(key)) continue
+        const f = issue.fields ?? {}
+        let val: number | null = null
+        for (const id of qtdFieldIds) {
+          if (f[id] != null) {
+            val = parseQtdCenariosQAFieldValue(f[id])
+            if (val != null) break
+          }
+        }
+        seen.set(key, val ?? 0)
+      }
+
+      token = typeof data.nextPageToken === "string" ? data.nextPageToken : null
+      if (data.isLast === true || !token || data.issues.length === 0) break
+      if (seen.size >= MAX_BROKEN_TEST_SEARCH_TOTAL) break
+    }
+  } catch {
+    // non-fatal — retorna o que tiver acumulado
+  }
+
+  let cenariosQASum = 0
+  for (const v of seen.values()) cenariosQASum += v
+
+  return { cenariosQASum, issueCount: seen.size }
 }
 
 /**

@@ -12,6 +12,7 @@ import {
   brokenTestSubtasksCountsInParents,
   countReporterIssuesByTypes,
   countStatusTransitionsToValue,
+  fetchBrokenTestFieldSumByReporter,
   fetchIssueFieldsForKeys,
   fetchWorklogsForAuthorInRange,
   findJiraAccountIdByEmail,
@@ -79,6 +80,7 @@ function mergeEntryWithPatch(
     projectName: patch.projectName?.trim() ? patch.projectName : e.projectName?.trim() ? e.projectName : null,
     typeField: patch.typeField?.trim() ? patch.typeField : e.typeField?.trim() ? e.typeField : null,
     status: patch.status?.trim() ? patch.status : (e.status?.trim() ? e.status : null),
+    tag: patch.tag?.trim() ? patch.tag : e.tag?.trim() ? e.tag : null,
   }
 }
 
@@ -257,6 +259,20 @@ export async function GET(req: NextRequest) {
       ? countStatusTransitionsToValue(base, credentials, keysToEnrich, "Pending UX").catch(() => 0)
       : Promise.resolve(0)
 
+  // Cenários com Erro — busca INDEPENDENTE de worklogs.
+  // O QA lança horas na issue-pai ou numa subtarefa [TESTE]; o Broken Test é uma
+  // subtarefa irmã que o QA não precisa ter apontado horas para ser contabilizado.
+  // Busca por reporter = accountId AND issuetype = Broken Test no período.
+  const reporterNameForBrokenTest = targetName?.trim() || jiraUser?.displayName?.trim() || undefined
+  const brokenTestFieldSumPromise = fetchBrokenTestFieldSumByReporter(
+    base,
+    credentials,
+    jiraUser?.accountId ?? "",
+    from,
+    to,
+    reporterNameForBrokenTest,
+  ).catch(() => ({ cenariosQASum: 0, issueCount: 0 }))
+
   // augmentFieldMapWithGetIssueFallback precisa do fieldMap mas pode rodar em
   // paralelo com brokenCounts/reporterCount/pendingUxReturn — economiza latência
   // ao não esperar o augment terminar sequencialmente após o Promise.all anterior.
@@ -267,11 +283,12 @@ export async function GET(req: NextRequest) {
     return fm
   })
 
-  const [fieldMap, brokenCounts, reporterDiagnostics, pendingUxReturnCount] = await Promise.all([
+  const [fieldMap, brokenCounts, reporterDiagnostics, pendingUxReturnCount, brokenTestFieldSum] = await Promise.all([
     enrichWithAugmentPromise,
     brokenCountsPromise,
     reporterCountPromise,
     pendingUxReturnPromise,
+    brokenTestFieldSumPromise,
   ])
   const reporterBrokenTestIssueCount = reporterDiagnostics.count
 
@@ -282,6 +299,23 @@ export async function GET(req: NextRequest) {
       return patch ? mergeEntryWithPatch(e, patch) : e
     })
   }
+
+  // ── Cenários com Erro (servidor) ────────────────────────────────────────────
+  // Soma qtdCenariosErro das entries onde o campo está preenchido (issues em que
+  // o QA apontou horas e o campo Qtd. Cenários com Erro existe — Tipo A).
+  // Não inclui fallback Broken Test aqui: esses vêm de brokenTestFieldSum (Tipo B).
+  const qtdErroByIssue = new Map<string, number>()
+  for (const e of entries) {
+    if (e.qtdCenariosErro != null && Number.isFinite(e.qtdCenariosErro)) {
+      const prev = qtdErroByIssue.get(e.issueKey) ?? 0
+      qtdErroByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosErro))
+    }
+  }
+  let cenariosErroFromEntries = 0
+  for (const v of qtdErroByIssue.values()) cenariosErroFromEntries += v
+
+  // Total final: Tipo A (de entries) + Tipo B (Broken Test por reporter, independente de worklogs)
+  const qtdCenariosErroTotal = cenariosErroFromEntries + brokenTestFieldSum.cenariosQASum
 
   // Counts derivados do campo custom "Type" — calculados das entries já enriquecidas.
   function countByTypeField(value: string): number {
@@ -354,6 +388,7 @@ export async function GET(req: NextRequest) {
       docReviewCount: 0,
       newDocCount: 0,
       pendingUxReturnCount: 0,
+      qtdCenariosErroTotal,
       message: "Nenhum registro encontrado",
       _debug,
     })
@@ -377,7 +412,13 @@ export async function GET(req: NextRequest) {
     docReviewCount,
     newDocCount,
     pendingUxReturnCount,
-    _debug,
+    qtdCenariosErroTotal,
+    _debug: {
+      ...(_debug),
+      cenariosErroFromEntries,
+      cenariosErroFromBrokenTests: brokenTestFieldSum.cenariosQASum,
+      brokenTestIssuesByReporterCount: brokenTestFieldSum.issueCount,
+    },
     ...(brokenCounts
       ? {
           brokenTestSubtasksTotalInScope: brokenCounts.totalInScope,

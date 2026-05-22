@@ -39,20 +39,25 @@ Ao acessar com `?perfil=UX`, exibe o **Dashboard UX** exclusivo para Administrad
 
 | Componente | Descrição |
 |---|---|
+| `UxAvatarStrip` | Fotos clicáveis dos membros da equipe; filtro multi-seleção que afeta todos os cards |
 | `MetricCard` | Cards de métricas com sparkline (Tempo médio → Atividade, Valor médio → Atividade, Total de Jiras, Total de Críticos) |
 | `TypeCard` | Cards de tipo por grupo: azul (Protótipos, Pesquisas, Usabilidade, Outros), violeta (Novos, Melhorias, Ajustes), âmbar (Retornos) |
-| `TagBarChart` | Gráfico de barras horizontal (recharts) agrupando issues por tag Jira |
+| `TagBarChart` | Gráfico de barras (recharts) — card "Jiras por Produto" |
+| `TagPieChart` | Gráfico de donut (recharts) — card "Atividades em Aprovação" com filtro por assignee |
 | `YearTable` | Tabela anual por trimestre/mês com grupos de colunas coloridos |
 | `SparklineChart` | Minigráfico de área mensal dentro dos MetricCards |
 
-### Cards de Tag (TagBarChart)
+### Cards de Tag
 
-| Card | Fonte de dados | Filtro |
-|---|---|---|
-| **Distribuição por Produto** | Todas as issues do período agrupadas por `tag` | Nenhum — todas as issues |
-| **Atividades em Aprovação** | Issues agrupadas por `tag` | `status === "approval"` (case-insensitive) |
+| Card | Componente | Fonte de dados | Filtro por seleção de usuário |
+|---|---|---|---|
+| **Jiras por Produto** | `TagBarChart` | Worklogs dos membros ativos, agrupados por `tag` | Por worklog author (membro selecionado) |
+| **Atividades em Aprovação** | `TagPieChart` | **Todos** os worklogs (todos os membros), filtrados por `status === "approval"` | Por `assigneeAccountId` (jira atribuído ao membro selecionado no Jira) |
 
 Issues sem tag preenchida aparecem no bucket `"Sem tag"`.
+
+**Comportamento do filtro de Aprovação:**  
+Ao clicar na foto de um membro no avatar strip, o card "Atividades em Aprovação" exibe apenas os jiras cujo **assignee no Jira** é esse membro — independente de quem logou horas no jira. Jiras com `assigneeAccountId = null` (cacheados antes da migration) são excluídos quando há seleção ativa. Um **sync forçado** (botão 🔄) preenche o campo para todos os jiras existentes.
 
 ### Campo `tag` no Jira
 
@@ -61,6 +66,14 @@ O campo **Tag** é um custom field no Jira (ex: `"UBA"`), diferente do campo pad
 - Override via env var: `JIRA_TAG_FIELD_ID=customfield_XXXXX`
 - Armazenado na coluna `tag` de `JiraWorklogCache`
 - Populado apenas após sync (worklogs cacheados antes da migration permanecem `null`)
+
+### Campo `assigneeAccountId` no Jira
+
+Jira account ID do **assignee** atual do jira (quem o ticket está atribuído).  
+- Buscado junto com os demais campos em `fetchIssueFieldsForKeys` (campo `assignee.accountId`)
+- Armazenado na coluna `assigneeAccountId` de `JiraWorklogCache`
+- Usado exclusivamente no filtro do card "Atividades em Aprovação"
+- Registros anteriores à migration têm valor `null` — sync forçado os atualiza
 
 ### Tabela Anual (YearTable)
 
@@ -76,7 +89,14 @@ O campo **Tag** é um custom field no Jira (ex: `"UBA"`), diferente do campo pad
 page.tsx (Administrador:MGR detectado via perfil=UX)
   → UxDashboardClient (client)
     → getUxWorklogsForYear() [Server Action — auth + RBAC]
-      → syncMonthsForUser() → JiraWorklogCache (inclui campo `tag`)
+      → syncMonthsForUser()
+        → fetchIssueFieldsForKeys() → JiraWorklogCache
+            (campos: tag, status, typeField, priority, assigneeAccountId, ...)
     → useMemo: agrega monthStats + distribByTag + approvalByTag
-    → render: MetricCards + TypeCards + TagBarChart × 2 + YearTable
+        distribByTag  → filtra por activeMembers (worklog author)
+        approvalByTag → itera todos os members; filtra por assigneeAccountId quando seleção ativa
+    → render: UxAvatarStrip + MetricCards + TypeCards
+              + TagBarChart ("Jiras por Produto")
+              + TagPieChart ("Atividades em Aprovação")
+              + YearTable
 ```

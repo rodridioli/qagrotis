@@ -63,6 +63,7 @@ type LancamentoRow = {
   labels?: string[]
   qtdCenariosQA?: number | null
   qtdCenariosErro?: number | null
+  tag?: string | null
   started: string
   timeSpentSeconds: number
   hours: number
@@ -699,18 +700,23 @@ export function IndividualLancamentosSection({
               <EmptyState message="Nenhum registro encontrado." className="mx-5 my-8" />
             ) : (
               <div className="overflow-x-auto">
-                <table className="qagrotis-table-row-hover-muted w-full min-w-[56rem] border-collapse text-left text-sm">
+                {(() => {
+                  const showTagCol = evaluatedUserAccessProfile === "TW" || evaluatedUserAccessProfile === "UX"
+                  const thCls = "px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4"
+                  return (
+                  <table className={`qagrotis-table-row-hover-muted w-full border-collapse text-left text-sm ${showTagCol ? "min-w-[62rem]" : "min-w-[56rem]"}`}>
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50">
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Jira</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Tipo</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Projeto</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Prioridade</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Título</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Data</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Tempo</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Comentário</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Situação</th>
+                      <th className={thCls}>Jira</th>
+                      <th className={thCls}>Tipo</th>
+                      <th className={thCls}>{showTagCol ? "Produto" : "Projeto"}</th>
+                      <th className={thCls}>Prioridade</th>
+                      <th className={thCls}>Título</th>
+                      <th className={thCls}>Data</th>
+                      <th className={thCls}>Tempo</th>
+                      <th className={thCls}>Comentário</th>
+                      {showTagCol && <th className={thCls} aria-label="Tag do produto">Tag</th>}
+                      <th className={thCls}>Situação</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -740,7 +746,7 @@ export function IndividualLancamentosSection({
                           <td className="whitespace-nowrap px-3 py-3 text-sm text-text-secondary sm:px-4">
                             {row.issueType?.trim() ? row.issueType : "—"}
                           </td>
-                          {/* Projeto */}
+                          {/* Produto / Projeto */}
                           <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-text-primary sm:px-4">
                             {row.projectName?.trim() || row.projectKey || row.issueKey.split("-")[0]}
                           </td>
@@ -771,6 +777,12 @@ export function IndividualLancamentosSection({
                               {row.comment ?? "—"}
                             </span>
                           </td>
+                          {/* Tag — apenas para TW e UX */}
+                          {showTagCol && (
+                            <td className="whitespace-nowrap px-3 py-3 text-sm text-text-secondary sm:px-4">
+                              {row.tag?.trim() || "—"}
+                            </td>
+                          )}
                           {/* Situação */}
                           <td className="px-3 py-3 text-center sm:px-4">
                             <TooltipProvider>
@@ -799,6 +811,8 @@ export function IndividualLancamentosSection({
                     })}
                   </tbody>
                 </table>
+                  )
+                })()}
               </div>
             )}
           </div>

@@ -41,6 +41,7 @@ interface JiraEntry {
   retornos?: number
   retornosByAssignee?: Record<string, number>
   authorJiraAccountId?: string | null
+  assigneeAccountId?: string | null
   started: string
   timeSpentSeconds: number
 }
@@ -163,6 +164,12 @@ interface YearTypeTotals {
   outros: number
   aguardando: number
   retornos: number
+  novosPrototiposSeconds: number
+  melhorasSeconds: number
+  ajustesSeconds: number
+  pesquisaSeconds: number
+  usabilidadeSeconds: number
+  outrosSeconds: number
 }
 
 function aggregateYearTotals(entries: JiraEntry[], activeAccountIds?: Set<string>): YearTypeTotals {
@@ -177,14 +184,22 @@ function aggregateYearTotals(entries: JiraEntry[], activeAccountIds?: Set<string
   // retornos: sum per unique issue (take the max value seen for each key)
   const retornosPerIssue = new Map<string, number>()
 
+  let novosPrototiposSeconds = 0
+  let melhorasSeconds = 0
+  let ajustesSeconds = 0
+  let pesquisaSeconds = 0
+  let usabilidadeSeconds = 0
+  let outrosSeconds = 0
+
   for (const e of entries) {
     const tf = (e.typeField ?? "").trim().toLowerCase()
-    if (tf === "new/redesign" || tf === "new" || tf === "redesign") novosProto.add(e.issueKey)
-    if (tf === "improvement") melhorias.add(e.issueKey)
-    if (tf === "ajust/return" || tf === "adjustment/return") ajustes.add(e.issueKey)
-    if (tf === "research") pesq.add(e.issueKey)
-    if (tf === "usability") usab.add(e.issueKey)
-    if (tf === "others" || tf === "other") outros.add(e.issueKey)
+    const s = e.timeSpentSeconds
+    if (tf === "new/redesign" || tf === "new" || tf === "redesign") { novosProto.add(e.issueKey); novosPrototiposSeconds += s }
+    if (tf === "improvement") { melhorias.add(e.issueKey); melhorasSeconds += s }
+    if (tf === "ajust/return" || tf === "adjustment/return") { ajustes.add(e.issueKey); ajustesSeconds += s }
+    if (tf === "research") { pesq.add(e.issueKey); pesquisaSeconds += s }
+    if (tf === "usability") { usab.add(e.issueKey); usabilidadeSeconds += s }
+    if (tf === "others" || tf === "other") { outros.add(e.issueKey); outrosSeconds += s }
     if (e.priority?.toLowerCase().trim() === "critical") criticos.add(e.issueKey)
     if (e.status?.toLowerCase().trim() === "approval") ag.add(e.issueKey)
     const r = activeAccountIds && activeAccountIds.size > 0
@@ -198,7 +213,7 @@ function aggregateYearTotals(entries: JiraEntry[], activeAccountIds?: Set<string
   // Merge untyped issues (not in any known type bucket) into "outros"
   const typedIssues = new Set([...novosProto, ...melhorias, ...ajustes, ...pesq, ...usab, ...outros])
   for (const e of entries) {
-    if (!typedIssues.has(e.issueKey)) outros.add(e.issueKey)
+    if (!typedIssues.has(e.issueKey)) { outros.add(e.issueKey); outrosSeconds += e.timeSpentSeconds }
   }
 
   const retornos = Array.from(retornosPerIssue.values()).reduce((s, v) => s + v, 0)
@@ -213,6 +228,12 @@ function aggregateYearTotals(entries: JiraEntry[], activeAccountIds?: Set<string
     outros: outros.size,
     aguardando: ag.size,
     retornos,
+    novosPrototiposSeconds,
+    melhorasSeconds,
+    ajustesSeconds,
+    pesquisaSeconds,
+    usabilidadeSeconds,
+    outrosSeconds,
   }
 }
 
@@ -605,7 +626,7 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
             <TH>Investimento</TH>
             <TH>Horas</TH>
             <TH center>Jiras</TH>
-            <TH center group="blue">Protótipos</TH>
+            <TH center group="blue">Prototipação</TH>
             <TH center group="blue">Pesquisas</TH>
             <TH center group="blue">Usabilidade</TH>
             <TH center group="blue">Outros</TH>
@@ -687,9 +708,15 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
 // ─── TypeCard ─────────────────────────────────────────────────────────────────
 
 const TYPE_CARD_LABEL_COLOR: Record<string, string> = {
-  blue:   "text-blue-500",
-  violet: "text-violet-500",
-  amber:  "text-amber-500",
+  blue:    "text-blue-500",
+  violet:  "text-violet-500",
+  warning: "text-amber-600",
+}
+
+const TYPE_CARD_TINT_HEX: Record<string, string> = {
+  blue:    "#3b82f6",
+  violet:  "#8b5cf6",
+  warning: "#f59e0b",
 }
 
 function TypeCard({
@@ -698,6 +725,7 @@ function TypeCard({
   totalIssues,
   pctDenominator,
   totalInvestimentoCentavos,
+  timeSpentSeconds,
   hideValues,
   tint,
 }: {
@@ -705,23 +733,41 @@ function TypeCard({
   count: number
   totalIssues: number
   /** When provided, percentage is calculated against this value instead of totalIssues.
-   *  Use for sub-group cards (e.g. Novos/Melhorias/Ajustes within Protótipos) so they sum to 100%. */
+   *  Use for sub-group cards (e.g. Novos/Melhorias/Ajustes within Prototipação) so they sum to 100%. */
   pctDenominator?: number
   totalInvestimentoCentavos: number
+  timeSpentSeconds: number
   hideValues: boolean
-  tint?: "blue" | "violet" | "amber"
+  tint?: "blue" | "violet" | "warning"
 }) {
   const denomPct = pctDenominator ?? totalIssues
   const pct = denomPct > 0 ? Math.round((count / denomPct) * 100) : 0
   const costCentavos = totalIssues > 0
     ? Math.round((count / totalIssues) * totalInvestimentoCentavos)
     : 0
+  const tintHex = tint ? TYPE_CARD_TINT_HEX[tint] : undefined
+  const badgeStyle: React.CSSProperties | undefined = tintHex
+    ? { backgroundColor: `${tintHex}1a`, color: tintHex }
+    : undefined
   return (
     <div className="rounded-xl bg-surface-card p-4 shadow-card">
-      <p className={cn("text-xs font-medium", tint ? TYPE_CARD_LABEL_COLOR[tint] : "text-text-secondary")}>{label}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className={cn("text-xs font-medium", tint ? TYPE_CARD_LABEL_COLOR[tint] : "text-text-secondary")}>{label}</p>
+        <div
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg text-xs font-semibold tabular-nums"
+          style={badgeStyle}
+          aria-hidden
+        >
+          {hideValues ? "••" : `${pct}%`}
+        </div>
+      </div>
       <p className="mt-1 text-xl font-bold text-text-primary tabular-nums">{count}</p>
       <div className="mt-1.5 flex items-center gap-2 text-xs text-text-secondary">
-        <span className="tabular-nums">{pct}%</span>
+        <span className="tabular-nums">
+          {hideValues
+            ? <span className="tracking-widest text-text-disabled">••••</span>
+            : formatDurationAvg(timeSpentSeconds)}
+        </span>
         <span className="text-border-default">·</span>
         <span className="tabular-nums">
           {hideValues
@@ -771,6 +817,8 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
     const empty: YearTypeTotals = {
       novosPrototipos: 0, melhorias: 0, ajustes: 0, pesquisa: 0,
       usabilidade: 0, criticos: 0, outros: 0, aguardando: 0, retornos: 0,
+      novosPrototiposSeconds: 0, melhorasSeconds: 0, ajustesSeconds: 0,
+      pesquisaSeconds: 0, usabilidadeSeconds: 0, outrosSeconds: 0,
     }
     if (Object.keys(rawMemberEntries).length === 0) {
       return {
@@ -884,18 +932,28 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
     // Year-level unique counts for the cards (global Sets — true unique, no double-counting)
     const yTotals = aggregateYearTotals(allEntries, activeJiraAccountIds)
 
-    // Group all issues by tag for Distribuição por Produto
+    // Group all issues by tag for Jiras por Produto
     const tagDistribMap = new Map<string, Set<string>>()
-    // Group only "approval" issues by tag for Atividades em Aprovação
-    const tagApprovalMap = new Map<string, Set<string>>()
     for (const e of allEntries) {
       const tag = e.tag?.trim() || "Sem tag"
       if (!tagDistribMap.has(tag)) tagDistribMap.set(tag, new Set())
       tagDistribMap.get(tag)!.add(e.issueKey)
-      if (e.status?.toLowerCase().trim() === "approval") {
-        if (!tagApprovalMap.has(tag)) tagApprovalMap.set(tag, new Set())
-        tagApprovalMap.get(tag)!.add(e.issueKey)
-      }
+    }
+
+    // Group approval issues by tag for Atividades em Aprovação.
+    // Always scans ALL members' entries so a jira assigned to Barbara but worked on
+    // by others still appears. When users are selected, filters by assigneeAccountId.
+    const tagApprovalMap = new Map<string, Set<string>>()
+    const globalEntries: JiraEntry[] = Object.values(rawMemberEntries).flat()
+    for (const e of globalEntries) {
+      if (e.status?.toLowerCase().trim() !== "approval") continue
+      if (
+        activeJiraAccountIds.size > 0 &&
+        (!e.assigneeAccountId || !activeJiraAccountIds.has(e.assigneeAccountId))
+      ) continue
+      const tag = e.tag?.trim() || "Sem tag"
+      if (!tagApprovalMap.has(tag)) tagApprovalMap.set(tag, new Set())
+      tagApprovalMap.get(tag)!.add(e.issueKey)
     }
 
     const toTagItems = (m: Map<string, Set<string>>) =>
@@ -1066,27 +1124,27 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         />
       </div>
 
-      {/* Metric cards — linha 2: Protótipos, Pesquisas, Usabilidade, Outros, Novos, Melhorias, Ajustes, Retornos */}
+      {/* Metric cards — linha 2: Prototipação, Pesquisas, Usabilidade, Outros, Novos, Melhorias, Ajustes, Retornos */}
       {!loading && (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
           {/* Group: scope / visão global — blue tint */}
-          <TypeCard label="Protótipos"  count={yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
-          <TypeCard label="Pesquisas"   count={yearTotals.pesquisa}      totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
-          <TypeCard label="Usabilidade" count={yearTotals.usabilidade}   totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
-          <TypeCard label="Outros"      count={yearTotals.outros}        totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
-          {/* Group: delivery sub-types — violet tint; pct relative to Protótipos so they sum to 100% */}
+          <TypeCard label="Prototipação" count={yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.novosPrototiposSeconds + yearTotals.melhorasSeconds + yearTotals.ajustesSeconds} hideValues={hideValues} tint="blue" />
+          <TypeCard label="Pesquisas"    count={yearTotals.pesquisa}      totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.pesquisaSeconds}    hideValues={hideValues} tint="blue" />
+          <TypeCard label="Usabilidade"  count={yearTotals.usabilidade}   totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.usabilidadeSeconds}  hideValues={hideValues} tint="blue" />
+          <TypeCard label="Outros"       count={yearTotals.outros}        totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.outrosSeconds}       hideValues={hideValues} tint="blue" />
+          {/* Group: delivery sub-types — violet tint; pct relative to Prototipação so they sum to 100% */}
           {(() => {
             const prototiposTotal = yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes
             return (
               <>
-                <TypeCard label="Novos"     count={yearTotals.novosPrototipos} totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
-                <TypeCard label="Melhorias" count={yearTotals.melhorias}       totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
-                <TypeCard label="Ajustes"   count={yearTotals.ajustes}         totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
+                <TypeCard label="Novos"     count={yearTotals.novosPrototipos} totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.novosPrototiposSeconds} hideValues={hideValues} tint="violet" />
+                <TypeCard label="Melhorias" count={yearTotals.melhorias}       totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.melhorasSeconds}        hideValues={hideValues} tint="violet" />
+                <TypeCard label="Ajustes"   count={yearTotals.ajustes}         totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.ajustesSeconds}         hideValues={hideValues} tint="violet" />
               </>
             )
           })()}
-          {/* Isolated: returns — amber tint */}
-          <TypeCard label="Retornos" count={yearTotals.retornos} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="amber" />
+          {/* Isolated: returns — warning tint */}
+          <TypeCard label="Retornos" count={yearTotals.retornos} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={0} hideValues={hideValues} tint="warning" />
         </div>
       )}
 
@@ -1095,9 +1153,9 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
           <div className="lg:col-span-3">
             <TagBarChart
-              title="Distribuição por Produto"
+              title="Jiras por Produto"
               items={distribByTag}
-              ariaLabel="Distribuição de jiras por tag"
+              ariaLabel="Distribuição de jiras por produto"
               hideValues={hideValues}
             />
           </div>
@@ -1105,7 +1163,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
             <TagPieChart
               title="Atividades em Aprovação"
               items={approvalByTag}
-              ariaLabel="Protótipos em aprovação por tag"
+              ariaLabel="Prototipação em aprovação por tag"
             />
           </div>
         </div>
