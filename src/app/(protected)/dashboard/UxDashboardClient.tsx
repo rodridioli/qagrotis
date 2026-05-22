@@ -635,7 +635,7 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
   // Column group helpers — applied to <th> and all <td> for the same column
   const thBase = "px-3 py-3 text-xs font-semibold text-text-secondary"
   // "blue"   → lighter primary-50 tint   (Protótipos / Pesquisas / Usabilidade / Outros)
-  // "violet" → primary-100 tint           (Novos / Melhorias / Ajustes)
+  // "violet" → primary-100 tint           (Novos / Melhorias)
   const TH = ({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" | "violet" }) => (
     <th className={cn(thBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60", group === "violet" && "bg-[#EEF3F7]/70 dark:bg-[#101e2c]/60")}>
       {children}
@@ -661,7 +661,7 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
             <TH center group="blue">Outros</TH>
             <TH center group="violet">Novos</TH>
             <TH center group="violet">Melhorias</TH>
-            <TH center group="violet">Ajustes</TH>
+            <TH center>Ajustes</TH>
             <TH center>Retornos</TH>
           </tr>
         </thead>
@@ -679,13 +679,13 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
                   <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{inv(qStats.investimentoCentavos)}</td>
                   <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{formatHHMM(qStats.totalSeconds)}</td>
                   <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary">{qStats.totalIssues}</td>
-                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.novosPrototipos + qStats.melhorias + qStats.ajustes}</td>
+                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.novosPrototipos + qStats.melhorias}</td>
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.pesquisa}</td>
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.usabilidade}</td>
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.outros}</td>
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "violet")}>{qStats.novosPrototipos}</td>
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "violet")}>{qStats.melhorias}</td>
-                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "violet")}>{qStats.ajustes}</td>
+                  <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary">{qStats.ajustes}</td>
                   <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary">{qStats.retornos}</td>
                 </tr>
                 {q.months.map((mi) => {
@@ -702,13 +702,13 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
                       <td className="px-3 py-2 text-right tabular-nums text-text-primary">{inv(ms.investimentoCentavos)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-text-primary">{formatHHMM(ms.totalSeconds)}</td>
                       <td className="px-3 py-2 text-center tabular-nums text-text-primary">{ms.totalIssues}</td>
-                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.novosPrototipos + ms.melhorias + ms.ajustes}</td>
+                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.novosPrototipos + ms.melhorias}</td>
                       <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.pesquisa}</td>
                       <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.usabilidade}</td>
                       <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.outros}</td>
                       <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "violet")}>{ms.novosPrototipos}</td>
                       <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "violet")}>{ms.melhorias}</td>
-                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "violet")}>{ms.ajustes}</td>
+                      <td className="px-3 py-2 text-center tabular-nums text-text-primary">{ms.ajustes}</td>
                       <td className="px-3 py-2 text-center tabular-nums text-text-primary">{ms.retornos}</td>
                     </tr>
                   )
@@ -722,13 +722,13 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
             <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{inv(totalAnual.investimentoCentavos)}</td>
             <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{formatHHMM(totalAnual.totalSeconds)}</td>
             <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{totalAnual.totalIssues}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.novosPrototipos + totalAnual.melhorias + totalAnual.ajustes}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.novosPrototipos + totalAnual.melhorias}</td>
             <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.pesquisa}</td>
             <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.usabilidade}</td>
             <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.outros}</td>
             <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{totalAnual.novosPrototipos}</td>
             <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{totalAnual.melhorias}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{totalAnual.ajustes}</td>
+            <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{totalAnual.ajustes}</td>
             <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{totalAnual.retornos}</td>
           </tr>
         </tbody>
@@ -743,6 +743,7 @@ const TYPE_CARD_LABEL_COLOR: Record<string, string> = {
   blue:   "#5C9E8D",
   violet: "#5C7FA0",
   amber:  "#C9A870",
+  coral:  "#CB8275",
 }
 
 function TypeCard({
@@ -762,7 +763,7 @@ function TypeCard({
   pctDenominator?: number
   totalInvestimentoCentavos: number
   hideValues: boolean
-  tint?: "blue" | "violet" | "amber"
+  tint?: "blue" | "violet" | "amber" | "coral"
 }) {
   const denomPct = pctDenominator ?? totalIssues
   const pct = denomPct > 0 ? Math.round((count / denomPct) * 100) : 0
@@ -1147,23 +1148,23 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       {!loading && (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
           {/* Group: scope / visão global — blue tint */}
-          <TypeCard label="Protótipos"  count={yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
+          <TypeCard label="Protótipos"  count={yearTotals.novosPrototipos + yearTotals.melhorias} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
           <TypeCard label="Pesquisas"   count={yearTotals.pesquisa}      totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
           <TypeCard label="Usabilidade" count={yearTotals.usabilidade}   totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
           <TypeCard label="Outros"      count={yearTotals.outros}        totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="blue" />
-          {/* Group: delivery sub-types — violet tint; pct relative to Protótipos so they sum to 100% */}
+          {/* Group: Novos/Melhorias — violet tint; pct relative to Protótipos */}
           {(() => {
-            const prototiposTotal = yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes
+            const prototiposTotal = yearTotals.novosPrototipos + yearTotals.melhorias
             return (
               <>
                 <TypeCard label="Novos"     count={yearTotals.novosPrototipos} totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
                 <TypeCard label="Melhorias" count={yearTotals.melhorias}       totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
-                <TypeCard label="Ajustes"   count={yearTotals.ajustes}         totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="violet" />
               </>
             )
           })()}
-          {/* Isolated: returns — amber tint */}
-          <TypeCard label="Retornos" count={yearTotals.retornos} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="amber" />
+          {/* Ajustes e Retornos — coral, mesma cor do Total de Críticos */}
+          <TypeCard label="Ajustes"  count={yearTotals.ajustes}   totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="coral" />
+          <TypeCard label="Retornos" count={yearTotals.retornos}  totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} hideValues={hideValues} tint="coral" />
         </div>
       )}
 
