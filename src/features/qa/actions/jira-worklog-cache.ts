@@ -317,7 +317,10 @@ export async function getUxApprovalIssuesByTag(): Promise<{ tag: string; count: 
   if (role !== "Administrador:MGR") return []
 
   try {
-    const { base, credentials } = await resolveJiraCredentialsForRequest(session.user.id)
+    const creds = await resolveJiraCredentialsForRequest(session.user.id)
+    if (!creds) return []
+    const base = creds.jiraUrl
+    const credentials = Buffer.from(`${creds.jiraEmail}:${creds.apiToken}`).toString("base64")
     return await fetchApprovalIssuesByTag(base, credentials)
   } catch {
     return []
