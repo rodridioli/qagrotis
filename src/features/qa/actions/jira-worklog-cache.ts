@@ -327,3 +327,39 @@ export async function getUxApprovalIssuesByTag(): Promise<ApprovalIssueEntry[]> 
     return []
   }
 }
+
+/**
+ * Resolves the Jira accountId for each userId via email lookup.
+ * Used to filter approval issues by member even when a member has no worklogs
+ * (e.g. a Responsável who doesn't log time but is assigned to issues).
+ */
+export async function getUxMemberJiraIds(
+  userIds: string[],
+): Promise<Record<string, string>> {
+  if (userIds.length === 0) return {}
+  const session = await requireSession()
+  const role = buildRole(session.user.type, session.user.accessProfile)
+  if (role !== "Administrador:MGR") return {}
+
+  try {
+    const creds = await resolveJiraCredentialsForRequest(session.user.id)
+    if (!creds) return {}
+    const base = creds.jiraUrl
+    const credentials = Buffer.from(`${creds.jiraEmail}:${creds.apiToken}`).toString("base64")
+
+    const result: Record<string, string> = {}
+    await Promise.all(
+      userIds.map(async (userId) => {
+        try {
+          const email = await resolveEmailForQaUserId(userId)
+          if (!email) return
+          const accountId = await findJiraAccountIdByEmail(base, credentials, email)
+          if (accountId) result[userId] = accountId
+        } catch {}
+      }),
+    )
+    return result
+  } catch {
+    return {}
+  }
+}

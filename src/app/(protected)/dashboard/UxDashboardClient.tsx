@@ -31,6 +31,8 @@ interface Props {
   progressaoMap: Record<string, ProgressaoHistoricoEntry[]>
   /** Issues em aprovação com assignee — consultadas ao vivo via JQL, agrupadas no cliente após filtro de membro. */
   approvalIssues: { tag: string; assigneeAccountId: string | null }[]
+  /** userId → Jira accountId, resolvido por e-mail no servidor. Garante filtragem correta mesmo para membros sem worklogs. */
+  memberJiraIds: Record<string, string>
 }
 
 interface JiraEntry {
@@ -745,7 +747,7 @@ function TypeCard({
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function UxDashboardClient({ membros, progressaoMap, approvalIssues }: Props) {
+export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memberJiraIds }: Props) {
   const currentYear = new Date().getFullYear()
   const [ano, setAno] = React.useState(currentYear)
   const [loading, setLoading] = React.useState(false)
@@ -915,10 +917,14 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues }: Pr
         .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: tagInvestmentMap.get(tag) ?? 0 }))
         .sort((a, b) => b.count - a.count)
 
-    // Compute approvalByTag: filter the server-fetched approvalIssues by the active
-    // members' Jira account IDs so avatar selection updates the pie chart instantly.
+    // Compute approvalByTag: filter by selected members using the server-resolved
+    // memberJiraIds (email → accountId). This works even for members with no worklogs
+    // (e.g. a Responsável who is assigned to issues but doesn't log time themselves).
+    const approvalAccountIds = new Set(
+      activeMembers.map((m) => memberJiraIds[m.userId]).filter((id): id is string => !!id),
+    )
     const filteredApproval = selectedUserIds.length > 0
-      ? approvalIssues.filter(i => i.assigneeAccountId && activeJiraAccountIds.has(i.assigneeAccountId))
+      ? approvalIssues.filter((i) => i.assigneeAccountId && approvalAccountIds.has(i.assigneeAccountId))
       : approvalIssues
     const approvalTagMap = new Map<string, number>()
     for (const i of filteredApproval) {
@@ -935,7 +941,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues }: Pr
       distribByTag: toTagItems(tagDistribMap),
       approvalByTag,
     }
-  }, [rawMemberEntries, activeMembers, progressaoMap, ano, approvalIssues, selectedUserIds])
+  }, [rawMemberEntries, activeMembers, progressaoMap, ano, approvalIssues, selectedUserIds, memberJiraIds])
 
   // ── Derived totals for metric cards ───────────────────────────────────────
   const totalAnual = React.useMemo(
