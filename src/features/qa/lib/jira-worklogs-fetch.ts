@@ -244,6 +244,7 @@ export type LancamentoIssueFieldsPatch = {
   projectName: string | null
   typeField: string | null
   status: string | null
+  tag: string | null
 }
 
 function parseQtdCenariosQAFieldValue(raw: unknown): number | null {
@@ -283,6 +284,7 @@ function issueFieldsToLancamentoPatch(
   qtdFieldId: string | null,
   typeFieldId: string | null,
   qtdErroFieldId: string | null,
+  tagFieldId: string | null,
 ): LancamentoIssueFieldsPatch {
   const f = fields ?? {}
   const summary = summaryFromIssueField(f.summary)
@@ -301,6 +303,7 @@ function issueFieldsToLancamentoPatch(
     qtdCenariosErro = parseQtdCenariosQAFieldValue(f[qtdErroFieldId])
   }
   const typeField = typeFieldId ? parseTypeFieldValue(f[typeFieldId]) : null
+  const tag = tagFieldId ? parseTypeFieldValue(f[tagFieldId]) : null
   const status = typeof f.status?.name === "string" && f.status.name.trim() ? f.status.name.trim() : null
   return {
     summary,
@@ -312,6 +315,7 @@ function issueFieldsToLancamentoPatch(
     projectName,
     typeField,
     status,
+    tag,
   }
 }
 /**
@@ -324,16 +328,18 @@ export async function fetchIssueFieldsForKeys(
   keys: string[],
 ): Promise<Map<string, LancamentoIssueFieldsPatch>> {
   const unique = Array.from(new Set(keys.map((k) => k.trim().toUpperCase()).filter((k) => /^[A-Z][A-Z0-9]*-\d+$/i.test(k))))
-  const [qtdFieldId, typeFieldId, qtdErroFieldId] = await Promise.all([
+  const [qtdFieldId, typeFieldId, qtdErroFieldId, tagFieldId] = await Promise.all([
     resolveQtdCenariosQAFieldId(base, credentials),
     resolveTypeFieldId(base, credentials),
     resolveQtdCenariosErroFieldId(base, credentials),
+    resolveTagFieldId(base, credentials),
   ])
   const baseFields = ["summary", "issuetype", "priority", "labels", "project", "status"]
   const fieldsParam = [...baseFields]
   if (qtdFieldId) fieldsParam.push(qtdFieldId)
   if (typeFieldId) fieldsParam.push(typeFieldId)
   if (qtdErroFieldId) fieldsParam.push(qtdErroFieldId)
+  if (tagFieldId) fieldsParam.push(tagFieldId)
 
   const result = new Map<string, LancamentoIssueFieldsPatch>()
   for (let i = 0; i < unique.length; i += SEARCH_KEY_CHUNK) {
@@ -356,7 +362,7 @@ export async function fetchIssueFieldsForKeys(
         for (const issue of data.issues) {
           result.set(
             issue.key.trim().toUpperCase(),
-            issueFieldsToLancamentoPatch(issue.fields, qtdFieldId, typeFieldId, qtdErroFieldId),
+            issueFieldsToLancamentoPatch(issue.fields, qtdFieldId, typeFieldId, qtdErroFieldId, tagFieldId),
           )
         }
       }
@@ -497,6 +503,11 @@ export function mergeLancamentoIssuePatches(
       : prev?.status?.trim()
         ? prev.status.trim()
         : null,
+    tag: next.tag?.trim()
+      ? next.tag.trim()
+      : prev?.tag?.trim()
+        ? prev.tag.trim()
+        : null,
   }
 }
 
@@ -509,10 +520,11 @@ export async function augmentFieldMapWithGetIssueFallback(
   fieldMap: Map<string, LancamentoIssueFieldsPatch>,
   allKeysUppercase: string[],
 ): Promise<void> {
-  const [qtdFieldId, typeFieldId, qtdErroFieldId] = await Promise.all([
+  const [qtdFieldId, typeFieldId, qtdErroFieldId, tagFieldId] = await Promise.all([
     resolveQtdCenariosQAFieldId(base, credentials),
     resolveTypeFieldId(base, credentials),
     resolveQtdCenariosErroFieldId(base, credentials),
+    resolveTagFieldId(base, credentials),
   ])
 
   const unique = Array.from(new Set(allKeysUppercase.map((k) => k.trim().toUpperCase())))
@@ -538,6 +550,7 @@ export async function augmentFieldMapWithGetIssueFallback(
   if (qtdFieldId) fieldNames.push(qtdFieldId)
   if (typeFieldId) fieldNames.push(typeFieldId)
   if (qtdErroFieldId) fieldNames.push(qtdErroFieldId)
+  if (tagFieldId) fieldNames.push(tagFieldId)
   const fieldsComma = fieldNames.join(",")
 
   for (let i = 0; i < need.length; i += FALLBACK_GET_CONCURRENCY) {
@@ -548,7 +561,7 @@ export async function augmentFieldMapWithGetIssueFallback(
           const url = `${base}/rest/api/3/issue/${encodeURIComponent(key)}?fields=${fieldsComma}`
           const { ok, data } = await jiraJson<{ fields?: IssueFields }>(url, credentials)
           if (!ok || !data?.fields) return
-          const patch = issueFieldsToLancamentoPatch(data.fields, qtdFieldId, typeFieldId, qtdErroFieldId)
+          const patch = issueFieldsToLancamentoPatch(data.fields, qtdFieldId, typeFieldId, qtdErroFieldId, tagFieldId)
           fieldMap.set(key, mergeLancamentoIssuePatches(fieldMap.get(key), patch))
         } catch {
           // non-fatal
@@ -801,6 +814,38 @@ export async function resolveTypeFieldId(
   return cachedTypeFieldId
 }
 
+const TAG_ENV_FIELD_ID = process.env.JIRA_TAG_FIELD_ID?.trim()
+
+let cachedTagFieldId: string | null | undefined = undefined
+
+export async function resolveTagFieldId(
+  base: string,
+  credentials: string,
+): Promise<string | null> {
+  if (TAG_ENV_FIELD_ID) return TAG_ENV_FIELD_ID
+  if (cachedTagFieldId !== undefined) return cachedTagFieldId
+
+  try {
+    const { ok, data } = await jiraJson<{ id: string; name: string; custom?: boolean }[]>(
+      `${base}/rest/api/3/field`,
+      credentials,
+    )
+    if (!ok || !Array.isArray(data)) {
+      cachedTagFieldId = null
+      return null
+    }
+    // Match only custom fields named exactly "Tag" (case-insensitive).
+    const found = data.find(
+      (f) => f.custom !== false && /^tag$/i.test(f.name.trim()),
+    )
+    cachedTagFieldId = found?.id ?? null
+  } catch {
+    cachedTagFieldId = null
+  }
+
+  return cachedTagFieldId
+}
+
 // ── Status transition counting ────────────────────────────────────────────────
 
 /**
@@ -918,10 +963,11 @@ export async function fetchWorklogsForAuthorInRange(
     return { entries: [], truncatedIssues: false, truncatedWorklogs: false }
   }
 
-  const [qtdFieldId, typeFieldId, qtdErroFieldId] = await Promise.all([
+  const [qtdFieldId, typeFieldId, qtdErroFieldId, tagFieldId] = await Promise.all([
     resolveQtdCenariosQAFieldId(base, credentials),
     resolveTypeFieldId(base, credentials),
     resolveQtdCenariosErroFieldId(base, credentials),
+    resolveTagFieldId(base, credentials),
   ])
   const extraFields = [
     ...(qtdFieldId ? [qtdFieldId] : []),
@@ -970,7 +1016,7 @@ export async function fetchWorklogsForAuthorInRange(
   for (const issueKey of issueKeys) {
     if (entries.length >= MAX_WORKLOGS_TOTAL) break
     const fields = issueFieldsMap.get(issueKey) ?? {}
-    const patch = issueFieldsToLancamentoPatch(fields, qtdFieldId, typeFieldId, qtdErroFieldId)
+    const patch = issueFieldsToLancamentoPatch(fields, qtdFieldId, typeFieldId, qtdErroFieldId, tagFieldId)
     const projectKey = issueKey.split("-")[0] ?? issueKey
 
     let wlStart = 0

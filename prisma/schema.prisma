@@ -622,6 +622,7 @@ model JiraWorklogCache {
   projectName          String?
   typeField            String?
   status               String?
+  tag                  String?
   priority             String?
   retornos             Int      @default(0)
   retornosByAssignee   Json     @default("{}")

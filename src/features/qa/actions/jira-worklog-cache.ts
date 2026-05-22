@@ -20,6 +20,7 @@ export interface UxJiraEntry {
   projectName: string | null
   typeField: string | null
   status: string | null
+  tag: string | null
   priority: string | null
   retornos: number
   retornosByAssignee: Record<string, number>
@@ -115,6 +116,7 @@ async function syncMonthsForUser(
           projectName: patch?.projectName?.trim() ? patch.projectName.trim() : e.projectName,
           priority: patch?.priority?.trim() ? patch.priority.trim() : (e.priority ?? null),
           status: patch?.status?.trim() ? patch.status.trim() : (e.status ?? null),
+          tag: patch?.tag?.trim() ? patch.tag.trim() : null,
           retornos: retornosData?.total ?? 0,
           retornosByAssignee: retornosData?.byAssignee ?? {},
           authorJiraAccountId: jiraUser.accountId,
@@ -139,6 +141,7 @@ async function syncMonthsForUser(
             projectName: e.projectName ?? null,
             typeField: e.typeField ?? null,
             status: e.status ?? null,
+            tag: (e as { tag?: string | null }).tag ?? null,
             priority: (e as { priority?: string | null }).priority ?? null,
             retornos: (e as { retornos?: number }).retornos ?? 0,
             retornosByAssignee: (e as { retornosByAssignee?: Record<string, number> }).retornosByAssignee ?? {},
@@ -153,6 +156,7 @@ async function syncMonthsForUser(
             projectName: e.projectName ?? null,
             typeField: e.typeField ?? null,
             status: e.status ?? null,
+            tag: (e as { tag?: string | null }).tag ?? null,
             priority: (e as { priority?: string | null }).priority ?? null,
             retornos: (e as { retornos?: number }).retornos ?? 0,
             retornosByAssignee: (e as { retornosByAssignee?: Record<string, number> }).retornosByAssignee ?? {},
@@ -259,6 +263,7 @@ export async function getUxWorklogsForYear(
       projectName: true,
       typeField: true,
       status: true,
+      tag: true,
       priority: true,
       retornos: true,
       retornosByAssignee: true,
@@ -276,6 +281,7 @@ export async function getUxWorklogsForYear(
         projectName: string | null
         typeField: string | null
         status: string | null
+        tag: string | null
         priority: string | null
         retornos: number
         retornosByAssignee: unknown
@@ -288,6 +294,7 @@ export async function getUxWorklogsForYear(
       projectName: r.projectName,
       typeField: r.typeField,
       status: r.status,
+      tag: r.tag,
       priority: r.priority,
       retornos: r.retornos,
       retornosByAssignee:

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, RefreshCw, TrendingUp } from "lucide-react"
-import { AreaChart, Area, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts"
+import { AreaChart, Area, BarChart, Bar, Cell, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -36,6 +36,7 @@ interface JiraEntry {
   projectName?: string | null
   typeField?: string | null
   status?: string | null
+  tag?: string | null
   priority?: string | null
   retornos?: number
   retornosByAssignee?: Record<string, number>
@@ -433,43 +434,66 @@ function MetricCard({
   )
 }
 
-// ─── ProductRankCard ──────────────────────────────────────────────────────────
+// ─── TagBarChart ──────────────────────────────────────────────────────────────
 
-function ProductRankCard({
+const BAR_COLOR = "#3b82f6"
+
+function TagBarChart({
   title,
   items,
+  ariaLabel,
 }: {
   title: string
-  items: { label: string; count: number; isOther?: boolean }[]
+  items: { tag: string; count: number }[]
+  ariaLabel: string
 }) {
+  const barHeight = 28
+  const minHeight = 80
+  const chartHeight = Math.max(minHeight, items.length * barHeight)
+
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
-      <p className="mb-3 text-sm font-semibold text-text-primary">{title}</p>
+      <p className="mb-4 text-sm font-semibold text-text-primary">{title}</p>
       {items.length === 0 ? (
         <p className="text-sm text-text-secondary">Sem dados no período.</p>
       ) : (
-        <ul className="space-y-2">
-          {items.map((item) => (
-            <li key={item.label} className="flex items-center justify-between gap-2 text-sm">
-              <span
-                className={cn(
-                  "min-w-0 truncate font-medium",
-                  item.isOther ? "text-badge-success-text" : "text-text-primary",
-                )}
-              >
-                {item.label}
-              </span>
-              <span
-                className={cn(
-                  "shrink-0 tabular-nums",
-                  item.isOther ? "text-badge-success-text" : "text-text-secondary",
-                )}
-              >
-                {item.count} {item.count === 1 ? "protótipo" : "protótipos"}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div role="img" aria-label={ariaLabel}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart
+              data={items}
+              layout="vertical"
+              margin={{ top: 0, right: 32, bottom: 0, left: 0 }}
+            >
+              <XAxis type="number" hide />
+              <YAxis
+                type="category"
+                dataKey="tag"
+                width={72}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 11, fill: "#64748b" }}
+              />
+              <RechartsTooltip
+                cursor={{ fill: `${BAR_COLOR}14` }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null
+                  const d = payload[0]?.payload as { tag: string; count: number }
+                  return (
+                    <div className="rounded-lg border border-border-default bg-surface-card px-2.5 py-1.5 text-xs shadow-card">
+                      <p className="font-semibold text-text-primary">{d.tag}</p>
+                      <p className="text-text-secondary">{d.count} {d.count === 1 ? "jira" : "jiras"}</p>
+                    </div>
+                  )
+                }}
+              />
+              <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={18}>
+                {items.map((item) => (
+                  <Cell key={item.tag} fill={BAR_COLOR} fillOpacity={0.85} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       )}
     </div>
   )
@@ -486,31 +510,35 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
   const inv = (v: number) =>
     hideValues ? <span className="tracking-widest text-text-disabled">••••</span> : formatBRL(v)
 
-  const TH = ({ children }: { children: React.ReactNode }) => (
-    <th className="px-3 py-3 text-right text-xs font-semibold text-text-secondary">
+  // Column group helpers — applied to <th> and all <td> for the same column
+  const thBase = "px-3 py-3 text-xs font-semibold text-text-secondary"
+  const TH = ({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" | "violet" }) => (
+    <th className={cn(thBase, center ? "text-center" : "text-right", group === "blue" && "bg-blue-50/60", group === "violet" && "bg-violet-50/60")}>
       {children}
     </th>
   )
+  const tdCls = (base: string, group?: "blue" | "violet") =>
+    cn(base, group === "blue" && "bg-blue-50/60", group === "violet" && "bg-violet-50/60")
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
-      <table className="w-full min-w-[820px] text-sm">
+      <table className="w-full min-w-[900px] text-sm">
         <thead>
           <tr className="border-b border-border-default bg-neutral-grey-50">
             <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">
               Trimestre
             </th>
-            <TH>Horas</TH>
             <TH>Investimento</TH>
-            <TH>Jiras</TH>
-            <TH>Protótipos</TH>
-            <TH>Pesquisas</TH>
-            <TH>Usabilidade</TH>
-            <TH>Outros</TH>
-            <TH>Novos</TH>
-            <TH>Melhorias</TH>
-            <TH>Ajustes</TH>
-            <TH>Retornos</TH>
+            <TH>Horas</TH>
+            <TH center>Jiras</TH>
+            <TH center group="blue">Protótipos</TH>
+            <TH center group="blue">Pesquisas</TH>
+            <TH center group="blue">Usabilidade</TH>
+            <TH center group="blue">Outros</TH>
+            <TH center group="violet">Novos</TH>
+            <TH center group="violet">Melhorias</TH>
+            <TH center group="violet">Ajustes</TH>
+            <TH center>Retornos</TH>
           </tr>
         </thead>
         <tbody>
@@ -524,17 +552,17 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
               <React.Fragment key={q.label}>
                 <tr className="border-b border-border-default bg-neutral-grey-50">
                   <td className="px-4 py-2.5 font-semibold text-text-primary">{q.label}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{formatHHMM(qStats.totalSeconds)}</td>
                   <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{inv(qStats.investimentoCentavos)}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.totalIssues}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.novosPrototipos + qStats.melhorias + qStats.ajustes}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.pesquisa}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.usabilidade}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.outros}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.novosPrototipos}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.melhorias}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.ajustes}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{qStats.retornos}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{formatHHMM(qStats.totalSeconds)}</td>
+                  <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary">{qStats.totalIssues}</td>
+                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.novosPrototipos + qStats.melhorias + qStats.ajustes}</td>
+                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.pesquisa}</td>
+                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.usabilidade}</td>
+                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.outros}</td>
+                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "violet")}>{qStats.novosPrototipos}</td>
+                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "violet")}>{qStats.melhorias}</td>
+                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "violet")}>{qStats.ajustes}</td>
+                  <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary">{qStats.retornos}</td>
                 </tr>
                 {q.months.map((mi) => {
                   const ms = monthStats[mi]!
@@ -544,17 +572,17 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
                       className="border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50"
                     >
                       <td className="px-4 py-2 pl-8 text-text-secondary">{MONTHS_PT[mi]}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{formatHHMM(ms.totalSeconds)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-text-primary">{inv(ms.investimentoCentavos)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.totalIssues}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.novosPrototipos + ms.melhorias + ms.ajustes}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.pesquisa}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.usabilidade}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.outros}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.novosPrototipos}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.melhorias}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.ajustes}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{ms.retornos}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-text-primary">{formatHHMM(ms.totalSeconds)}</td>
+                      <td className="px-3 py-2 text-center tabular-nums text-text-primary">{ms.totalIssues}</td>
+                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.novosPrototipos + ms.melhorias + ms.ajustes}</td>
+                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.pesquisa}</td>
+                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.usabilidade}</td>
+                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.outros}</td>
+                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "violet")}>{ms.novosPrototipos}</td>
+                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "violet")}>{ms.melhorias}</td>
+                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "violet")}>{ms.ajustes}</td>
+                      <td className="px-3 py-2 text-center tabular-nums text-text-primary">{ms.retornos}</td>
                     </tr>
                   )
                 })}
@@ -564,17 +592,17 @@ function YearTable({ monthStats, hideValues }: { monthStats: MonthStats[]; hideV
 
           <tr className="border-t-2 border-border-default bg-neutral-grey-50">
             <td className="px-4 py-2.5 font-bold text-text-primary">Total</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{formatHHMM(totalAnual.totalSeconds)}</td>
             <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{inv(totalAnual.investimentoCentavos)}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.totalIssues}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.novosPrototipos + totalAnual.melhorias + totalAnual.ajustes}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.pesquisa}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.usabilidade}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.outros}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.novosPrototipos}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.melhorias}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.ajustes}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{totalAnual.retornos}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{formatHHMM(totalAnual.totalSeconds)}</td>
+            <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{totalAnual.totalIssues}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.novosPrototipos + totalAnual.melhorias + totalAnual.ajustes}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.pesquisa}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.usabilidade}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.outros}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{totalAnual.novosPrototipos}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{totalAnual.melhorias}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{totalAnual.ajustes}</td>
+            <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{totalAnual.retornos}</td>
           </tr>
         </tbody>
       </table>
@@ -665,7 +693,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
   }
 
   // ── Derived stats (instant — no fetch on user toggle) ─────────────────────
-  const { monthStats, totalUniqueIssues, yearTotals, protoByProduct, agByProduct } = React.useMemo(() => {
+  const { monthStats, totalUniqueIssues, yearTotals, distribByTag, approvalByTag } = React.useMemo(() => {
     const empty: YearTypeTotals = {
       novosPrototipos: 0, melhorias: 0, ajustes: 0, pesquisa: 0,
       usabilidade: 0, criticos: 0, outros: 0, aguardando: 0, retornos: 0,
@@ -675,8 +703,8 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         monthStats: null,
         totalUniqueIssues: 0,
         yearTotals: empty,
-        protoByProduct: [] as { label: string; count: number; isOther?: boolean }[],
-        agByProduct: [] as { label: string; count: number; isOther?: boolean }[],
+        distribByTag: [] as { tag: string; count: number }[],
+        approvalByTag: [] as { tag: string; count: number }[],
       }
     }
 
@@ -778,27 +806,31 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
     // Year-level unique counts for the cards (global Sets — true unique, no double-counting)
     const yTotals = aggregateYearTotals(allEntries, activeJiraAccountIds)
 
-    const protoMap = new Map<string, Set<string>>()
-    const agMap = new Map<string, Set<string>>()
+    // Group all issues by tag for Distribuição por Produto
+    const tagDistribMap = new Map<string, Set<string>>()
+    // Group only "approval" issues by tag for Atividades em Aprovação
+    const tagApprovalMap = new Map<string, Set<string>>()
     for (const e of allEntries) {
-      const tf = (e.typeField ?? "").trim().toLowerCase()
-      const proj = e.projectName?.trim() || e.issueKey.split("-")[0] || "Outros"
-      if (tf === "new/redesign" || tf === "new" || tf === "redesign") {
-        if (!protoMap.has(proj)) protoMap.set(proj, new Set())
-        protoMap.get(proj)!.add(e.issueKey)
-      }
+      const tag = e.tag?.trim() || "Sem tag"
+      if (!tagDistribMap.has(tag)) tagDistribMap.set(tag, new Set())
+      tagDistribMap.get(tag)!.add(e.issueKey)
       if (e.status?.toLowerCase().trim() === "approval") {
-        if (!agMap.has(proj)) agMap.set(proj, new Set())
-        agMap.get(proj)!.add(e.issueKey)
+        if (!tagApprovalMap.has(tag)) tagApprovalMap.set(tag, new Set())
+        tagApprovalMap.get(tag)!.add(e.issueKey)
       }
     }
+
+    const toTagItems = (m: Map<string, Set<string>>) =>
+      [...m.entries()]
+        .map(([tag, keys]) => ({ tag, count: keys.size }))
+        .sort((a, b) => b.count - a.count)
 
     return {
       monthStats: combined,
       totalUniqueIssues: new Set(allEntries.map((e) => e.issueKey)).size,
       yearTotals: yTotals,
-      protoByProduct: buildTopItems(protoMap),
-      agByProduct: buildTopItems(agMap),
+      distribByTag: toTagItems(tagDistribMap),
+      approvalByTag: toTagItems(tagApprovalMap),
     }
   }, [rawMemberEntries, activeMembers, progressaoMap, ano])
 
@@ -921,7 +953,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       {/* Metric cards — linha 1 (4 cards com sparkline) */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard
-          label="Tempo Médio por Atividade"
+          label="Tempo médio 🠆 Atividade"
           value={loading ? "—" : formatDurationAvg(avgSecondsPerIssue)}
           icon={Clock}
           iconVariant="brand"
@@ -929,7 +961,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
           sparkFormatter={formatDurationAvg}
         />
         <MetricCard
-          label="Valor Médio por Atividade"
+          label="Valor médio 🠆 Atividade"
           value={loading ? "—" : formatBRL(avgInvestimentoCentavos)}
           icon={TrendingUp}
           iconVariant="success"
@@ -980,16 +1012,18 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         </div>
       )}
 
-      {/* Product breakdown cards */}
+      {/* Tag breakdown charts */}
       {!loading && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <ProductRankCard
-            title="Qtd. de Protótipos por Produto no período"
-            items={protoByProduct}
+          <TagBarChart
+            title="Distribuição por Produto"
+            items={distribByTag}
+            ariaLabel="Distribuição de jiras por tag"
           />
-          <ProductRankCard
-            title="Aguardando Aprovação no período"
-            items={agByProduct.map((i) => ({ ...i }))}
+          <TagBarChart
+            title="Atividades em Aprovação"
+            items={approvalByTag}
+            ariaLabel="Atividades em aprovação por tag"
           />
         </div>
       )}
