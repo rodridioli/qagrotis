@@ -271,6 +271,10 @@ function parseTypeFieldValue(raw: unknown): string | null {
     const t = raw.trim()
     return t.length ? t : null
   }
+  // Label-type Jira fields return an array (e.g. ["PRO"])
+  if (Array.isArray(raw)) {
+    return raw.length > 0 ? parseTypeFieldValue(raw[0]) : null
+  }
   if (typeof raw === "object") {
     const o = raw as { value?: unknown; name?: unknown }
     if (typeof o.value === "string" && o.value.trim()) return o.value.trim()
