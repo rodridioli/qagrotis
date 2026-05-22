@@ -296,7 +296,7 @@ const SPARK_MONTHS_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho"
 const VARIANT_COLOR: Record<"brand" | "warning" | "success" | "info", string> = {
   brand:   "#00735D",
   success: "#059669",
-  warning: "#f59e0b",
+  warning: "#e57e5e",
   info:    "#0ea5e9",
 }
 
@@ -734,8 +734,8 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
 
 const TYPE_CARD_LABEL_COLOR: Record<string, string> = {
   blue:   "#409686",
-  violet: "#4abcef",
-  amber:  "#f8ba50",
+  violet: "#0ea5e9",
+  amber:  "#e57e5e",
 }
 
 function TypeCard({
