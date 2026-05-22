@@ -353,8 +353,8 @@ export async function getUxMemberJiraIds(
         try {
           const email = await resolveEmailForQaUserId(userId)
           if (!email) return
-          const accountId = await findJiraAccountIdByEmail(base, credentials, email)
-          if (accountId) result[userId] = accountId
+          const jiraUser = await findJiraAccountIdByEmail(base, credentials, email)
+          if (jiraUser) result[userId] = jiraUser.accountId
         } catch {}
       }),
     )
