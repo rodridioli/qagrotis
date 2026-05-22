@@ -291,12 +291,13 @@ function UxAvatarStrip({
 const SPARK_MONTHS      = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
 const SPARK_MONTHS_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
 
-// Single source of truth for variant colours — shared by SparklineChart and MetricCard icon
+// Single source of truth for variant colours — shared by SparklineChart and MetricCard icon.
+// "brand" uses the Agrotis primary (#00735D) from the design-system scale.
 const VARIANT_COLOR: Record<"brand" | "warning" | "success" | "info", string> = {
-  brand:   "#3b82f6",
-  success: "#22c55e",
+  brand:   "#00735D",
+  success: "#059669",
   warning: "#f59e0b",
-  info:    "#06b6d4",
+  info:    "#0ea5e9",
 }
 
 function SparklineChart({
@@ -440,7 +441,20 @@ function MetricCard({
 
 // ─── TagBarChart ──────────────────────────────────────────────────────────────
 
-const BAR_COLOR = "#3b82f6"
+// Brand-primary green for bars; individual Cell overrides give per-bar depth variation.
+const BAR_PALETTE = [
+  "#00735D", // primary-700 (brand)
+  "#008068", // primary-600
+  "#009e83", // primary-500
+  "#2ab89e", // primary-400
+  "#5cd0b8", // primary-300
+  "#005c4b", // primary-800
+  "#3dc4ac", // interpolated 400↔500
+  "#003d32", // primary-900
+  "#70d4bc", // interpolated 300↔400
+  "#1a5e49", // interpolated 700↔800
+]
+const BAR_COLOR = BAR_PALETTE[0]
 
 function TagBarChart({
   title,
@@ -505,7 +519,11 @@ function TagBarChart({
                   )
                 }}
               />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40} fill={BAR_COLOR} fillOpacity={0.85} />
+              <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                {items.map((_, index) => (
+                  <Cell key={index} fill={BAR_PALETTE[index % BAR_PALETTE.length]} fillOpacity={0.9} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -516,7 +534,21 @@ function TagBarChart({
 
 // ─── TagPieChart ──────────────────────────────────────────────────────────────
 
-const PIE_COLORS = ["#3b82f6", "#2563eb", "#60a5fa", "#1d4ed8", "#93c5fd", "#1e40af"]
+// Green-family palette for pie segments, anchored in the Agrotis primary scale.
+const PIE_COLORS = [
+  "#00735D", // primary-700 (brand)
+  "#2ab89e", // primary-400
+  "#005c4b", // primary-800
+  "#009e83", // primary-500
+  "#5cd0b8", // primary-300
+  "#008068", // primary-600
+  "#003d32", // primary-900
+  "#9ee5d2", // primary-200
+  "#1a5e49", // 700↔800 interpolated
+  "#3dc4ac", // 400↔500 interpolated
+  "#70d4bc", // 300↔400 interpolated
+  "#00664f", // 600↔700 interpolated
+]
 
 function TagPieChart({
   title,
@@ -570,7 +602,7 @@ function TagPieChart({
               <Legend
                 iconType="circle"
                 iconSize={8}
-                wrapperStyle={{ fontSize: 11, color: "#64748b", paddingTop: 8 }}
+                wrapperStyle={{ fontSize: 11, color: "#6b7280", paddingTop: 8 }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -595,13 +627,15 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
 
   // Column group helpers — applied to <th> and all <td> for the same column
   const thBase = "px-3 py-3 text-xs font-semibold text-text-secondary"
+  // "blue"   → lighter primary-50 tint   (Protótipos / Pesquisas / Usabilidade / Outros)
+  // "violet" → primary-100 tint           (Novos / Melhorias / Ajustes)
   const TH = ({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" | "violet" }) => (
-    <th className={cn(thBase, center ? "text-center" : "text-right", group === "blue" && "bg-blue-50/60 dark:bg-blue-900/20", group === "violet" && "bg-violet-50/60 dark:bg-violet-900/20")}>
+    <th className={cn(thBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#edfaf6]/80 dark:bg-[#062019]/60", group === "violet" && "bg-[#d0f2e8]/70 dark:bg-[#0a2f24]/60")}>
       {children}
     </th>
   )
   const tdCls = (base: string, group?: "blue" | "violet") =>
-    cn(base, group === "blue" && "bg-blue-50/60 dark:bg-blue-900/20", group === "violet" && "bg-violet-50/60 dark:bg-violet-900/20")
+    cn(base, group === "blue" && "bg-[#edfaf6]/80 dark:bg-[#062019]/60", group === "violet" && "bg-[#d0f2e8]/70 dark:bg-[#0a2f24]/60")
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
