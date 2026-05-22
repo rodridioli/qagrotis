@@ -199,9 +199,23 @@ function computeStats(entries: LancamentoRow[]) {
       const prev = qtdByIssue.get(e.issueKey) ?? 0
       qtdByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosQA))
     }
+    // Lógica de cálculo de Cenários com Erro:
+    // 1. Se o campo "Qtd. Cenários com Erro" está preenchido → usa diretamente (Tipo A)
+    // 2. Se não está preenchido E a issue é "Broken Test" → fallback para "Qtd. Cenários QA" (Tipo B)
+    // 3. Caso contrário → contribuição zero
+    let errCount: number | null = null
     if (e.qtdCenariosErro != null && Number.isFinite(e.qtdCenariosErro)) {
+      errCount = e.qtdCenariosErro
+    } else if (
+      isBrokenTest(e) &&
+      e.qtdCenariosQA != null &&
+      Number.isFinite(e.qtdCenariosQA)
+    ) {
+      errCount = e.qtdCenariosQA
+    }
+    if (errCount != null) {
       const prev = qtdErroByIssue.get(e.issueKey) ?? 0
-      qtdErroByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosErro))
+      qtdErroByIssue.set(e.issueKey, Math.max(prev, errCount))
     }
   }
 
