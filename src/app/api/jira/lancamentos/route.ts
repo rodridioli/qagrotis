@@ -15,6 +15,8 @@ import {
   fetchIssueFieldsForKeys,
   fetchWorklogsForAuthorInRange,
   findJiraAccountIdByEmail,
+  resolveQtdCenariosQAFieldIds,
+  resolveQtdCenariosErroFieldIds,
   resolveTimeZoneForWorklogs,
   type BrokenTestSubtaskCounts,
   type JiraLancamentoEntry,
@@ -302,6 +304,12 @@ export async function GET(req: NextRequest) {
   const longSessionCount = entries.filter((e) => e.isLongSession).length
   const noJiraUser = !jiraUser
 
+  // Resolve field IDs para expor no _debug — usa cache de processo, custo zero.
+  const [_dbgQtdIds, _dbgErroIds] = await Promise.all([
+    resolveQtdCenariosQAFieldIds(base, credentials),
+    resolveQtdCenariosErroFieldIds(base, credentials),
+  ])
+
   const _debug = {
     targetEmail,
     targetName,
@@ -314,6 +322,18 @@ export async function GET(req: NextRequest) {
     reporterBrokenTestIssueCount,
     reporterAccountIdsTried: reporterDiagnostics.accountIdsTried,
     reporterAttempts: reporterDiagnostics.attempts,
+    // ── Diagnóstico de field IDs (útil para depurar valores zerados) ──────────
+    resolvedFieldIds: {
+      qtdCenariosQA: _dbgQtdIds,
+      qtdCenariosErro: _dbgErroIds,
+    },
+    // Amostra das primeiras 5 entries com campos relevantes para diagnóstico
+    sampleEntries: entries.slice(0, 5).map((e) => ({
+      issueKey: e.issueKey,
+      issueType: e.issueType ?? null,
+      qtdCenariosQA: e.qtdCenariosQA ?? null,
+      qtdCenariosErro: e.qtdCenariosErro ?? null,
+    })),
   }
 
   if (noJiraUser && entries.length === 0) {
