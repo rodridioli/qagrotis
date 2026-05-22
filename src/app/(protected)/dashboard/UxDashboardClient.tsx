@@ -455,7 +455,7 @@ function TagBarChart({
       {items.length === 0 ? (
         <p className="text-sm text-text-secondary">Sem dados no período.</p>
       ) : (
-        <div role="img" aria-label={ariaLabel} className="flex-1 min-h-0">
+        <div role="img" aria-label={ariaLabel} className="flex-1 min-h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={items}
@@ -645,7 +645,7 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
                       key={mi}
                       className={cn(
                         "border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50",
-                        mi === currentMonthIndex && "outline outline-2 outline-offset-[-1px] outline-[var(--brand-primary)]",
+                        mi === currentMonthIndex && "shadow-[inset_0_0_0_2px_var(--brand-primary)]",
                       )}
                     >
                       <td className="px-4 py-2 pl-8 text-text-secondary">{MONTHS_PT[mi]}</td>
