@@ -19,7 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { getUxWorklogsForYear } from "@/features/qa/actions/jira-worklog-cache"
+import { getUxWorklogsForYear, getUxApprovalIssuesByTag } from "@/features/qa/actions/jira-worklog-cache"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
 import type { ProgressaoHistoricoEntry } from "@/features/individual/actions/individual-progressao"
 
@@ -534,20 +534,20 @@ function TagBarChart({
 
 // ─── TagPieChart ──────────────────────────────────────────────────────────────
 
-// Green-family palette for pie segments, anchored in the Agrotis primary scale.
+// Palette for pie segments — rotates across the three brand accent colours.
 const PIE_COLORS = [
-  "#00735D", // primary-700 (brand)
-  "#2ab89e", // primary-400
-  "#005c4b", // primary-800
-  "#009e83", // primary-500
-  "#5cd0b8", // primary-300
-  "#008068", // primary-600
-  "#003d32", // primary-900
-  "#9ee5d2", // primary-200
-  "#1a5e49", // 700↔800 interpolated
-  "#3dc4ac", // 400↔500 interpolated
-  "#70d4bc", // 300↔400 interpolated
-  "#00664f", // 600↔700 interpolated
+  "#409686", // teal primary
+  "#f8ba50", // amber primary
+  "#4abcef", // blue primary
+  "#2d7a6b", // teal dark
+  "#f5a623", // amber dark
+  "#2aa3d8", // blue dark
+  "#5ab8a8", // teal light
+  "#faca7a", // amber light
+  "#74cef5", // blue light
+  "#1f5c50", // teal darkest
+  "#e89520", // amber darkest
+  "#1a90c5", // blue darkest
 ]
 
 function TagPieChart({
@@ -688,7 +688,7 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
                       key={mi}
                       className={cn(
                         "border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50",
-                        mi === currentMonthIndex && "[&_td]:!text-[var(--brand-primary)] [&_td]:font-semibold",
+                        mi === currentMonthIndex && "[&_td]:!text-[#f8ba50] [&_td]:font-semibold",
                       )}
                     >
                       <td className="px-4 py-2 pl-8 text-text-secondary">{MONTHS_PT[mi]}</td>
@@ -733,9 +733,9 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
 // ─── TypeCard ─────────────────────────────────────────────────────────────────
 
 const TYPE_CARD_LABEL_COLOR: Record<string, string> = {
-  blue:   "text-blue-500",
-  violet: "text-violet-500",
-  amber:  "text-amber-500",
+  blue:   "#409686",
+  violet: "#4abcef",
+  amber:  "#f8ba50",
 }
 
 function TypeCard({
@@ -764,10 +764,16 @@ function TypeCard({
     : 0
   return (
     <div className="rounded-xl bg-surface-card p-4 shadow-card">
-      <p className={cn("text-xs font-medium", tint ? TYPE_CARD_LABEL_COLOR[tint] : "text-text-secondary")}>{label}</p>
+      <p
+        className={cn("text-xs font-medium", !tint && "text-text-secondary")}
+        style={tint ? { color: TYPE_CARD_LABEL_COLOR[tint] } : undefined}
+      >{label}</p>
       <p className="mt-1 text-xl font-bold text-text-primary tabular-nums">{count}</p>
       <div className="mt-1.5 flex items-center gap-2 text-xs text-text-secondary">
-        <span className="tabular-nums">{pct}%</span>
+        <span
+          className="tabular-nums"
+          style={tint ? { color: TYPE_CARD_LABEL_COLOR[tint] } : undefined}
+        >{pct}%</span>
         <span className="text-border-default">·</span>
         <span className="tabular-nums">
           {hideValues
@@ -789,6 +795,8 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
   const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([])
   // Raw entries per userId — fetched once per year, filtered in useMemo
   const [rawMemberEntries, setRawMemberEntries] = React.useState<Record<string, JiraEntry[]>>({})
+  // Approval issues — initially from SSR prop, refreshed alongside worklogs
+  const [liveApprovalIssues, setLiveApprovalIssues] = React.useState(approvalIssues)
 
   // Only current year and previous year
   const yearOptions = React.useMemo(
@@ -821,7 +829,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
     if (Object.keys(rawMemberEntries).length === 0) {
       // Worklog data not yet loaded — show all approval issues ungrouped by member
       const approvalTagMap = new Map<string, number>()
-      for (const i of approvalIssues) {
+      for (const i of liveApprovalIssues) {
         approvalTagMap.set(i.tag, (approvalTagMap.get(i.tag) ?? 0) + 1)
       }
       return {
@@ -951,17 +959,12 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
         .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: tagInvestmentMap.get(tag) ?? 0 }))
         .sort((a, b) => b.count - a.count)
 
-    // Compute approvalByTag: filter by selected members using the server-resolved
-    // memberJiraIds (email → accountId). This works even for members with no worklogs
-    // (e.g. a Responsável who is assigned to issues but doesn't log time themselves).
-    const approvalAccountIds = new Set(
-      activeMembers.map((m) => memberJiraIds[m.userId]).filter((id): id is string => !!id),
-    )
-    const filteredApproval = selectedUserIds.length > 0
-      ? approvalIssues.filter((i) => i.assigneeAccountId && approvalAccountIds.has(i.assigneeAccountId))
-      : approvalIssues
+    // Compute approvalByTag: always show ALL approval issues from the live JQL query.
+    // The JQL already scopes to project = UX AND status = "Approval", so no additional
+    // member filtering is needed — the Responsável (e.g. PO/MGR) may be the assignee
+    // even though they are not in the UX team member list.
     const approvalTagMap = new Map<string, number>()
-    for (const i of filteredApproval) {
+    for (const i of liveApprovalIssues) {
       approvalTagMap.set(i.tag, (approvalTagMap.get(i.tag) ?? 0) + 1)
     }
     const approvalByTag = [...approvalTagMap.entries()]
@@ -975,7 +978,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       distribByTag: toTagItems(tagDistribMap),
       approvalByTag,
     }
-  }, [rawMemberEntries, activeMembers, progressaoMap, ano, approvalIssues, selectedUserIds, memberJiraIds])
+  }, [rawMemberEntries, activeMembers, progressaoMap, ano, liveApprovalIssues])
 
   // ── Derived totals for metric cards ───────────────────────────────────────
   const totalAnual = React.useMemo(
@@ -1010,24 +1013,26 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
   // ── Fetch all members on year change (uses cache) ─────────────────────────
   const fetchAll = React.useCallback(
     async (year: number, force = false) => {
-      if (membros.length === 0) {
-        setRawMemberEntries({})
-        return
-      }
       setRawMemberEntries({})
       setLoading(true)
       try {
-        const results = await Promise.all(
-          membros.map(async (m) => {
-            try {
-              const { entries } = await getUxWorklogsForYear(m.userId, year, force)
-              return [m.userId, entries] as const
-            } catch {
-              return [m.userId, [] as JiraEntry[]] as const
-            }
-          }),
-        )
-        setRawMemberEntries(Object.fromEntries(results))
+        const [worklogResults, freshApproval] = await Promise.all([
+          membros.length === 0
+            ? Promise.resolve([] as [string, JiraEntry[]][])
+            : Promise.all(
+                membros.map(async (m) => {
+                  try {
+                    const { entries } = await getUxWorklogsForYear(m.userId, year, force)
+                    return [m.userId, entries] as const
+                  } catch {
+                    return [m.userId, [] as JiraEntry[]] as const
+                  }
+                }),
+              ),
+          getUxApprovalIssuesByTag(),
+        ])
+        setRawMemberEntries(Object.fromEntries(worklogResults))
+        setLiveApprovalIssues(freshApproval)
       } finally {
         setLoading(false)
       }

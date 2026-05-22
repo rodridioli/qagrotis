@@ -176,6 +176,7 @@ function computeStats(entries: LancamentoRow[]) {
   const newDocIssues = new Set<string>()
   const qtdByIssue = new Map<string, number>()
   const qtdErroByIssue = new Map<string, number>()
+  const qtdBrokenTestQAByIssue = new Map<string, number>()
 
   const isBrokenTest = (e: LancamentoRow) =>
     (e.issueType ?? "").toLowerCase().includes("broken")
@@ -193,6 +194,10 @@ function computeStats(entries: LancamentoRow[]) {
     issueSet.add(e.issueKey)
     if (priorityIsCritical(e.priority)) criticalIssues.add(e.issueKey)
     if (isBrokenTest(e)) brokenTestIssues.add(e.issueKey)
+    if (isBrokenTest(e) && e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)) {
+      const prev = qtdBrokenTestQAByIssue.get(e.issueKey) ?? 0
+      qtdBrokenTestQAByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosQA))
+    }
     if (isDocReview(e)) docReviewIssues.add(e.issueKey)
     if (isNewDoc(e)) newDocIssues.add(e.issueKey)
     if (e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)) {
@@ -215,6 +220,11 @@ function computeStats(entries: LancamentoRow[]) {
     qtdCenariosErroTotal += v
   }
 
+  let qtdCenariosQABrokenTestTotal = 0
+  for (const v of qtdBrokenTestQAByIssue.values()) {
+    qtdCenariosQABrokenTestTotal += v
+  }
+
   const projectHours: ProjectHours[] = Array.from(projectMap.entries())
     .map(([key, seconds]) => ({ key, name: projectNameMap.get(key) ?? null, seconds }))
     .sort((a, b) => b.seconds - a.seconds)
@@ -228,6 +238,7 @@ function computeStats(entries: LancamentoRow[]) {
     newDocCount: newDocIssues.size,
     qtdCenariosTotal,
     qtdCenariosErroTotal,
+    qtdCenariosQABrokenTestTotal,
   }
 }
 
@@ -382,7 +393,7 @@ function DashboardPanel({
     // QA: dois novos cards, mais Cenários Testados como 5º card
     const retornoValor = reporterBrokenTestIssueCount ?? 0
     card1 = <StatCard icon={Bug}    label="Retorno de Testes (Broken)" value={retornoValor}                                          iconVariant="warning" />
-    card2 = <StatCard icon={AlertTriangle} label="Cenários com Erro" value={qtdCenariosErroTotalProp ?? stats.qtdCenariosErroTotal} iconVariant="destructive" />
+    card2 = <StatCard icon={AlertTriangle} label="Cenários com Erro" value={(qtdCenariosErroTotalProp ?? stats.qtdCenariosErroTotal) + stats.qtdCenariosQABrokenTestTotal} iconVariant="destructive" />
   }
 
   const isQA = profile === null || profile === "QA"
