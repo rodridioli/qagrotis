@@ -442,15 +442,13 @@ function TagBarChart({
   title,
   items,
   ariaLabel,
+  hideValues,
 }: {
   title: string
-  items: { tag: string; count: number }[]
+  items: { tag: string; count: number; investimentoCentavos: number }[]
   ariaLabel: string
+  hideValues?: boolean
 }) {
-  const barHeight = 28
-  const minHeight = 80
-  const chartHeight = Math.max(minHeight, items.length * barHeight)
-
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <p className="mb-4 text-sm font-semibold text-text-primary">{title}</p>
@@ -458,39 +456,50 @@ function TagBarChart({
         <p className="text-sm text-text-secondary">Sem dados no período.</p>
       ) : (
         <div role="img" aria-label={ariaLabel}>
-          <ResponsiveContainer width="100%" height={chartHeight}>
+          <ResponsiveContainer width="100%" height={220}>
             <BarChart
               data={items}
-              layout="vertical"
-              margin={{ top: 0, right: 32, bottom: 0, left: 0 }}
+              margin={{ top: 4, right: 8, bottom: 32, left: 8 }}
             >
-              <XAxis type="number" hide />
-              <YAxis
-                type="category"
+              <CartesianGrid vertical={false} stroke="#f1f5f9" />
+              <XAxis
                 dataKey="tag"
-                width={72}
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 11, fill: "#64748b" }}
+                interval={0}
+                angle={-35}
+                textAnchor="end"
+                height={48}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fill: "#94a3b8" }}
+                allowDecimals={false}
+                width={28}
               />
               <RechartsTooltip
                 cursor={{ fill: `${BAR_COLOR}14` }}
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null
-                  const d = payload[0]?.payload as { tag: string; count: number }
+                  const d = payload[0]?.payload as { tag: string; count: number; investimentoCentavos: number }
                   return (
-                    <div className="rounded-lg border border-border-default bg-surface-card px-2.5 py-1.5 text-xs shadow-card">
-                      <p className="font-semibold text-text-primary">{d.tag}</p>
+                    <div className="rounded-lg border border-border-default bg-surface-card px-3 py-2 text-xs shadow-card">
+                      <p className="mb-1 font-semibold text-text-primary">{d.tag}</p>
                       <p className="text-text-secondary">{d.count} {d.count === 1 ? "jira" : "jiras"}</p>
+                      {d.investimentoCentavos > 0 && (
+                        <p className="text-text-secondary">
+                          {hideValues
+                            ? <span className="tracking-widest text-text-disabled">••••</span>
+                            : formatBRL(d.investimentoCentavos)}
+                        </p>
+                      )}
                     </div>
                   )
                 }}
               />
-              <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={18}>
-                {items.map((item) => (
-                  <Cell key={item.tag} fill={BAR_COLOR} fillOpacity={0.85} />
-                ))}
-              </Bar>
+              <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40} fill={BAR_COLOR} fillOpacity={0.85} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -703,13 +712,14 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         monthStats: null,
         totalUniqueIssues: 0,
         yearTotals: empty,
-        distribByTag: [] as { tag: string; count: number }[],
-        approvalByTag: [] as { tag: string; count: number }[],
+        distribByTag: [] as { tag: string; count: number; investimentoCentavos: number }[],
+        approvalByTag: [] as { tag: string; count: number; investimentoCentavos: number }[],
       }
     }
 
     const combined: MonthStats[] = Array.from({ length: 12 }, emptyMonthStats)
     const allEntries: JiraEntry[] = []
+    const tagInvestmentMap = new Map<string, number>()
 
     // Pass 1 — per-member: accumulate hours and investment only.
     // valorHora differs per member so this must stay per-member.
@@ -723,7 +733,10 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         combined[month]!.totalSeconds += e.timeSpentSeconds
         const valorHora = getValorHoraForMonth(history, ano, month)
         if (valorHora != null) {
-          combined[month]!.investimentoCentavos += Math.round((e.timeSpentSeconds / 3600) * valorHora)
+          const cost = Math.round((e.timeSpentSeconds / 3600) * valorHora)
+          combined[month]!.investimentoCentavos += cost
+          const tag = e.tag?.trim() || "Sem tag"
+          tagInvestmentMap.set(tag, (tagInvestmentMap.get(tag) ?? 0) + cost)
         }
       }
     }
@@ -822,7 +835,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
 
     const toTagItems = (m: Map<string, Set<string>>) =>
       [...m.entries()]
-        .map(([tag, keys]) => ({ tag, count: keys.size }))
+        .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: tagInvestmentMap.get(tag) ?? 0 }))
         .sort((a, b) => b.count - a.count)
 
     return {
@@ -1019,11 +1032,13 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
             title="Distribuição por Produto"
             items={distribByTag}
             ariaLabel="Distribuição de jiras por tag"
+            hideValues={hideValues}
           />
           <TagBarChart
             title="Atividades em Aprovação"
             items={approvalByTag}
             ariaLabel="Atividades em aprovação por tag"
+            hideValues={hideValues}
           />
         </div>
       )}
