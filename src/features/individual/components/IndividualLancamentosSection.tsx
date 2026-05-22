@@ -95,6 +95,7 @@ type ApiOk = {
   newDocCount?: number
   pendingUxReturnCount?: number
   qtdCenariosErroTotal?: number
+  brokenTestIssueTypeNames?: string[]
 }
 
 function formatDurationHMin(totalSeconds: number): string {
@@ -166,7 +167,7 @@ function priorityIsCritical(p: string | null | undefined): boolean {
   )
 }
 
-function computeStats(entries: LancamentoRow[]) {
+function computeStats(entries: LancamentoRow[], brokenTestTypeNames?: string[]) {
   const projectMap = new Map<string, number>()
   const projectNameMap = new Map<string, string>()
   const issueSet = new Set<string>()
@@ -178,8 +179,15 @@ function computeStats(entries: LancamentoRow[]) {
   const qtdErroByIssue = new Map<string, number>()
   const qtdBrokenTestQAByIssue = new Map<string, number>()
 
-  const isBrokenTest = (e: LancamentoRow) =>
-    (e.issueType ?? "").toLowerCase().includes("broken")
+  // Usa os nomes reais configurados no servidor (mesmo env var do JQL).
+  // Fallback para "includes broken" garante retrocompat sem config.
+  const normalizedBrokenTypes = (brokenTestTypeNames ?? []).map((t) => t.toLowerCase().trim())
+  const isBrokenTest = (e: LancamentoRow) => {
+    const t = (e.issueType ?? "").toLowerCase().trim()
+    return normalizedBrokenTypes.length > 0
+      ? normalizedBrokenTypes.some((n) => t === n)
+      : t.includes("broken")
+  }
   const isDocReview = (e: LancamentoRow) =>
     (e.issueType ?? "").toLowerCase() === "documentation review"
   const isNewDoc = (e: LancamentoRow) =>
@@ -362,6 +370,7 @@ function DashboardPanel({
   pendingUxReturnCount,
   qtdCenariosErroTotal: qtdCenariosErroTotalProp,
   evaluatedUserAccessProfile,
+  brokenTestIssueTypeNames,
 }: {
   entries: LancamentoRow[]
   brokenTestSubtasksTotalInScope?: number
@@ -375,8 +384,12 @@ function DashboardPanel({
   pendingUxReturnCount?: number
   qtdCenariosErroTotal?: number
   evaluatedUserAccessProfile?: "QA" | "UX" | "TW" | "MGR" | null
+  brokenTestIssueTypeNames?: string[]
 }) {
-  const stats = React.useMemo(() => computeStats(entries), [entries])
+  const stats = React.useMemo(
+    () => computeStats(entries, brokenTestIssueTypeNames),
+    [entries, brokenTestIssueTypeNames],
+  )
   const profile = evaluatedUserAccessProfile ?? null
 
   // Para QA: 5 cards (Jiras abertos, Cenários com Erro, Testes Realizados, Total de Jiras, Jiras críticos).
@@ -683,6 +696,7 @@ export function IndividualLancamentosSection({
               pendingUxReturnCount={data.pendingUxReturnCount}
               qtdCenariosErroTotal={data.qtdCenariosErroTotal}
               evaluatedUserAccessProfile={evaluatedUserAccessProfile}
+              brokenTestIssueTypeNames={data.brokenTestIssueTypeNames}
             />
           )}
 
