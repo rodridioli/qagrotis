@@ -695,7 +695,7 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
                       key={mi}
                       className={cn(
                         "border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50",
-                        mi === currentMonthIndex && "[&_td]:!text-[#C9A870] [&_td]:font-semibold",
+                        mi === currentMonthIndex && "[&_td]:!text-[#CB8275] [&_td]:font-semibold",
                       )}
                     >
                       <td className="px-4 py-2 pl-8 text-text-secondary">{MONTHS_PT[mi]}</td>
