@@ -775,6 +775,13 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
   }
 
   // ── Derived stats (instant — no fetch on user toggle) ─────────────────────
+  // Matches both English ("approval", "in approval") and Portuguese ("aprovação",
+  // "em aprovação", "aguardando aprovação") workflow status names.
+  function isApprovalStatus(status: string | null | undefined): boolean {
+    if (!status) return false
+    const s = status.toLowerCase().trim()
+    return s.includes("approval") || s.includes("aprova")
+  }
   const { monthStats, totalUniqueIssues, yearTotals, distribByTag, approvalByTag } = React.useMemo(() => {
     const empty: YearTypeTotals = {
       novosPrototipos: 0, melhorias: 0, ajustes: 0, pesquisa: 0,
@@ -860,7 +867,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
         if (tf === "usability") cb.usab.add(e.issueKey)
         if (tf === "others" || tf === "other") cb.outros.add(e.issueKey)
         if (e.priority?.toLowerCase().trim() === "critical") cb.criticos.add(e.issueKey)
-        if (e.status?.toLowerCase().trim().includes("approval")) cb.ag.add(e.issueKey)
+        if (isApprovalStatus(e.status)) cb.ag.add(e.issueKey)
         const r = activeJiraAccountIds.size > 0
           ? Array.from(activeJiraAccountIds).reduce((s, id) => s + (e.retornosByAssignee?.[id] ?? 0), 0)
           : (e.retornos ?? 0)
@@ -900,7 +907,7 @@ export function UxDashboardClient({ membros, progressaoMap }: Props) {
       const tag = e.tag?.trim() || "Sem tag"
       if (!tagDistribMap.has(tag)) tagDistribMap.set(tag, new Set())
       tagDistribMap.get(tag)!.add(e.issueKey)
-      if (e.status?.toLowerCase().trim().includes("approval")) {
+      if (isApprovalStatus(e.status)) {
         if (!tagApprovalMap.has(tag)) tagApprovalMap.set(tag, new Set())
         tagApprovalMap.get(tag)!.add(e.issueKey)
       }
