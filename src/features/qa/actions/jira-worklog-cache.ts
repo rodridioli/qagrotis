@@ -27,7 +27,6 @@ export interface UxJiraEntry {
   retornos: number
   retornosByAssignee: Record<string, number>
   authorJiraAccountId: string | null
-  assigneeAccountId: string | null
   started: string
   timeSpentSeconds: number
 }
@@ -123,7 +122,6 @@ async function syncMonthsForUser(
           retornos: retornosData?.total ?? 0,
           retornosByAssignee: retornosData?.byAssignee ?? {},
           authorJiraAccountId: jiraUser.accountId,
-          assigneeAccountId: patch?.assigneeAccountId ?? null,
         }
       })
     }
@@ -150,7 +148,6 @@ async function syncMonthsForUser(
             retornos: (e as { retornos?: number }).retornos ?? 0,
             retornosByAssignee: (e as { retornosByAssignee?: Record<string, number> }).retornosByAssignee ?? {},
             authorJiraAccountId: (e as { authorJiraAccountId?: string | null }).authorJiraAccountId ?? null,
-            assigneeAccountId: (e as { assigneeAccountId?: string | null }).assigneeAccountId ?? null,
             timeSpentSeconds: e.timeSpentSeconds,
             year,
             month,
@@ -166,7 +163,6 @@ async function syncMonthsForUser(
             retornos: (e as { retornos?: number }).retornos ?? 0,
             retornosByAssignee: (e as { retornosByAssignee?: Record<string, number> }).retornosByAssignee ?? {},
             authorJiraAccountId: (e as { authorJiraAccountId?: string | null }).authorJiraAccountId ?? null,
-            assigneeAccountId: (e as { assigneeAccountId?: string | null }).assigneeAccountId ?? null,
             startedAt,
             timeSpentSeconds: e.timeSpentSeconds,
             year,
@@ -274,7 +270,6 @@ export async function getUxWorklogsForYear(
       retornos: true,
       retornosByAssignee: true,
       authorJiraAccountId: true,
-      assigneeAccountId: true,
       startedAt: true,
       timeSpentSeconds: true,
     },
@@ -293,7 +288,6 @@ export async function getUxWorklogsForYear(
         retornos: number
         retornosByAssignee: unknown
         authorJiraAccountId: string | null
-        assigneeAccountId: string | null
         startedAt: Date
         timeSpentSeconds: number
       }[]
@@ -310,7 +304,6 @@ export async function getUxWorklogsForYear(
           ? (r.retornosByAssignee as Record<string, number>)
           : {},
       authorJiraAccountId: r.authorJiraAccountId,
-      assigneeAccountId: r.assigneeAccountId,
       started: r.startedAt.toISOString().slice(0, 10),
       timeSpentSeconds: r.timeSpentSeconds,
     })),
