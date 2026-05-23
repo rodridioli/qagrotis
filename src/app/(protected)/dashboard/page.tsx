@@ -12,6 +12,7 @@ import { auth } from "@/core/auth"
 import { buildRole } from "@/core/rbac/policy"
 import { DashboardClient } from "./DashboardClient"
 import { UxDashboardClient } from "./UxDashboardClient"
+import { TwDashboardClient } from "./TwDashboardClient"
 import type { ModuloRecord } from "@/features/qa/actions/modulos"
 import type { CenarioRecord } from "@/features/qa/actions/cenarios"
 import type { QaUserRecord } from "@/features/usuarios/actions/usuarios"
@@ -45,6 +46,28 @@ export default async function DashboardPage({
 
     return (
       <UxDashboardClient
+        membros={serializeRscProps(membros)}
+        progressaoMap={serializeRscProps(progressaoMap)}
+        approvalIssues={approvalIssues}
+        memberJiraIds={memberJiraIds}
+      />
+    )
+  }
+
+  // ── TW dashboard — apenas Administrador:MGR ──────────────────────────────
+  if (perfil === "TW") {
+    if (!isMgr) redirect("/dashboard")
+
+    const membros = await getEquipeMembrosParaLancamentos("TW")
+    const userIds = membros.map((m) => m.userId)
+    const [approvalIssues, memberJiraIds, progressaoMap] = await Promise.all([
+      getUxApprovalIssuesByTag(),
+      getUxMemberJiraIds(userIds),
+      getProgressaoHistoricoBatch(userIds),
+    ])
+
+    return (
+      <TwDashboardClient
         membros={serializeRscProps(membros)}
         progressaoMap={serializeRscProps(progressaoMap)}
         approvalIssues={approvalIssues}
