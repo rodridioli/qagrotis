@@ -9,7 +9,10 @@ function createPrismaClient() {
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
   })
-  const adapter = new PrismaPg(pool)
+  // Cast required: @types/pg top-level and the copy bundled inside
+  // @prisma/adapter-pg diverge on ClientBase#connect() return type.
+  // Both point to the same runtime Pool — the cast is safe.
+  const adapter = new PrismaPg(pool as unknown as ConstructorParameters<typeof PrismaPg>[0])
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
