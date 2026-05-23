@@ -67,14 +67,6 @@ O campo **Tag** é um custom field no Jira (ex: `"UBA"`), diferente do campo pad
 - Armazenado na coluna `tag` de `JiraWorklogCache`
 - Populado apenas após sync (worklogs cacheados antes da migration permanecem `null`)
 
-### Campo `assigneeAccountId` no Jira
-
-Jira account ID do **assignee** atual do jira (quem o ticket está atribuído).  
-- Buscado junto com os demais campos em `fetchIssueFieldsForKeys` (campo `assignee.accountId`)
-- Armazenado na coluna `assigneeAccountId` de `JiraWorklogCache`
-- Usado exclusivamente no filtro do card "Atividades em Aprovação"
-- Registros anteriores à migration têm valor `null` — sync forçado os atualiza
-
 ### Tabela Anual (YearTable)
 
 **Ordem das colunas:** Trimestre → Investimento → Horas → Jiras → Protótipos → Pesquisas → Usabilidade → Outros → Novos → Melhorias → Ajustes → Retornos
@@ -91,12 +83,71 @@ page.tsx (Administrador:MGR detectado via perfil=UX)
     → getUxWorklogsForYear() [Server Action — auth + RBAC]
       → syncMonthsForUser()
         → fetchIssueFieldsForKeys() → JiraWorklogCache
-            (campos: tag, status, typeField, priority, assigneeAccountId, ...)
+            (campos: tag, status, typeField, priority, retornos, retornosByAssignee, ...)
     → useMemo: agrega monthStats + distribByTag + approvalByTag
         distribByTag  → filtra por activeMembers (worklog author)
-        approvalByTag → itera todos os members; filtra por assigneeAccountId quando seleção ativa
+        approvalByTag → liveApprovalIssues (JQL ao vivo), filtrado por assigneeAccountId quando seleção ativa
     → render: UxAvatarStrip + MetricCards + TypeCards
               + TagBarChart ("Jiras por Produto")
               + TagPieChart ("Atividades em Aprovação")
               + YearTable
 ```
+
+---
+
+## Dashboard TW — `/dashboard?perfil=TW`
+
+**Acesso:** Exclusivo para `Administrador:MGR`  
+**Arquivo:** `src/app/(protected)/dashboard/TwDashboardClient.tsx`
+
+### Descrição
+
+Dashboard para a equipe de Technical Writers. Espelha a estrutura do Dashboard UX com TypeCards e tabela anual adaptados para os tipos de atividade TW.
+
+### Componentes
+
+| Componente | Descrição |
+|---|---|
+| `AvatarStrip` | Fotos clicáveis dos membros TW; filtro multi-seleção |
+| `MetricCard` | Cards com sparkline (Tempo médio → Atividade, Valor médio → Atividade, Total de Jiras, Total de Críticos) |
+| `TypeCard` | 4 cards: Novas Documentações (azul), Revisões (azul), Outras Atividades (azul), Retornos (warning) |
+| `TagBarChart` | Gráfico de barras — "Jiras por Produto" |
+| `TagPieChart` | Gráfico de donut — "Atividades em Aprovação" |
+| `TwYearTable` | Tabela anual por trimestre/mês com 8 colunas |
+
+### Mapeamento de typeField TW
+
+| Valor (case-insensitive) | Bucket |
+|---|---|
+| `"new documentation"` | Novas Documentações |
+| `"documentation review"` | Revisões |
+| `"others"` / `"other"` | Outras Atividades |
+| Qualquer outro / `null` / vazio | Outras Atividades (bucket residual) |
+
+### Tabela Anual (TwYearTable)
+
+**Ordem das colunas:** Trimestre → Investimento → Horas → Jiras → Novas Docs → Revisões → Outras Atividades → Retornos
+
+**Grupos visuais:**
+- `bg-[#EDF5F3]/80` — Novas Docs, Revisões, Outras Atividades
+
+### Data flow
+
+```
+page.tsx (Administrador:MGR detectado via perfil=TW)
+  → getEquipeMembrosParaLancamentos("TW")  [filtra por accessProfile = "TW"]
+  → getUxWorklogsForYear()  [Server Action genérico — reutilizado do UX]
+  → getUxApprovalIssuesByTag()  [JQL ao vivo]
+  → TwDashboardClient (client)
+    → useMemo: agrega TwMonthStats (pass 1: horas/investimento) +
+               TwYearTotals via aggregateTwYearTotals() (pass 2: issue counts)
+    → render: AvatarStrip + MetricCards (4) + TypeCards (4)
+              + TagBarChart ("Jiras por Produto")
+              + TagPieChart ("Atividades em Aprovação")
+              + TwYearTable
+```
+
+### RBAC
+
+- `page.tsx` redireciona para `/dashboard` se `role !== "Administrador:MGR"`
+- `getUxWorklogsForYear` e `getEquipeMembrosParaLancamentos` verificam auth internamente
