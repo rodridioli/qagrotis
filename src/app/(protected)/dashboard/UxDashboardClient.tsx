@@ -1011,22 +1011,6 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       tagDistribMap.get(tag)!.add(e.issueKey)
     }
 
-    // Group approval issues by tag for Atividades em Aprovação.
-    // Always scans ALL members' entries so a jira assigned to Barbara but worked on
-    // by others still appears. When users are selected, filters by assigneeAccountId.
-    const tagApprovalMap = new Map<string, Set<string>>()
-    const globalEntries: JiraEntry[] = Object.values(rawMemberEntries).flat()
-    for (const e of globalEntries) {
-      if (e.status?.toLowerCase().trim() !== "approval") continue
-      if (
-        activeJiraAccountIds.size > 0 &&
-        (!e.assigneeAccountId || !activeJiraAccountIds.has(e.assigneeAccountId))
-      ) continue
-      const tag = e.tag?.trim() || "Sem tag"
-      if (!tagApprovalMap.has(tag)) tagApprovalMap.set(tag, new Set())
-      tagApprovalMap.get(tag)!.add(e.issueKey)
-    }
-
     const toTagItems = (m: Map<string, Set<string>>) =>
       [...m.entries()]
         .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: tagInvestmentMap.get(tag) ?? 0 }))
