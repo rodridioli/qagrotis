@@ -870,10 +870,23 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       novosPrototiposSeconds: 0, melhorasSeconds: 0, ajustesSeconds: 0,
       pesquisaSeconds: 0, usabilidadeSeconds: 0, outrosSeconds: 0,
     }
+    // Filter approval issues by selected member's Jira account IDs (from memberJiraIds prop).
+    // When no user is selected, all issues are shown.
+    const activeApprovalJiraIds = new Set(
+      selectedUserIds
+        .map((uid) => memberJiraIds[uid])
+        .filter((id): id is string => !!id),
+    )
+    const filteredApprovalIssues = activeApprovalJiraIds.size > 0
+      ? liveApprovalIssues.filter(
+          (i) => i.assigneeAccountId != null && activeApprovalJiraIds.has(i.assigneeAccountId),
+        )
+      : liveApprovalIssues
+
     if (Object.keys(rawMemberEntries).length === 0) {
-      // Worklog data not yet loaded — show all approval issues ungrouped by member
+      // Worklog data not yet loaded — show approval issues (filtered by member if selected)
       const approvalTagMap = new Map<string, number>()
-      for (const i of liveApprovalIssues) {
+      for (const i of filteredApprovalIssues) {
         approvalTagMap.set(i.tag, (approvalTagMap.get(i.tag) ?? 0) + 1)
       }
       return {
@@ -1019,12 +1032,8 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
         .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: tagInvestmentMap.get(tag) ?? 0 }))
         .sort((a, b) => b.count - a.count)
 
-    // Compute approvalByTag: always show ALL approval issues from the live JQL query.
-    // The JQL already scopes to project = UX AND status = "Approval", so no additional
-    // member filtering is needed — the Responsável (e.g. PO/MGR) may be the assignee
-    // even though they are not in the UX team member list.
     const approvalTagMap = new Map<string, number>()
-    for (const i of liveApprovalIssues) {
+    for (const i of filteredApprovalIssues) {
       approvalTagMap.set(i.tag, (approvalTagMap.get(i.tag) ?? 0) + 1)
     }
     const approvalByTag = [...approvalTagMap.entries()]
@@ -1038,7 +1047,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       distribByTag: toTagItems(tagDistribMap),
       approvalByTag,
     }
-  }, [rawMemberEntries, activeMembers, progressaoMap, ano, liveApprovalIssues])
+  }, [rawMemberEntries, activeMembers, progressaoMap, ano, liveApprovalIssues, selectedUserIds, memberJiraIds])
 
   // ── Derived totals for metric cards ───────────────────────────────────────
   const totalAnual = React.useMemo(

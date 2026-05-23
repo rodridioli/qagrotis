@@ -1319,13 +1319,16 @@ export interface ApprovalIssueEntry {
 }
 
 /**
- * Queries Jira directly for all issues in the UX project with status = "Approval".
+ * Queries Jira directly for issues in the given project with status = "Approval".
  * Returns one entry per issue with tag + assignee accountId so the client can
  * filter by selected member without a re-fetch.
+ *
+ * @param jqlProject - Jira project name to scope the query, e.g. "UX" or "Documentação Técnica"
  */
 export async function fetchApprovalIssuesByTag(
   base: string,
   credentials: string,
+  jqlProject = "UX",
 ): Promise<ApprovalIssueEntry[]> {
   const tagFieldId = await resolveTagFieldId(base, credentials)
   const extraFields: string[] = ["status", "assignee", ...(tagFieldId ? [tagFieldId] : [])]
@@ -1333,11 +1336,13 @@ export async function fetchApprovalIssuesByTag(
   const issues: ApprovalIssueEntry[] = []
   let nextPageToken: string | null = null
 
+  const jql = `project in ("${jqlProject}") AND status in (Approval) ORDER BY updated DESC`
+
   for (;;) {
     const page = await searchIssuesByJql(
       base,
       credentials,
-      'project = UX AND status = "Approval" ORDER BY updated DESC',
+      jql,
       nextPageToken,
       extraFields,
     )

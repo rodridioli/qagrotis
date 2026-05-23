@@ -19,7 +19,7 @@ import type { QaUserRecord } from "@/features/usuarios/actions/usuarios"
 import type { SuiteDashboardRecord } from "@/features/qa/actions/suites"
 import { getEquipeMembrosParaLancamentos } from "@/features/equipe/actions/equipe"
 import { getProgressaoHistoricoBatch } from "@/features/individual/actions/individual-progressao"
-import { getUxApprovalIssuesByTag, getUxMemberJiraIds } from "@/features/qa/actions/jira-worklog-cache"
+import { getApprovalIssuesByTag, getUxMemberJiraIds } from "@/features/qa/actions/jira-worklog-cache"
 
 export default async function DashboardPage({
   searchParams,
@@ -39,7 +39,7 @@ export default async function DashboardPage({
     const membros = await getEquipeMembrosParaLancamentos("UX")
     const userIds = membros.map((m) => m.userId)
     const [approvalIssues, memberJiraIds, progressaoMap] = await Promise.all([
-      getUxApprovalIssuesByTag(),
+      getApprovalIssuesByTag("UX"),
       getUxMemberJiraIds(userIds),
       getProgressaoHistoricoBatch(userIds),
     ])
@@ -61,7 +61,7 @@ export default async function DashboardPage({
     const membros = await getEquipeMembrosParaLancamentos("TW")
     const userIds = membros.map((m) => m.userId)
     const [approvalIssues, memberJiraIds, progressaoMap] = await Promise.all([
-      getUxApprovalIssuesByTag(),
+      getApprovalIssuesByTag("TW"),
       getUxMemberJiraIds(userIds),
       getProgressaoHistoricoBatch(userIds),
     ])

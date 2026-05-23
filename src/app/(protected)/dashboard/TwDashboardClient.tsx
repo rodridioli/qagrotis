@@ -788,9 +788,22 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       novasDocsSeconds: 0, revisoesSeconds: 0, outrasAtividadesSeconds: 0,
     }
 
+    // Filter approval issues by selected member's Jira account IDs (from memberJiraIds prop).
+    // When no user is selected, all issues are shown.
+    const activeApprovalJiraIds = new Set(
+      selectedUserIds
+        .map((uid) => memberJiraIds[uid])
+        .filter((id): id is string => !!id),
+    )
+    const filteredApprovalIssues = activeApprovalJiraIds.size > 0
+      ? liveApprovalIssues.filter(
+          (i) => i.assigneeAccountId != null && activeApprovalJiraIds.has(i.assigneeAccountId),
+        )
+      : liveApprovalIssues
+
     if (Object.keys(rawMemberEntries).length === 0) {
       const approvalTagMap = new Map<string, number>()
-      for (const i of liveApprovalIssues) {
+      for (const i of filteredApprovalIssues) {
         approvalTagMap.set(i.tag, (approvalTagMap.get(i.tag) ?? 0) + 1)
       }
       return {
@@ -914,7 +927,7 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
         .sort((a, b) => b.count - a.count)
 
     const approvalTagMap = new Map<string, number>()
-    for (const i of liveApprovalIssues) {
+    for (const i of filteredApprovalIssues) {
       approvalTagMap.set(i.tag, (approvalTagMap.get(i.tag) ?? 0) + 1)
     }
     const approvalByTag = [...approvalTagMap.entries()]
@@ -928,7 +941,7 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       distribByTag: toTagItems(tagDistribMap),
       approvalByTag,
     }
-  }, [rawMemberEntries, activeMembers, progressaoMap, ano, liveApprovalIssues])
+  }, [rawMemberEntries, activeMembers, progressaoMap, ano, liveApprovalIssues, selectedUserIds, memberJiraIds])
 
   // ── Derived totals for metric cards ───────────────────────────────────────
   const totalAnual = React.useMemo(

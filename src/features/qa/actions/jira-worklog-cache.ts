@@ -312,7 +312,19 @@ export async function getUxWorklogsForYear(
 
 // ── Approval issues by tag (live query — always current) ─────────────────────
 
-export async function getUxApprovalIssuesByTag(): Promise<ApprovalIssueEntry[]> {
+const APPROVAL_JQL_PROJECT: Record<"UX" | "TW", string> = {
+  UX: "UX",
+  TW: "Documentação Técnica",
+}
+
+/**
+ * Fetches issues in Approval status for the given dashboard profile.
+ * UX  → project in ("UX")
+ * TW  → project in ("Documentação Técnica")
+ */
+export async function getApprovalIssuesByTag(
+  profile: "UX" | "TW",
+): Promise<ApprovalIssueEntry[]> {
   const session = await requireSession()
   const role = buildRole(session.user.type, session.user.accessProfile)
   if (role !== "Administrador:MGR") return []
@@ -322,10 +334,15 @@ export async function getUxApprovalIssuesByTag(): Promise<ApprovalIssueEntry[]> 
     if (!creds) return []
     const base = creds.jiraUrl
     const credentials = Buffer.from(`${creds.jiraEmail}:${creds.apiToken}`).toString("base64")
-    return await fetchApprovalIssuesByTag(base, credentials)
+    return await fetchApprovalIssuesByTag(base, credentials, APPROVAL_JQL_PROJECT[profile])
   } catch {
     return []
   }
+}
+
+/** @deprecated Use getApprovalIssuesByTag("UX") instead. */
+export async function getUxApprovalIssuesByTag(): Promise<ApprovalIssueEntry[]> {
+  return getApprovalIssuesByTag("UX")
 }
 
 /**

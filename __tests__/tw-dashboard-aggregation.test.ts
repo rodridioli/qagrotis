@@ -304,11 +304,12 @@ describe("TW dashboard — cards UX não existem no TW", () => {
   it("TwYearTotals não contém campos UX-específicos", () => {
     const result = aggregateTwYearTotals([])
     // Campos UX que NÃO devem existir no TW
-    expect((result as Record<string, unknown>).novosPrototipos).toBeUndefined()
-    expect((result as Record<string, unknown>).melhorias).toBeUndefined()
-    expect((result as Record<string, unknown>).ajustes).toBeUndefined()
-    expect((result as Record<string, unknown>).pesquisa).toBeUndefined()
-    expect((result as Record<string, unknown>).usabilidade).toBeUndefined()
+    const r = result as unknown as Record<string, unknown>
+    expect(r.novosPrototipos).toBeUndefined()
+    expect(r.melhorias).toBeUndefined()
+    expect(r.ajustes).toBeUndefined()
+    expect(r.pesquisa).toBeUndefined()
+    expect(r.usabilidade).toBeUndefined()
   })
 
   it("TwYearTotals contém exatamente os campos TW esperados", () => {
