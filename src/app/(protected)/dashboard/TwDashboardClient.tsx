@@ -19,7 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { getUxWorklogsForYear, getUxApprovalIssuesByTag } from "@/features/qa/actions/jira-worklog-cache"
+import { getUxWorklogsForYear, getApprovalIssuesByTag } from "@/features/qa/actions/jira-worklog-cache"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
 import type { ProgressaoHistoricoEntry } from "@/features/individual/actions/individual-progressao"
 
@@ -992,7 +992,7 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
                   }
                 }),
               ),
-          getUxApprovalIssuesByTag(),
+          getApprovalIssuesByTag("TW"),
         ])
         setRawMemberEntries(Object.fromEntries(worklogResults))
         setLiveApprovalIssues(freshApproval)
