@@ -760,16 +760,11 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
 
 // ─── TypeCard ─────────────────────────────────────────────────────────────────
 
-const TYPE_CARD_LABEL_COLOR: Record<string, string> = {
-  blue:    "text-blue-500",
-  violet:  "text-violet-500",
-  warning: "text-amber-600",
-}
-
+// Palette aligned with VARIANT_COLOR: warning = same #CB8275 used by MetricCard "Total de Críticos"
 const TYPE_CARD_TINT_HEX: Record<string, string> = {
   blue:    "#3b82f6",
   violet:  "#8b5cf6",
-  warning: "#f59e0b",
+  warning: "#CB8275",
 }
 
 function TypeCard({
@@ -799,29 +794,29 @@ function TypeCard({
     ? Math.round((count / totalIssues) * totalInvestimentoCentavos)
     : 0
   const tintHex = tint ? TYPE_CARD_TINT_HEX[tint] : undefined
+  const tintStyle: React.CSSProperties | undefined = tintHex ? { color: tintHex } : undefined
   const badgeStyle: React.CSSProperties | undefined = tintHex
     ? { backgroundColor: `${tintHex}1a`, color: tintHex }
     : undefined
   return (
     <div className="rounded-xl bg-surface-card p-4 shadow-card">
-      <div className="flex items-start justify-between gap-2">
-        <p className={cn("text-xs font-medium", tint ? TYPE_CARD_LABEL_COLOR[tint] : "text-text-secondary")}>{label}</p>
-        <div
-          className="flex size-10 shrink-0 items-center justify-center rounded-lg text-xs font-semibold tabular-nums"
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium text-text-secondary" style={tintStyle}>{label}</p>
+        <span
+          className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums leading-none"
           style={badgeStyle}
           aria-hidden
         >
           {hideValues ? "••" : `${pct}%`}
-        </div>
+        </span>
       </div>
       <p className="mt-1 text-xl font-bold text-text-primary tabular-nums">{count}</p>
-      <div className="mt-1.5 flex items-center gap-2 text-xs text-text-secondary">
+      <div className="mt-1.5 flex items-center justify-between text-xs text-text-secondary">
         <span className="tabular-nums">
           {hideValues
             ? <span className="tracking-widest text-text-disabled">••••</span>
             : formatDurationAvg(timeSpentSeconds)}
         </span>
-        <span className="text-border-default">·</span>
         <span className="tabular-nums">
           {hideValues
             ? <span className="tracking-widest text-text-disabled">••••</span>
