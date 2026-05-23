@@ -142,6 +142,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // e a tabela Auth `User` pode não existir ou não corresponder — gerava 500 no callback.
       if (token.id || token.email) {
         try {
+          const { ensureAllUserProfileColumns } = await import("@/core/prisma-schema-ensure")
+          await ensureAllUserProfileColumns()
           const prisma = await getPrisma()
           const userId = token.id as string | undefined
           const email = (token.email as string | undefined)?.trim().toLowerCase()

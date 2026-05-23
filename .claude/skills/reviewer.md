@@ -1,134 +1,112 @@
 ---
 name: reviewer
-description: Gate final obrigatório — revisão de código, consistência visual, segurança e qualidade antes de qualquer PR ou entrega. Use esta skill SEMPRE que o usuário pedir para revisar código, antes de criar um PR, ao finalizar uma feature, ou quando o orquestrador solicitar review final.
+description: Gate final obrigatório de Entrega — revisão de código, auditoria profunda de segurança (OWASP Top 10, IDOR, dados expostos), qualidade técnica, e geração automática de documentação do sistema em docs/. Use SEMPRE ao finalizar uma feature ou criar um PR.
 ---
 
-# Reviewer — Gate Final
+# Reviewer — Gate Final & Documentação
 
-Nada vai para produção sem passar aqui. Pensa como atacante, revisa como sênior.
-
----
-
-## 1. Qualidade de Código
-
-### Clareza e Manutenibilidade
-- [ ] Nomes expressivos (variáveis, funções, componentes)
-- [ ] Sem comentários que explicam O QUÊ (o código já faz isso) — apenas comentários de POR QUÊ quando não óbvio
-- [ ] Funções com responsabilidade única (< 40 linhas como indicativo)
-- [ ] Sem código duplicado (extrair para util/hook/service)
-- [ ] Sem `console.log`, `TODO`, `FIXME` ou código comentado
-
-### TypeScript
-- [ ] Sem `any` não justificado
-- [ ] Tipos explícitos em props de componentes
-- [ ] Return types em funções públicas
-- [ ] Enums / union types para valores fixos (não strings mágicas)
-
-### Arquitetura
-- [ ] Segue Clean Architecture (handler → service → repository)?
-- [ ] Server Components por padrão — `'use client'` justificado?
-- [ ] Mutations via Server Actions ou Route Handlers (não no cliente)
-- [ ] Sem lógica de negócio em componentes React
-- [ ] Sem queries Prisma fora de repositories
+Pensa como atacante, revisa como sênior, documenta como arquiteto. Nada vai para produção sem passar aqui.
 
 ---
 
-## 2. Segurança (Pensar como Atacante)
+## 1. Critérios de Aceite do QA Pré
 
-### Autenticação e Autorização
-- [ ] Todo endpoint/action verifica sessão com `auth()`
-- [ ] Verificação de permissão específica (não só estar logado)
-- [ ] Usuário A não consegue acessar dados do usuário B (IDOR)
-
-### Validação e Sanitização
-- [ ] Toda entrada externa validada com Zod (Route Handlers, Server Actions, params de URL)
-- [ ] Nenhuma interpolação de string em queries SQL
-- [ ] Dados do usuário escapados antes de renderizar no HTML
-
-### Exposição de Dados
-- [ ] `select` explícito no Prisma (nunca retornar objeto completo)
-- [ ] Sem campos sensíveis em responses (senhas, tokens, dados internos)
-- [ ] Stack traces não expostos em produção
-- [ ] Secrets apenas em variáveis de ambiente (nunca no código)
-
-### OWASP Top 10 — Verificação Rápida
-- [ ] A01 Broken Access Control → auth em todo endpoint?
-- [ ] A02 Cryptographic Failures → dados sensíveis criptografados?
-- [ ] A03 Injection → Prisma parameterized + Zod?
-- [ ] A07 Auth Failures → sessão expirada tratada?
-- [ ] A09 Logging → nada sensível nos logs?
+Antes de qualquer análise de código, confirme: **todos os BDDs definidos no QA Pré estão satisfeitos?** Se não, bloqueie imediatamente.
 
 ---
 
-## 3. Consistência Visual (UI Senior)
+## 2. Segurança (OWASP — Tolerância Zero)
 
-### Design System
-- [ ] Apenas tokens CSS do Design System (`var(--token-name)`)
-- [ ] Nenhum valor hardcoded de cor, espaçamento ou tipografia
-- [ ] Nenhuma classe Tailwind com valor arbitrário (`bg-[#abc]`, `p-[14px]`)
-- [ ] `npm run tokens:check` passa sem erros
-
-### Consistência de Componentes
-- [ ] Mesmo componente = mesmo visual em toda a aplicação
-- [ ] Variante correta do componente para o contexto (primário/secundário/destrutivo)
-- [ ] Hierarquia de ações respeitada (1 primário por tela/modal)
-- [ ] Spacing consistente com a escala do DS
-
-### Tipografia e Texto
-- [ ] Casing consistente (Sentence case ou Title Case — nunca misturado)
-- [ ] Mesmo termo para o mesmo conceito em toda a app
-- [ ] Sem mistura de idiomas (PT-BR ou EN — não os dois)
-- [ ] Mensagens de erro/sucesso no padrão estabelecido
-
-### Acessibilidade
-- [ ] Contraste mínimo 4.5:1 (AA)
-- [ ] Todos os elementos interativos acessíveis por teclado
-- [ ] `aria-label` em ícones e botões sem texto
-- [ ] `alt` em todas as imagens
+- [ ] **Auth**: `auth()` verificado em todo endpoint e Server Action antes de qualquer operação
+- [ ] **IDOR**: repository cruza `id` da entidade com `tenantId`/`userId` do dono — usuário A jamais acessa dados do B
+- [ ] **RBAC**: funcionalidades restritas verificam role explicitamente
+- [ ] **Zod**: toda entrada externa (query, body, params) validada
+- [ ] **SQL Injection**: sem interpolação de strings (Prisma parameterized queries)
+- [ ] **XSS**: dados do usuário escapados antes de renderizar
+- [ ] **Secrets**: sem API keys no código (apenas env vars)
+- [ ] **Logs**: sem PII (senha, token, CPF) em nenhum log
+- [ ] **Prisma select**: nunca retornar objeto completo — apenas campos usados pela tela
+- [ ] **CSRF**: Server Actions protegidos por design; Route Handlers verificam `Origin`
 
 ---
 
-## 4. Storybook
+## 3. Qualidade, Correção e Arquitetura
 
-- [ ] Todo componente reutilizável tem `*.stories.tsx`
-- [ ] Stories cobrem: default, loading, empty, error
-- [ ] Story reflete o estado atual do componente (não desatualizada)
-
----
-
-## 5. Performance
-
-- [ ] Sem re-renders desnecessários (props estáveis, memo onde justificado)
-- [ ] Sem requests duplicados para os mesmos dados
-- [ ] Queries Prisma com `select` (sem buscar campos não usados)
-- [ ] Imagens otimizadas com `next/image`
-- [ ] Imports pesados com `dynamic()` (lazy)
+- Implementação faz o que o requisito pede? Edge cases cobertos?
+- Handler orquestra → Service regras de negócio → Repository banco (sem mistura)
+- Sem `any` injustificado, `@ts-ignore`, `console.log` residual ou código morto
+- Sem duplicação desnecessária; nomes de variáveis/funções autoexplicativos
+- Server Components por padrão; sem re-renders desnecessários
 
 ---
 
-## Veredito Final
+## 4. Performance
 
-### APROVADO quando:
-- Todos os itens críticos (segurança + arquitetura) passam
-- Sem hardcode visual
-- TypeScript sem `any` injustificado
-- Storybook atualizado para novos componentes
-- Testes existem para fluxo principal
+- [ ] Queries sem N+1; `select` traz apenas campos necessários
+- [ ] Lazy loading (`dynamic()`) onde aplicável
+- [ ] Cache implementado para dados estáticos de leitura frequente
 
-### BLOQUEADO quando:
-❌ Qualquer falha de segurança (auth, IDOR, injection, exposição de dados)  
-❌ Hardcode de valores visuais fora do Design System  
-❌ Código sem tratamento de erro  
-❌ Componente reutilizável sem story  
-❌ `any` sem comentário de justificativa  
+---
 
-### Saída do Review
+## 5. Consistência Visual e Testabilidade
+
+- [ ] Zero hardcode visual — apenas tokens DS
+- [ ] Storybook atualizado para novos componentes
+- [ ] Testes cobrem fluxos críticos e verificam comportamento, não implementação
+
+---
+
+## Critérios de Bloqueio
+
+❌ BDDs do QA Pré não satisfeitos  
+❌ Vulnerabilidade de segurança ou IDOR  
+❌ Dado sensível exposto em log ou response  
+❌ Hardcode visual (cor, tamanho, espaçamento)  
+❌ Componente novo sem story  
+❌ `any` ou `@ts-ignore` injustificado  
+❌ Arquitetura misturada (banco no controller, regra no handler)
+
+---
+
+## Saída do Review
+
 ```
 STATUS: APROVADO / BLOQUEADO
 
-Bloqueadores críticos:
-- [lista]
+🛡️ BDDs + Segurança: [Passou / Blockers]
+💎 Qualidade e Arquitetura: [Passou / Warnings / Sugestões]
+⚡ Performance: [Passou / Warnings]
+🎨 Visual e Testes: [Passou / Blockers]
 
-Melhorias sugeridas (não bloqueiam):
-- [lista]
+📚 Documentação: docs/[caminho].md [gerado / atualizado / bloqueado]
 ```
+
+**Blockers** — problema + risco + solução sugerida.  
+**Warnings** — o porquê, não só o quê.  
+**Sugestões** — opcionais, mas justificadas.  
+**Aprovado** — confirme explicitamente que está pronto para produção.
+
+---
+
+## Geração de Documentação (Obrigatório se Aprovado)
+
+Gere ou atualize sem pedir permissão. Caminhos:
+- `docs/modules/[nome].md` — features/módulos
+- `docs/screens/[nome].md` — telas
+- `docs/database/schema.md` — mudanças estruturais de banco
+- `docs/INDEX.md` — atualizar sempre
+
+```markdown
+<!-- gerado por: reviewer | atualizado: YYYY-MM-DD -->
+# [Nome]
+## Objetivo
+## Perfis com Acesso e Regras de Negócio
+## Banco de Dados / Integrações (tabelas, side-effects)
+## Fluxos e Validações (mensagens de erro/sucesso, comportamentos)
+```
+
+---
+
+## Mentalidade
+
+Procure problemas reais — segurança, bugs que chegam ao usuário, débito técnico que vai custar caro. Seja direto e construtivo. Critique o código, não o autor.

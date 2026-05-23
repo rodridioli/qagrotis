@@ -1,29 +1,39 @@
+# DIRETRIZES DO SISTEMA (NÃO ALTERAR)
+1. Inicie lendo o arquivo C:\claude-qagrotis\.claude\skills\orchestrator.md e assuma a persona do Orquestrador.
+2. Siga o pipeline rigorosamente: UX → QA (Pré) → Back-end → Front-end → QA (Pós) → Reviewer.
+3. [Regra de Ouro]: NUNCA execute todas as etapas de uma vez. Termine uma etapa, apresente o resultado e pergunte se pode prosseguir.
+4. Zero Hardcode (Design System) e Documentação obrigatória no Storybook.
 
+# CONTEXTO DA TAREFA
+Antes de codificar, utilize suas ferramentas de busca para localizar os arquivos envolvidos:
+- src/core/rbac/policy.ts
+- src/app/(protected)/LayoutClient.tsx
+- src/app/(protected)/configuracoes/JiraConfigButton.tsx
+- src/app/(protected)/individual/progressao/page.tsx
+- src/hooks/useNotifications.ts (e ações mutáveis relacionadas)
+- src/app/(protected)/equipe/* (e suas respectivas abas atuais)
+- C:\claude-qagrotis\.claude\skills\front-end.md
 
-Diretrizes Essenciais:
-Você deve seguir obrigatoriamente o fluxo definido em C:\claude-agro\.claude\skills\orchestrator.md.
-Use os arquivos da pasta C:\claude-agro\.claude\skills como única fonte de verdade.
+# SOLICITAÇÕES
 
-Analise todas as pastas e arquivos do projeto e reorganize tudo para deixar mais organizado, trace um plano para fazer esta mudança e depois execute com uma estrutura de pastas e arquivos profissional. Garanta antes de executar que nada no sistema era parar de funcionar e remova todos os arquivos que são descenssários.
+[Segurança e Configurações]
+1. RBAC (`policy.ts`): Remover "config.modelosIA" e "config.jira" de todos os papéis (como QA, UX, TW), mantendo-as exclusivas para Administrador:MGR.
+2. Navegação Global: Remover permanentemente o menu "Documentos" do array estático NAV_ITEMS e a capability "menu.documentos" de todos os perfis.
+3. Desabilitar Gerador (`LayoutClient.tsx`): Usar a propriedade `integracoesProp` injetada. Se a lista de integrações for vazia, marcar o menu "Gerador" como `disabled` para todos no sistema.
 
-Diretrizes Críticas:
-Pipeline Obrigatório: UX → QA (pré) → FRONT → BACK → QA (pós) → REVIEW.
-Zero Hardcode: Use 100% dos tokens semânticos do Design System.
-Documentação: Todo componente novo deve ser criado no Storybook.
-Segurança e QA: Não gere código antes de definir os cenários BDD e os critérios de aceite.
+[UI e UX]
+4. Configuração Jira (`JiraConfigButton.tsx`): Remover o parágrafo "Suas credenciais ficam vinculadas à sua conta..." da modal.
+5. Regra de Botões (`front-end.md`): Atualizar a skill de front-end adicionando a regra obrigatória de que "Todos os botões criados/refatorados DEVEM possuir um ícone LucideReact à esquerda do texto". Fazer varredura na aplicação para adicionar ícones faltantes (ex: modal de "Ativar").
+6. Ocultar Valores Monetários (Página de Progressão): Inicializar células com valores ofuscados (ex: R$ •••••••). Inserir um <button> minimalista com ícone <Eye> / <EyeOff> ao lado para revelar o valor real apenas ao clicar.
 
-# SOLICITAÇÃO:
-Na tela http://localhost:3000/individual/feedbacks/cmotkleqh0009uodpewv2kdcx?userId=T-PQA, quando eu preencho os campos obrigatórios e clico em salvar como rascunho ou concluir, os dados não estão persistindo no banco de dados, eles somem após após salvar. corrija isso
+[Features Maiores]
+7. Dashboard Progressão MGR (`individual/progressao/page.tsx`): 
+   - Renderização condicional para Perfil MGR ou T-AMG.
+   - Quando for MGR, exibir um Dashboard com: Topcards (Perfis de Acesso, Usuários, Feedbacks, Avaliações), Tabela "Avaliações" (últimas 4/5, filtráveis por Perfil e data), Gráfico "Usuários por Perfil" e Cards Menores (Avaliações, Feedbacks, Chapters, Ausências).
+   - Ocultar cards "Cenários por Módulo" e "Últimas automações" para MGR.
+8. Reestruturação do Menu Equipe (`LayoutClient.tsx` e rotas):
+   - Criar `EquipeSidebarNavGroup` como menu Collapsible englobando: Performance, Chapters, Horários, Férias, Ausências, Metas e Aniversários.
+   - Migrar as <Tabs> da rota `/equipe` para sub-rotas isoladas no Next.js App Router (ex: `/equipe/performance`), com layouts que preservem a navegação e carreguem rápido de forma isolada.
 
-Na tela http://localhost:3000/individual/conquistas?userId=T-PQA, se eu sou usuário administrador com perfil mgr, eu posso visualizar as conquistas de todos os usuários. Basta eu selecionar a foto do usuário e visualizar as conquistas. Igual temos na tela de http://localhost:3000/individual/avaliacoes?userId=T-PQA, eu tenho um seletor onde eu clico na foto do usuário.
-
-Na tela http://localhost:3000/individual/conquistas?userId=T-PQA, seja do administrador mgr ou do usuário avaliado, mostrar os grupos de badges em containers igual ao da imagem anexa, só que onde diz Total de feedbacks, colocar Tempo de Empresa, por exemplo e no lugar de "Nenhum registro encontrado", mostrar os badges correspondentes. Além disso, deixe os badges com os cantos levemente arredondados. Troque a palavra pós-graduação por somente "Pós".
-
-Na animação dos badges de conquista, eu espero uma animação mais atrativa, igual a do link https://lottiefiles.com/free-animation/winner-9kYX1oxwyH.
-
-Requisitos Específicos:
-Responsividade mobile-first
-
-Formato de Saída:
-Sempre responda estruturando a saída pelas etapas do pipeline.
-Se qualquer etapa falhar nos critérios de aceitação das skills, pare, corrija e reexecute antes de prosseguir.
+[Performance e Real-Time]
+9. Notificações Delay: Eliminar o delay ao salvar avaliações/feedbacks. Atualizar as Server Actions para forçar imediatamente um `revalidateTag('notifications')` ou engatilhar refetch no React Query para que a sineta notifique o cliente no exato momento da inserção no banco.

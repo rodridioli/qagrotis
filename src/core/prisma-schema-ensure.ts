@@ -433,7 +433,7 @@ CREATE TABLE IF NOT EXISTS "Notification" (
     "link" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Notification_pkey" PRIMARY KEY ("id"),
-    CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "CreatedUser"(id) ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "CreatedUser"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 `)
     await prisma.$executeRawUnsafe(
@@ -446,7 +446,7 @@ CREATE TABLE IF NOT EXISTS "UserBadge" (
     "badgeId" TEXT NOT NULL,
     "unlockedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "UserBadge_pkey" PRIMARY KEY ("id"),
-    CONSTRAINT "UserBadge_userId_fkey" FOREIGN KEY ("userId") REFERENCES "CreatedUser"(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "UserBadge_userId_fkey" FOREIGN KEY ("userId") REFERENCES "CreatedUser"("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "UserBadge_userId_badgeId_key" UNIQUE ("userId", "badgeId")
 );
 `)
