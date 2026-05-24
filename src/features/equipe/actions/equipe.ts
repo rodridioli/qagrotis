@@ -15,6 +15,7 @@ import {
 } from "@/core/prisma-schema-ensure"
 import { USER_PROFILE_READ_SELECT } from "@/features/usuarios/lib/prisma-user-selects"
 import { resolveHistoricoRunnerEmailKey } from "@/lib/historico-runner-attribution"
+import { unstable_cache } from "next/cache"
 import { requireSession } from "@/core/session"
 import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credentials-db"
 import {
@@ -746,15 +747,8 @@ export interface EquipeMembroLancamentos {
   photoPath: string | null
 }
 
-/**
- * Lista membros ativos para o seletor de usuário na tab Lançamentos do Equipe.
- * Quando accessProfile é passado, filtra apenas usuários daquele perfil.
- */
-export async function getEquipeMembrosParaLancamentos(
-  accessProfile?: string | null,
-): Promise<EquipeMembroLancamentos[]> {
-  try {
-    await requireSession()
+const _getCachedAllMembrosLancamentos = unstable_cache(
+  async (): Promise<EquipeMembroLancamentos[]> => {
     const [inactiveRecords, profiles, createdUsers] = await Promise.all([
       prisma.inactiveUser.findMany({ select: { userId: true } }),
       prisma.userProfile.findMany({
@@ -767,7 +761,6 @@ export async function getEquipeMembrosParaLancamentos(
 
     const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
     const profileMap = new Map(profiles.map((p) => [p.userId, p]))
-
     const byEmail = new Map<string, EquipeMembroLancamentos>()
 
     for (const u of createdUsers) {
@@ -780,12 +773,25 @@ export async function getEquipeMembrosParaLancamentos(
       byEmail.set(email, { userId: u.id, name: p?.name ?? u.name ?? email, accessProfile: profile, photoPath })
     }
 
-    let result = [...byEmail.values()]
-    if (accessProfile) {
-      result = result.filter((u) => u.accessProfile === accessProfile)
-    }
+    return [...byEmail.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+  },
+  ["equipe-membros-lancamentos"],
+  { revalidate: 300 },
+)
 
-    return result.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+/**
+ * Lista membros ativos para o seletor de usuário na tab Lançamentos do Equipe.
+ * Quando accessProfile é passado, filtra apenas usuários daquele perfil.
+ * A query ao banco é cacheada por 5 minutos no servidor.
+ */
+export async function getEquipeMembrosParaLancamentos(
+  accessProfile?: string | null,
+): Promise<EquipeMembroLancamentos[]> {
+  try {
+    await requireSession()
+    const all = await _getCachedAllMembrosLancamentos()
+    if (!accessProfile) return all
+    return all.filter((u) => u.accessProfile === accessProfile)
   } catch (e) {
     console.error("[getEquipeMembrosParaLancamentos]", e)
     return []

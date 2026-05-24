@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useQuery, keepPreviousData } from "@tanstack/react-query"
 import {
   AlertTriangle,
   BarChart3,
@@ -13,6 +14,7 @@ import {
   Hash,
   LayoutDashboard,
   Layers,
+  LoaderCircle,
   PlugZap,
   Search,
   Users,
@@ -463,6 +465,44 @@ function DashboardPanel({
 
 // ── Main section ─────────────────────────────────────────────────────────────
 
+async function fetchLancamentos(
+  evaluatedUserId: string,
+  from: string,
+  to: string,
+  preset: LancamentosPeriodPreset,
+  signal: AbortSignal,
+): Promise<ApiOk> {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+  async function fetchOnce(f: string, t: string): Promise<ApiOk> {
+    const qs = new URLSearchParams({ from: f, to: t, userId: evaluatedUserId, tz })
+    const res = await fetch(`/api/jira/lancamentos?${qs}`, { credentials: "same-origin", signal })
+    const body = (await res.json().catch(() => null)) as ApiOk | { error?: string } | null
+    if (!res.ok) {
+      const msg =
+        typeof body === "object" && body && "error" in body && typeof body.error === "string"
+          ? body.error
+          : "Não foi possível carregar os lançamentos."
+      throw new Error(msg)
+    }
+    return body as ApiOk
+  }
+
+  const phase1 = await fetchOnce(from, to)
+
+  // Preset "anterior": fase 1 traz 14 dias, fase 2 refina para o dia mais recente com entradas.
+  if (preset === "anterior" && from !== to) {
+    const maxDate =
+      phase1.entries?.reduce((max, e) => {
+        const d = e.started?.slice(0, 10) ?? ""
+        return d > max ? d : max
+      }, "") ?? ""
+    if (maxDate) return fetchOnce(maxDate, maxDate)
+  }
+
+  return phase1
+}
+
 export function IndividualLancamentosSection({
   evaluatedUserId,
   evaluatedUserAccessProfile,
@@ -474,142 +514,67 @@ export function IndividualLancamentosSection({
   const preset = isControlled ? presetProp : presetInternal
   const [from, setFrom] = React.useState(() => getLancamentosPresetRange("week").from)
   const [to, setTo] = React.useState(() => getLancamentosPresetRange("week").to)
-  // Tracks whether the "anterior" two-phase refinement is in progress
-  const [anteriormenteRefining, setAnteriormenteRefining] = React.useState(false)
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
-  const [data, setData] = React.useState<ApiOk | null>(null)
-  const [jiraBase, setJiraBase] = React.useState<string | null>(null)
-  const [jiraConfigured, setJiraConfigured] = React.useState<boolean | null>(null)
   const [search, setSearch] = React.useState("")
-
-  // AbortController para cancelar requisições em voo ao trocar filtros
-  const abortRef = React.useRef<AbortController | null>(null)
   const toastShownRef = React.useRef(false)
 
   React.useEffect(() => {
     if (presetProp === undefined) return
     const r = getLancamentosPresetRange(presetProp)
-    setAnteriormenteRefining(false)
     setFrom(r.from)
     setTo(r.to)
   }, [presetProp])
 
+  // Credenciais verificadas uma vez por sessão — staleTime: Infinity evita refetch.
+  const credentialsQuery = useQuery({
+    queryKey: ["jira-credentials"],
+    queryFn: async () => {
+      const res = await fetch("/api/jira/credentials", { credentials: "same-origin" })
+      if (!res.ok) return { configured: false, jiraUrl: "" }
+      return res.json() as Promise<{ jiraUrl?: string; configured?: boolean }>
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
+
+  const jiraConfigured = credentialsQuery.data?.configured ?? null
+
   React.useEffect(() => {
-    let cancelled = false
-    fetch("/api/jira/credentials", { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { jiraUrl?: string; configured?: boolean } | null) => {
-        if (cancelled) return
-        const configured = d?.configured ?? false
-        setJiraConfigured(configured)
-        if (d?.jiraUrl?.trim()) {
-          setJiraBase((prev) => prev ?? String(d.jiraUrl).replace(/\/$/, ""))
-        }
-        if (!configured && !toastShownRef.current) {
-          toastShownRef.current = true
-          setLoading(false)
-          toast.warning("Integração com Jira não configurada", {
-            description: "Configure sua conta Jira em Configurações para visualizar os lançamentos.",
-            action: {
-              label: "Configurações",
-              onClick: () => { window.location.href = "/configuracoes" },
-            },
-            duration: 8000,
-          })
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setJiraConfigured(false)
-          setLoading(false)
-        }
-      })
-    return () => { cancelled = true }
-  }, [])
-
-  const load = React.useCallback(async () => {
-    if (jiraConfigured !== true) return
-    // Aborta qualquer requisição anterior em voo antes de iniciar uma nova
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-    const { signal } = controller
-
-    setLoading(true)
-    setError(null)
-    const qs = new URLSearchParams({
-      from,
-      to,
-      userId: evaluatedUserId,
-      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    if (jiraConfigured !== false) return
+    if (toastShownRef.current) return
+    toastShownRef.current = true
+    toast.warning("Integração com Jira não configurada", {
+      description: "Configure sua conta Jira em Configurações para visualizar os lançamentos.",
+      action: {
+        label: "Configurações",
+        onClick: () => { window.location.href = "/configuracoes" },
+      },
+      duration: 8000,
     })
-    try {
-      const res = await fetch(`/api/jira/lancamentos?${qs}`, {
-        credentials: "same-origin",
-        signal,
-      })
-      if (signal.aborted) return
+  }, [jiraConfigured])
 
-      const body = (await res.json().catch(() => null)) as ApiOk | { error?: string } | null
-      if (signal.aborted) return
-
-      if (!res.ok) {
-        const msg =
-          typeof body === "object" && body && "error" in body && typeof body.error === "string"
-            ? body.error
-            : "Não foi possível carregar os lançamentos."
-        throw new Error(msg)
-      }
-      const ok = body as ApiOk
-
-      // "Anterior": fase 1 — 14 dias até ontem. Refina para o dia mais recente com entradas.
-      // Keep loading=true so the spinner stays alive while phase 2 runs.
-      if (preset === "anterior" && !anteriormenteRefining && from !== to) {
-        const maxDate = ok.entries?.reduce((max, e) => {
-          const d = e.started?.slice(0, 10) ?? ""
-          return d > max ? d : max
-        }, "") ?? ""
-        if (maxDate) {
-          setAnteriormenteRefining(true)
-          setFrom(maxDate)
-          setTo(maxDate)
-          return // loading stays true — phase 2 will clear it
-        }
-      }
-      setAnteriormenteRefining(false)
-      setData(ok)
-      setLoading(false)
-      if (ok.jiraBrowseBase?.trim()) {
-        setJiraBase(ok.jiraBrowseBase.replace(/\/$/, ""))
-      }
-    } catch (e) {
-      // Ignora erros de requisições abortadas — não atualiza estado
-      if (signal.aborted) return
-      setAnteriormenteRefining(false)
-      setData(null)
-      setError(e instanceof Error ? e.message : "Erro ao carregar.")
-      setLoading(false)
-    }
-  }, [evaluatedUserId, from, to, preset, anteriormenteRefining, jiraConfigured])
-
-  React.useEffect(() => {
-    void load()
-    // Aborta a requisição em voo ao desmontar ou quando load mudar (novo filtro)
-    return () => { abortRef.current?.abort() }
-  }, [load])
+  const lancamentosQuery = useQuery({
+    queryKey: ["lancamentos", evaluatedUserId, from, to, preset],
+    queryFn: ({ signal }) => fetchLancamentos(evaluatedUserId, from, to, preset, signal),
+    enabled: jiraConfigured === true,
+    staleTime: 60_000,
+    gcTime: 300_000,
+    refetchInterval: 60_000,
+    placeholderData: keepPreviousData,
+  })
 
   function applyPreset(p: LancamentosPeriodPreset) {
     const r = getLancamentosPresetRange(p)
     if (!isControlled) setPresetInternal(p)
     onPresetChange?.(p)
-    setAnteriormenteRefining(false)
     setFrom(r.from)
     setTo(r.to)
-    // Clear stale data immediately so the spinner shows before the effect fires.
-    setData(null)
-    setLoading(true)
   }
+
+  const data = lancamentosQuery.data ?? null
+  const isLoading = credentialsQuery.isLoading || lancamentosQuery.isLoading
+  const isFetching = lancamentosQuery.isFetching
+  const error = lancamentosQuery.error ? (lancamentosQuery.error as Error).message : null
+  const jiraBase = data?.jiraBrowseBase?.trim() ? data.jiraBrowseBase.replace(/\/$/, "") : null
 
   const allEntries = data?.entries ?? []
 
@@ -628,10 +593,22 @@ export function IndividualLancamentosSection({
   }, [groupedEntries, search])
 
   const toolbarLeadingSummary = (
-    <span className="text-sm font-medium text-text-primary">
-      Lançamentos:{" "}
-      <span className="font-bold">{filtered.length.toLocaleString("pt-BR")}</span>
-    </span>
+    <div className="flex items-center gap-3">
+      <span className="text-sm font-medium text-text-primary">
+        Lançamentos:{" "}
+        <span className="font-bold">{filtered.length.toLocaleString("pt-BR")}</span>
+      </span>
+      {isFetching && !isLoading && (
+        <span
+          role="status"
+          aria-live="polite"
+          className="flex items-center gap-1.5 text-xs text-text-secondary"
+        >
+          <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
+          Atualizando…
+        </span>
+      )}
+    </div>
   )
 
   return (
@@ -676,7 +653,7 @@ export function IndividualLancamentosSection({
             Ir para Configurações
           </a>
         </div>
-      ) : loading ? (
+      ) : isLoading ? (
         <SectionSpinner />
       ) : error ? (
         <EmptyState message={`Erro: ${error}`} />
