@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { getUxWorklogsForYear } from "@/features/qa/actions/jira-worklog-cache"
+import { computeJiraKpis, isBrokenTest, priorityIsCritical } from "@/features/qa/lib/jira-stats-kpis"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
 import type { ProgressaoHistoricoEntry } from "@/features/individual/actions/individual-progressao"
 
@@ -169,107 +170,14 @@ function getValorHoraForMonth(
 }
 
 // ─── QA year-level totals ──────────────────────────────────────────────────────
+// Computed by computeJiraKpis from @/features/qa/lib/jira-stats-kpis (shared module).
+// priorityIsCritical and isBrokenTest are also imported from that module.
 
 interface QaYearTotals {
   cenariosTestados: number
   cenariosErro: number
   jirasBroken: number
   criticos: number
-}
-
-// ─── Priority helpers (mirrors IndividualLancamentosSection logic) ─────────────
-
-function normalizePriorityToken(p: string): string {
-  return p
-    .normalize("NFD")
-    .replace(/\p{Mark}/gu, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase()
-}
-
-function priorityIsCritical(p: string | null | undefined): boolean {
-  if (!p?.trim()) return false
-  const n = normalizePriorityToken(p)
-  return (
-    n === "critical" ||
-    n === "critico" ||
-    n === "highest" ||
-    n === "critica" ||
-    n === "alta" ||
-    n === "blocker" ||
-    n === "imediato" ||
-    n.includes("critical") ||
-    n.includes("critica") ||
-    n.includes("critico")
-  )
-}
-
-/**
- * Agrega entries QA para os cards de ano.
- * - cenariosTestados: SUM(qtdCenariosQA) por issue única (pega o máximo por issue)
- * - cenariosErro:     SUM de max(qtdCenariosErro) por issue; fallback para qtdCenariosQA em Broken Tests sem qtdCenariosErro (Tipo B)
- * - jirasBroken:      count de issues únicas cujo issueType ∈ brokenTestIssueTypeNames
- * - criticos:         count de issues únicas com prioridade crítica
- */
-function aggregateQaYearTotals(
-  entries: JiraEntry[],
-  normalizedBrokenTypes: string[],
-): QaYearTotals {
-  const cenariosQAByIssue = new Map<string, number>()
-  const cenariosErroByIssue = new Map<string, number>()
-  const brokenTestQAByIssue = new Map<string, number>()
-  const brokenIssues = new Set<string>()
-  const criticoIssues = new Set<string>()
-
-  const isBrokenTest = (e: JiraEntry) => {
-    const t = (e.issueType ?? "").toLowerCase().trim()
-    return normalizedBrokenTypes.length > 0
-      ? normalizedBrokenTypes.some((n) => t === n)
-      : t.includes("broken")
-  }
-
-  for (const e of entries) {
-    if (e.qtdCenariosQA > 0) {
-      cenariosQAByIssue.set(
-        e.issueKey,
-        Math.max(cenariosQAByIssue.get(e.issueKey) ?? 0, e.qtdCenariosQA),
-      )
-    }
-    // Tipo A: qtdCenariosErro direto
-    if (e.qtdCenariosErro > 0) {
-      cenariosErroByIssue.set(
-        e.issueKey,
-        Math.max(cenariosErroByIssue.get(e.issueKey) ?? 0, e.qtdCenariosErro),
-      )
-    }
-    // Tipo B: Broken Test sem qtdCenariosErro → accumulate qtdCenariosQA for fallback
-    if (isBrokenTest(e) && e.qtdCenariosQA > 0) {
-      brokenTestQAByIssue.set(
-        e.issueKey,
-        Math.max(brokenTestQAByIssue.get(e.issueKey) ?? 0, e.qtdCenariosQA),
-      )
-    }
-    if (isBrokenTest(e)) brokenIssues.add(e.issueKey)
-    if (priorityIsCritical(e.priority)) criticoIssues.add(e.issueKey)
-  }
-
-  const cenariosTestados = Array.from(cenariosQAByIssue.values()).reduce((s, v) => s + v, 0)
-
-  // Cenários com erro: Tipo A + Tipo B fallback (only for issues without Tipo A)
-  let cenariosErro = Array.from(cenariosErroByIssue.values()).reduce((s, v) => s + v, 0)
-  for (const [key, v] of brokenTestQAByIssue.entries()) {
-    if (!cenariosErroByIssue.has(key)) {
-      cenariosErro += v
-    }
-  }
-
-  return {
-    cenariosTestados,
-    cenariosErro,
-    jirasBroken: brokenIssues.size,
-    criticos: criticoIssues.size,
-  }
 }
 
 // ─── AvatarStrip ──────────────────────────────────────────────────────────────
@@ -835,12 +743,8 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
         if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
       }
 
-      const isBrokenTestEntry = (e: JiraEntry) => {
-        const t = (e.issueType ?? "").toLowerCase().trim()
-        return normalizedBrokenTypes.length > 0
-          ? normalizedBrokenTypes.some((n) => t === n)
-          : t.includes("broken")
-      }
+      // isBrokenTest and priorityIsCritical imported from @/features/qa/lib/jira-stats-kpis
+      const isBrokenTestEntry = (e: JiraEntry) => isBrokenTest(e.issueType, normalizedBrokenTypes)
 
       type CB = {
         all: Set<string>
@@ -911,7 +815,14 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
 
     const anchoredEntries = allEntries.filter(e => anchoredIssueKeys.has(e.issueKey))
 
-    const yTotals = aggregateQaYearTotals(anchoredEntries, normalizedBrokenTypes)
+    // Use shared computeJiraKpis — single source of truth for KPI logic across all screens
+    const yKpis = computeJiraKpis(anchoredEntries, brokenTestIssueTypeNames)
+    const yTotals: QaYearTotals = {
+      cenariosTestados: yKpis.cenariosTestados,
+      cenariosErro:     yKpis.cenariosErro,
+      jirasBroken:      yKpis.jirasBroken,
+      criticos:         yKpis.criticalCount,
+    }
 
     const periodProjectInvestment = (project: string): number =>
       activeMonths.reduce((s, m) => s + (projectMonthInvestmentMap.get(project)?.[m] ?? 0), 0)

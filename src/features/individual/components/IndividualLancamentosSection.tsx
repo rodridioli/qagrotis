@@ -44,6 +44,7 @@ import {
   LANCAMENTOS_PRESET_OPTIONS,
   type LancamentosPeriodPreset,
 } from "@/features/individual/lib/individual-lancamentos-date-presets"
+import { computeJiraKpis } from "@/features/qa/lib/jira-stats-kpis"
 
 export interface IndividualLancamentosSectionProps {
   evaluatedUserId: string
@@ -144,53 +145,20 @@ function groupByIssueKey(entries: LancamentoRow[]): LancamentoRow[] {
 
 type ProjectHours = { key: string; name: string | null; seconds: number }
 
-function normalizePriorityToken(p: string): string {
-  return p
-    .normalize("NFD")
-    .replace(/\p{Mark}/gu, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase()
-}
-
-function priorityIsCritical(p: string | null | undefined): boolean {
-  if (!p?.trim()) return false
-  const n = normalizePriorityToken(p)
-  return (
-    n === "critical" ||
-    n === "critico" ||
-    n === "highest" ||
-    n === "critica" ||
-    n === "alta" ||
-    n === "blocker" ||
-    n === "imediato" ||
-    n.includes("critical") ||
-    n.includes("critica") ||
-    n.includes("critico")
-  )
-}
-
+/**
+ * Computes display stats for the Lançamentos DashboardPanel.
+ *
+ * QA KPIs (totalIssues, criticalCount, jirasBroken, cenariosTestados, cenariosErro)
+ * are delegated to `computeJiraKpis` from @/features/qa/lib/jira-stats-kpis — the
+ * single source of truth shared with all team dashboards (QA / UX / TW).
+ * Non-KPI fields (projectHours, docReviewCount, newDocCount) are computed locally.
+ */
 function computeStats(entries: LancamentoRow[], brokenTestTypeNames?: string[]) {
   const projectMap = new Map<string, number>()
   const projectNameMap = new Map<string, string>()
-  const issueSet = new Set<string>()
-  const criticalIssues = new Set<string>()
-  const brokenTestIssues = new Set<string>()
   const docReviewIssues = new Set<string>()
   const newDocIssues = new Set<string>()
-  const qtdByIssue = new Map<string, number>()
-  const qtdErroByIssue = new Map<string, number>()
-  const qtdBrokenTestQAByIssue = new Map<string, number>()
 
-  // Usa os nomes reais configurados no servidor (mesmo env var do JQL).
-  // Fallback para "includes broken" garante retrocompat sem config.
-  const normalizedBrokenTypes = (brokenTestTypeNames ?? []).map((t) => t.toLowerCase().trim())
-  const isBrokenTest = (e: LancamentoRow) => {
-    const t = (e.issueType ?? "").toLowerCase().trim()
-    return normalizedBrokenTypes.length > 0
-      ? normalizedBrokenTypes.some((n) => t === n)
-      : t.includes("broken")
-  }
   const isDocReview = (e: LancamentoRow) =>
     (e.issueType ?? "").toLowerCase() === "documentation review"
   const isNewDoc = (e: LancamentoRow) =>
@@ -202,79 +170,29 @@ function computeStats(entries: LancamentoRow[], brokenTestTypeNames?: string[]) 
     if (e.projectName?.trim() && !projectNameMap.has(pk)) {
       projectNameMap.set(pk, e.projectName.trim())
     }
-    issueSet.add(e.issueKey)
-    if (priorityIsCritical(e.priority)) criticalIssues.add(e.issueKey)
-    if (isBrokenTest(e)) brokenTestIssues.add(e.issueKey)
-    if (isBrokenTest(e) && e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)) {
-      const prev = qtdBrokenTestQAByIssue.get(e.issueKey) ?? 0
-      qtdBrokenTestQAByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosQA))
-    }
     if (isDocReview(e)) docReviewIssues.add(e.issueKey)
     if (isNewDoc(e)) newDocIssues.add(e.issueKey)
-    if (e.qtdCenariosQA != null && Number.isFinite(e.qtdCenariosQA)) {
-      const prev = qtdByIssue.get(e.issueKey) ?? 0
-      qtdByIssue.set(e.issueKey, Math.max(prev, e.qtdCenariosQA))
-    }
-    // Lógica de cálculo de Cenários com Erro:
-    // 1. Se o campo "Qtd. Cenários com Erro" está preenchido → usa diretamente (Tipo A)
-    // 2. Se não está preenchido E a issue é "Broken Test" → fallback para "Qtd. Cenários QA" (Tipo B)
-    // 3. Caso contrário → contribuição zero
-    let errCount: number | null = null
-    if (e.qtdCenariosErro != null && Number.isFinite(e.qtdCenariosErro)) {
-      errCount = e.qtdCenariosErro
-    } else if (
-      isBrokenTest(e) &&
-      e.qtdCenariosQA != null &&
-      Number.isFinite(e.qtdCenariosQA)
-    ) {
-      errCount = e.qtdCenariosQA
-    }
-    if (errCount != null) {
-      const prev = qtdErroByIssue.get(e.issueKey) ?? 0
-      qtdErroByIssue.set(e.issueKey, Math.max(prev, errCount))
-    }
-  }
-
-  let qtdCenariosTotal = 0
-  for (const v of qtdByIssue.values()) {
-    qtdCenariosTotal += v
-  }
-
-  let qtdCenariosErroTotal = 0
-  for (const v of qtdErroByIssue.values()) {
-    qtdCenariosErroTotal += v
-  }
-
-  let qtdCenariosQABrokenTestTotal = 0
-  for (const v of qtdBrokenTestQAByIssue.values()) {
-    qtdCenariosQABrokenTestTotal += v
-  }
-
-  // Regra de negócio: cada Jira contribui com apenas um valor.
-  // Prioridade: "Qtd Cenários com Erro". Fallback: "Qtd. Cenários QA" apenas
-  // para Broken Tests que não possuem o campo principal.
-  let cenariosComErroFinalTotal = qtdCenariosErroTotal
-  for (const [key, v] of qtdBrokenTestQAByIssue.entries()) {
-    if (!qtdErroByIssue.has(key)) {
-      cenariosComErroFinalTotal += v
-    }
   }
 
   const projectHours: ProjectHours[] = Array.from(projectMap.entries())
     .map(([key, seconds]) => ({ key, name: projectNameMap.get(key) ?? null, seconds }))
     .sort((a, b) => b.seconds - a.seconds)
 
+  // Shared KPI computation — same logic as all team dashboards
+  const kpis = computeJiraKpis(entries, brokenTestTypeNames ?? [])
+
   return {
     projectHours,
-    totalIssues: issueSet.size,
-    criticalCount: criticalIssues.size,
-    brokenTestCountFromWorklogs: brokenTestIssues.size,
+    totalIssues: kpis.totalIssues,
+    criticalCount: kpis.criticalCount,
+    brokenTestCountFromWorklogs: kpis.jirasBroken,
     docReviewCount: docReviewIssues.size,
     newDocCount: newDocIssues.size,
-    qtdCenariosTotal,
-    qtdCenariosErroTotal,
-    qtdCenariosQABrokenTestTotal,
-    cenariosComErroFinalTotal,
+    qtdCenariosTotal: kpis.cenariosTestados,
+    // qtdCenariosErroTotal kept for API-compat fallback; same value as cenariosComErroFinalTotal
+    qtdCenariosErroTotal: kpis.cenariosErro,
+    qtdCenariosQABrokenTestTotal: 0, // deprecated intermediate — no longer needed
+    cenariosComErroFinalTotal: kpis.cenariosErro,
   }
 }
 

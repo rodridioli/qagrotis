@@ -43,6 +43,16 @@ export interface UxJiraEntry {
 
 const JIRA_KEY_RE = /^[A-Z][A-Z0-9]*-\d+$/i
 
+// ── In-process metadata freshness cache ──────────────────────────────────────
+
+/**
+ * TTL for issue metadata re-validation (issueType, priority, qtdCenariosQA, etc.).
+ * Module-level map survives across requests in the same Node.js process.
+ * If the process restarts, the TTL resets — which triggers a Jira call on the next request.
+ */
+const METADATA_TTL_MS = 15 * 60 * 1000
+const metadataRefreshTimestamps = new Map<string, number>()
+
 // ── Freshness helpers ─────────────────────────────────────────────────────────
 
 function pad(n: number) {
@@ -310,6 +320,117 @@ async function syncMonthsForUser(
   }
 }
 
+// ── Metadata refresh ─────────────────────────────────────────────────────────
+
+/**
+ * Re-fetches Jira issue metadata (issueType, priority, qtdCenariosQA, qtdCenariosErro,
+ * tag, projectName, typeField, status, retornos) for ALL issues cached for a given
+ * user+year, updating the cache rows in place.
+ *
+ * **Why this exists:** The worklog sync (`syncMonthsForUser`) is treated as immutable
+ * for months older than the previous month. However, issue metadata can change in Jira
+ * after the initial sync (e.g. issueType changes from "Bug" to "Broken Test", or
+ * qtdCenariosQA is updated). Without this refresh, the Dashboard shows stale counts
+ * while the Lançamentos screen (live API) shows correct ones.
+ *
+ * Uses a 15-minute in-process TTL per (userId, year) to avoid hammering Jira on every
+ * dashboard mount. The TTL resets on process restart.
+ */
+async function refreshIssueMetadataForUserYear(
+  targetUserId: string,
+  year: number,
+  viewerUserId: string,
+): Promise<void> {
+  const cacheKey = `${targetUserId}:${year}`
+  const lastRefresh = metadataRefreshTimestamps.get(cacheKey) ?? 0
+  if (Date.now() - lastRefresh < METADATA_TTL_MS) return
+
+  // Collect all unique issue keys in cache for this user+year
+  const rows = await prisma.jiraWorklogCache.findMany({
+    where: { userId: targetUserId, year },
+    select: { issueKey: true },
+    distinct: ["issueKey"],
+  })
+  if (rows.length === 0) {
+    metadataRefreshTimestamps.set(cacheKey, Date.now())
+    return
+  }
+  const issueKeys = (rows as { issueKey: string }[]).map((r) => r.issueKey)
+
+  const creds = await resolveJiraCredentialsForRequest(viewerUserId)
+  if (!creds) {
+    console.warn(
+      "[metadata-refresh] Credenciais Jira não configuradas para viewerUserId=%s — refresh abortado para userId=%s year=%d",
+      viewerUserId,
+      targetUserId,
+      year,
+    )
+    return
+  }
+
+  const { jiraUrl, jiraEmail, apiToken } = creds
+  const base = jiraUrl
+  const credentials = Buffer.from(`${jiraEmail}:${apiToken}`).toString("base64")
+
+  const fieldMap = await fetchIssueFieldsForKeys(base, credentials, issueKeys).catch(
+    () => new Map<string, import("@/features/qa/lib/jira-worklogs-fetch").LancamentoIssueFieldsPatch>(),
+  )
+  await augmentFieldMapWithGetIssueFallback(base, credentials, fieldMap, issueKeys).catch(() => undefined)
+  const retornosMap = await fetchRetornosForKeys(base, credentials, issueKeys).catch(
+    () => new Map<string, RetornosResult>(),
+  )
+
+  // Update all cache rows for each issue with the fresh metadata fields
+  if (fieldMap.size > 0 || retornosMap.size > 0) {
+    await Promise.all(
+      issueKeys.map(async (rawKey) => {
+        const key = rawKey.trim().toUpperCase()
+        const patch = fieldMap.get(key)
+        const retornosData = retornosMap.get(key)
+        if (!patch && !retornosData) return
+
+        const updateData: Record<string, unknown> = {}
+        if (patch) {
+          // Only overwrite fields that Jira returned non-null values for
+          if (patch.issueType != null)   updateData.issueType   = patch.issueType.trim()   || null
+          if (patch.typeField != null)   updateData.typeField   = patch.typeField.trim()   || null
+          if (patch.projectName != null) updateData.projectName = patch.projectName.trim() || null
+          if (patch.priority != null)    updateData.priority    = patch.priority.trim()    || null
+          if (patch.status != null)      updateData.status      = patch.status.trim()      || null
+          // tag is explicitly nullable in the schema — store null if Jira returns empty
+          if ("tag" in patch)            updateData.tag         = patch.tag?.trim()        || null
+          if (patch.qtdCenariosQA != null)  updateData.qtdCenariosQA  = patch.qtdCenariosQA
+          if (patch.qtdCenariosErro != null) updateData.qtdCenariosErro = patch.qtdCenariosErro
+        }
+        if (retornosData) {
+          updateData.retornos           = retornosData.total     ?? 0
+          updateData.retornosByAssignee = retornosData.byAssignee ?? {}
+        }
+        if (Object.keys(updateData).length === 0) return
+
+        await prisma.jiraWorklogCache
+          .updateMany({ where: { userId: targetUserId, year, issueKey: key }, data: updateData })
+          .catch((err) => {
+            console.warn(
+              "[metadata-refresh] Falha ao atualizar metadata issueKey=%s userId=%s: %s",
+              key,
+              targetUserId,
+              err,
+            )
+          })
+      }),
+    )
+  }
+
+  metadataRefreshTimestamps.set(cacheKey, Date.now())
+  console.info(
+    "[metadata-refresh] Metadados atualizados para userId=%s year=%d (%d issues)",
+    targetUserId,
+    year,
+    issueKeys.length,
+  )
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
@@ -387,6 +508,18 @@ export async function getUxWorklogsForYear(
       console.warn("[tw-sync] userId=%s não tem e-mail cadastrado — sync impossível para year=%d months=%s", targetUserId, year, monthsToSync.join(","))
     }
   }
+
+  // Re-validate issue metadata (issueType, priority, qtdCenariosQA, etc.).
+  // These fields can change in Jira after the initial worklog sync, but past months
+  // are never re-synced. This ensures Dashboard KPIs match the Lançamentos screen.
+  await refreshIssueMetadataForUserYear(targetUserId, year, session.user.id).catch((err) => {
+    console.warn(
+      "[metadata-refresh] Falha ao atualizar metadados userId=%s year=%d: %s",
+      targetUserId,
+      year,
+      err,
+    )
+  })
 
   // Return all cached entries for the year
   const cached = await prisma.jiraWorklogCache.findMany({
