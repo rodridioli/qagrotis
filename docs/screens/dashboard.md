@@ -39,7 +39,7 @@ Ao acessar com `?perfil=UX`, exibe o **Dashboard UX** exclusivo para Administrad
 
 | Componente | Descrição |
 |---|---|
-| `UxAvatarStrip` | Fotos clicáveis dos membros da equipe; filtro multi-seleção que afeta todos os cards |
+| `UxAvatarStrip` | Fotos clicáveis dos membros ativos e inativos; inativos aparecem por último em grayscale permanente com badge `Info`; filtro multi-seleção que afeta todos os cards |
 | `MetricCard` | Cards de métricas com sparkline (Tempo médio → Atividade, Valor médio → Atividade, Total de Jiras, Total de Críticos) |
 | `TypeCard` | Cards de tipo por grupo: azul (Protótipos, Pesquisas, Usabilidade, Outros), violeta (Novos, Melhorias, Ajustes), âmbar (Retornos) |
 | `TagBarChart` | Gráfico de barras (recharts) — card "Jiras por Produto" |
@@ -79,6 +79,10 @@ O campo **Tag** é um custom field no Jira (ex: `"UBA"`), diferente do campo pad
 
 ```
 page.tsx (Administrador:MGR detectado via perfil=UX)
+  → getEquipeMembrosParaLancamentosComInativos("UX")
+      [ativos (α) + inativos (α), isInactive: boolean]
+  → getApprovalIssuesByTag("UX")  [JQL ao vivo — project in ("UX")]
+  → getUxMemberJiraIds(userIds)   [resolve accountId Jira por e-mail, inclui inativos]
   → UxDashboardClient (client)
     → getUxWorklogsForYear() [Server Action — auth + RBAC]
       → syncMonthsForUser()
@@ -92,6 +96,15 @@ page.tsx (Administrador:MGR detectado via perfil=UX)
               + TagPieChart ("Atividades em Aprovação")
               + YearTable
 ```
+
+### Membros inativos (UX e TW)
+
+- `getEquipeMembrosParaLancamentosComInativos` retorna todos os membros do perfil, incluindo os registrados em `InactiveUser`
+- Inativos têm `isInactive: true` e aparecem **por último** no strip (após todos os ativos, ambos em ordem α)
+- Avatar inativo: sempre `grayscale` via prop `inactive` do `UserAvatar` + badge `Info` cinza (`bg-neutral-grey-400`)
+- Badge `AlertTriangle` (amarelo, sem dados) tem precedência sobre o badge `Info` quando o membro é inativo **e** sem sync
+- Dados dos inativos são contabilizados nos totais enquanto nenhum filtro está ativo
+- O filtro funciona normalmente para inativos: clicar no avatar exibe apenas os dados daquele membro
 
 ---
 
@@ -108,7 +121,7 @@ Dashboard para a equipe de Technical Writers. Espelha a estrutura do Dashboard U
 
 | Componente | Descrição |
 |---|---|
-| `AvatarStrip` | Fotos clicáveis dos membros TW; filtro multi-seleção |
+| `AvatarStrip` | Fotos clicáveis dos membros TW (ativos + inativos); inativos por último em grayscale + badge `Info`; filtro multi-seleção |
 | `MetricCard` | Cards com sparkline (Tempo médio → Atividade, Valor médio → Atividade, Total de Jiras, Total de Críticos) |
 | `TypeCard` | 4 cards: Novas Documentações (azul), Revisões (azul), Outras Atividades (azul), Retornos (warning) |
 | `TagBarChart` | Gráfico de barras — "Jiras por Produto" |
@@ -135,10 +148,13 @@ Dashboard para a equipe de Technical Writers. Espelha a estrutura do Dashboard U
 
 ```
 page.tsx (Administrador:MGR detectado via perfil=TW)
-  → getEquipeMembrosParaLancamentos("TW")  [filtra por accessProfile = "TW"]
-  → getUxWorklogsForYear()  [Server Action genérico — reutilizado do UX]
-  → getUxApprovalIssuesByTag()  [JQL ao vivo]
+  → getEquipeMembrosParaLancamentosComInativos("TW")
+      [ativos (α) + inativos (α), isInactive: boolean]
+  → getApprovalIssuesByTag("TW")  [JQL ao vivo — project in ("Documentação Técnica")]
+  → getUxMemberJiraIds(userIds)   [resolve accountId Jira por e-mail, inclui inativos]
   → TwDashboardClient (client)
+    → getUxWorklogsForYear()  [Server Action genérico — reutilizado do UX]
+    → getApprovalIssuesByTag("TW")  [re-fetch ao mudar ano]
     → useMemo: agrega TwMonthStats (pass 1: horas/investimento) +
                TwYearTotals via aggregateTwYearTotals() (pass 2: issue counts)
     → render: AvatarStrip + MetricCards (4) + TypeCards (4)
@@ -150,4 +166,4 @@ page.tsx (Administrador:MGR detectado via perfil=TW)
 ### RBAC
 
 - `page.tsx` redireciona para `/dashboard` se `role !== "Administrador:MGR"`
-- `getUxWorklogsForYear` e `getEquipeMembrosParaLancamentos` verificam auth internamente
+- `getUxWorklogsForYear`, `getApprovalIssuesByTag` e `getEquipeMembrosParaLancamentosComInativos` verificam auth internamente
