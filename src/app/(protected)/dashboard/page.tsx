@@ -63,10 +63,22 @@ export default async function DashboardPage({
     const userIds = membros.map((m) => m.userId)
     const progressaoMap = await getProgressaoHistoricoBatch(userIds)
 
+    const rawBrokenTypes = process.env.JIRA_BROKEN_TEST_ISSUE_TYPES ?? ""
+    const brokenTestIssueTypeNames = Array.from(
+      new Set(
+        rawBrokenTypes
+          .split(/[,|]/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+      ),
+    )
+    if (brokenTestIssueTypeNames.length === 0) brokenTestIssueTypeNames.push("Broken Test")
+
     return (
       <QaDashboardClient
         membros={serializeRscProps(membros)}
         progressaoMap={serializeRscProps(progressaoMap)}
+        brokenTestIssueTypeNames={brokenTestIssueTypeNames}
       />
     )
   }

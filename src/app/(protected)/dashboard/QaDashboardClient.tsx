@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { BarChart2, Bug, CheckSquare2, Clock, Eye, EyeOff, RefreshCw, TrendingUp } from "lucide-react"
+import { AlertTriangle, BarChart2, CheckSquare2, Clock, Eye, EyeOff, Flame, RefreshCw, TrendingUp } from "lucide-react"
 import { AreaChart, Area, BarChart, Bar, Cell, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -28,12 +28,14 @@ import type { ProgressaoHistoricoEntry } from "@/features/individual/actions/ind
 interface Props {
   membros: EquipeMembroLancamentos[]
   progressaoMap: Record<string, ProgressaoHistoricoEntry[]>
+  brokenTestIssueTypeNames: string[]
 }
 
 interface JiraEntry {
   issueKey: string
   projectName?: string | null
   typeField?: string | null
+  issueType?: string | null
   status?: string | null
   tag?: string | null
   priority?: string | null
@@ -52,6 +54,7 @@ interface QaMonthStats {
   cenariosTestados: number
   cenariosErro: number
   jirasBroken: number
+  criticos: number
   investimentoCentavos: number
 }
 
@@ -100,6 +103,7 @@ function emptyQaMonthStats(): QaMonthStats {
     cenariosTestados: 0,
     cenariosErro: 0,
     jirasBroken: 0,
+    criticos: 0,
     investimentoCentavos: 0,
   }
 }
@@ -111,6 +115,7 @@ function sumQaStats(a: QaMonthStats, b: QaMonthStats): QaMonthStats {
     cenariosTestados: a.cenariosTestados + b.cenariosTestados,
     cenariosErro: a.cenariosErro + b.cenariosErro,
     jirasBroken: a.jirasBroken + b.jirasBroken,
+    criticos: a.criticos + b.criticos,
     investimentoCentavos: a.investimentoCentavos + b.investimentoCentavos,
   }
 }
@@ -132,18 +137,60 @@ interface QaYearTotals {
   cenariosTestados: number
   cenariosErro: number
   jirasBroken: number
+  criticos: number
+}
+
+// ─── Priority helpers (mirrors IndividualLancamentosSection logic) ─────────────
+
+function normalizePriorityToken(p: string): string {
+  return p
+    .normalize("NFD")
+    .replace(/\p{Mark}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+}
+
+function priorityIsCritical(p: string | null | undefined): boolean {
+  if (!p?.trim()) return false
+  const n = normalizePriorityToken(p)
+  return (
+    n === "critical" ||
+    n === "critico" ||
+    n === "highest" ||
+    n === "critica" ||
+    n === "alta" ||
+    n === "blocker" ||
+    n === "imediato" ||
+    n.includes("critical") ||
+    n.includes("critica") ||
+    n.includes("critico")
+  )
 }
 
 /**
  * Agrega entries QA para os cards de ano.
  * - cenariosTestados: SUM(qtdCenariosQA) por issue única (pega o máximo por issue)
- * - cenariosErro:     SUM(qtdCenariosErro) por issue única (pega o máximo por issue)
- * - jirasBroken:      count de issues únicas com retornos > 0
+ * - cenariosErro:     SUM de max(qtdCenariosErro) por issue; fallback para qtdCenariosQA em Broken Tests sem qtdCenariosErro (Tipo B)
+ * - jirasBroken:      count de issues únicas cujo issueType ∈ brokenTestIssueTypeNames
+ * - criticos:         count de issues únicas com prioridade crítica
  */
-function aggregateQaYearTotals(entries: JiraEntry[]): QaYearTotals {
+function aggregateQaYearTotals(
+  entries: JiraEntry[],
+  normalizedBrokenTypes: string[],
+): QaYearTotals {
   const cenariosQAByIssue = new Map<string, number>()
   const cenariosErroByIssue = new Map<string, number>()
+  const brokenTestQAByIssue = new Map<string, number>()
   const brokenIssues = new Set<string>()
+  const criticoIssues = new Set<string>()
+
+  const isBrokenTest = (e: JiraEntry) => {
+    const t = (e.issueType ?? "").toLowerCase().trim()
+    return normalizedBrokenTypes.length > 0
+      ? normalizedBrokenTypes.some((n) => t === n)
+      : t.includes("broken")
+  }
 
   for (const e of entries) {
     if (e.qtdCenariosQA > 0) {
@@ -152,19 +199,40 @@ function aggregateQaYearTotals(entries: JiraEntry[]): QaYearTotals {
         Math.max(cenariosQAByIssue.get(e.issueKey) ?? 0, e.qtdCenariosQA),
       )
     }
+    // Tipo A: qtdCenariosErro direto
     if (e.qtdCenariosErro > 0) {
       cenariosErroByIssue.set(
         e.issueKey,
         Math.max(cenariosErroByIssue.get(e.issueKey) ?? 0, e.qtdCenariosErro),
       )
     }
-    if ((e.retornos ?? 0) > 0) brokenIssues.add(e.issueKey)
+    // Tipo B: Broken Test sem qtdCenariosErro → accumulate qtdCenariosQA for fallback
+    if (isBrokenTest(e) && e.qtdCenariosQA > 0) {
+      brokenTestQAByIssue.set(
+        e.issueKey,
+        Math.max(brokenTestQAByIssue.get(e.issueKey) ?? 0, e.qtdCenariosQA),
+      )
+    }
+    if (isBrokenTest(e)) brokenIssues.add(e.issueKey)
+    if (priorityIsCritical(e.priority)) criticoIssues.add(e.issueKey)
   }
 
   const cenariosTestados = Array.from(cenariosQAByIssue.values()).reduce((s, v) => s + v, 0)
-  const cenariosErro = Array.from(cenariosErroByIssue.values()).reduce((s, v) => s + v, 0)
 
-  return { cenariosTestados, cenariosErro, jirasBroken: brokenIssues.size }
+  // Cenários com erro: Tipo A + Tipo B fallback (only for issues without Tipo A)
+  let cenariosErro = Array.from(cenariosErroByIssue.values()).reduce((s, v) => s + v, 0)
+  for (const [key, v] of brokenTestQAByIssue.entries()) {
+    if (!cenariosErroByIssue.has(key)) {
+      cenariosErro += v
+    }
+  }
+
+  return {
+    cenariosTestados,
+    cenariosErro,
+    jirasBroken: brokenIssues.size,
+    criticos: criticoIssues.size,
+  }
 }
 
 // ─── AvatarStrip ──────────────────────────────────────────────────────────────
@@ -629,7 +697,7 @@ function QaYearTable({
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function QaDashboardClient({ membros, progressaoMap }: Props) {
+export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeNames }: Props) {
   const currentYear = new Date().getFullYear()
   const [ano, setAno] = React.useState(currentYear)
   const [loading, setLoading] = React.useState(false)
@@ -653,9 +721,14 @@ export function QaDashboardClient({ membros, progressaoMap }: Props) {
     )
   }
 
+  const normalizedBrokenTypes = React.useMemo(
+    () => brokenTestIssueTypeNames.map((t) => t.toLowerCase().trim()),
+    [brokenTestIssueTypeNames],
+  )
+
   // ── Derived stats ─────────────────────────────────────────────────────────
   const { monthStats, totalUniqueIssues, yearTotals, distribByTag } = React.useMemo(() => {
-    const empty: QaYearTotals = { cenariosTestados: 0, cenariosErro: 0, jirasBroken: 0 }
+    const empty: QaYearTotals = { cenariosTestados: 0, cenariosErro: 0, jirasBroken: 0, criticos: 0 }
 
     if (Object.keys(rawMemberEntries).length === 0) {
       return {
@@ -702,17 +775,28 @@ export function QaDashboardClient({ membros, progressaoMap }: Props) {
         if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
       }
 
+      const isBrokenTestEntry = (e: JiraEntry) => {
+        const t = (e.issueType ?? "").toLowerCase().trim()
+        return normalizedBrokenTypes.length > 0
+          ? normalizedBrokenTypes.some((n) => t === n)
+          : t.includes("broken")
+      }
+
       type CB = {
         all: Set<string>
         brokenIssues: Set<string>
+        criticoIssues: Set<string>
         cenariosQAByIssue: Map<string, number>
         cenariosErroByIssue: Map<string, number>
+        brokenTestQAByIssue: Map<string, number>
       }
       const buckets: CB[] = Array.from({ length: 12 }, () => ({
         all: new Set(),
         brokenIssues: new Set(),
+        criticoIssues: new Set(),
         cenariosQAByIssue: new Map(),
         cenariosErroByIssue: new Map(),
+        brokenTestQAByIssue: new Map(),
       }))
 
       for (const e of allEntries) {
@@ -720,7 +804,8 @@ export function QaDashboardClient({ membros, progressaoMap }: Props) {
         if (firstMonth === undefined) continue
         const cb = buckets[firstMonth]!
         cb.all.add(e.issueKey)
-        if ((e.retornos ?? 0) > 0) cb.brokenIssues.add(e.issueKey)
+        if (isBrokenTestEntry(e)) cb.brokenIssues.add(e.issueKey)
+        if (priorityIsCritical(e.priority)) cb.criticoIssues.add(e.issueKey)
         if (e.qtdCenariosQA > 0) {
           cb.cenariosQAByIssue.set(
             e.issueKey,
@@ -733,18 +818,33 @@ export function QaDashboardClient({ membros, progressaoMap }: Props) {
             Math.max(cb.cenariosErroByIssue.get(e.issueKey) ?? 0, e.qtdCenariosErro),
           )
         }
+        // Tipo B: Broken Test sem qtdCenariosErro → accumulate qtdCenariosQA for fallback
+        if (isBrokenTestEntry(e) && e.qtdCenariosQA > 0) {
+          cb.brokenTestQAByIssue.set(
+            e.issueKey,
+            Math.max(cb.brokenTestQAByIssue.get(e.issueKey) ?? 0, e.qtdCenariosQA),
+          )
+        }
       }
 
       for (let i = 0; i < 12; i++) {
         const cb = buckets[i]!
         combined[i]!.totalIssues = cb.all.size
         combined[i]!.jirasBroken = cb.brokenIssues.size
+        combined[i]!.criticos = cb.criticoIssues.size
         combined[i]!.cenariosTestados = Array.from(cb.cenariosQAByIssue.values()).reduce((s, v) => s + v, 0)
-        combined[i]!.cenariosErro = Array.from(cb.cenariosErroByIssue.values()).reduce((s, v) => s + v, 0)
+        // Cenários com erro: Tipo A + Tipo B fallback
+        let cenariosErroMonth = Array.from(cb.cenariosErroByIssue.values()).reduce((s, v) => s + v, 0)
+        for (const [key, v] of cb.brokenTestQAByIssue.entries()) {
+          if (!cb.cenariosErroByIssue.has(key)) {
+            cenariosErroMonth += v
+          }
+        }
+        combined[i]!.cenariosErro = cenariosErroMonth
       }
     }
 
-    const yTotals = aggregateQaYearTotals(allEntries)
+    const yTotals = aggregateQaYearTotals(allEntries, normalizedBrokenTypes)
 
     const tagDistribMap = new Map<string, Set<string>>()
     for (const e of allEntries) {
@@ -763,7 +863,7 @@ export function QaDashboardClient({ membros, progressaoMap }: Props) {
       yearTotals: yTotals,
       distribByTag,
     }
-  }, [rawMemberEntries, activeMembers, progressaoMap, ano])
+  }, [rawMemberEntries, activeMembers, progressaoMap, ano, normalizedBrokenTypes])
 
   // ── Visible members: only those with worklogs in the selected year ─────────
   const visibleMembros = React.useMemo(() => {
@@ -799,7 +899,7 @@ export function QaDashboardClient({ membros, progressaoMap }: Props) {
 
   // ── Sparklines ────────────────────────────────────────────────────────────
   const sparkJiras     = (monthStats ?? []).map(ms => ms.totalIssues)
-  const sparkCenarios  = (monthStats ?? []).map(ms => ms.cenariosTestados)
+  const sparkCriticos  = (monthStats ?? []).map(ms => ms.criticos)
   const sparkTempo     = (monthStats ?? []).map(ms =>
     ms.totalIssues > 0 ? Math.round(ms.totalSeconds / ms.totalIssues) : 0)
   const sparkValor     = (monthStats ?? []).map(ms =>
@@ -917,12 +1017,12 @@ export function QaDashboardClient({ membros, progressaoMap }: Props) {
           sparkFormatter={(v) => `${v} jira${v !== 1 ? "s" : ""}`}
         />
         <MetricCard
-          label="Cenários Testados"
-          value={loading ? "—" : String(yearTotals.cenariosTestados)}
-          icon={CheckSquare2}
-          iconVariant="brand"
-          sparkData={loading ? undefined : sparkCenarios}
-          sparkFormatter={(v) => `${v} cenário${v !== 1 ? "s" : ""}`}
+          label="Jiras Críticos"
+          value={loading ? "—" : String(yearTotals.criticos)}
+          icon={Flame}
+          iconVariant="warning"
+          sparkData={loading ? undefined : sparkCriticos}
+          sparkFormatter={(v) => `${v} crítico${v !== 1 ? "s" : ""}`}
         />
       </div>
 

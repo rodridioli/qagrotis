@@ -28,6 +28,7 @@ export interface UxJiraEntry {
   issueKey: string
   projectName: string | null
   typeField: string | null
+  issueType: string | null
   status: string | null
   tag: string | null
   priority: string | null
@@ -233,6 +234,7 @@ async function syncMonthsForUser(
         return {
           ...e,
           typeField: patch?.typeField?.trim() ? patch.typeField.trim() : e.typeField,
+          issueType: patch?.issueType?.trim() ? patch.issueType.trim() : (e as { issueType?: string | null }).issueType ?? null,
           projectName: patch?.projectName?.trim() ? patch.projectName.trim() : e.projectName,
           priority: patch?.priority?.trim() ? patch.priority.trim() : (e.priority ?? null),
           status: patch?.status?.trim() ? patch.status.trim() : (e.status ?? null),
@@ -263,6 +265,7 @@ async function syncMonthsForUser(
           update: {
             projectName: e.projectName ?? null,
             typeField: e.typeField ?? null,
+            issueType: (e as { issueType?: string | null }).issueType ?? null,
             status: e.status ?? null,
             tag: (e as { tag?: string | null }).tag ?? null,
             priority: (e as { priority?: string | null }).priority ?? null,
@@ -280,6 +283,7 @@ async function syncMonthsForUser(
             issueKey: e.issueKey.trim().toUpperCase(),
             projectName: e.projectName ?? null,
             typeField: e.typeField ?? null,
+            issueType: (e as { issueType?: string | null }).issueType ?? null,
             status: e.status ?? null,
             tag: (e as { tag?: string | null }).tag ?? null,
             priority: (e as { priority?: string | null }).priority ?? null,
@@ -391,6 +395,7 @@ export async function getUxWorklogsForYear(
       issueKey: true,
       projectName: true,
       typeField: true,
+      issueType: true,
       status: true,
       tag: true,
       priority: true,
@@ -411,6 +416,7 @@ export async function getUxWorklogsForYear(
         issueKey: string
         projectName: string | null
         typeField: string | null
+        issueType: string | null
         status: string | null
         tag: string | null
         priority: string | null
@@ -426,6 +432,7 @@ export async function getUxWorklogsForYear(
       issueKey: r.issueKey,
       projectName: r.projectName,
       typeField: r.typeField,
+      issueType: r.issueType,
       status: r.status,
       tag: r.tag,
       priority: r.priority,
