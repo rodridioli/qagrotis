@@ -443,16 +443,23 @@ function TagBarChart({
   items,
   ariaLabel,
   hideValues,
+  totalCount,
 }: {
   title: string
   items: { tag: string; count: number; investimentoCentavos: number }[]
   ariaLabel: string
   hideValues?: boolean
+  totalCount?: number
 }) {
   const chartHeight = Math.max(300, items.length * 28)
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
-      <p className="mb-4 text-sm font-semibold text-text-primary">{title}</p>
+      <p className="mb-4 text-sm font-semibold text-text-primary">
+        {title}
+        {totalCount != null && totalCount > 0 && (
+          <span className="ml-1.5 font-normal text-text-secondary">({totalCount})</span>
+        )}
+      </p>
       {items.length === 0 ? (
         <p className="text-sm text-text-secondary">Sem dados no período.</p>
       ) : (
@@ -938,8 +945,17 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
         .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: tagInvestmentMap.get(tag) ?? 0 }))
         .sort((a, b) => b.count - a.count)
 
+    // Merge Jira IDs from email-resolved memberJiraIds (activeApprovalJiraIds) and from actual
+    // worklog entries (activeJiraAccountIds) so filtering works even when the email lookup failed.
+    const effectiveApprovalJiraIds = new Set([...activeApprovalJiraIds, ...activeJiraAccountIds])
+    const approvalIssuesForMember = effectiveApprovalJiraIds.size > 0 && selectedUserIds.length > 0
+      ? liveApprovalIssues.filter(
+          (i) => i.assigneeAccountId != null && effectiveApprovalJiraIds.has(i.assigneeAccountId),
+        )
+      : liveApprovalIssues
+
     const approvalTagMap = new Map<string, number>()
-    for (const i of filteredApprovalIssues) {
+    for (const i of approvalIssuesForMember) {
       approvalTagMap.set(i.tag, (approvalTagMap.get(i.tag) ?? 0) + 1)
     }
     const approvalByTag = [...approvalTagMap.entries()]
@@ -955,12 +971,16 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
     }
   }, [rawMemberEntries, activeMembers, progressaoMap, ano, liveApprovalIssues, selectedUserIds, memberJiraIds])
 
-  // ── Visible members: only those with worklogs in the selected year ─────────
-  // Before data loads, show all members (skeleton state). After load, hide those with 0 entries.
+  // ── Visible members ────────────────────────────────────────────────────────
+  // Active members are always shown (even if they have no worklogs yet in the year).
+  // Inactive members are only shown when they have at least one worklog entry in
+  // the selected year — they represent alumni who still have historical data.
   const visibleMembros = React.useMemo(() => {
     const loaded = Object.keys(rawMemberEntries).length > 0
     if (!loaded) return membros
-    return membros.filter((m) => (rawMemberEntries[m.userId]?.length ?? 0) > 0)
+    return membros.filter(
+      (m) => !m.isInactive || (rawMemberEntries[m.userId]?.length ?? 0) > 0,
+    )
   }, [rawMemberEntries, membros])
 
   // Clear any selected user that is no longer visible (e.g. switched year and they have no data)
@@ -1171,6 +1191,7 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
               items={distribByTag}
               ariaLabel="Distribuição de jiras por produto"
               hideValues={hideValues}
+              totalCount={distribByTag.reduce((s, i) => s + i.count, 0)}
             />
           </div>
           <div className="lg:col-span-1">

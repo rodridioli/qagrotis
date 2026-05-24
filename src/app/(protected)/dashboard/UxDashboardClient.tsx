@@ -19,7 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { getUxWorklogsForYear, getUxApprovalIssuesByTag } from "@/features/qa/actions/jira-worklog-cache"
+import { getUxWorklogsForYear, getApprovalIssuesByTag } from "@/features/qa/actions/jira-worklog-cache"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
 import type { ProgressaoHistoricoEntry } from "@/features/individual/actions/individual-progressao"
 
@@ -864,12 +864,16 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
     )
   }
 
-  // ── Visible members: only those with worklogs in the selected year ─────────
-  // Before data loads (rawMemberEntries empty), show everyone. After load, hide members with 0 entries.
+  // ── Visible members ────────────────────────────────────────────────────────
+  // Active members are always shown (even if they have no worklogs yet in the year).
+  // Inactive members are only shown when they have at least one worklog entry in
+  // the selected year — they represent alumni who still have historical data.
   const visibleMembros = React.useMemo(() => {
     const loaded = Object.keys(rawMemberEntries).length > 0
     if (!loaded) return membros
-    return membros.filter((m) => (rawMemberEntries[m.userId]?.length ?? 0) > 0)
+    return membros.filter(
+      (m) => !m.isInactive || (rawMemberEntries[m.userId]?.length ?? 0) > 0,
+    )
   }, [rawMemberEntries, membros])
 
   // Clear selections that are no longer visible (e.g. user switched year)
@@ -1099,7 +1103,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
                   }
                 }),
               ),
-          getUxApprovalIssuesByTag(),
+          getApprovalIssuesByTag("UX"),
         ])
         setRawMemberEntries(Object.fromEntries(worklogResults))
         setLiveApprovalIssues(freshApproval)
