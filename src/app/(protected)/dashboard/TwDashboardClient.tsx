@@ -856,10 +856,19 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       if (firstEntry?.authorJiraAccountId) activeJiraAccountIds.add(firstEntry.authorJiraAccountId)
     }
 
-    // Pass 2 — global: count issues per month based on activity (any worklog in the month).
-    // Each issue is counted in EVERY month it has worklogs, matching the behaviour of
-    // /api/jira/lancamentos which counts all issues with activity in the selected range.
+    // Pass 2 — global: count issues per month with first-month anchor.
+    // Each issue is counted in exactly ONE month (the month of its earliest worklog),
+    // so sum(combined[i].totalIssues) === totalUniqueIssues (no double-counting).
     {
+      // Build first-month anchor: minimum month index across all worklogs per issue.
+      const issueFirstMonth = new Map<string, number>()
+      for (const e of allEntries) {
+        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+        if (m < 0 || m > 11) continue
+        const cur = issueFirstMonth.get(e.issueKey)
+        if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
+      }
+
       type CB = {
         all: Set<string>
         novasDocs: Set<string>
@@ -880,9 +889,9 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       }))
 
       for (const e of allEntries) {
-        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-        if (m < 0 || m > 11) continue
-        const cb = buckets[m]!
+        const firstMonth = issueFirstMonth.get(e.issueKey)
+        if (firstMonth === undefined) continue
+        const cb = buckets[firstMonth]!
         const tf = (e.typeField ?? "").trim().toLowerCase()
         cb.all.add(e.issueKey)
         if (tf === "new documentation") cb.novasDocs.add(e.issueKey)

@@ -328,3 +328,85 @@ describe("TW dashboard — cards UX não existem no TW", () => {
     ])
   })
 })
+
+// ── Feature: first-month anchor — invariante card vs tabela ──────────────────
+// Réplica do Pass 2 (issueFirstMonth) dos dashboards UX e TW.
+
+interface MonthlyBucket { totalIssues: number }
+
+/**
+ * Réplica do Pass 2 com first-month anchor.
+ * Garante que cada issue é contado em EXATAMENTE UM mês.
+ */
+function buildMonthlyIssueCounts(entries: JiraEntry[]): MonthlyBucket[] {
+  const issueFirstMonth = new Map<string, number>()
+  for (const e of entries) {
+    const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+    if (m < 0 || m > 11) continue
+    const cur = issueFirstMonth.get(e.issueKey)
+    if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
+  }
+  const buckets: Set<string>[] = Array.from({ length: 12 }, () => new Set())
+  for (const e of entries) {
+    const firstMonth = issueFirstMonth.get(e.issueKey)
+    if (firstMonth === undefined) continue
+    buckets[firstMonth]!.add(e.issueKey)
+  }
+  return buckets.map((b) => ({ totalIssues: b.size }))
+}
+
+describe("Pass 2 first-month anchor — invariante card === soma tabela", () => {
+  it("issue com worklogs em múltiplos meses é contado em apenas um mês (o primeiro)", () => {
+    const entries: JiraEntry[] = [
+      makeEntry("TW-1", "New documentation", { started: "2026-01-10", timeSpentSeconds: 3600 }),
+      makeEntry("TW-1", "New documentation", { started: "2026-03-15", timeSpentSeconds: 1800 }),
+    ]
+    const monthly = buildMonthlyIssueCounts(entries)
+    expect(monthly[0]!.totalIssues).toBe(1)
+    expect(monthly[2]!.totalIssues).toBe(0)
+    const sum = monthly.reduce((acc, m) => acc + m.totalIssues, 0)
+    expect(sum).toBe(1)
+  })
+
+  it("soma dos meses === contagem única de issues (sem double-counting)", () => {
+    const entries: JiraEntry[] = [
+      makeEntry("TW-1", "New documentation",    { started: "2026-01-10", timeSpentSeconds: 3600 }),
+      makeEntry("TW-1", "New documentation",    { started: "2026-02-05", timeSpentSeconds: 1800 }),
+      makeEntry("TW-2", "Documentation Review", { started: "2026-01-20", timeSpentSeconds: 3600 }),
+      makeEntry("TW-3", "Others",               { started: "2026-03-01", timeSpentSeconds: 900 }),
+      makeEntry("TW-3", "Others",               { started: "2026-04-10", timeSpentSeconds: 900 }),
+    ]
+    const uniqueCount = new Set(entries.map((e) => e.issueKey)).size
+    const monthly = buildMonthlyIssueCounts(entries)
+    const sum = monthly.reduce((acc, m) => acc + m.totalIssues, 0)
+    expect(sum).toBe(uniqueCount)
+  })
+
+  it("issues em meses distintos sem sobreposição — soma correta", () => {
+    const entries: JiraEntry[] = [
+      makeEntry("TW-A", null, { started: "2026-01-01", timeSpentSeconds: 100 }),
+      makeEntry("TW-B", null, { started: "2026-02-01", timeSpentSeconds: 100 }),
+      makeEntry("TW-C", null, { started: "2026-03-01", timeSpentSeconds: 100 }),
+    ]
+    const monthly = buildMonthlyIssueCounts(entries)
+    expect(monthly[0]!.totalIssues).toBe(1)
+    expect(monthly[1]!.totalIssues).toBe(1)
+    expect(monthly[2]!.totalIssues).toBe(1)
+    expect(monthly.reduce((acc, m) => acc + m.totalIssues, 0)).toBe(3)
+  })
+
+  it("lista vazia → todos os meses com zero", () => {
+    const monthly = buildMonthlyIssueCounts([])
+    expect(monthly.every((m) => m.totalIssues === 0)).toBe(true)
+  })
+
+  it("issue com worklog em dezembro e janeiro — ancorado no menor mês (janeiro)", () => {
+    const entries: JiraEntry[] = [
+      makeEntry("TW-X", null, { started: "2026-12-01", timeSpentSeconds: 100 }),
+      makeEntry("TW-X", null, { started: "2026-01-15", timeSpentSeconds: 100 }),
+    ]
+    const monthly = buildMonthlyIssueCounts(entries)
+    expect(monthly[0]!.totalIssues).toBe(1)
+    expect(monthly[11]!.totalIssues).toBe(0)
+  })
+})
