@@ -627,6 +627,8 @@ model JiraWorklogCache {
   retornos             Int      @default(0)
   retornosByAssignee   Json     @default("{}")
   authorJiraAccountId  String?
+  qtdCenariosQA        Int      @default(0)
+  qtdCenariosErro      Int      @default(0)
   startedAt            DateTime
   timeSpentSeconds     Int
   year                 Int

@@ -13,6 +13,7 @@ import { buildRole } from "@/core/rbac/policy"
 import { DashboardClient } from "./DashboardClient"
 import { UxDashboardClient } from "./UxDashboardClient"
 import { TwDashboardClient } from "./TwDashboardClient"
+import { QaDashboardClient } from "./QaDashboardClient"
 import type { ModuloRecord } from "@/features/qa/actions/modulos"
 import type { CenarioRecord } from "@/features/qa/actions/cenarios"
 import type { QaUserRecord } from "@/features/usuarios/actions/usuarios"
@@ -50,6 +51,22 @@ export default async function DashboardPage({
         progressaoMap={serializeRscProps(progressaoMap)}
         approvalIssues={approvalIssues}
         memberJiraIds={memberJiraIds}
+      />
+    )
+  }
+
+  // ── QA dashboard — apenas Administrador:MGR ─────────────────────────────
+  if (perfil === "QA") {
+    if (!isMgr) redirect("/dashboard")
+
+    const membros = await getEquipeMembrosParaLancamentosComInativos("QA")
+    const userIds = membros.map((m) => m.userId)
+    const progressaoMap = await getProgressaoHistoricoBatch(userIds)
+
+    return (
+      <QaDashboardClient
+        membros={serializeRscProps(membros)}
+        progressaoMap={serializeRscProps(progressaoMap)}
       />
     )
   }

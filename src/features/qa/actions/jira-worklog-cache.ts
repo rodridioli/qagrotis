@@ -34,6 +34,8 @@ export interface UxJiraEntry {
   retornos: number
   retornosByAssignee: Record<string, number>
   authorJiraAccountId: string | null
+  qtdCenariosQA: number
+  qtdCenariosErro: number
   started: string
   timeSpentSeconds: number
 }
@@ -239,6 +241,8 @@ async function syncMonthsForUser(
           retornosByAssignee: retornosData?.byAssignee ?? {},
           // authorJiraAccountId is null in clockwork-only mode (no Jira accountId available)
           authorJiraAccountId: jiraUser?.accountId ?? null,
+          qtdCenariosQA: patch?.qtdCenariosQA ?? 0,
+          qtdCenariosErro: patch?.qtdCenariosErro ?? 0,
         }
       })
     }
@@ -265,6 +269,8 @@ async function syncMonthsForUser(
             retornos: (e as { retornos?: number }).retornos ?? 0,
             retornosByAssignee: (e as { retornosByAssignee?: Record<string, number> }).retornosByAssignee ?? {},
             authorJiraAccountId: (e as { authorJiraAccountId?: string | null }).authorJiraAccountId ?? null,
+            qtdCenariosQA: (e as { qtdCenariosQA?: number }).qtdCenariosQA ?? 0,
+            qtdCenariosErro: (e as { qtdCenariosErro?: number }).qtdCenariosErro ?? 0,
             timeSpentSeconds: e.timeSpentSeconds,
             year,
             month,
@@ -280,6 +286,8 @@ async function syncMonthsForUser(
             retornos: (e as { retornos?: number }).retornos ?? 0,
             retornosByAssignee: (e as { retornosByAssignee?: Record<string, number> }).retornosByAssignee ?? {},
             authorJiraAccountId: (e as { authorJiraAccountId?: string | null }).authorJiraAccountId ?? null,
+            qtdCenariosQA: (e as { qtdCenariosQA?: number }).qtdCenariosQA ?? 0,
+            qtdCenariosErro: (e as { qtdCenariosErro?: number }).qtdCenariosErro ?? 0,
             startedAt,
             timeSpentSeconds: e.timeSpentSeconds,
             year,
@@ -389,6 +397,8 @@ export async function getUxWorklogsForYear(
       retornos: true,
       retornosByAssignee: true,
       authorJiraAccountId: true,
+      qtdCenariosQA: true,
+      qtdCenariosErro: true,
       startedAt: true,
       timeSpentSeconds: true,
     },
@@ -407,6 +417,8 @@ export async function getUxWorklogsForYear(
         retornos: number
         retornosByAssignee: unknown
         authorJiraAccountId: string | null
+        qtdCenariosQA: number
+        qtdCenariosErro: number
         startedAt: Date
         timeSpentSeconds: number
       }[]
@@ -423,6 +435,8 @@ export async function getUxWorklogsForYear(
           ? (r.retornosByAssignee as Record<string, number>)
           : {},
       authorJiraAccountId: r.authorJiraAccountId,
+      qtdCenariosQA: r.qtdCenariosQA,
+      qtdCenariosErro: r.qtdCenariosErro,
       started: r.startedAt.toISOString().slice(0, 10),
       timeSpentSeconds: r.timeSpentSeconds,
     })),
