@@ -109,9 +109,12 @@ async function syncMonthsForUser(
     }
   }
 
-  if (!jiraUser) {
-    console.warn("[tw-sync] userId=%s email=%s não encontrado no Jira (email+nome) — worklogs omitidos para year=%d months=%s", targetUserId, targetEmail, year, months.join(","))
-    return
+  const clockworkOnlyMode = !jiraUser
+  if (clockworkOnlyMode) {
+    console.info(
+      "[tw-sync] userId=%s email=%s não encontrado no Jira (mesmo com includeInactive) — modo clockwork-only para year=%d months=%s",
+      targetUserId, targetEmail, year, months.join(","),
+    )
   }
 
   // Group consecutive months into ranges (each ≤ 92 days, 3 months = ~92 days max)
@@ -122,9 +125,12 @@ async function syncMonthsForUser(
     const lastDay = new Date(year, month + 1, 0).getDate()
     const toIso = `${year}-${pad(month + 1)}-${pad(lastDay)}`
 
-    const { entries: jiraEntries } = await fetchWorklogsForAuthorInRange(
-      base, credentials, jiraUser.accountId, fromIso, toIso, "UTC",
-    ).catch(() => ({ entries: [] as JiraLancamentoEntry[], truncatedIssues: false, truncatedWorklogs: false }))
+    // Skip Jira worklog fetch when we have no accountId (inactive/not-found user)
+    const jiraEntries: JiraLancamentoEntry[] = clockworkOnlyMode
+      ? []
+      : await fetchWorklogsForAuthorInRange(
+          base, credentials, jiraUser!.accountId, fromIso, toIso, "UTC",
+        ).then((r) => r.entries).catch(() => [])
 
     let clockworkEntries: JiraLancamentoEntry[] = []
     try {
@@ -140,6 +146,12 @@ async function syncMonthsForUser(
       }
     } catch {
       // Clockwork is optional — failure does not abort the Jira sync
+    }
+
+    // In clockwork-only mode, skip if Clockwork also returned nothing (avoid empty marker)
+    if (clockworkOnlyMode && clockworkEntries.length === 0) {
+      console.info("[tw-sync] clockwork-only: sem entradas para userId=%s month=%d/%d — marker não gravado", targetUserId, month + 1, year)
+      continue
     }
 
     const { merged: rawEntries } = mergeJiraAndClockworkWorklogs(jiraEntries, clockworkEntries)
@@ -170,7 +182,8 @@ async function syncMonthsForUser(
           tag: patch?.tag?.trim() ? patch.tag.trim() : null,
           retornos: retornosData?.total ?? 0,
           retornosByAssignee: retornosData?.byAssignee ?? {},
-          authorJiraAccountId: jiraUser.accountId,
+          // authorJiraAccountId is null in clockwork-only mode (no Jira accountId available)
+          authorJiraAccountId: jiraUser?.accountId ?? null,
         }
       })
     }

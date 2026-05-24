@@ -131,7 +131,8 @@ export async function findJiraAccountIdByEmail(
   credentials: string,
   emailNorm: string,
 ): Promise<{ accountId: string; displayName?: string } | null> {
-  const url = `${base}/rest/api/3/user/search?query=${encodeURIComponent(emailNorm)}&maxResults=20`
+  // includeInactive=true: Jira Cloud omite contas desativadas por padrão — necessário para ex-membros
+  const url = `${base}/rest/api/3/user/search?query=${encodeURIComponent(emailNorm)}&maxResults=20&includeInactive=true`
   const { ok, data } = await jiraJson<{ accountId: string; displayName?: string; emailAddress?: string }[]>(
     url,
     credentials,
@@ -157,7 +158,8 @@ export async function findJiraAccountIdsByDisplayName(
 ): Promise<{ accountId: string; displayName: string; emailAddress?: string }[]> {
   const name = displayName.trim()
   if (!name) return []
-  const url = `${base}/rest/api/3/user/search?query=${encodeURIComponent(name)}&maxResults=20`
+  // includeInactive=true: inclui contas desativadas no Jira Cloud (ex-membros)
+  const url = `${base}/rest/api/3/user/search?query=${encodeURIComponent(name)}&maxResults=20&includeInactive=true`
   const { ok, data } = await jiraJson<{ accountId: string; displayName?: string; emailAddress?: string }[]>(
     url,
     credentials,
