@@ -297,14 +297,6 @@ function UxAvatarStrip({
                 }
               >
                 <UserAvatar name={m.name} photoPath={m.photoPath} size={AVATAR_STRIP_SIZE} inactive={isInactive} />
-                {isInactive && (
-                  <span
-                    aria-hidden
-                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-neutral-grey-400 ring-2 ring-surface-card"
-                  >
-                    <Info className="h-2.5 w-2.5 text-white" />
-                  </span>
-                )}
               </TooltipTrigger>
               <TooltipContent>
                 {isInactive ? `${m.name} (inativo)` : m.name}
@@ -872,6 +864,20 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
     )
   }
 
+  // ── Visible members: only those with worklogs in the selected year ─────────
+  // Before data loads (rawMemberEntries empty), show everyone. After load, hide members with 0 entries.
+  const visibleMembros = React.useMemo(() => {
+    const loaded = Object.keys(rawMemberEntries).length > 0
+    if (!loaded) return membros
+    return membros.filter((m) => (rawMemberEntries[m.userId]?.length ?? 0) > 0)
+  }, [rawMemberEntries, membros])
+
+  // Clear selections that are no longer visible (e.g. user switched year)
+  React.useEffect(() => {
+    const visibleIds = new Set(visibleMembros.map((m) => m.userId))
+    setSelectedUserIds((prev) => prev.filter((id) => visibleIds.has(id)))
+  }, [visibleMembros])
+
   // ── Derived stats (instant — no fetch on user toggle) ─────────────────────
   const { monthStats, totalUniqueIssues, yearTotals, distribByTag, approvalByTag } = React.useMemo(() => {
     const empty: YearTypeTotals = {
@@ -1108,9 +1114,9 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       {/* Avatar strip + year selector na mesma linha */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          {membros.length > 0 && (
+          {visibleMembros.length > 0 && (
             <UxAvatarStrip
-              membros={membros}
+              membros={visibleMembros}
               selectedUserIds={selectedUserIds}
               onToggle={toggleUser}
             />

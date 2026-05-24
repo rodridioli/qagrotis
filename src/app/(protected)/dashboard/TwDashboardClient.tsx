@@ -221,14 +221,10 @@ function AvatarStrip({
   membros,
   selectedUserIds,
   onToggle,
-  unsyncedUserIds,
-  ano,
 }: {
   membros: EquipeMembroLancamentos[]
   selectedUserIds: string[]
   onToggle: (userId: string) => void
-  unsyncedUserIds: Set<string>
-  ano: number
 }) {
   const hasSelection = selectedUserIds.length > 0
   return (
@@ -241,7 +237,6 @@ function AvatarStrip({
         {membros.map((m, idx) => {
           const isSelected = selectedUserIds.includes(m.userId)
           const dimmed = hasSelection && !isSelected
-          const isUnsynced = unsyncedUserIds.has(m.userId)
           const isInactive = m.isInactive
           return (
             <Tooltip key={m.userId}>
@@ -250,7 +245,7 @@ function AvatarStrip({
                   <button
                     type="button"
                     aria-pressed={isSelected}
-                    aria-label={`${m.name}${isInactive ? " (inativo)" : ""}${isSelected ? ", selecionado" : ""}${isUnsynced ? " — sem dados sincronizados" : ""}`}
+                    aria-label={`${m.name}${isInactive ? " (inativo)" : ""}${isSelected ? ", selecionado" : ""}`}
                     onClick={() => onToggle(m.userId)}
                     className={cn(
                       "relative rounded-full border-[3px] border-surface-card bg-surface-card shadow-sm transition-all duration-100 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 motion-reduce:transition-none",
@@ -264,29 +259,9 @@ function AvatarStrip({
                 }
               >
                 <UserAvatar name={m.name} photoPath={m.photoPath} size={AVATAR_STRIP_SIZE} inactive={isInactive} />
-                {isUnsynced && (
-                  <span
-                    aria-hidden
-                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-badge-warning ring-2 ring-surface-card"
-                  >
-                    <AlertTriangle className="h-2.5 w-2.5 text-white" />
-                  </span>
-                )}
-                {isInactive && !isUnsynced && (
-                  <span
-                    aria-hidden
-                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-neutral-grey-400 ring-2 ring-surface-card"
-                  >
-                    <Info className="h-2.5 w-2.5 text-white" />
-                  </span>
-                )}
               </TooltipTrigger>
               <TooltipContent>
-                {isUnsynced
-                  ? `${m.name}${isInactive ? " (inativo)" : ""} — sem dados sincronizados para ${ano}. Verifique o e-mail cadastrado.`
-                  : isInactive
-                    ? `${m.name} (inativo)`
-                    : m.name}
+                {isInactive ? `${m.name} (inativo)` : m.name}
               </TooltipContent>
             </Tooltip>
           )
@@ -971,12 +946,19 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
     }
   }, [rawMemberEntries, activeMembers, progressaoMap, ano, liveApprovalIssues, selectedUserIds, memberJiraIds])
 
-  // ── Members with no worklogs in cache (shown after data loads) ───────────
-  const unsyncedUserIds = React.useMemo(() => {
+  // ── Visible members: only those with worklogs in the selected year ─────────
+  // Before data loads, show all members (skeleton state). After load, hide those with 0 entries.
+  const visibleMembros = React.useMemo(() => {
     const loaded = Object.keys(rawMemberEntries).length > 0
-    if (!loaded) return new Set<string>()
-    return new Set(membros.filter((m) => (rawMemberEntries[m.userId]?.length ?? 0) === 0).map((m) => m.userId))
+    if (!loaded) return membros
+    return membros.filter((m) => (rawMemberEntries[m.userId]?.length ?? 0) > 0)
   }, [rawMemberEntries, membros])
+
+  // Clear any selected user that is no longer visible (e.g. switched year and they have no data)
+  React.useEffect(() => {
+    const visibleIds = new Set(visibleMembros.map((m) => m.userId))
+    setSelectedUserIds((prev) => prev.filter((id) => visibleIds.has(id)))
+  }, [visibleMembros])
 
   // ── Derived totals for metric cards ───────────────────────────────────────
   const totalAnual = React.useMemo(
@@ -1049,13 +1031,11 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       {/* Avatar strip + year selector */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          {membros.length > 0 && (
+          {visibleMembros.length > 0 && (
             <AvatarStrip
-              membros={membros}
+              membros={visibleMembros}
               selectedUserIds={selectedUserIds}
               onToggle={toggleUser}
-              unsyncedUserIds={unsyncedUserIds}
-              ano={ano}
             />
           )}
         </div>
