@@ -6,6 +6,7 @@ import { buildRole, can } from "@/core/rbac/policy"
 import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credentials-db"
 import {
   findJiraAccountIdByEmail,
+  findJiraAccountIdsByDisplayName,
   fetchWorklogsForAuthorInRange,
   fetchIssueFieldsForKeys,
   augmentFieldMapWithGetIssueFallback,
@@ -20,7 +21,7 @@ import {
   mergeJiraAndClockworkWorklogs,
 } from "@/features/qa/lib/clockwork-worklogs-fetch"
 import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
-import { resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
+import { resolveEmailForQaUserId, resolveNameForQaUserId } from "@/features/usuarios/actions/usuarios"
 
 export interface UxJiraEntry {
   issueKey: string
@@ -88,12 +89,28 @@ async function syncMonthsForUser(
   const base = jiraUrl
   const credentials = Buffer.from(`${jiraEmail}:${apiToken}`).toString("base64")
 
-  const jiraUser = await findJiraAccountIdByEmail(base, credentials, targetEmail).catch((err) => {
+  let jiraUser = await findJiraAccountIdByEmail(base, credentials, targetEmail).catch((err) => {
     console.warn("[tw-sync] Erro ao buscar accountId no Jira para email=%s: %s", targetEmail, err)
     return null
   })
+
+  // Fallback: email não encontrado (ex.: privacidade de e-mail no Jira Cloud).
+  // Tenta casar pelo nome de exibição do usuário — aceita apenas match unívoco.
   if (!jiraUser) {
-    console.warn("[tw-sync] userId=%s email=%s não encontrado no Jira — worklogs omitidos para year=%d months=%s", targetUserId, targetEmail, year, months.join(","))
+    const displayName = await resolveNameForQaUserId(targetUserId).catch(() => null)
+    if (displayName) {
+      const candidates = await findJiraAccountIdsByDisplayName(base, credentials, displayName).catch(() => [])
+      if (candidates.length === 1) {
+        jiraUser = { accountId: candidates[0]!.accountId, displayName: candidates[0]!.displayName }
+        console.info("[tw-sync] accountId resolvido via displayName para userId=%s name=%s → %s", targetUserId, displayName, jiraUser.accountId)
+      } else if (candidates.length > 1) {
+        console.warn("[tw-sync] displayName ambíguo (%d matches) para userId=%s name=%s — sync abortado", candidates.length, targetUserId, displayName)
+      }
+    }
+  }
+
+  if (!jiraUser) {
+    console.warn("[tw-sync] userId=%s email=%s não encontrado no Jira (email+nome) — worklogs omitidos para year=%d months=%s", targetUserId, targetEmail, year, months.join(","))
     return
   }
 
