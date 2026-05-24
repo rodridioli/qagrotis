@@ -501,16 +501,23 @@ function TagBarChart({
   items,
   ariaLabel,
   hideValues,
+  totalCount,
 }: {
   title: string
   items: { project: string; count: number; investimentoCentavos: number }[]
   ariaLabel: string
   hideValues?: boolean
+  totalCount?: number
 }) {
   const chartHeight = Math.max(300, items.length * 28)
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
-      <p className="mb-4 text-sm font-semibold text-text-primary">{title}</p>
+      <p className="mb-4 text-sm font-semibold text-text-primary">
+        {title}
+        {totalCount != null && totalCount > 0 && (
+          <span className="ml-1.5 font-normal text-text-secondary">({totalCount})</span>
+        )}
+      </p>
       {items.length === 0 ? (
         <p className="text-sm text-text-secondary">Sem dados no período.</p>
       ) : (
@@ -893,19 +900,22 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
       }
     }
 
-    const activeMonthSet = new Set(activeMonths)
-    const periodEntries = allEntries.filter(e => {
-      const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-      return activeMonthSet.has(m)
-    })
+    // Anchored entries: only issues whose FIRST worklog falls within the active period.
+    // This ensures totalUniqueIssues and yearTotals use the same definition as the table
+    // (first-month anchor), so card values always equal the sum of table rows for the period.
+    const anchoredIssueKeys = new Set<string>()
+    for (const m of activeMonths) {
+      for (const key of buckets[m]!.all) anchoredIssueKeys.add(key)
+    }
+    const anchoredEntries = allEntries.filter(e => anchoredIssueKeys.has(e.issueKey))
 
-    const yTotals = aggregateQaYearTotals(periodEntries, normalizedBrokenTypes)
+    const yTotals = aggregateQaYearTotals(anchoredEntries, normalizedBrokenTypes)
 
     const periodProjectInvestment = (project: string): number =>
       activeMonths.reduce((s, m) => s + (projectMonthInvestmentMap.get(project)?.[m] ?? 0), 0)
 
     const projectDistribMap = new Map<string, Set<string>>()
-    for (const e of periodEntries) {
+    for (const e of anchoredEntries) {
       const project = e.projectName?.trim() || "Sem projeto"
       if (!projectDistribMap.has(project)) projectDistribMap.set(project, new Set())
       projectDistribMap.get(project)!.add(e.issueKey)
@@ -917,7 +927,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
 
     return {
       monthStats: combined,
-      totalUniqueIssues: new Set(periodEntries.map((e) => e.issueKey)).size,
+      totalUniqueIssues: anchoredIssueKeys.size,
       yearTotals: yTotals,
       distribByProject,
     }
@@ -1149,11 +1159,12 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
         </div>
       )}
 
-      {/* Testes por Projeto */}
+      {/* Jiras por Projeto */}
       {!loading && (
         <TagBarChart
-          title="Testes por Projeto"
+          title="Jiras por Projeto"
           items={distribByProject}
+          totalCount={distribByProject.reduce((s, i) => s + i.count, 0)}
           ariaLabel="Distribuição de testes por projeto"
           hideValues={hideValues}
         />

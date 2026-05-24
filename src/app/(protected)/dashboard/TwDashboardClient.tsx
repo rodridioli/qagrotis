@@ -987,17 +987,19 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       }
     }
 
-    // Period-scoped filtering
-    const activeMonthSet = new Set(activeMonths)
-    const periodEntries = allEntries.filter(e => {
-      const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-      return activeMonthSet.has(m)
-    })
+    // Anchored entries: only issues whose FIRST worklog falls within the active period.
+    // This ensures totalUniqueIssues and yearTotals use the same definition as the table
+    // (first-month anchor), so card values always equal the sum of table rows for the period.
+    const anchoredIssueKeys = new Set<string>()
+    for (const m of activeMonths) {
+      for (const key of buckets[m]!.all) anchoredIssueKeys.add(key)
+    }
+    const anchoredEntries = allEntries.filter(e => anchoredIssueKeys.has(e.issueKey))
 
-    const yTotals = aggregateTwYearTotals(periodEntries, activeJiraAccountIds)
+    const yTotals = aggregateTwYearTotals(anchoredEntries, activeJiraAccountIds)
 
     const tagDistribMap = new Map<string, Set<string>>()
-    for (const e of periodEntries) {
+    for (const e of anchoredEntries) {
       const tag = e.tag?.trim() || "Sem tag"
       if (!tagDistribMap.has(tag)) tagDistribMap.set(tag, new Set())
       tagDistribMap.get(tag)!.add(e.issueKey)
@@ -1030,7 +1032,7 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
 
     return {
       monthStats: combined,
-      totalUniqueIssues: new Set(periodEntries.map((e) => e.issueKey)).size,
+      totalUniqueIssues: anchoredIssueKeys.size,
       yearTotals: yTotals,
       distribByTag: toTagItems(tagDistribMap),
       approvalByTag,
