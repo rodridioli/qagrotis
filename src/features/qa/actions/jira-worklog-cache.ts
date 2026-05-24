@@ -93,8 +93,9 @@ async function syncMonthsForUser(
     console.warn("[tw-sync] Erro ao buscar accountId no Jira para email=%s: %s", targetEmail, err)
     return null
   })
+  let accountIdSource: string | null = jiraUser ? "email" : null
 
-  // Fallback: email não encontrado (ex.: privacidade de e-mail no Jira Cloud).
+  // Fallback 1: email não encontrado (ex.: privacidade de e-mail no Jira Cloud).
   // Tenta casar pelo nome de exibição do usuário — aceita apenas match unívoco.
   if (!jiraUser) {
     const displayName = await resolveNameForQaUserId(targetUserId).catch(() => null)
@@ -102,16 +103,59 @@ async function syncMonthsForUser(
       const candidates = await findJiraAccountIdsByDisplayName(base, credentials, displayName).catch(() => [])
       if (candidates.length === 1) {
         jiraUser = { accountId: candidates[0]!.accountId, displayName: candidates[0]!.displayName }
+        accountIdSource = "displayName"
         console.info("[tw-sync] accountId resolvido via displayName para userId=%s name=%s → %s", targetUserId, displayName, jiraUser.accountId)
       } else if (candidates.length > 1) {
-        console.warn("[tw-sync] displayName ambíguo (%d matches) para userId=%s name=%s — sync abortado", candidates.length, targetUserId, displayName)
+        console.warn("[tw-sync] displayName ambíguo (%d matches) para userId=%s name=%s", candidates.length, targetUserId, displayName)
       }
     }
   }
 
+  // Fallback 2: accountId previamente armazenado no cache persistente (JiraAccountIdCache).
+  // Sobrevive ao force-sync (que apaga apenas JiraWorklogCache) e permite sincronizar
+  // ex-membros desativados no Jira cujo accountId foi resolvido durante período ativo.
   if (!jiraUser) {
-    console.warn("[tw-sync] userId=%s email=%s não encontrado no Jira (email+nome) — worklogs omitidos para year=%d months=%s", targetUserId, targetEmail, year, months.join(","))
-    return
+    const cached = await prisma.jiraAccountIdCache.findUnique({
+      where: { userId: targetUserId },
+      select: { accountId: true },
+    }).catch(() => null)
+    if (cached?.accountId) {
+      jiraUser = { accountId: cached.accountId }
+      accountIdSource = "db-account-cache"
+      console.info("[tw-sync] accountId recuperado de JiraAccountIdCache para userId=%s → %s", targetUserId, jiraUser.accountId)
+    }
+  }
+
+  // Fallback 3: busca em qualquer entrada antiga do JiraWorklogCache (outros anos/meses).
+  // Útil quando JiraAccountIdCache ainda não foi populado para este usuário.
+  if (!jiraUser) {
+    const fromWorklog = await prisma.jiraWorklogCache.findFirst({
+      where: { userId: targetUserId, authorJiraAccountId: { not: null } },
+      select: { authorJiraAccountId: true },
+      orderBy: { startedAt: "desc" },
+    }).catch(() => null)
+    if (fromWorklog?.authorJiraAccountId) {
+      jiraUser = { accountId: fromWorklog.authorJiraAccountId }
+      accountIdSource = "db-worklog-cache"
+      console.info("[tw-sync] accountId recuperado de JiraWorklogCache (histórico) para userId=%s → %s", targetUserId, jiraUser.accountId)
+    }
+  }
+
+  // Quando o accountId foi resolvido com sucesso, persistir no cache dedicado para uso futuro.
+  if (jiraUser && accountIdSource) {
+    await prisma.jiraAccountIdCache.upsert({
+      where: { userId: targetUserId },
+      update: { accountId: jiraUser.accountId, resolvedBy: accountIdSource },
+      create: { userId: targetUserId, accountId: jiraUser.accountId, resolvedBy: accountIdSource },
+    }).catch(() => undefined) // não abortar sync por falha no cache
+  }
+
+  const clockworkOnlyMode = !jiraUser
+  if (clockworkOnlyMode) {
+    console.info(
+      "[tw-sync] userId=%s email=%s não encontrado no Jira (mesmo com includeInactive) — modo clockwork-only para year=%d months=%s",
+      targetUserId, targetEmail, year, months.join(","),
+    )
   }
 
   // Group consecutive months into ranges (each ≤ 92 days, 3 months = ~92 days max)
@@ -122,9 +166,12 @@ async function syncMonthsForUser(
     const lastDay = new Date(year, month + 1, 0).getDate()
     const toIso = `${year}-${pad(month + 1)}-${pad(lastDay)}`
 
-    const { entries: jiraEntries } = await fetchWorklogsForAuthorInRange(
-      base, credentials, jiraUser.accountId, fromIso, toIso, "UTC",
-    ).catch(() => ({ entries: [] as JiraLancamentoEntry[], truncatedIssues: false, truncatedWorklogs: false }))
+    // Skip Jira worklog fetch when we have no accountId (inactive/not-found user)
+    const jiraEntries: JiraLancamentoEntry[] = clockworkOnlyMode
+      ? []
+      : await fetchWorklogsForAuthorInRange(
+          base, credentials, jiraUser!.accountId, fromIso, toIso, "UTC",
+        ).then((r) => r.entries).catch(() => [])
 
     let clockworkEntries: JiraLancamentoEntry[] = []
     try {
@@ -140,6 +187,12 @@ async function syncMonthsForUser(
       }
     } catch {
       // Clockwork is optional — failure does not abort the Jira sync
+    }
+
+    // In clockwork-only mode, skip if Clockwork also returned nothing (avoid empty marker)
+    if (clockworkOnlyMode && clockworkEntries.length === 0) {
+      console.info("[tw-sync] clockwork-only: sem entradas para userId=%s month=%d/%d — marker não gravado", targetUserId, month + 1, year)
+      continue
     }
 
     const { merged: rawEntries } = mergeJiraAndClockworkWorklogs(jiraEntries, clockworkEntries)
@@ -170,7 +223,8 @@ async function syncMonthsForUser(
           tag: patch?.tag?.trim() ? patch.tag.trim() : null,
           retornos: retornosData?.total ?? 0,
           retornosByAssignee: retornosData?.byAssignee ?? {},
-          authorJiraAccountId: jiraUser.accountId,
+          // authorJiraAccountId is null in clockwork-only mode (no Jira accountId available)
+          authorJiraAccountId: jiraUser?.accountId ?? null,
         }
       })
     }

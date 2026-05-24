@@ -648,3 +648,14 @@ model JiraWorklogSyncMarker {
 
   @@unique([userId, year, month])
 }
+
+/// Cache persistente do accountId Jira por usuário.
+/// Sobrevive ao force-sync (que apaga JiraWorklogCache) e garante que
+/// ex-membros desativados no Jira continuem sendo sincronizados enquanto
+/// o accountId for conhecido.
+model JiraAccountIdCache {
+  userId      String   @id
+  accountId   String
+  resolvedAt  DateTime @updatedAt
+  resolvedBy  String?  /// "email" | "displayName" | "db-worklog-cache" | "admin"
+}

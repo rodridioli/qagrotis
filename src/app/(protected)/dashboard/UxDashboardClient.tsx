@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, RefreshCw, TrendingUp } from "lucide-react"
+import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, Info, RefreshCw, TrendingUp } from "lucide-react"
 import { AreaChart, Area, BarChart, Bar, Cell, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart, Pie, Legend } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
