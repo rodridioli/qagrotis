@@ -139,9 +139,8 @@ export async function findJiraAccountIdByEmail(
   if (!ok || !Array.isArray(data)) return null
   const lower = emailNorm.toLowerCase()
   const exact = data.find((u) => (u.emailAddress ?? "").trim().toLowerCase() === lower)
-  const pick = exact ?? data[0]
-  if (!pick?.accountId) return null
-  return { accountId: pick.accountId, displayName: pick.displayName }
+  if (!exact?.accountId) return null
+  return { accountId: exact.accountId, displayName: exact.displayName }
 }
 
 /**

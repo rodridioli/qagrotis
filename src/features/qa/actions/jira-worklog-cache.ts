@@ -15,6 +15,11 @@ import {
   type JiraLancamentoEntry,
   type RetornosResult,
 } from "@/features/qa/lib/jira-worklogs-fetch"
+import {
+  fetchClockworkWorklogsForEmail,
+  mergeJiraAndClockworkWorklogs,
+} from "@/features/qa/lib/clockwork-worklogs-fetch"
+import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
 import { resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
 
 export interface UxJiraEntry {
@@ -74,14 +79,23 @@ async function syncMonthsForUser(
   viewerUserId: string,
 ): Promise<void> {
   const creds = await resolveJiraCredentialsForRequest(viewerUserId)
-  if (!creds) return
+  if (!creds) {
+    console.warn("[tw-sync] Credenciais Jira não configuradas para viewerUserId=%s — sync abortado para %s", viewerUserId, targetEmail)
+    return
+  }
 
   const { jiraUrl, jiraEmail, apiToken } = creds
   const base = jiraUrl
   const credentials = Buffer.from(`${jiraEmail}:${apiToken}`).toString("base64")
 
-  const jiraUser = await findJiraAccountIdByEmail(base, credentials, targetEmail).catch(() => null)
-  if (!jiraUser) return
+  const jiraUser = await findJiraAccountIdByEmail(base, credentials, targetEmail).catch((err) => {
+    console.warn("[tw-sync] Erro ao buscar accountId no Jira para email=%s: %s", targetEmail, err)
+    return null
+  })
+  if (!jiraUser) {
+    console.warn("[tw-sync] userId=%s email=%s não encontrado no Jira — worklogs omitidos para year=%d months=%s", targetUserId, targetEmail, year, months.join(","))
+    return
+  }
 
   // Group consecutive months into ranges (each ≤ 92 days, 3 months = ~92 days max)
   // Process month by month to keep ranges well within the 92-day limit.
@@ -91,9 +105,27 @@ async function syncMonthsForUser(
     const lastDay = new Date(year, month + 1, 0).getDate()
     const toIso = `${year}-${pad(month + 1)}-${pad(lastDay)}`
 
-    const { entries: rawEntries } = await fetchWorklogsForAuthorInRange(
+    const { entries: jiraEntries } = await fetchWorklogsForAuthorInRange(
       base, credentials, jiraUser.accountId, fromIso, toIso, "UTC",
     ).catch(() => ({ entries: [] as JiraLancamentoEntry[], truncatedIssues: false, truncatedWorklogs: false }))
+
+    let clockworkEntries: JiraLancamentoEntry[] = []
+    try {
+      const clockworkToken = (await getClockworkApiTokenResolved()).trim()
+      if (clockworkToken) {
+        clockworkEntries = await fetchClockworkWorklogsForEmail({
+          token: clockworkToken,
+          emailNorm: targetEmail.trim().toLowerCase(),
+          fromIso,
+          toIso,
+          timeZoneId: "UTC",
+        })
+      }
+    } catch {
+      // Clockwork is optional — failure does not abort the Jira sync
+    }
+
+    const { merged: rawEntries } = mergeJiraAndClockworkWorklogs(jiraEntries, clockworkEntries)
 
     let entries = rawEntries
     const validKeys = Array.from(
@@ -252,8 +284,10 @@ export async function getUxWorklogsForYear(
         monthsToSync,
         session.user.id,
       ).catch((err) => {
-        console.error("[jira-worklog-cache] sync failed:", err)
+        console.error("[tw-sync] Falha no sync userId=%s year=%d: %s", targetUserId, year, err)
       })
+    } else {
+      console.warn("[tw-sync] userId=%s não tem e-mail cadastrado — sync impossível para year=%d months=%s", targetUserId, year, monthsToSync.join(","))
     }
   }
 

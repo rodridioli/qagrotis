@@ -932,18 +932,10 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       if (firstEntry?.authorJiraAccountId) activeJiraAccountIds.add(firstEntry.authorJiraAccountId)
     }
 
-    // Pass 2 — global: assign issue counts using a cross-member first-month anchor.
-    // issueFirstMonth is computed across ALL members so UX-100 worked on by
-    // Barbara (April) and Bruno (May) is anchored to April for both — counted once.
+    // Pass 2 — global: count issues per month based on activity (any worklog in the month).
+    // Each issue is counted in EVERY month it has worklogs, matching the behaviour of
+    // /api/jira/lancamentos which counts all issues with activity in the selected range.
     {
-      const issueFirstMonth = new Map<string, number>()
-      for (const e of allEntries) {
-        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-        if (m < 0 || m > 11) continue
-        const cur = issueFirstMonth.get(e.issueKey)
-        if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
-      }
-
       type CB = {
         all: Set<string>; novosProto: Set<string>; melhorias: Set<string>
         ajustes: Set<string>; pesq: Set<string>; usab: Set<string>
@@ -958,9 +950,9 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       }))
 
       for (const e of allEntries) {
-        const countMonth = issueFirstMonth.get(e.issueKey)
-        if (countMonth === undefined) continue
-        const cb = buckets[countMonth]!
+        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+        if (m < 0 || m > 11) continue
+        const cb = buckets[m]!
         const tf = (e.typeField ?? "").trim().toLowerCase()
         cb.all.add(e.issueKey)
         if (tf === "new/redesign" || tf === "new" || tf === "redesign") cb.novosProto.add(e.issueKey)

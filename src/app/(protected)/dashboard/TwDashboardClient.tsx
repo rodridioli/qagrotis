@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, RefreshCw, TrendingUp } from "lucide-react"
+import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, Info, RefreshCw, TrendingUp } from "lucide-react"
 import { AreaChart, Area, BarChart, Bar, Cell, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart, Pie, Legend } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -222,10 +222,14 @@ function AvatarStrip({
   membros,
   selectedUserIds,
   onToggle,
+  unsyncedUserIds,
+  ano,
 }: {
   membros: EquipeMembroLancamentos[]
   selectedUserIds: string[]
   onToggle: (userId: string) => void
+  unsyncedUserIds: Set<string>
+  ano: number
 }) {
   const hasSelection = selectedUserIds.length > 0
   return (
@@ -238,6 +242,7 @@ function AvatarStrip({
         {membros.map((m, idx) => {
           const isSelected = selectedUserIds.includes(m.userId)
           const dimmed = hasSelection && !isSelected
+          const isUnsynced = unsyncedUserIds.has(m.userId)
           return (
             <Tooltip key={m.userId}>
               <TooltipTrigger
@@ -245,7 +250,7 @@ function AvatarStrip({
                   <button
                     type="button"
                     aria-pressed={isSelected}
-                    aria-label={`${m.name}${isSelected ? " (selecionado)" : ""}`}
+                    aria-label={`${m.name}${isSelected ? " (selecionado)" : ""}${isUnsynced ? " — sem dados sincronizados" : ""}`}
                     onClick={() => onToggle(m.userId)}
                     className={cn(
                       "relative rounded-full border-[3px] border-surface-card bg-surface-card shadow-sm transition-all duration-100 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 motion-reduce:transition-none",
@@ -259,8 +264,20 @@ function AvatarStrip({
                 }
               >
                 <UserAvatar name={m.name} photoPath={m.photoPath} size={AVATAR_STRIP_SIZE} />
+                {isUnsynced && (
+                  <span
+                    aria-hidden
+                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-badge-warning ring-2 ring-surface-card"
+                  >
+                    <AlertTriangle className="h-2.5 w-2.5 text-white" />
+                  </span>
+                )}
               </TooltipTrigger>
-              <TooltipContent>{m.name}</TooltipContent>
+              <TooltipContent>
+                {isUnsynced
+                  ? `${m.name} — sem dados sincronizados para ${ano}. Verifique o e-mail cadastrado.`
+                  : m.name}
+              </TooltipContent>
             </Tooltip>
           )
         })}
@@ -625,7 +642,14 @@ function TwYearTable({
             <TH center group="blue">Novas Docs</TH>
             <TH center group="blue">Revisões</TH>
             <TH center group="blue">Outras Atividades</TH>
-            <TH center>Retornos</TH>
+            <TH center>
+              <TooltipProvider delay={400} closeDelay={0}>
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex cursor-default items-center gap-1">Retornos<Info className="h-3 w-3 text-text-disabled" /></span>} />
+                  <TooltipContent>Issues devolvidos do status Aprovação para In Progress — indica retrabalho.</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </TH>
           </tr>
         </thead>
         <tbody>
@@ -847,16 +871,10 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       if (firstEntry?.authorJiraAccountId) activeJiraAccountIds.add(firstEntry.authorJiraAccountId)
     }
 
-    // Pass 2 — global: assign issue counts with first-month anchor
+    // Pass 2 — global: count issues per month based on activity (any worklog in the month).
+    // Each issue is counted in EVERY month it has worklogs, matching the behaviour of
+    // /api/jira/lancamentos which counts all issues with activity in the selected range.
     {
-      const issueFirstMonth = new Map<string, number>()
-      for (const e of allEntries) {
-        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-        if (m < 0 || m > 11) continue
-        const cur = issueFirstMonth.get(e.issueKey)
-        if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
-      }
-
       type CB = {
         all: Set<string>
         novasDocs: Set<string>
@@ -877,9 +895,9 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       }))
 
       for (const e of allEntries) {
-        const countMonth = issueFirstMonth.get(e.issueKey)
-        if (countMonth === undefined) continue
-        const cb = buckets[countMonth]!
+        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+        if (m < 0 || m > 11) continue
+        const cb = buckets[m]!
         const tf = (e.typeField ?? "").trim().toLowerCase()
         cb.all.add(e.issueKey)
         if (tf === "new documentation") cb.novasDocs.add(e.issueKey)
@@ -942,6 +960,13 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       approvalByTag,
     }
   }, [rawMemberEntries, activeMembers, progressaoMap, ano, liveApprovalIssues, selectedUserIds, memberJiraIds])
+
+  // ── Members with no worklogs in cache (shown after data loads) ───────────
+  const unsyncedUserIds = React.useMemo(() => {
+    const loaded = Object.keys(rawMemberEntries).length > 0
+    if (!loaded) return new Set<string>()
+    return new Set(membros.filter((m) => (rawMemberEntries[m.userId]?.length ?? 0) === 0).map((m) => m.userId))
+  }, [rawMemberEntries, membros])
 
   // ── Derived totals for metric cards ───────────────────────────────────────
   const totalAnual = React.useMemo(
@@ -1019,6 +1044,8 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
               membros={membros}
               selectedUserIds={selectedUserIds}
               onToggle={toggleUser}
+              unsyncedUserIds={unsyncedUserIds}
+              ano={ano}
             />
           )}
         </div>
