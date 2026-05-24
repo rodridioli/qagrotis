@@ -689,8 +689,19 @@ export function QaDashboardClient({ membros, progressaoMap }: Props) {
       }
     }
 
-    // Pass 2 — global: count issues per month + QA metrics
+    // Pass 2 — global: count issues per month with first-month anchor.
+    // Each issue is counted in exactly ONE month (the month of its earliest worklog),
+    // so sum(combined[i].totalIssues) === totalUniqueIssues (no double-counting).
     {
+      // Build first-month anchor: minimum month index across all worklogs per issue.
+      const issueFirstMonth = new Map<string, number>()
+      for (const e of allEntries) {
+        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+        if (m < 0 || m > 11) continue
+        const cur = issueFirstMonth.get(e.issueKey)
+        if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
+      }
+
       type CB = {
         all: Set<string>
         brokenIssues: Set<string>
@@ -705,9 +716,9 @@ export function QaDashboardClient({ membros, progressaoMap }: Props) {
       }))
 
       for (const e of allEntries) {
-        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-        if (m < 0 || m > 11) continue
-        const cb = buckets[m]!
+        const firstMonth = issueFirstMonth.get(e.issueKey)
+        if (firstMonth === undefined) continue
+        const cb = buckets[firstMonth]!
         cb.all.add(e.issueKey)
         if ((e.retornos ?? 0) > 0) cb.brokenIssues.add(e.issueKey)
         if (e.qtdCenariosQA > 0) {
