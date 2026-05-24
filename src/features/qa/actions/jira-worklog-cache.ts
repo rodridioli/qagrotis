@@ -7,6 +7,7 @@ import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credent
 import {
   findJiraAccountIdByEmail,
   findJiraAccountIdsByDisplayName,
+  findJiraAccountIdFromRecentIssueWorklogs,
   fetchWorklogsForAuthorInRange,
   fetchIssueFieldsForKeys,
   augmentFieldMapWithGetIssueFallback,
@@ -138,6 +139,19 @@ async function syncMonthsForUser(
       jiraUser = { accountId: fromWorklog.authorJiraAccountId }
       accountIdSource = "db-worklog-cache"
       console.info("[tw-sync] accountId recuperado de JiraWorklogCache (histórico) para userId=%s → %s", targetUserId, jiraUser.accountId)
+    }
+  }
+
+  // Fallback 4: extrai accountId diretamente dos worklogs de issues onde o usuário
+  // é reporter/assignee. Funciona mesmo para contas Jira completamente desativadas —
+  // o endpoint de worklog sempre retorna author.accountId independente do status da conta.
+  if (!jiraUser) {
+    const displayName = await resolveNameForQaUserId(targetUserId).catch(() => null)
+    const extracted = await findJiraAccountIdFromRecentIssueWorklogs(base, credentials, targetEmail, displayName).catch(() => null)
+    if (extracted) {
+      jiraUser = { accountId: extracted }
+      accountIdSource = "worklog-extract"
+      console.info("[tw-sync] accountId extraído de worklogs de issues para userId=%s email=%s → %s", targetUserId, targetEmail, extracted)
     }
   }
 
