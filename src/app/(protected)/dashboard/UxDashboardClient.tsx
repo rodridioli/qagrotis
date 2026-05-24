@@ -1008,6 +1008,10 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       if (firstEntry?.authorJiraAccountId) activeJiraAccountIds.add(firstEntry.authorJiraAccountId)
     }
 
+    // Anchored entries: only issues whose FIRST worklog falls within the active period.
+    // Declared here so it can be populated inside the Pass 2 block scope and read afterwards.
+    const anchoredIssueKeys = new Set<string>()
+
     // Pass 2 — global: count issues per month with first-month anchor.
     // Each issue is counted in exactly ONE month (the month of its earliest worklog),
     // so sum(combined[i].totalIssues) === totalUniqueIssues (no double-counting).
@@ -1075,15 +1079,13 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
         combined[i]!.aguardando = cb.ag.size
         combined[i]!.retornos = Array.from(cb.retornosPerIssue.values()).reduce((s, v) => s + v, 0)
       }
+
+      // Populate anchoredIssueKeys inside the block where buckets is in scope
+      for (const m of activeMonths) {
+        for (const key of buckets[m]!.all) anchoredIssueKeys.add(key)
+      }
     }
 
-    // Anchored entries: only issues whose FIRST worklog falls within the active period.
-    // This ensures totalUniqueIssues and yearTotals use the same definition as the table
-    // (first-month anchor), so card values always equal the sum of table rows for the period.
-    const anchoredIssueKeys = new Set<string>()
-    for (const m of activeMonths) {
-      for (const key of buckets[m]!.all) anchoredIssueKeys.add(key)
-    }
     const anchoredEntries = allEntries.filter(e => anchoredIssueKeys.has(e.issueKey))
 
     // Period-level unique counts and type totals for the metric cards

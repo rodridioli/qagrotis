@@ -818,6 +818,10 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
       }
     }
 
+    // Anchored entries: only issues whose FIRST worklog falls within the active period.
+    // Declared here so it can be populated inside the Pass 2 block scope and read afterwards.
+    const anchoredIssueKeys = new Set<string>()
+
     // Pass 2 — global: count issues per month with first-month anchor.
     // Each issue is counted in exactly ONE month (the month of its earliest worklog),
     // so sum(combined[i].totalIssues) === totalUniqueIssues (no double-counting).
@@ -898,15 +902,13 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
         }
         combined[i]!.cenariosErro = cenariosErroMonth
       }
+
+      // Populate anchoredIssueKeys inside the block where buckets is in scope
+      for (const m of activeMonths) {
+        for (const key of buckets[m]!.all) anchoredIssueKeys.add(key)
+      }
     }
 
-    // Anchored entries: only issues whose FIRST worklog falls within the active period.
-    // This ensures totalUniqueIssues and yearTotals use the same definition as the table
-    // (first-month anchor), so card values always equal the sum of table rows for the period.
-    const anchoredIssueKeys = new Set<string>()
-    for (const m of activeMonths) {
-      for (const key of buckets[m]!.all) anchoredIssueKeys.add(key)
-    }
     const anchoredEntries = allEntries.filter(e => anchoredIssueKeys.has(e.issueKey))
 
     const yTotals = aggregateQaYearTotals(anchoredEntries, normalizedBrokenTypes)
