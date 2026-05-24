@@ -499,3 +499,61 @@ export async function getUxMemberJiraIds(
     return {}
   }
 }
+
+// ── Admin: gerenciamento manual de accountIds Jira ────────────────────────────
+
+/**
+ * Retorna todos os registros de JiraAccountIdCache para o painel admin.
+ * Inclui o email do usuário para facilitar identificação.
+ */
+export async function adminListJiraAccountIds(): Promise<
+  { userId: string; email: string | null; name: string | null; accountId: string; resolvedBy: string | null; resolvedAt: Date }[]
+> {
+  const session = await requireSession()
+  const role = buildRole(session.user.type, session.user.accessProfile)
+  if (role !== "Administrador:MGR") throw new Error("Forbidden")
+
+  const rows = await prisma.jiraAccountIdCache.findMany({ orderBy: { resolvedAt: "desc" } })
+  return Promise.all(
+    rows.map(async (r) => {
+      const [email, name] = await Promise.all([
+        resolveEmailForQaUserId(r.userId).catch(() => null),
+        resolveNameForQaUserId(r.userId).catch(() => null),
+      ])
+      return { ...r, email, name }
+    }),
+  )
+}
+
+/**
+ * Registra ou atualiza manualmente o accountId Jira de um usuário (por email).
+ * Permite sincronizar ex-membros cujo accountId não pode ser resolvido automaticamente.
+ */
+export async function adminSetJiraAccountId(
+  email: string,
+  jiraAccountId: string,
+): Promise<{ ok: true; userId: string; name: string | null } | { ok: false; error: string }> {
+  const session = await requireSession()
+  const role = buildRole(session.user.type, session.user.accessProfile)
+  if (role !== "Administrador:MGR") throw new Error("Forbidden")
+
+  const emailNorm = email.trim().toLowerCase()
+  const accountIdNorm = jiraAccountId.trim()
+  if (!emailNorm || !accountIdNorm) return { ok: false, error: "Email e accountId são obrigatórios." }
+
+  // Resolve userId a partir do email
+  const created = await prisma.createdUser.findFirst({
+    where: { email: { equals: emailNorm, mode: "insensitive" } },
+    select: { id: true, name: true },
+  })
+  if (!created) return { ok: false, error: `Nenhum usuário encontrado com email "${emailNorm}".` }
+
+  await prisma.jiraAccountIdCache.upsert({
+    where: { userId: created.id },
+    update: { accountId: accountIdNorm, resolvedBy: "admin" },
+    create: { userId: created.id, accountId: accountIdNorm, resolvedBy: "admin" },
+  })
+
+  console.info("[admin] JiraAccountIdCache atualizado manualmente: userId=%s email=%s accountId=%s", created.id, emailNorm, accountIdNorm)
+  return { ok: true, userId: created.id, name: created.name }
+}
