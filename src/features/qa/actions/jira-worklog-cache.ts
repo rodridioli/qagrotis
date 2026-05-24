@@ -93,8 +93,9 @@ async function syncMonthsForUser(
     console.warn("[tw-sync] Erro ao buscar accountId no Jira para email=%s: %s", targetEmail, err)
     return null
   })
+  let accountIdSource: string | null = jiraUser ? "email" : null
 
-  // Fallback: email não encontrado (ex.: privacidade de e-mail no Jira Cloud).
+  // Fallback 1: email não encontrado (ex.: privacidade de e-mail no Jira Cloud).
   // Tenta casar pelo nome de exibição do usuário — aceita apenas match unívoco.
   if (!jiraUser) {
     const displayName = await resolveNameForQaUserId(targetUserId).catch(() => null)
@@ -102,11 +103,51 @@ async function syncMonthsForUser(
       const candidates = await findJiraAccountIdsByDisplayName(base, credentials, displayName).catch(() => [])
       if (candidates.length === 1) {
         jiraUser = { accountId: candidates[0]!.accountId, displayName: candidates[0]!.displayName }
+        accountIdSource = "displayName"
         console.info("[tw-sync] accountId resolvido via displayName para userId=%s name=%s → %s", targetUserId, displayName, jiraUser.accountId)
       } else if (candidates.length > 1) {
-        console.warn("[tw-sync] displayName ambíguo (%d matches) para userId=%s name=%s — sync abortado", candidates.length, targetUserId, displayName)
+        console.warn("[tw-sync] displayName ambíguo (%d matches) para userId=%s name=%s", candidates.length, targetUserId, displayName)
       }
     }
+  }
+
+  // Fallback 2: accountId previamente armazenado no cache persistente (JiraAccountIdCache).
+  // Sobrevive ao force-sync (que apaga apenas JiraWorklogCache) e permite sincronizar
+  // ex-membros desativados no Jira cujo accountId foi resolvido durante período ativo.
+  if (!jiraUser) {
+    const cached = await prisma.jiraAccountIdCache.findUnique({
+      where: { userId: targetUserId },
+      select: { accountId: true },
+    }).catch(() => null)
+    if (cached?.accountId) {
+      jiraUser = { accountId: cached.accountId }
+      accountIdSource = "db-account-cache"
+      console.info("[tw-sync] accountId recuperado de JiraAccountIdCache para userId=%s → %s", targetUserId, jiraUser.accountId)
+    }
+  }
+
+  // Fallback 3: busca em qualquer entrada antiga do JiraWorklogCache (outros anos/meses).
+  // Útil quando JiraAccountIdCache ainda não foi populado para este usuário.
+  if (!jiraUser) {
+    const fromWorklog = await prisma.jiraWorklogCache.findFirst({
+      where: { userId: targetUserId, authorJiraAccountId: { not: null } },
+      select: { authorJiraAccountId: true },
+      orderBy: { startedAt: "desc" },
+    }).catch(() => null)
+    if (fromWorklog?.authorJiraAccountId) {
+      jiraUser = { accountId: fromWorklog.authorJiraAccountId }
+      accountIdSource = "db-worklog-cache"
+      console.info("[tw-sync] accountId recuperado de JiraWorklogCache (histórico) para userId=%s → %s", targetUserId, jiraUser.accountId)
+    }
+  }
+
+  // Quando o accountId foi resolvido com sucesso, persistir no cache dedicado para uso futuro.
+  if (jiraUser && accountIdSource) {
+    await prisma.jiraAccountIdCache.upsert({
+      where: { userId: targetUserId },
+      update: { accountId: jiraUser.accountId, resolvedBy: accountIdSource },
+      create: { userId: targetUserId, accountId: jiraUser.accountId, resolvedBy: accountIdSource },
+    }).catch(() => undefined) // não abortar sync por falha no cache
   }
 
   const clockworkOnlyMode = !jiraUser
