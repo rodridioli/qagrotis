@@ -503,7 +503,7 @@ function TagBarChart({
   hideValues,
 }: {
   title: string
-  items: { tag: string; count: number; investimentoCentavos: number }[]
+  items: { project: string; count: number; investimentoCentavos: number }[]
   ariaLabel: string
   hideValues?: boolean
 }) {
@@ -519,7 +519,7 @@ function TagBarChart({
             <BarChart data={items} margin={{ top: 4, right: 8, bottom: 40, left: 8 }}>
               <CartesianGrid vertical={false} stroke="#f1f5f9" />
               <XAxis
-                dataKey="tag"
+                dataKey="project"
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 11, fill: "#5C7FA0" }}
@@ -539,10 +539,10 @@ function TagBarChart({
                 cursor={{ fill: `${BAR_PALETTE[0]}14` }}
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null
-                  const d = payload[0]?.payload as { tag: string; count: number; investimentoCentavos: number }
+                  const d = payload[0]?.payload as { project: string; count: number; investimentoCentavos: number }
                   return (
                     <div className="rounded-lg border border-border-default bg-surface-card px-3 py-2 text-xs shadow-card">
-                      <p className="mb-1 font-semibold text-text-primary">{d.tag}</p>
+                      <p className="mb-1 font-semibold text-text-primary">{d.project}</p>
                       <p className="text-text-secondary">{d.count} {d.count === 1 ? "jira" : "jiras"}</p>
                       {d.investimentoCentavos > 0 && (
                         <p className="text-text-secondary">
@@ -775,7 +775,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
   )
 
   // ── Derived stats ─────────────────────────────────────────────────────────
-  const { monthStats, totalUniqueIssues, yearTotals, distribByTag } = React.useMemo(() => {
+  const { monthStats, totalUniqueIssues, yearTotals, distribByProject } = React.useMemo(() => {
     const empty: QaYearTotals = { cenariosTestados: 0, cenariosErro: 0, jirasBroken: 0, criticos: 0 }
 
     if (Object.keys(rawMemberEntries).length === 0) {
@@ -783,13 +783,13 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
         monthStats: null,
         totalUniqueIssues: 0,
         yearTotals: empty,
-        distribByTag: [] as { tag: string; count: number; investimentoCentavos: number }[],
+        distribByProject: [] as { project: string; count: number; investimentoCentavos: number }[],
       }
     }
 
     const combined: QaMonthStats[] = Array.from({ length: 12 }, emptyQaMonthStats)
     const allEntries: JiraEntry[] = []
-    const tagMonthInvestmentMap = new Map<string, number[]>()
+    const projectMonthInvestmentMap = new Map<string, number[]>()
 
     // Pass 1 — per-member: accumulate hours and investment
     for (const m of activeMembers) {
@@ -804,9 +804,9 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
         if (valorHora != null) {
           const cost = Math.round((e.timeSpentSeconds / 3600) * valorHora)
           combined[month]!.investimentoCentavos += cost
-          const tag = e.tag?.trim() || "Sem tag"
-          if (!tagMonthInvestmentMap.has(tag)) tagMonthInvestmentMap.set(tag, Array(12).fill(0) as number[])
-          tagMonthInvestmentMap.get(tag)![month] = (tagMonthInvestmentMap.get(tag)![month] ?? 0) + cost
+          const project = e.projectName?.trim() || "Sem projeto"
+          if (!projectMonthInvestmentMap.has(project)) projectMonthInvestmentMap.set(project, Array(12).fill(0) as number[])
+          projectMonthInvestmentMap.get(project)![month] = (projectMonthInvestmentMap.get(project)![month] ?? 0) + cost
         }
       }
     }
@@ -901,34 +901,43 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
 
     const yTotals = aggregateQaYearTotals(periodEntries, normalizedBrokenTypes)
 
-    const periodTagInvestment = (tag: string): number =>
-      activeMonths.reduce((s, m) => s + (tagMonthInvestmentMap.get(tag)?.[m] ?? 0), 0)
+    const periodProjectInvestment = (project: string): number =>
+      activeMonths.reduce((s, m) => s + (projectMonthInvestmentMap.get(project)?.[m] ?? 0), 0)
 
-    const tagDistribMap = new Map<string, Set<string>>()
+    const projectDistribMap = new Map<string, Set<string>>()
     for (const e of periodEntries) {
-      const tag = e.tag?.trim() || "Sem tag"
-      if (!tagDistribMap.has(tag)) tagDistribMap.set(tag, new Set())
-      tagDistribMap.get(tag)!.add(e.issueKey)
+      const project = e.projectName?.trim() || "Sem projeto"
+      if (!projectDistribMap.has(project)) projectDistribMap.set(project, new Set())
+      projectDistribMap.get(project)!.add(e.issueKey)
     }
 
-    const distribByTag = [...tagDistribMap.entries()]
-      .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: periodTagInvestment(tag) }))
+    const distribByProject = [...projectDistribMap.entries()]
+      .map(([project, keys]) => ({ project, count: keys.size, investimentoCentavos: periodProjectInvestment(project) }))
       .sort((a, b) => b.count - a.count)
 
     return {
       monthStats: combined,
       totalUniqueIssues: new Set(periodEntries.map((e) => e.issueKey)).size,
       yearTotals: yTotals,
-      distribByTag,
+      distribByProject,
     }
   }, [rawMemberEntries, activeMembers, progressaoMap, ano, activeMonths, normalizedBrokenTypes])
 
-  // ── Visible members: only those with worklogs in the selected year ─────────
+  // ── Visible members ────────────────────────────────────────────────────────
+  // A member (active OR inactive) is shown only if they have at least one worklog
+  // entry within the selected period (activeMonths). Before data loads, all members
+  // are shown (skeleton state).
   const visibleMembros = React.useMemo(() => {
     const loaded = Object.keys(rawMemberEntries).length > 0
     if (!loaded) return membros
-    return membros.filter((m) => (rawMemberEntries[m.userId]?.length ?? 0) > 0)
-  }, [rawMemberEntries, membros])
+    const activeMonthSet = new Set(activeMonths)
+    return membros.filter((m) =>
+      (rawMemberEntries[m.userId] ?? []).some((e) => {
+        const month = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+        return activeMonthSet.has(month)
+      }),
+    )
+  }, [rawMemberEntries, membros, activeMonths])
 
   React.useEffect(() => {
     const visibleIds = new Set(visibleMembros.map((m) => m.userId))
@@ -1122,10 +1131,11 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
             label="Cenários com Erro"
             count={yearTotals.cenariosErro}
             totalIssues={totalUniqueIssues}
+            pctDenominator={yearTotals.cenariosTestados}
             totalInvestimentoCentavos={totalAnual.investimentoCentavos}
             timeSpentSeconds={0}
             hideValues={hideValues}
-            tint="blue"
+            tint="warning"
           />
           <TypeCard
             label="Jiras de Retorno (Broken)"
@@ -1139,12 +1149,12 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
         </div>
       )}
 
-      {/* Testes por Produto */}
+      {/* Testes por Projeto */}
       {!loading && (
         <TagBarChart
-          title="Testes por Produto"
-          items={distribByTag}
-          ariaLabel="Distribuição de testes por produto"
+          title="Testes por Projeto"
+          items={distribByProject}
+          ariaLabel="Distribuição de testes por projeto"
           hideValues={hideValues}
         />
       )}

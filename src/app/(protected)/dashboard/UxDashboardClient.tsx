@@ -914,16 +914,20 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
   }
 
   // ── Visible members ────────────────────────────────────────────────────────
-  // Active members are always shown (even if they have no worklogs yet in the year).
-  // Inactive members are only shown when they have at least one worklog entry in
-  // the selected year — they represent alumni who still have historical data.
+  // A member (active OR inactive) is shown only if they have at least one worklog
+  // entry within the selected period (activeMonths). Before data loads, all members
+  // are shown (skeleton state).
   const visibleMembros = React.useMemo(() => {
     const loaded = Object.keys(rawMemberEntries).length > 0
     if (!loaded) return membros
-    return membros.filter(
-      (m) => !m.isInactive || (rawMemberEntries[m.userId]?.length ?? 0) > 0,
+    const activeMonthSet = new Set(activeMonths)
+    return membros.filter((m) =>
+      (rawMemberEntries[m.userId] ?? []).some((e) => {
+        const month = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+        return activeMonthSet.has(month)
+      }),
     )
-  }, [rawMemberEntries, membros])
+  }, [rawMemberEntries, membros, activeMonths])
 
   // Clear selections that are no longer visible (e.g. user switched year)
   React.useEffect(() => {
