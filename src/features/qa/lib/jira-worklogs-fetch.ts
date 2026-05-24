@@ -175,6 +175,98 @@ export async function findJiraAccountIdsByDisplayName(
     .map((u) => ({ accountId: u.accountId, displayName: u.displayName ?? "", emailAddress: u.emailAddress }))
 }
 
+/**
+ * Último recurso para resolver o accountId de um usuário inativo no Jira Cloud:
+ * busca issues recentes onde o usuário é reporter ou assignee (via email em JQL),
+ * então extrai o accountId dos worklogs dessas issues — o campo `author.accountId`
+ * é retornado pelo Jira mesmo para contas completamente desativadas.
+ *
+ * O casamento é feito em ordem de confiança:
+ *   1. author.emailAddress === emailNorm (se visível — não afetado por privacy em worklogs)
+ *   2. author.displayName === displayName (case-insensitive)
+ *   3. author.displayName contém partes do displayName (fallback fuzzy)
+ *   4. Único autor inativo no worklog (author.active === false, quando só há um)
+ */
+export async function findJiraAccountIdFromRecentIssueWorklogs(
+  base: string,
+  credentials: string,
+  emailNorm: string,
+  displayName: string | null,
+): Promise<string | null> {
+  const email = emailNorm.trim().toLowerCase()
+  const name = displayName?.trim().toLowerCase() ?? null
+
+  // Tenta reporter e assignee — ambos aceitam email em JQL no Jira Cloud
+  const jqlCandidates = [
+    `reporter = "${email.replace(/"/g, '\\"')}" ORDER BY updated DESC`,
+    `assignee = "${email.replace(/"/g, '\\"')}" ORDER BY updated DESC`,
+  ]
+
+  for (const jql of jqlCandidates) {
+    const searchUrl = `${base}/rest/api/3/search/jql`
+    const { ok, data } = await jiraJson<{ issues?: { key: string }[] }>(
+      searchUrl,
+      credentials,
+      { method: "POST", body: JSON.stringify({ jql, fields: ["summary"], maxResults: 5 }) },
+    )
+    if (!ok || !data?.issues?.length) continue
+
+    for (const issue of data.issues.slice(0, 5)) {
+      const wlUrl = `${base}/rest/api/3/issue/${encodeURIComponent(issue.key)}/worklog?maxResults=100`
+      const { ok: wlOk, data: wlData } = await jiraJson<{
+        worklogs?: {
+          author?: {
+            accountId?: string
+            emailAddress?: string
+            displayName?: string
+            active?: boolean
+          }
+        }[]
+      }>(wlUrl, credentials)
+
+      if (!wlOk || !wlData?.worklogs?.length) continue
+
+      const inactiveAuthors = wlData.worklogs
+        .map((w) => w.author)
+        .filter((a): a is { accountId: string; emailAddress?: string; displayName?: string; active?: boolean } =>
+          typeof a?.accountId === "string" && a.accountId.length > 0,
+        )
+
+      for (const author of inactiveAuthors) {
+        const authorEmail = (author.emailAddress ?? "").trim().toLowerCase()
+        const authorName = (author.displayName ?? "").trim().toLowerCase()
+
+        // Nível 1 — email exato
+        if (authorEmail && authorEmail === email) {
+          console.info("[jira-worklogs-fetch] accountId extraído de worklog via email para %s → %s", emailNorm, author.accountId)
+          return author.accountId
+        }
+        // Nível 2 — displayName exato
+        if (name && authorName && authorName === name) {
+          console.info("[jira-worklogs-fetch] accountId extraído de worklog via displayName exato para %s → %s", displayName, author.accountId)
+          return author.accountId
+        }
+        // Nível 3 — displayName fuzzy (nome contém partes)
+        if (name && authorName) {
+          const parts = name.split(/\s+/).filter((p) => p.length > 2)
+          if (parts.length > 0 && parts.every((p) => authorName.includes(p))) {
+            console.info("[jira-worklogs-fetch] accountId extraído de worklog via displayName fuzzy para %s → %s", displayName, author.accountId)
+            return author.accountId
+          }
+        }
+      }
+
+      // Nível 4 — único autor inativo na issue (quando não há ambiguidade)
+      const inactiveOnly = inactiveAuthors.filter((a) => a.active === false)
+      if (inactiveOnly.length === 1) {
+        console.info("[jira-worklogs-fetch] accountId extraído de worklog (único autor inativo) para %s → %s", emailNorm, inactiveOnly[0]!.accountId)
+        return inactiveOnly[0]!.accountId
+      }
+    }
+  }
+  return null
+}
+
 /** Fields Jira search/issue — declarado cedo para `fetchIssueFieldsForKeys`. */
 type IssueFields = {
   summary?: unknown
