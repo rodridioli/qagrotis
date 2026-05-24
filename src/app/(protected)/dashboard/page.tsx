@@ -17,7 +17,7 @@ import type { ModuloRecord } from "@/features/qa/actions/modulos"
 import type { CenarioRecord } from "@/features/qa/actions/cenarios"
 import type { QaUserRecord } from "@/features/usuarios/actions/usuarios"
 import type { SuiteDashboardRecord } from "@/features/qa/actions/suites"
-import { getEquipeMembrosParaLancamentos } from "@/features/equipe/actions/equipe"
+import { getEquipeMembrosParaLancamentos, getEquipeMembrosParaLancamentosComInativos } from "@/features/equipe/actions/equipe"
 import { getProgressaoHistoricoBatch } from "@/features/individual/actions/individual-progressao"
 import { getApprovalIssuesByTag, getUxMemberJiraIds } from "@/features/qa/actions/jira-worklog-cache"
 
@@ -36,7 +36,7 @@ export default async function DashboardPage({
   if (perfil === "UX") {
     if (!isMgr) redirect("/dashboard")
 
-    const membros = await getEquipeMembrosParaLancamentos("UX")
+    const membros = await getEquipeMembrosParaLancamentosComInativos("UX")
     const userIds = membros.map((m) => m.userId)
     const [approvalIssues, memberJiraIds, progressaoMap] = await Promise.all([
       getApprovalIssuesByTag("UX"),
@@ -58,7 +58,7 @@ export default async function DashboardPage({
   if (perfil === "TW") {
     if (!isMgr) redirect("/dashboard")
 
-    const membros = await getEquipeMembrosParaLancamentos("TW")
+    const membros = await getEquipeMembrosParaLancamentosComInativos("TW")
     const userIds = membros.map((m) => m.userId)
     const [approvalIssues, memberJiraIds, progressaoMap] = await Promise.all([
       getApprovalIssuesByTag("TW"),
