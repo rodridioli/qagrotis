@@ -78,6 +78,50 @@ const QUARTERS = [
   { label: "4º Trimestre", months: [9, 10, 11] },
 ]
 
+// ─── Period utilities ─────────────────────────────────────────────────────────
+
+const PERIOD_MONTHS: Record<string, number[]> = {
+  Q1: [0, 1, 2],
+  Q2: [3, 4, 5],
+  Q3: [6, 7, 8],
+  Q4: [9, 10, 11],
+  H1: [0, 1, 2, 3, 4, 5],
+  H2: [6, 7, 8, 9, 10, 11],
+  FULL: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+}
+
+function parsePeriod(value: string, fallbackYear: number): { year: number; activeMonths: number[] } {
+  const dashIdx = value.lastIndexOf("-")
+  if (dashIdx < 0) return { year: fallbackYear, activeMonths: PERIOD_MONTHS.FULL! }
+  const yearStr = value.slice(dashIdx + 1)
+  const periodKey = value.slice(0, dashIdx)
+  const year = parseInt(yearStr, 10)
+  return {
+    year: isNaN(year) ? fallbackYear : year,
+    activeMonths: PERIOD_MONTHS[periodKey] ?? PERIOD_MONTHS.FULL!,
+  }
+}
+
+function buildPeriodOptions(currentYear: number) {
+  const cy = currentYear
+  const py = currentYear - 1
+  return [
+    { value: `Q1-${cy}`, label: `1° Trimestre / ${cy}`, group: "q" as const },
+    { value: `Q2-${cy}`, label: `2° Trimestre / ${cy}`, group: "q" as const },
+    { value: `Q3-${cy}`, label: `3° Trimestre / ${cy}`, group: "q" as const },
+    { value: `Q4-${cy}`, label: `4° Trimestre / ${cy}`, group: "q" as const },
+    { value: `H1-${cy}`, label: `1° Semestre / ${cy}`, group: "h" as const },
+    { value: `H2-${cy}`, label: `2° Semestre / ${cy}`, group: "h" as const },
+    { value: `FULL-${cy}`, label: `${cy}`, group: "y" as const },
+    { value: `FULL-${py}`, label: `${py}`, group: "y" as const },
+  ]
+}
+
+function defaultPeriodValue(currentYear: number): string {
+  const q = Math.floor(new Date().getMonth() / 3) + 1
+  return `Q${q}-${currentYear}`
+}
+
 function pad(n: number) {
   return String(n).padStart(2, "0")
 }
@@ -600,12 +644,16 @@ function TwYearTable({
   monthStats,
   hideValues,
   ano,
+  activeMonths,
 }: {
   monthStats: TwMonthStats[]
   hideValues: boolean
   ano: number
+  activeMonths: number[]
 }) {
-  const totalAnual = monthStats.reduce(sumTwStats, emptyTwMonthStats())
+  const activeMonthSet = new Set(activeMonths)
+  const visibleQuarters = QUARTERS.filter(q => q.months.some(m => activeMonthSet.has(m)))
+  const totalAnual = activeMonths.reduce((acc, m) => sumTwStats(acc, monthStats[m]!), emptyTwMonthStats())
   const today = new Date()
   const currentMonthIndex = ano === today.getFullYear() ? today.getMonth() : -1
   const inv = (v: number) =>
@@ -626,7 +674,7 @@ function TwYearTable({
         <thead>
           <tr className="border-b border-border-default bg-neutral-grey-50">
             <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">
-              Trimestre
+              Período
             </th>
             <TH>Investimento</TH>
             <TH>Horas</TH>
@@ -645,8 +693,9 @@ function TwYearTable({
           </tr>
         </thead>
         <tbody>
-          {QUARTERS.map((q) => {
-            const qStats = q.months.reduce(
+          {visibleQuarters.map((q) => {
+            const visibleMonths = q.months.filter(m => activeMonthSet.has(m))
+            const qStats = visibleMonths.reduce(
               (acc, mi) => sumTwStats(acc, monthStats[mi]!),
               emptyTwMonthStats(),
             )
@@ -662,7 +711,7 @@ function TwYearTable({
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.outrasAtividades}</td>
                   <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary">{qStats.retornos}</td>
                 </tr>
-                {q.months.map((mi) => {
+                {visibleMonths.map((mi) => {
                   const ms = monthStats[mi]!
                   return (
                     <tr
@@ -773,14 +822,19 @@ function TypeCard({
 
 export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memberJiraIds }: Props) {
   const currentYear = new Date().getFullYear()
-  const [ano, setAno] = React.useState(currentYear)
+  const [periodValue, setPeriodValue] = React.useState(() => defaultPeriodValue(currentYear))
   const [loading, setLoading] = React.useState(false)
   const [hideValues, setHideValues] = React.useState(true)
   const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([])
   const [rawMemberEntries, setRawMemberEntries] = React.useState<Record<string, JiraEntry[]>>({})
   const [liveApprovalIssues, setLiveApprovalIssues] = React.useState(approvalIssues)
 
-  const yearOptions = React.useMemo(() => [currentYear, currentYear - 1], [currentYear])
+  const { year: ano, activeMonths } = React.useMemo(
+    () => parsePeriod(periodValue, currentYear),
+    [periodValue, currentYear],
+  )
+
+  const periodOptions = React.useMemo(() => buildPeriodOptions(currentYear), [currentYear])
 
   const activeMembers = React.useMemo(
     () =>
@@ -835,7 +889,7 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
 
     const combined: TwMonthStats[] = Array.from({ length: 12 }, emptyTwMonthStats)
     const allEntries: JiraEntry[] = []
-    const tagInvestmentMap = new Map<string, number>()
+    const tagMonthInvestmentMap = new Map<string, number[]>()
 
     // Pass 1 — per-member: accumulate hours and investment
     for (const m of activeMembers) {
@@ -851,7 +905,9 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
           const cost = Math.round((e.timeSpentSeconds / 3600) * valorHora)
           combined[month]!.investimentoCentavos += cost
           const tag = e.tag?.trim() || "Sem tag"
-          tagInvestmentMap.set(tag, (tagInvestmentMap.get(tag) ?? 0) + cost)
+          const tagArr = tagMonthInvestmentMap.get(tag) ?? (new Array(12).fill(0) as number[])
+          tagArr[month] = (tagArr[month] ?? 0) + cost
+          tagMonthInvestmentMap.set(tag, tagArr)
         }
       }
     }
@@ -931,18 +987,28 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       }
     }
 
-    const yTotals = aggregateTwYearTotals(allEntries, activeJiraAccountIds)
+    // Period-scoped filtering
+    const activeMonthSet = new Set(activeMonths)
+    const periodEntries = allEntries.filter(e => {
+      const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+      return activeMonthSet.has(m)
+    })
+
+    const yTotals = aggregateTwYearTotals(periodEntries, activeJiraAccountIds)
 
     const tagDistribMap = new Map<string, Set<string>>()
-    for (const e of allEntries) {
+    for (const e of periodEntries) {
       const tag = e.tag?.trim() || "Sem tag"
       if (!tagDistribMap.has(tag)) tagDistribMap.set(tag, new Set())
       tagDistribMap.get(tag)!.add(e.issueKey)
     }
 
+    const periodTagInvestment = (tag: string): number =>
+      activeMonths.reduce((s, m) => s + (tagMonthInvestmentMap.get(tag)?.[m] ?? 0), 0)
+
     const toTagItems = (m: Map<string, Set<string>>) =>
       [...m.entries()]
-        .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: tagInvestmentMap.get(tag) ?? 0 }))
+        .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: periodTagInvestment(tag) }))
         .sort((a, b) => b.count - a.count)
 
     // Merge Jira IDs from email-resolved memberJiraIds (activeApprovalJiraIds) and from actual
@@ -964,12 +1030,12 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
 
     return {
       monthStats: combined,
-      totalUniqueIssues: new Set(allEntries.map((e) => e.issueKey)).size,
+      totalUniqueIssues: new Set(periodEntries.map((e) => e.issueKey)).size,
       yearTotals: yTotals,
       distribByTag: toTagItems(tagDistribMap),
       approvalByTag,
     }
-  }, [rawMemberEntries, activeMembers, progressaoMap, ano, liveApprovalIssues, selectedUserIds, memberJiraIds])
+  }, [rawMemberEntries, activeMembers, progressaoMap, ano, activeMonths, liveApprovalIssues, selectedUserIds, memberJiraIds])
 
   // ── Visible members ────────────────────────────────────────────────────────
   // Active members are always shown (even if they have no worklogs yet in the year).
@@ -989,19 +1055,22 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
     setSelectedUserIds((prev) => prev.filter((id) => visibleIds.has(id)))
   }, [visibleMembros])
 
-  // ── Derived totals for metric cards ───────────────────────────────────────
+  // ── Derived totals for metric cards (period-scoped) ──────────────────────
   const totalAnual = React.useMemo(
-    () => (monthStats ?? []).reduce(sumTwStats, emptyTwMonthStats()),
-    [monthStats],
+    () => activeMonths.reduce((acc, m) => sumTwStats(acc, (monthStats ?? [])[m] ?? emptyTwMonthStats()), emptyTwMonthStats()),
+    [monthStats, activeMonths],
   )
 
   const avgValorHora = React.useMemo(() => {
-    const refMonth = ano === new Date().getFullYear() ? new Date().getMonth() : 11
+    const lastActiveMonth = activeMonths[activeMonths.length - 1] ?? 11
+    const refMonth = ano === new Date().getFullYear()
+      ? Math.min(new Date().getMonth(), lastActiveMonth)
+      : lastActiveMonth
     const rates = activeMembers
       .map((m) => getValorHoraForMonth(progressaoMap[m.userId] ?? [], ano, refMonth))
       .filter((v): v is number => v != null)
     return rates.length > 0 ? rates.reduce((s, v) => s + v, 0) / rates.length : null
-  }, [activeMembers, progressaoMap, ano])
+  }, [activeMembers, progressaoMap, ano, activeMonths])
 
   const avgSecondsPerIssue = totalUniqueIssues > 0
     ? Math.round(totalAnual.totalSeconds / totalUniqueIssues)
@@ -1010,14 +1079,18 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
     avgValorHora != null ? Math.round(avgValorHora * (avgSecondsPerIssue / 3600)) : 0
 
   // ── Sparklines ────────────────────────────────────────────────────────────
-  const sparkJiras    = (monthStats ?? []).map(ms => ms.totalIssues)
-  const sparkCriticos = (monthStats ?? []).map(ms => ms.criticos)
-  const sparkTempo    = (monthStats ?? []).map(ms =>
-    ms.totalIssues > 0 ? Math.round(ms.totalSeconds / ms.totalIssues) : 0)
-  const sparkValor    = (monthStats ?? []).map(ms =>
-    ms.totalIssues > 0 && avgValorHora != null
+  const sparkJiras    = activeMonths.map(m => (monthStats ?? [])[m]?.totalIssues ?? 0)
+  const sparkCriticos = activeMonths.map(m => (monthStats ?? [])[m]?.criticos ?? 0)
+  const sparkTempo    = activeMonths.map(m => {
+    const ms = (monthStats ?? [])[m]
+    return ms && ms.totalIssues > 0 ? Math.round(ms.totalSeconds / ms.totalIssues) : 0
+  })
+  const sparkValor    = activeMonths.map(m => {
+    const ms = (monthStats ?? [])[m]
+    return ms && ms.totalIssues > 0 && avgValorHora != null
       ? Math.round(avgValorHora * (ms.totalSeconds / ms.totalIssues / 3600))
-      : 0)
+      : 0
+  })
 
   // ── Fetch all members on year change ─────────────────────────────────────
   const fetchAll = React.useCallback(
@@ -1070,16 +1143,28 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Select
-            value={String(ano)}
-            onValueChange={(v) => { if (v) setAno(Number(v)) }}
+            value={periodValue}
+            onValueChange={(v) => { if (v) setPeriodValue(v) }}
           >
-            <SelectTrigger className="w-28" aria-label="Selecionar ano">
-              <SelectValue>{ano}</SelectValue>
+            <SelectTrigger
+              className="w-52"
+              aria-label="Selecionar período"
+            >
+              <SelectValue>
+                {periodOptions.find(o => o.value === periodValue)?.label ?? periodValue}
+              </SelectValue>
             </SelectTrigger>
             <SelectPopup>
-              {yearOptions.map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
+              {periodOptions.map((opt, idx) => {
+                const prevOpt = periodOptions[idx - 1]
+                const showSep = idx > 0 && prevOpt && prevOpt.group !== opt.group
+                return (
+                  <React.Fragment key={opt.value}>
+                    {showSep && <hr className="my-1 border-border-default/40" />}
+                    <SelectItem value={opt.value}>{opt.label}</SelectItem>
+                  </React.Fragment>
+                )
+              })}
             </SelectPopup>
           </Select>
           <button
@@ -1209,7 +1294,7 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       {loading || monthStats === null ? (
         <SectionSpinner minHeight="min-h-[300px]" />
       ) : (
-        <TwYearTable monthStats={monthStats} hideValues={hideValues} ano={ano} />
+        <TwYearTable monthStats={monthStats} hideValues={hideValues} ano={ano} activeMonths={activeMonths} />
       )}
     </div>
   )

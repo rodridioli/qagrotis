@@ -81,6 +81,50 @@ const QUARTERS = [
   { label: "4º Trimestre", months: [9, 10, 11] },
 ]
 
+// ─── Period utilities ─────────────────────────────────────────────────────────
+
+const PERIOD_MONTHS: Record<string, number[]> = {
+  Q1: [0, 1, 2],
+  Q2: [3, 4, 5],
+  Q3: [6, 7, 8],
+  Q4: [9, 10, 11],
+  H1: [0, 1, 2, 3, 4, 5],
+  H2: [6, 7, 8, 9, 10, 11],
+  FULL: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+}
+
+function parsePeriod(value: string, fallbackYear: number): { year: number; activeMonths: number[] } {
+  const dashIdx = value.lastIndexOf("-")
+  if (dashIdx < 0) return { year: fallbackYear, activeMonths: PERIOD_MONTHS.FULL! }
+  const yearStr = value.slice(dashIdx + 1)
+  const periodKey = value.slice(0, dashIdx)
+  const year = parseInt(yearStr, 10)
+  return {
+    year: isNaN(year) ? fallbackYear : year,
+    activeMonths: PERIOD_MONTHS[periodKey] ?? PERIOD_MONTHS.FULL!,
+  }
+}
+
+function buildPeriodOptions(currentYear: number) {
+  const cy = currentYear
+  const py = currentYear - 1
+  return [
+    { value: `Q1-${cy}`, label: `1° Trimestre / ${cy}`, group: "q" as const },
+    { value: `Q2-${cy}`, label: `2° Trimestre / ${cy}`, group: "q" as const },
+    { value: `Q3-${cy}`, label: `3° Trimestre / ${cy}`, group: "q" as const },
+    { value: `Q4-${cy}`, label: `4° Trimestre / ${cy}`, group: "q" as const },
+    { value: `H1-${cy}`, label: `1° Semestre / ${cy}`, group: "h" as const },
+    { value: `H2-${cy}`, label: `2° Semestre / ${cy}`, group: "h" as const },
+    { value: `FULL-${cy}`, label: `${cy}`, group: "y" as const },
+    { value: `FULL-${py}`, label: `${py}`, group: "y" as const },
+  ]
+}
+
+function defaultPeriodValue(currentYear: number): string {
+  const q = Math.floor(new Date().getMonth() / 3) + 1
+  return `Q${q}-${currentYear}`
+}
+
 function pad(n: number) {
   return String(n).padStart(2, "0")
 }
@@ -648,8 +692,10 @@ function TagPieChart({
 // Each unique issue can appear in multiple months if it had worklogs in multiple months,
 // so quarterly/annual sums may exceed the global unique count shown in the cards.
 // Cards use global Sets (true unique) — table uses per-period activity counts.
-function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; hideValues: boolean; ano: number }) {
-  const totalAnual = monthStats.reduce(sumStats, emptyMonthStats())
+function YearTable({ monthStats, hideValues, ano, activeMonths }: { monthStats: MonthStats[]; hideValues: boolean; ano: number; activeMonths: number[] }) {
+  const activeMonthSet = new Set(activeMonths)
+  const visibleQuarters = QUARTERS.filter(q => q.months.some(m => activeMonthSet.has(m)))
+  const totalAnual = activeMonths.reduce((acc, m) => sumStats(acc, monthStats[m]!), emptyMonthStats())
   const today = new Date()
   const currentMonthIndex = ano === today.getFullYear() ? today.getMonth() : -1
   const inv = (v: number) =>
@@ -673,7 +719,7 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
         <thead>
           <tr className="border-b border-border-default bg-neutral-grey-50">
             <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">
-              Trimestre
+              Período
             </th>
             <TH>Investimento</TH>
             <TH>Horas</TH>
@@ -689,9 +735,10 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
           </tr>
         </thead>
         <tbody>
-          {QUARTERS.map((q) => {
-            // All values summed additively — quarterly = sum of its months
-            const qStats = q.months.reduce(
+          {visibleQuarters.map((q) => {
+            // Sum only the months of this quarter that are in the active period
+            const visibleMonths = q.months.filter(m => activeMonthSet.has(m))
+            const qStats = visibleMonths.reduce(
               (acc, mi) => sumStats(acc, monthStats[mi]!),
               emptyMonthStats(),
             )
@@ -711,7 +758,7 @@ function YearTable({ monthStats, hideValues, ano }: { monthStats: MonthStats[]; 
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "violet")}>{qStats.ajustes}</td>
                   <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary">{qStats.retornos}</td>
                 </tr>
-                {q.months.map((mi) => {
+                {visibleMonths.map((mi) => {
                   const ms = monthStats[mi]!
                   return (
                     <tr
@@ -833,7 +880,7 @@ function TypeCard({
 
 export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memberJiraIds }: Props) {
   const currentYear = new Date().getFullYear()
-  const [ano, setAno] = React.useState(currentYear)
+  const [periodValue, setPeriodValue] = React.useState(() => defaultPeriodValue(currentYear))
   const [loading, setLoading] = React.useState(false)
   const [hideValues, setHideValues] = React.useState(true)
   const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([])
@@ -842,11 +889,13 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
   // Approval issues — initially from SSR prop, refreshed alongside worklogs
   const [liveApprovalIssues, setLiveApprovalIssues] = React.useState(approvalIssues)
 
-  // Only current year and previous year
-  const yearOptions = React.useMemo(
-    () => [currentYear, currentYear - 1],
-    [currentYear],
+  // Derive year and active months from period selection
+  const { year: ano, activeMonths } = React.useMemo(
+    () => parsePeriod(periodValue, currentYear),
+    [periodValue, currentYear],
   )
+
+  const periodOptions = React.useMemo(() => buildPeriodOptions(currentYear), [currentYear])
 
   // Active members: all when no selection, filtered otherwise
   const activeMembers = React.useMemo(
@@ -922,7 +971,8 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
 
     const combined: MonthStats[] = Array.from({ length: 12 }, emptyMonthStats)
     const allEntries: JiraEntry[] = []
-    const tagInvestmentMap = new Map<string, number>()
+    // Per-tag, per-month investment (index = month 0–11) for period-scoped distribByTag
+    const tagMonthInvestmentMap = new Map<string, number[]>()
 
     // Pass 1 — per-member: accumulate hours and investment only.
     // valorHora differs per member so this must stay per-member.
@@ -939,7 +989,9 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
           const cost = Math.round((e.timeSpentSeconds / 3600) * valorHora)
           combined[month]!.investimentoCentavos += cost
           const tag = e.tag?.trim() || "Sem tag"
-          tagInvestmentMap.set(tag, (tagInvestmentMap.get(tag) ?? 0) + cost)
+          const tagArr = tagMonthInvestmentMap.get(tag) ?? (new Array(12).fill(0) as number[])
+          tagArr[month] = (tagArr[month] ?? 0) + cost
+          tagMonthInvestmentMap.set(tag, tagArr)
         }
       }
     }
@@ -1021,20 +1073,31 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       }
     }
 
-    // Year-level unique counts for the cards (global Sets — true unique, no double-counting)
-    const yTotals = aggregateYearTotals(allEntries, activeJiraAccountIds)
+    // Period-scoped filtering: restrict allEntries to the active months only
+    const activeMonthSet = new Set(activeMonths)
+    const periodEntries = allEntries.filter(e => {
+      const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+      return activeMonthSet.has(m)
+    })
 
-    // Group all issues by tag for Jiras por Produto
+    // Period-level unique counts and type totals for the metric cards
+    const yTotals = aggregateYearTotals(periodEntries, activeJiraAccountIds)
+
+    // Group period issues by tag for Jiras por Produto (period-scoped)
     const tagDistribMap = new Map<string, Set<string>>()
-    for (const e of allEntries) {
+    for (const e of periodEntries) {
       const tag = e.tag?.trim() || "Sem tag"
       if (!tagDistribMap.has(tag)) tagDistribMap.set(tag, new Set())
       tagDistribMap.get(tag)!.add(e.issueKey)
     }
 
+    // Period-scoped investment per tag: sum across active months only
+    const periodTagInvestment = (tag: string): number =>
+      activeMonths.reduce((s, m) => s + (tagMonthInvestmentMap.get(tag)?.[m] ?? 0), 0)
+
     const toTagItems = (m: Map<string, Set<string>>) =>
       [...m.entries()]
-        .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: tagInvestmentMap.get(tag) ?? 0 }))
+        .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: periodTagInvestment(tag) }))
         .sort((a, b) => b.count - a.count)
 
     const approvalTagMap = new Map<string, number>()
@@ -1047,26 +1110,29 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
 
     return {
       monthStats: combined,
-      totalUniqueIssues: new Set(allEntries.map((e) => e.issueKey)).size,
+      totalUniqueIssues: new Set(periodEntries.map((e) => e.issueKey)).size,
       yearTotals: yTotals,
       distribByTag: toTagItems(tagDistribMap),
       approvalByTag,
     }
-  }, [rawMemberEntries, activeMembers, progressaoMap, ano, liveApprovalIssues, selectedUserIds, memberJiraIds])
+  }, [rawMemberEntries, activeMembers, progressaoMap, ano, activeMonths, liveApprovalIssues, selectedUserIds, memberJiraIds])
 
-  // ── Derived totals for metric cards ───────────────────────────────────────
+  // ── Derived totals for metric cards (period-scoped) ──────────────────────
   const totalAnual = React.useMemo(
-    () => (monthStats ?? []).reduce(sumStats, emptyMonthStats()),
-    [monthStats],
+    () => activeMonths.reduce((acc, m) => sumStats(acc, (monthStats ?? [])[m] ?? emptyMonthStats()), emptyMonthStats()),
+    [monthStats, activeMonths],
   )
 
   const avgValorHora = React.useMemo(() => {
-    const refMonth = ano === new Date().getFullYear() ? new Date().getMonth() : 11
+    const lastActiveMonth = activeMonths[activeMonths.length - 1] ?? 11
+    const refMonth = ano === new Date().getFullYear()
+      ? Math.min(new Date().getMonth(), lastActiveMonth)
+      : lastActiveMonth
     const rates = activeMembers
       .map((m) => getValorHoraForMonth(progressaoMap[m.userId] ?? [], ano, refMonth))
       .filter((v): v is number => v != null)
     return rates.length > 0 ? rates.reduce((s, v) => s + v, 0) / rates.length : null
-  }, [activeMembers, progressaoMap, ano])
+  }, [activeMembers, progressaoMap, ano, activeMonths])
 
   const avgSecondsPerIssue = totalUniqueIssues > 0
     ? Math.round(totalAnual.totalSeconds / totalUniqueIssues)
@@ -1074,15 +1140,19 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
   const avgInvestimentoCentavos =
     avgValorHora != null ? Math.round(avgValorHora * (avgSecondsPerIssue / 3600)) : 0
 
-  // ── Sparkline arrays (month-by-month trend, 12 points) ────────────────────
-  const sparkJiras    = (monthStats ?? []).map(ms => ms.totalIssues)
-  const sparkCriticos = (monthStats ?? []).map(ms => ms.criticos)
-  const sparkTempo    = (monthStats ?? []).map(ms =>
-    ms.totalIssues > 0 ? Math.round(ms.totalSeconds / ms.totalIssues) : 0)
-  const sparkValor    = (monthStats ?? []).map(ms =>
-    ms.totalIssues > 0 && avgValorHora != null
+  // ── Sparklines — one point per active month ───────────────────────────────
+  const sparkJiras    = activeMonths.map(m => (monthStats ?? [])[m]?.totalIssues ?? 0)
+  const sparkCriticos = activeMonths.map(m => (monthStats ?? [])[m]?.criticos ?? 0)
+  const sparkTempo    = activeMonths.map(m => {
+    const ms = (monthStats ?? [])[m]
+    return ms && ms.totalIssues > 0 ? Math.round(ms.totalSeconds / ms.totalIssues) : 0
+  })
+  const sparkValor    = activeMonths.map(m => {
+    const ms = (monthStats ?? [])[m]
+    return ms && ms.totalIssues > 0 && avgValorHora != null
       ? Math.round(avgValorHora * (ms.totalSeconds / ms.totalIssues / 3600))
-      : 0)
+      : 0
+  })
 
   // ── Fetch all members on year change (uses cache) ─────────────────────────
   const fetchAll = React.useCallback(
@@ -1124,7 +1194,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
 
   return (
     <div className="min-w-0 space-y-6">
-      {/* Avatar strip + year selector na mesma linha */}
+      {/* Avatar strip + period selector na mesma linha */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           {visibleMembros.length > 0 && (
@@ -1137,19 +1207,28 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Select
-            value={String(ano)}
-            onValueChange={(v) => { if (v) setAno(Number(v)) }}
+            value={periodValue}
+            onValueChange={(v) => { if (v) setPeriodValue(v) }}
           >
             <SelectTrigger
-              className="w-28"
-              aria-label="Selecionar ano"
+              className="w-52"
+              aria-label="Selecionar período"
             >
-              <SelectValue>{ano}</SelectValue>
+              <SelectValue>
+                {periodOptions.find(o => o.value === periodValue)?.label ?? periodValue}
+              </SelectValue>
             </SelectTrigger>
             <SelectPopup>
-              {yearOptions.map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
+              {periodOptions.map((opt, idx) => {
+                const prevOpt = periodOptions[idx - 1]
+                const showSep = idx > 0 && prevOpt && prevOpt.group !== opt.group
+                return (
+                  <React.Fragment key={opt.value}>
+                    {showSep && <hr className="my-1 border-border-default/40" />}
+                    <SelectItem value={opt.value}>{opt.label}</SelectItem>
+                  </React.Fragment>
+                )
+              })}
             </SelectPopup>
           </Select>
           <button
@@ -1260,7 +1339,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       {loading || monthStats === null ? (
         <SectionSpinner minHeight="min-h-[300px]" />
       ) : (
-        <YearTable monthStats={monthStats} hideValues={hideValues} ano={ano} />
+        <YearTable monthStats={monthStats} hideValues={hideValues} ano={ano} activeMonths={activeMonths} />
       )}
     </div>
   )

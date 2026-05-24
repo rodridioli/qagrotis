@@ -74,6 +74,43 @@ const QUARTERS = [
   { label: "4º Trimestre", months: [9, 10, 11] },
 ]
 
+// ─── Period filter utilities ───────────────────────────────────────────────────
+
+const PERIOD_MONTHS: Record<string, number[]> = {
+  Q1: [0, 1, 2], Q2: [3, 4, 5], Q3: [6, 7, 8], Q4: [9, 10, 11],
+  H1: [0, 1, 2, 3, 4, 5], H2: [6, 7, 8, 9, 10, 11],
+  FULL: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+}
+
+function parsePeriod(value: string, fallbackYear: number): { year: number; activeMonths: number[] } {
+  const dashIdx = value.lastIndexOf("-")
+  const type = dashIdx > 0 ? value.slice(0, dashIdx) : value
+  const yearStr = dashIdx > 0 ? value.slice(dashIdx + 1) : ""
+  const year = yearStr ? Number(yearStr) : fallbackYear
+  const months = PERIOD_MONTHS[type] ?? PERIOD_MONTHS.FULL!
+  return { year, activeMonths: months }
+}
+
+function buildPeriodOptions(currentYear: number) {
+  const prevYear = currentYear - 1
+  return [
+    { value: `Q1-${currentYear}`, label: `1° Trimestre / ${currentYear}`, group: "q" as const },
+    { value: `Q2-${currentYear}`, label: `2° Trimestre / ${currentYear}`, group: "q" as const },
+    { value: `Q3-${currentYear}`, label: `3° Trimestre / ${currentYear}`, group: "q" as const },
+    { value: `Q4-${currentYear}`, label: `4° Trimestre / ${currentYear}`, group: "q" as const },
+    { value: `H1-${currentYear}`, label: `1° Semestre / ${currentYear}`, group: "h" as const },
+    { value: `H2-${currentYear}`, label: `2° Semestre / ${currentYear}`, group: "h" as const },
+    { value: `FULL-${currentYear}`, label: String(currentYear), group: "y" as const },
+    { value: `FULL-${prevYear}`, label: String(prevYear), group: "y" as const },
+  ]
+}
+
+function defaultPeriodValue(currentYear: number): string {
+  const month = new Date().getMonth()
+  const q = Math.floor(month / 3) + 1
+  return `Q${q}-${currentYear}`
+}
+
 function pad(n: number) {
   return String(n).padStart(2, "0")
 }
@@ -603,12 +640,19 @@ function QaYearTable({
   monthStats,
   hideValues,
   ano,
+  activeMonths,
 }: {
   monthStats: QaMonthStats[]
   hideValues: boolean
   ano: number
+  activeMonths: number[]
 }) {
-  const totalAnual = monthStats.reduce(sumQaStats, emptyQaMonthStats())
+  const activeMonthSet = new Set(activeMonths)
+  const visibleQuarters = QUARTERS.filter(q => q.months.some(m => activeMonthSet.has(m)))
+  const totalAnual = activeMonths.reduce(
+    (acc, m) => sumQaStats(acc, monthStats[m] ?? emptyQaMonthStats()),
+    emptyQaMonthStats(),
+  )
   const today = new Date()
   const currentMonthIndex = ano === today.getFullYear() ? today.getMonth() : -1
   const inv = (v: number) =>
@@ -629,7 +673,7 @@ function QaYearTable({
         <thead>
           <tr className="border-b border-border-default bg-neutral-grey-50">
             <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">
-              Trimestre
+              Período
             </th>
             <TH>Investimento</TH>
             <TH>Horas</TH>
@@ -640,8 +684,9 @@ function QaYearTable({
           </tr>
         </thead>
         <tbody>
-          {QUARTERS.map((q) => {
-            const qStats = q.months.reduce(
+          {visibleQuarters.map((q) => {
+            const visibleMonths = q.months.filter(m => activeMonthSet.has(m))
+            const qStats = visibleMonths.reduce(
               (acc, mi) => sumQaStats(acc, monthStats[mi]!),
               emptyQaMonthStats(),
             )
@@ -656,7 +701,7 @@ function QaYearTable({
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.cenariosErro}</td>
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.jirasBroken}</td>
                 </tr>
-                {q.months.map((mi) => {
+                {visibleMonths.map((mi) => {
                   const ms = monthStats[mi]!
                   return (
                     <tr
@@ -699,13 +744,16 @@ function QaYearTable({
 
 export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeNames }: Props) {
   const currentYear = new Date().getFullYear()
-  const [ano, setAno] = React.useState(currentYear)
+  const [periodValue, setPeriodValue] = React.useState(() => defaultPeriodValue(currentYear))
+  const { year: ano, activeMonths } = React.useMemo(
+    () => parsePeriod(periodValue, currentYear),
+    [periodValue, currentYear],
+  )
+  const periodOptions = React.useMemo(() => buildPeriodOptions(currentYear), [currentYear])
   const [loading, setLoading] = React.useState(false)
   const [hideValues, setHideValues] = React.useState(true)
   const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([])
   const [rawMemberEntries, setRawMemberEntries] = React.useState<Record<string, JiraEntry[]>>({})
-
-  const yearOptions = React.useMemo(() => [currentYear, currentYear - 1], [currentYear])
 
   const activeMembers = React.useMemo(
     () =>
@@ -741,7 +789,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
 
     const combined: QaMonthStats[] = Array.from({ length: 12 }, emptyQaMonthStats)
     const allEntries: JiraEntry[] = []
-    const tagInvestmentMap = new Map<string, number>()
+    const tagMonthInvestmentMap = new Map<string, number[]>()
 
     // Pass 1 — per-member: accumulate hours and investment
     for (const m of activeMembers) {
@@ -757,7 +805,8 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
           const cost = Math.round((e.timeSpentSeconds / 3600) * valorHora)
           combined[month]!.investimentoCentavos += cost
           const tag = e.tag?.trim() || "Sem tag"
-          tagInvestmentMap.set(tag, (tagInvestmentMap.get(tag) ?? 0) + cost)
+          if (!tagMonthInvestmentMap.has(tag)) tagMonthInvestmentMap.set(tag, Array(12).fill(0) as number[])
+          tagMonthInvestmentMap.get(tag)![month] = (tagMonthInvestmentMap.get(tag)![month] ?? 0) + cost
         }
       }
     }
@@ -844,26 +893,35 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
       }
     }
 
-    const yTotals = aggregateQaYearTotals(allEntries, normalizedBrokenTypes)
+    const activeMonthSet = new Set(activeMonths)
+    const periodEntries = allEntries.filter(e => {
+      const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+      return activeMonthSet.has(m)
+    })
+
+    const yTotals = aggregateQaYearTotals(periodEntries, normalizedBrokenTypes)
+
+    const periodTagInvestment = (tag: string): number =>
+      activeMonths.reduce((s, m) => s + (tagMonthInvestmentMap.get(tag)?.[m] ?? 0), 0)
 
     const tagDistribMap = new Map<string, Set<string>>()
-    for (const e of allEntries) {
+    for (const e of periodEntries) {
       const tag = e.tag?.trim() || "Sem tag"
       if (!tagDistribMap.has(tag)) tagDistribMap.set(tag, new Set())
       tagDistribMap.get(tag)!.add(e.issueKey)
     }
 
     const distribByTag = [...tagDistribMap.entries()]
-      .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: tagInvestmentMap.get(tag) ?? 0 }))
+      .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: periodTagInvestment(tag) }))
       .sort((a, b) => b.count - a.count)
 
     return {
       monthStats: combined,
-      totalUniqueIssues: new Set(allEntries.map((e) => e.issueKey)).size,
+      totalUniqueIssues: new Set(periodEntries.map((e) => e.issueKey)).size,
       yearTotals: yTotals,
       distribByTag,
     }
-  }, [rawMemberEntries, activeMembers, progressaoMap, ano, normalizedBrokenTypes])
+  }, [rawMemberEntries, activeMembers, progressaoMap, ano, activeMonths, normalizedBrokenTypes])
 
   // ── Visible members: only those with worklogs in the selected year ─────────
   const visibleMembros = React.useMemo(() => {
@@ -879,17 +937,23 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
 
   // ── Derived totals for metric cards ───────────────────────────────────────
   const totalAnual = React.useMemo(
-    () => (monthStats ?? []).reduce(sumQaStats, emptyQaMonthStats()),
-    [monthStats],
+    () => activeMonths.reduce(
+      (acc, m) => sumQaStats(acc, (monthStats ?? [])[m] ?? emptyQaMonthStats()),
+      emptyQaMonthStats(),
+    ),
+    [monthStats, activeMonths],
   )
 
   const avgValorHora = React.useMemo(() => {
-    const refMonth = ano === new Date().getFullYear() ? new Date().getMonth() : 11
+    const lastActiveMonth = activeMonths[activeMonths.length - 1] ?? 11
+    const refMonth = ano === new Date().getFullYear()
+      ? Math.min(new Date().getMonth(), lastActiveMonth)
+      : lastActiveMonth
     const rates = activeMembers
       .map((m) => getValorHoraForMonth(progressaoMap[m.userId] ?? [], ano, refMonth))
       .filter((v): v is number => v != null)
     return rates.length > 0 ? rates.reduce((s, v) => s + v, 0) / rates.length : null
-  }, [activeMembers, progressaoMap, ano])
+  }, [activeMembers, progressaoMap, ano, activeMonths])
 
   const avgSecondsPerIssue = totalUniqueIssues > 0
     ? Math.round(totalAnual.totalSeconds / totalUniqueIssues)
@@ -898,14 +962,18 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
     avgValorHora != null ? Math.round(avgValorHora * (avgSecondsPerIssue / 3600)) : 0
 
   // ── Sparklines ────────────────────────────────────────────────────────────
-  const sparkJiras     = (monthStats ?? []).map(ms => ms.totalIssues)
-  const sparkCriticos  = (monthStats ?? []).map(ms => ms.criticos)
-  const sparkTempo     = (monthStats ?? []).map(ms =>
-    ms.totalIssues > 0 ? Math.round(ms.totalSeconds / ms.totalIssues) : 0)
-  const sparkValor     = (monthStats ?? []).map(ms =>
-    ms.totalIssues > 0 && avgValorHora != null
+  const sparkJiras    = activeMonths.map(m => (monthStats ?? [])[m]?.totalIssues ?? 0)
+  const sparkCriticos = activeMonths.map(m => (monthStats ?? [])[m]?.criticos ?? 0)
+  const sparkTempo    = activeMonths.map(m => {
+    const ms = (monthStats ?? [])[m]
+    return ms && ms.totalIssues > 0 ? Math.round(ms.totalSeconds / ms.totalIssues) : 0
+  })
+  const sparkValor    = activeMonths.map(m => {
+    const ms = (monthStats ?? [])[m]
+    return ms && ms.totalIssues > 0 && avgValorHora != null
       ? Math.round(avgValorHora * (ms.totalSeconds / ms.totalIssues / 3600))
-      : 0)
+      : 0
+  })
 
   // ── Fetch all members on year change ─────────────────────────────────────
   const fetchAll = React.useCallback(
@@ -956,16 +1024,28 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Select
-            value={String(ano)}
-            onValueChange={(v) => { if (v) setAno(Number(v)) }}
+            value={periodValue}
+            onValueChange={(v) => { if (v) setPeriodValue(v) }}
           >
-            <SelectTrigger className="w-28" aria-label="Selecionar ano">
-              <SelectValue>{ano}</SelectValue>
+            <SelectTrigger
+              className="w-52"
+              aria-label="Selecionar período"
+            >
+              <SelectValue>
+                {periodOptions.find(o => o.value === periodValue)?.label ?? periodValue}
+              </SelectValue>
             </SelectTrigger>
             <SelectPopup>
-              {yearOptions.map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
+              {periodOptions.map((opt, idx) => {
+                const prevOpt = periodOptions[idx - 1]
+                const showSep = idx > 0 && prevOpt && prevOpt.group !== opt.group
+                return (
+                  <React.Fragment key={opt.value}>
+                    {showSep && <hr className="my-1 border-border-default/40" />}
+                    <SelectItem value={opt.value}>{opt.label}</SelectItem>
+                  </React.Fragment>
+                )
+              })}
             </SelectPopup>
           </Select>
           <button
@@ -1073,7 +1153,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
       {loading || monthStats === null ? (
         <SectionSpinner minHeight="min-h-[300px]" />
       ) : (
-        <QaYearTable monthStats={monthStats} hideValues={hideValues} ano={ano} />
+        <QaYearTable monthStats={monthStats} hideValues={hideValues} ano={ano} activeMonths={activeMonths} />
       )}
     </div>
   )
