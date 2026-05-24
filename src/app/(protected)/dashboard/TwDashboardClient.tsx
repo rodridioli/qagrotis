@@ -139,8 +139,7 @@ function getValorHoraForMonth(
   const lastDay = `${year}-${pad(monthIndex + 1)}-${pad(new Date(year, monthIndex + 1, 0).getDate())}`
   const active = history.find((r) => r.dataYmd <= lastDay && r.valorHora != null)
   if (active) return active.valorHora
-  const fallback = [...history].reverse().find((r) => r.valorHora != null)
-  return fallback?.valorHora ?? null
+  return null
 }
 
 // ─── TW year-level totals ──────────────────────────────────────────────────────
@@ -243,6 +242,7 @@ function AvatarStrip({
           const isSelected = selectedUserIds.includes(m.userId)
           const dimmed = hasSelection && !isSelected
           const isUnsynced = unsyncedUserIds.has(m.userId)
+          const isInactive = m.isInactive
           return (
             <Tooltip key={m.userId}>
               <TooltipTrigger
@@ -250,7 +250,7 @@ function AvatarStrip({
                   <button
                     type="button"
                     aria-pressed={isSelected}
-                    aria-label={`${m.name}${isSelected ? " (selecionado)" : ""}${isUnsynced ? " — sem dados sincronizados" : ""}`}
+                    aria-label={`${m.name}${isInactive ? " (inativo)" : ""}${isSelected ? ", selecionado" : ""}${isUnsynced ? " — sem dados sincronizados" : ""}`}
                     onClick={() => onToggle(m.userId)}
                     className={cn(
                       "relative rounded-full border-[3px] border-surface-card bg-surface-card shadow-sm transition-all duration-100 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 motion-reduce:transition-none",
@@ -263,7 +263,7 @@ function AvatarStrip({
                   />
                 }
               >
-                <UserAvatar name={m.name} photoPath={m.photoPath} size={AVATAR_STRIP_SIZE} />
+                <UserAvatar name={m.name} photoPath={m.photoPath} size={AVATAR_STRIP_SIZE} inactive={isInactive} />
                 {isUnsynced && (
                   <span
                     aria-hidden
@@ -272,11 +272,21 @@ function AvatarStrip({
                     <AlertTriangle className="h-2.5 w-2.5 text-white" />
                   </span>
                 )}
+                {isInactive && !isUnsynced && (
+                  <span
+                    aria-hidden
+                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-neutral-grey-400 ring-2 ring-surface-card"
+                  >
+                    <Info className="h-2.5 w-2.5 text-white" />
+                  </span>
+                )}
               </TooltipTrigger>
               <TooltipContent>
                 {isUnsynced
-                  ? `${m.name} — sem dados sincronizados para ${ano}. Verifique o e-mail cadastrado.`
-                  : m.name}
+                  ? `${m.name}${isInactive ? " (inativo)" : ""} — sem dados sincronizados para ${ano}. Verifique o e-mail cadastrado.`
+                  : isInactive
+                    ? `${m.name} (inativo)`
+                    : m.name}
               </TooltipContent>
             </Tooltip>
           )

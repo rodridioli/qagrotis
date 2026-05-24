@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, RefreshCw, TrendingUp } from "lucide-react"
+import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, Info, RefreshCw, TrendingUp } from "lucide-react"
 import { AreaChart, Area, BarChart, Bar, Cell, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart, Pie, Legend } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -140,7 +140,7 @@ function sumStats(a: MonthStats, b: MonthStats): MonthStats {
 /**
  * Retorna o valorHora (centavos) vigente para um dado mês/ano.
  * Usa o registro de progressão mais recente com data ≤ último dia do mês.
- * Se não houver registro anterior, usa o mais antigo disponível (fallback).
+ * Se o usuário não tinha taxa definida ainda nesse período, retorna null (investimento = R$0).
  */
 function getValorHoraForMonth(
   history: ProgressaoHistoricoEntry[],
@@ -150,8 +150,7 @@ function getValorHoraForMonth(
   const lastDay = `${year}-${pad(monthIndex + 1)}-${pad(new Date(year, monthIndex + 1, 0).getDate())}`
   const active = history.find((r) => r.dataYmd <= lastDay && r.valorHora != null)
   if (active) return active.valorHora
-  const fallback = [...history].reverse().find((r) => r.valorHora != null)
-  return fallback?.valorHora ?? null
+  return null
 }
 
 /**
@@ -276,6 +275,7 @@ function UxAvatarStrip({
         {membros.map((m, idx) => {
           const isSelected = selectedUserIds.includes(m.userId)
           const dimmed = hasSelection && !isSelected
+          const isInactive = m.isInactive
           return (
             <Tooltip key={m.userId}>
               <TooltipTrigger
@@ -283,7 +283,7 @@ function UxAvatarStrip({
                   <button
                     type="button"
                     aria-pressed={isSelected}
-                    aria-label={`${m.name}${isSelected ? " (selecionado)" : ""}`}
+                    aria-label={`${m.name}${isInactive ? " (inativo)" : ""}${isSelected ? ", selecionado" : ""}`}
                     onClick={() => onToggle(m.userId)}
                     className={cn(
                       "relative rounded-full border-[3px] border-surface-card bg-surface-card shadow-sm transition-all duration-100 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 motion-reduce:transition-none",
@@ -296,9 +296,19 @@ function UxAvatarStrip({
                   />
                 }
               >
-                <UserAvatar name={m.name} photoPath={m.photoPath} size={AVATAR_STRIP_SIZE} />
+                <UserAvatar name={m.name} photoPath={m.photoPath} size={AVATAR_STRIP_SIZE} inactive={isInactive} />
+                {isInactive && (
+                  <span
+                    aria-hidden
+                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-neutral-grey-400 ring-2 ring-surface-card"
+                  >
+                    <Info className="h-2.5 w-2.5 text-white" />
+                  </span>
+                )}
               </TooltipTrigger>
-              <TooltipContent>{m.name}</TooltipContent>
+              <TooltipContent>
+                {isInactive ? `${m.name} (inativo)` : m.name}
+              </TooltipContent>
             </Tooltip>
           )
         })}

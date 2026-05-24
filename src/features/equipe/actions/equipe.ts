@@ -745,6 +745,8 @@ export interface EquipeMembroLancamentos {
   name: string
   accessProfile: string | null
   photoPath: string | null
+  /** true quando o userId está registrado em InactiveUser. Default false (ativo). */
+  isInactive: boolean
 }
 
 const _getCachedAllMembrosLancamentos = unstable_cache(
@@ -770,12 +772,56 @@ const _getCachedAllMembrosLancamentos = unstable_cache(
       if (!email) continue
       const profile = p?.accessProfile ?? u.accessProfile ?? null
       const photoPath = p?.photoPath ?? u.photoPath ?? null
-      byEmail.set(email, { userId: u.id, name: p?.name ?? u.name ?? email, accessProfile: profile, photoPath })
+      byEmail.set(email, { userId: u.id, name: p?.name ?? u.name ?? email, accessProfile: profile, photoPath, isInactive: false })
     }
 
     return [...byEmail.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
   },
   ["equipe-membros-lancamentos"],
+  { revalidate: 300 },
+)
+
+/**
+ * Inclui ativos E inativos — ativos primeiro (α), inativos por último (α).
+ * Usado pelos dashboards UX e TW para exibir todos os membros com flag isInactive.
+ */
+const _getCachedAllMembrosComInativos = unstable_cache(
+  async (): Promise<EquipeMembroLancamentos[]> => {
+    const [inactiveRecords, profiles, createdUsers] = await Promise.all([
+      prisma.inactiveUser.findMany({ select: { userId: true } }),
+      prisma.userProfile.findMany({
+        select: { userId: true, name: true, email: true, accessProfile: true, photoPath: true },
+      }),
+      prisma.createdUser.findMany({
+        select: { id: true, name: true, email: true, accessProfile: true, photoPath: true },
+      }),
+    ])
+
+    const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
+    const profileMap = new Map(profiles.map((p) => [p.userId, p]))
+    const byEmail = new Map<string, EquipeMembroLancamentos>()
+
+    for (const u of createdUsers) {
+      const p = profileMap.get(u.id)
+      const email = (p?.email ?? u.email).trim()
+      if (!email) continue
+      const profile = p?.accessProfile ?? u.accessProfile ?? null
+      const photoPath = p?.photoPath ?? u.photoPath ?? null
+      byEmail.set(email, {
+        userId: u.id,
+        name: p?.name ?? u.name ?? email,
+        accessProfile: profile,
+        photoPath,
+        isInactive: inactiveIds.has(u.id),
+      })
+    }
+
+    const all = [...byEmail.values()]
+    const ativos    = all.filter((m) => !m.isInactive).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+    const inativos  = all.filter((m) =>  m.isInactive).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+    return [...ativos, ...inativos]
+  },
+  ["equipe-membros-lancamentos-com-inativos"],
   { revalidate: 300 },
 )
 
@@ -794,6 +840,25 @@ export async function getEquipeMembrosParaLancamentos(
     return all.filter((u) => u.accessProfile === accessProfile)
   } catch (e) {
     console.error("[getEquipeMembrosParaLancamentos]", e)
+    return []
+  }
+}
+
+/**
+ * Lista membros ativos E inativos para os dashboards UX e TW.
+ * Inativos são marcados com isInactive: true e aparecem por último no array.
+ * Quando accessProfile é passado, filtra por perfil (mantendo ativos + inativos daquele perfil).
+ */
+export async function getEquipeMembrosParaLancamentosComInativos(
+  accessProfile?: string | null,
+): Promise<EquipeMembroLancamentos[]> {
+  try {
+    await requireSession()
+    const all = await _getCachedAllMembrosComInativos()
+    if (!accessProfile) return all
+    return all.filter((u) => u.accessProfile === accessProfile)
+  } catch (e) {
+    console.error("[getEquipeMembrosParaLancamentosComInativos]", e)
     return []
   }
 }
