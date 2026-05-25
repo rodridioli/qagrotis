@@ -19,8 +19,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { getUxWorklogsForYear } from "@/features/qa/actions/jira-worklog-cache"
-import { computeJiraKpis, isBrokenTest, priorityIsCritical } from "@/features/qa/lib/jira-stats-kpis"
+import { getUxWorklogsForYear, type BtMonthStats } from "@/features/qa/actions/jira-worklog-cache"
+import { priorityIsCritical } from "@/features/qa/lib/jira-stats-kpis"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
 import type { ProgressaoHistoricoEntry } from "@/features/individual/actions/individual-progressao"
 
@@ -737,6 +737,9 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
   const [hideValues, setHideValues] = React.useState(true)
   const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([])
   const [rawMemberEntries, setRawMemberEntries] = React.useState<Record<string, JiraEntry[]>>({})
+  // Broken Test reporter stats per member per month — from JiraWorklogSyncMarker.
+  // These are the authoritative source for jirasBroken and cenariosErro (Tipo B).
+  const [rawMemberBtStats, setRawMemberBtStats] = React.useState<Record<string, Record<number, BtMonthStats>>>({})
 
   function toggleUser(userId: string) {
     setSelectedUserIds((prev) =>
@@ -797,6 +800,25 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
       }
     }
 
+    // Aggregate BT reporter stats across active members per month.
+    // jirasBroken and cenariosErroSum come from JiraWorklogSyncMarker (reporter-based JQL),
+    // matching the same calculation used in /api/jira/lancamentos. BT issues belong to the
+    // month they were CREATED, so summing across months in a period has no double-count risk.
+    const memberBtStatsSum: Record<number, { jirasBroken: number; cenariosErroSum: number }> = {}
+    for (const m of activeMembers) {
+      const btStats = rawMemberBtStats[m.userId] ?? {}
+      for (let monthIdx = 0; monthIdx < 12; monthIdx++) {
+        const ms = btStats[monthIdx]
+        if (ms) {
+          const cur = memberBtStatsSum[monthIdx] ?? { jirasBroken: 0, cenariosErroSum: 0 }
+          memberBtStatsSum[monthIdx] = {
+            jirasBroken: cur.jirasBroken + ms.jirasBroken,
+            cenariosErroSum: cur.cenariosErroSum + ms.cenariosErroSum,
+          }
+        }
+      }
+    }
+
     const combined: QaMonthStats[] = Array.from({ length: 12 }, emptyQaMonthStats)
     const allEntries: JiraEntry[] = []
     const projectMonthInvestmentMap = new Map<string, number[]>()
@@ -850,24 +872,22 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
     // An issue is counted in EVERY month it has a worklog in (not just its first month),
     // so combined[m].totalIssues matches what lançamentos shows for each month.
 
-    // isBrokenTest and priorityIsCritical imported from @/features/qa/lib/jira-stats-kpis
-    const isBrokenTestEntry = (e: JiraEntry) => isBrokenTest(e.issueType, normalizedBrokenTypes)
+    // NOTE: jirasBroken and cenariosErro (Tipo B) are NO LONGER computed from worklog entries.
+    // They come from memberBtStatsSum (reporter-based JQL, matching /api/jira/lancamentos).
+    // Only Tipo A cenariosErro (from qtdCenariosErro field on worklogged issues) and
+    // cenariosTestados (from qtdCenariosQA field) still use worklog entries.
 
     type QaCB = {
       all: Set<string>
-      brokenIssues: Set<string>
       criticoIssues: Set<string>
       cenariosQAByIssue: Map<string, number>
       cenariosErroByIssue: Map<string, number>
-      brokenTestQAByIssue: Map<string, number>
     }
     const buckets: QaCB[] = Array.from({ length: 12 }, () => ({
       all: new Set(),
-      brokenIssues: new Set(),
       criticoIssues: new Set(),
       cenariosQAByIssue: new Map(),
       cenariosErroByIssue: new Map(),
-      brokenTestQAByIssue: new Map(),
     }))
 
     for (const e of allEntries) {
@@ -875,7 +895,6 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
       if (m < 0 || m > 11) continue
       const cb = buckets[m]!
       cb.all.add(e.issueKey)
-      if (isBrokenTestEntry(e)) cb.brokenIssues.add(e.issueKey)
       if (priorityIsCritical(e.priority)) cb.criticoIssues.add(e.issueKey)
       if (e.qtdCenariosQA > 0) {
         cb.cenariosQAByIssue.set(
@@ -884,16 +903,10 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
         )
       }
       if (e.qtdCenariosErro > 0) {
+        // Tipo A: issues where qtdCenariosErro is filled by the QA directly
         cb.cenariosErroByIssue.set(
           e.issueKey,
           Math.max(cb.cenariosErroByIssue.get(e.issueKey) ?? 0, e.qtdCenariosErro),
-        )
-      }
-      // Tipo B: Broken Test sem qtdCenariosErro → accumulate qtdCenariosQA for fallback
-      if (isBrokenTestEntry(e) && e.qtdCenariosQA > 0) {
-        cb.brokenTestQAByIssue.set(
-          e.issueKey,
-          Math.max(cb.brokenTestQAByIssue.get(e.issueKey) ?? 0, e.qtdCenariosQA),
         )
       }
     }
@@ -901,42 +914,39 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
     for (let i = 0; i < 12; i++) {
       const cb = buckets[i]!
       combined[i]!.totalIssues = cb.all.size
-      combined[i]!.jirasBroken = cb.brokenIssues.size
+      // jirasBroken: from reporter-based JQL (authoritative, matches Lançamentos screen)
+      combined[i]!.jirasBroken = memberBtStatsSum[i]?.jirasBroken ?? 0
       combined[i]!.criticos = cb.criticoIssues.size
       combined[i]!.cenariosTestados = Array.from(cb.cenariosQAByIssue.values()).reduce((s, v) => s + v, 0)
-      // Cenários com erro: Tipo A + Tipo B fallback
-      let cenariosErroMonth = Array.from(cb.cenariosErroByIssue.values()).reduce((s, v) => s + v, 0)
-      for (const [key, v] of cb.brokenTestQAByIssue.entries()) {
-        if (!cb.cenariosErroByIssue.has(key)) {
-          cenariosErroMonth += v
-        }
-      }
-      combined[i]!.cenariosErro = cenariosErroMonth
+      // Cenários com erro: Tipo A (qtdCenariosErro from entries) + Tipo B (BT reporter stats)
+      const cenariosErroTypeA = Array.from(cb.cenariosErroByIssue.values()).reduce((s, v) => s + v, 0)
+      combined[i]!.cenariosErro = cenariosErroTypeA + (memberBtStatsSum[i]?.cenariosErroSum ?? 0)
     }
 
     const dedupeQaStats = (monthIndices: number[]): QaMonthStats => {
-      const allSet = new Set<string>(); const brokenSet = new Set<string>(); const critSet = new Set<string>()
+      const allSet = new Set<string>()
+      const critSet = new Set<string>()
       const cenariosQA = new Map<string, number>()
       const cenariosErro = new Map<string, number>()
-      const brokenTestQA = new Map<string, number>()
       for (const m of monthIndices) {
         const cb = buckets[m]!
         for (const k of cb.all) allSet.add(k)
-        for (const k of cb.brokenIssues) brokenSet.add(k)
         for (const k of cb.criticoIssues) critSet.add(k)
         for (const [k, v] of cb.cenariosQAByIssue) cenariosQA.set(k, Math.max(cenariosQA.get(k) ?? 0, v))
         for (const [k, v] of cb.cenariosErroByIssue) cenariosErro.set(k, Math.max(cenariosErro.get(k) ?? 0, v))
-        for (const [k, v] of cb.brokenTestQAByIssue) brokenTestQA.set(k, Math.max(brokenTestQA.get(k) ?? 0, v))
       }
-      let cenariosErroTotal = Array.from(cenariosErro.values()).reduce((s, v) => s + v, 0)
-      for (const [key, v] of brokenTestQA) { if (!cenariosErro.has(key)) cenariosErroTotal += v }
+      // Tipo A: deduped across months by issueKey
+      const cenariosErroTypeA = Array.from(cenariosErro.values()).reduce((s, v) => s + v, 0)
+      // Tipo B: sum across months — BT issues are creation-date bucketed, no cross-month double-count
+      const cenariosErroTypeB = monthIndices.reduce((s, m) => s + (memberBtStatsSum[m]?.cenariosErroSum ?? 0), 0)
+      const jirasBroken = monthIndices.reduce((s, m) => s + (memberBtStatsSum[m]?.jirasBroken ?? 0), 0)
       return {
         totalSeconds: monthIndices.reduce((s, m) => s + (combined[m]?.totalSeconds ?? 0), 0),
         investimentoCentavos: monthIndices.reduce((s, m) => s + (combined[m]?.investimentoCentavos ?? 0), 0),
         totalIssues: allSet.size,
         cenariosTestados: Array.from(cenariosQA.values()).reduce((s, v) => s + v, 0),
-        cenariosErro: cenariosErroTotal,
-        jirasBroken: brokenSet.size,
+        cenariosErro: cenariosErroTypeA + cenariosErroTypeB,
+        jirasBroken,
         criticos: critSet.size,
       }
     }
@@ -950,13 +960,14 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
       return activeMonths.includes(m)
     })
 
-    // Use shared computeJiraKpis — single source of truth for KPI logic across all screens
-    const yKpis = computeJiraKpis(anchoredEntries, brokenTestIssueTypeNames)
+    // yTotals derives from periodTotalRow (already deduplicated for the selected period).
+    // jirasBroken and cenariosErro come from reporter-based BT stats (memberBtStatsSum),
+    // matching the /api/jira/lancamentos calculation — no worklog-based approximation.
     const yTotals: QaYearTotals = {
-      cenariosTestados: yKpis.cenariosTestados,
-      cenariosErro:     yKpis.cenariosErro,
-      jirasBroken:      yKpis.jirasBroken,
-      criticos:         yKpis.criticalCount,
+      cenariosTestados: periodTotalRow.cenariosTestados,
+      cenariosErro:     periodTotalRow.cenariosErro,
+      jirasBroken:      periodTotalRow.jirasBroken,
+      criticos:         periodTotalRow.criticos,
     }
 
     const periodProjectInvestment = (project: string): number =>
@@ -986,7 +997,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
       quarterDedupeStats,
       periodTotalRow,
     }
-  }, [rawMemberEntries, activeMembers, progressaoMap, ano, activeMonths, normalizedBrokenTypes])
+  }, [rawMemberEntries, rawMemberBtStats, activeMembers, progressaoMap, ano, activeMonths])
 
   // Limpar seleções que não são mais visíveis (ex.: mudança de ano ou desligamento)
   React.useEffect(() => {
@@ -1038,23 +1049,26 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
   const fetchAll = React.useCallback(
     async (year: number, force = false) => {
       setRawMemberEntries({})
+      setRawMemberBtStats({})
       setLoading(true)
       try {
         if (membros.length === 0) {
           setRawMemberEntries({})
+          setRawMemberBtStats({})
           return
         }
         const results = await Promise.all(
           membros.map(async (m) => {
             try {
-              const { entries } = await getUxWorklogsForYear(m.userId, year, force)
-              return [m.userId, entries] as const
+              const { entries, btStatsByMonth } = await getUxWorklogsForYear(m.userId, year, force)
+              return [m.userId, entries, btStatsByMonth] as const
             } catch {
-              return [m.userId, [] as JiraEntry[]] as const
+              return [m.userId, [] as JiraEntry[], {} as Record<number, BtMonthStats>] as const
             }
           }),
         )
-        setRawMemberEntries(Object.fromEntries(results))
+        setRawMemberEntries(Object.fromEntries(results.map(([id, entries]) => [id, entries])))
+        setRawMemberBtStats(Object.fromEntries(results.map(([id, , btStats]) => [id, btStats])))
       } finally {
         setLoading(false)
       }

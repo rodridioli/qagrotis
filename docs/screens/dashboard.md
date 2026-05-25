@@ -6,27 +6,73 @@
 
 ## Descrição
 
-Página inicial após o login. Exibe visão geral do estado do QA: estatísticas de cenários, suítes e progresso da equipe.
+Página inicial após o login. Exibe KPIs de lançamentos Jira por período (trimestre / semestre / ano).  
+Suporta três perfis: `?perfil=QA` (padrão), `?perfil=UX`, `?perfil=TW`.
 
-Ao acessar com `?perfil=UX`, exibe o **Dashboard UX** exclusivo para Administrador:MGR.
+## KPIs do Dashboard QA
 
-## Conteúdo esperado
+| KPI | Fonte de Dados | Observações |
+|---|---|---|
+| Total de Jiras | `JiraWorklogCache` (worklogs únicos por issueKey) | Deduplicado por período via `Set<string>` |
+| Jiras Críticos | `JiraWorklogCache.priority` (worklogs únicos) | Dedup por issueKey no período |
+| Cenários Testados | `JiraWorklogCache.qtdCenariosQA` (max por issueKey) | Dedup via `Map<issueKey, number>` |
+| **Jiras de Retorno (Broken)** | **`JiraWorklogSyncMarker.jirasBroken`** | **JQL por reporter independente de worklogs** |
+| **Cenários com Erro** | **Tipo A + Tipo B** | **Ver seção abaixo** |
+| Horas totais | `JiraWorklogCache.timeSpentSeconds` (soma) | Por membro, por mês |
+| Investimento | `progressaoMap.valorHora × horas` | Calculado no front, sensível (ocultável) |
 
-- Contagem de cenários ativos/inativos
-- Contagem de suítes por situação
-- Atividade recente
+## ⚠️ Arquitetura Crítica — Broken Test e Cenários com Erro
 
-## Estados
+### Por que não usar `issueType === "Broken Test"` dos worklogs?
 
-| Estado | Comportamento |
-|--------|--------------|
-| Loading | Spinner via `loading.tsx` existente |
-| Erro | `error.tsx` com reset |
+O fluxo real do QA é:
+1. Lança horas na **issue-pai** (ex: ARM-8754, tipo "Tarefa" ou "[TESTE]")
+2. Cria uma **subtarefa Broken Test** como **reporter**, SEM lançar horas nela
+
+Logo, os worklogs NÃO contêm entradas com `issueType = "Broken Test"` para a maioria dos casos. Usar esse campo como fonte de `jirasBroken` resulta em **subestimação grave** (ex: 1 vs 9).
+
+### Fonte correta — `JiraWorklogSyncMarker`
+
+Durante o sync de cada mês, o back-end executa:
+- `countReporterIssuesByTypes` → JQL: `reporter = accountId AND issuetype = "Broken Test" AND status != "Cancelado" AND created >= fromIso AND created < upperExclusive`
+- `fetchBrokenTestFieldSumByReporter` → soma `qtdCenariosQA` das BT issues acima
+
+Os resultados são gravados em `JiraWorklogSyncMarker.jirasBroken` e `JiraWorklogSyncMarker.cenariosErroSum`.  
+O Dashboard lê esses campos via `getUxWorklogsForYear` → `btStatsByMonth`.
+
+### Cenários com Erro — Tipo A + Tipo B
+
+| Tipo | Fonte | Quando aplicar |
+|---|---|---|
+| A | `JiraWorklogCache.qtdCenariosErro` (campo Jira) | Issues onde o QA preencheu o campo "Qtd. Cenários com Erro" |
+| B | `JiraWorklogSyncMarker.cenariosErroSum` (reporter JQL) | Soma de `qtdCenariosQA` das BT issues por reporter (não têm `qtdCenariosErro`) |
+
+**Total = Tipo A + Tipo B.** Não há dupla contagem porque:
+- Tipo A vem de issues com worklogs (deduplicado por issueKey)
+- Tipo B vem de BT issues sem worklogs, bucketed pela data de criação
+
+### Invariante de paridade
+
+`JiraWorklogSyncMarker.jirasBroken` e `cenariosErroSum` são calculados com a **mesma lógica** de `/api/jira/lancamentos`. A tela de Lançamentos e o Dashboard **devem sempre concordar** nesses dois KPIs.
+
+Se divergirem: forçar sync (botão RefreshCw) — o TTL de 15 min da atualização de metadados inclui refresh dos campos BT no `JiraWorklogSyncMarker`.
+
+## Cache e Sync
+
+| Modelo | Propósito |
+|---|---|
+| `JiraWorklogCache` | Worklogs individuais (issueKey + startedAt + campos) |
+| `JiraWorklogSyncMarker` | Controle de sync por (userId, year, month) + BT reporter stats |
+| `JiraAccountIdCache` | AccountId Jira persistente (sobrevive ao force-sync) |
+
+TTL de metadados: **15 minutos** por (userId, year) em memória de processo.  
+Force sync: apaga `JiraWorklogCache` + `JiraWorklogSyncMarker` e re-sincroniza tudo.
 
 ## RBAC
 
 - Acessível a todos os usuários autenticados
-- Conteúdo pode variar por `accessProfile`
+- Dashboard de equipe: apenas `Administrador:MGR`
+- Filtro por membro: apenas `Administrador:MGR` (via `can(role, "individual.viewOthers")`)
 
 ---
 

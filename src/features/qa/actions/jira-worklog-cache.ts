@@ -13,6 +13,8 @@ import {
   augmentFieldMapWithGetIssueFallback,
   fetchRetornosForKeys,
   fetchApprovalIssuesByTag,
+  countReporterIssuesByTypes,
+  fetchBrokenTestFieldSumByReporter,
   type ApprovalIssueEntry,
   type JiraLancamentoEntry,
   type RetornosResult,
@@ -39,6 +41,18 @@ export interface UxJiraEntry {
   qtdCenariosErro: number
   started: string
   timeSpentSeconds: number
+}
+
+/**
+ * Broken Test stats per month, derived from reporter-based JQL (independent of worklogs).
+ * Keyed by month index 0–11.
+ *
+ * jirasBroken    — count of BT issues created by the user as reporter in the month
+ * cenariosErroSum — sum of qtdCenariosQA of those BT issues (Tipo B for "Cenários com Erro")
+ */
+export interface BtMonthStats {
+  jirasBroken: number
+  cenariosErroSum: number
 }
 
 const JIRA_KEY_RE = /^[A-Z][A-Z0-9]*-\d+$/i
@@ -311,11 +325,30 @@ async function syncMonthsForUser(
       }),
     )
 
-    // Mark this month as synced
+    // Broken Test reporter stats — independent of worklogs.
+    // Matches the logic in /api/jira/lancamentos (countReporterIssuesByTypes +
+    // fetchBrokenTestFieldSumByReporter) so Dashboard and Lançamentos stay in parity.
+    let jirasBroken = 0
+    let cenariosErroSum = 0
+    if (jiraUser?.accountId) {
+      const displayName = await resolveNameForQaUserId(targetUserId).catch(() => null)
+      const [btCount, btFields] = await Promise.all([
+        countReporterIssuesByTypes(
+          base, credentials, jiraUser.accountId, fromIso, toIso, displayName ?? undefined,
+        ).catch(() => ({ count: 0 })),
+        fetchBrokenTestFieldSumByReporter(
+          base, credentials, jiraUser.accountId, fromIso, toIso, displayName ?? undefined,
+        ).catch(() => ({ cenariosQASum: 0, issueCount: 0 })),
+      ])
+      jirasBroken = btCount.count
+      cenariosErroSum = btFields.cenariosQASum
+    }
+
+    // Mark this month as synced (with BT reporter stats)
     await prisma.jiraWorklogSyncMarker.upsert({
       where: { userId_year_month: { userId: targetUserId, year, month } },
-      update: { syncedAt: new Date() },
-      create: { userId: targetUserId, year, month, syncedAt: new Date() },
+      update: { syncedAt: new Date(), jirasBroken, cenariosErroSum },
+      create: { userId: targetUserId, year, month, syncedAt: new Date(), jirasBroken, cenariosErroSum },
     })
   }
 }
@@ -422,6 +455,49 @@ async function refreshIssueMetadataForUserYear(
     )
   }
 
+  // Refresh BT reporter stats per sync marker month — these are independent of
+  // issue metadata but share the same 15-min TTL to avoid extra Jira requests.
+  const jiraAccountCached = await prisma.jiraAccountIdCache.findUnique({
+    where: { userId: targetUserId },
+    select: { accountId: true },
+  }).catch(() => null)
+  const btAccountId = jiraAccountCached?.accountId ?? null
+
+  if (btAccountId) {
+    const syncMarkers = await prisma.jiraWorklogSyncMarker.findMany({
+      where: { userId: targetUserId, year },
+      select: { month: true },
+    }).catch(() => [] as { month: number }[])
+
+    const displayName = await resolveNameForQaUserId(targetUserId).catch(() => null)
+
+    await Promise.all(
+      syncMarkers.map(async ({ month }) => {
+        const fromIso = `${year}-${pad(month + 1)}-01`
+        const lastDay = new Date(year, month + 1, 0).getDate()
+        const toIso = `${year}-${pad(month + 1)}-${pad(lastDay)}`
+        const [btCount, btFields] = await Promise.all([
+          countReporterIssuesByTypes(
+            base, credentials, btAccountId, fromIso, toIso, displayName ?? undefined,
+          ).catch(() => ({ count: 0 })),
+          fetchBrokenTestFieldSumByReporter(
+            base, credentials, btAccountId, fromIso, toIso, displayName ?? undefined,
+          ).catch(() => ({ cenariosQASum: 0, issueCount: 0 })),
+        ])
+        await prisma.jiraWorklogSyncMarker.update({
+          where: { userId_year_month: { userId: targetUserId, year, month } },
+          data: { jirasBroken: btCount.count, cenariosErroSum: btFields.cenariosQASum },
+        }).catch(() => undefined) // non-fatal
+      }),
+    )
+    console.info(
+      "[metadata-refresh] BT stats atualizados para userId=%s year=%d (%d meses)",
+      targetUserId,
+      year,
+      syncMarkers.length,
+    )
+  }
+
   metadataRefreshTimestamps.set(cacheKey, Date.now())
   console.info(
     "[metadata-refresh] Metadados atualizados para userId=%s year=%d (%d issues)",
@@ -441,7 +517,7 @@ export async function getUxWorklogsForYear(
   targetUserId: string,
   year: number,
   force = false,
-): Promise<{ entries: UxJiraEntry[] }> {
+): Promise<{ entries: UxJiraEntry[]; btStatsByMonth: Record<number, BtMonthStats> }> {
   const session = await requireSession()
   const role = buildRole(session.user.type, session.user.accessProfile)
 
@@ -522,26 +598,39 @@ export async function getUxWorklogsForYear(
   })
 
   // Return all cached entries for the year
-  const cached = await prisma.jiraWorklogCache.findMany({
-    where: { userId: targetUserId, year },
-    select: {
-      issueKey: true,
-      projectName: true,
-      typeField: true,
-      issueType: true,
-      status: true,
-      tag: true,
-      priority: true,
-      retornos: true,
-      retornosByAssignee: true,
-      authorJiraAccountId: true,
-      qtdCenariosQA: true,
-      qtdCenariosErro: true,
-      startedAt: true,
-      timeSpentSeconds: true,
-    },
-    orderBy: { startedAt: "asc" },
-  })
+  const [cached, btMarkers] = await Promise.all([
+    prisma.jiraWorklogCache.findMany({
+      where: { userId: targetUserId, year },
+      select: {
+        issueKey: true,
+        projectName: true,
+        typeField: true,
+        issueType: true,
+        status: true,
+        tag: true,
+        priority: true,
+        retornos: true,
+        retornosByAssignee: true,
+        authorJiraAccountId: true,
+        qtdCenariosQA: true,
+        qtdCenariosErro: true,
+        startedAt: true,
+        timeSpentSeconds: true,
+      },
+      orderBy: { startedAt: "asc" },
+    }),
+    // Fetch BT reporter stats from sync markers — these are the authoritative
+    // values for jirasBroken and cenariosErro (Tipo B) in the QA Dashboard.
+    prisma.jiraWorklogSyncMarker.findMany({
+      where: { userId: targetUserId, year },
+      select: { month: true, jirasBroken: true, cenariosErroSum: true },
+    }),
+  ])
+
+  const btStatsByMonth: Record<number, BtMonthStats> = {}
+  for (const mk of btMarkers as { month: number; jirasBroken: number; cenariosErroSum: number }[]) {
+    btStatsByMonth[mk.month] = { jirasBroken: mk.jirasBroken, cenariosErroSum: mk.cenariosErroSum }
+  }
 
   return {
     entries: (
@@ -580,6 +669,7 @@ export async function getUxWorklogsForYear(
       started: r.startedAt.toISOString().slice(0, 10),
       timeSpentSeconds: r.timeSpentSeconds,
     })),
+    btStatsByMonth,
   }
 }
 

@@ -642,12 +642,19 @@ model JiraWorklogCache {
 /// Marca de controle de sincronização por (userId, year, month).
 /// Registra quando um mês foi sincronizado pela última vez com a API Jira.
 /// Permite saber que um mês com zero worklogs foi de fato sincronizado.
+///
+/// jirasBroken    — contagem de Broken Test issues criadas pelo reporter no mês
+///                  (calculada via JQL independente de worklogs, igual à tela Lançamentos).
+/// cenariosErroSum — soma de qtdCenariosQA das BT issues do reporter no mês
+///                  (usado como "Cenários com Erro" Tipo B no QA Dashboard).
 model JiraWorklogSyncMarker {
-  id       String   @id @default(cuid())
-  userId   String
-  year     Int
-  month    Int
-  syncedAt DateTime @default(now())
+  id              String   @id @default(cuid())
+  userId          String
+  year            Int
+  month           Int
+  syncedAt        DateTime @default(now())
+  jirasBroken     Int      @default(0)
+  cenariosErroSum Int      @default(0)
 
   @@unique([userId, year, month])
 }
