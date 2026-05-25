@@ -721,14 +721,13 @@ function TagPieChart({
 
 // ─── YearTable ────────────────────────────────────────────────────────────────
 
-// YearTable is fully additive: quarterly row = sum of its months, total row = sum of all months.
-// Each unique issue can appear in multiple months if it had worklogs in multiple months,
-// so quarterly/annual sums may exceed the global unique count shown in the cards.
-// Cards use global Sets (true unique) — table uses per-period activity counts.
-function YearTable({ monthStats, hideValues, ano, activeMonths }: { monthStats: MonthStats[]; hideValues: boolean; ano: number; activeMonths: number[] }) {
+// YearTable uses de-duplicated Sets for quarterly and total rows:
+// quarterly row = union of its months' issue Sets (no double-counting across months),
+// total row = union across all active months' issue Sets.
+// This matches the MetricCards which also use global de-duplicated Sets.
+function YearTable({ monthStats, hideValues, ano, activeMonths, quarterDedupeStats, periodTotalRow }: { monthStats: MonthStats[]; hideValues: boolean; ano: number; activeMonths: number[]; quarterDedupeStats: MonthStats[]; periodTotalRow: MonthStats }) {
   const activeMonthSet = new Set(activeMonths)
-  const visibleQuarters = QUARTERS.filter(q => q.months.some(m => activeMonthSet.has(m)))
-  const totalAnual = activeMonths.reduce((acc, m) => sumStats(acc, monthStats[m]!), emptyMonthStats())
+  const visibleQuarters = QUARTERS.map((q, qi) => ({ ...q, qi })).filter(q => q.months.some(m => activeMonthSet.has(m)))
   const today = new Date()
   const currentMonthIndex = ano === today.getFullYear() ? today.getMonth() : -1
   const inv = (v: number) =>
@@ -771,10 +770,7 @@ function YearTable({ monthStats, hideValues, ano, activeMonths }: { monthStats: 
           {visibleQuarters.map((q) => {
             // Sum only the months of this quarter that are in the active period
             const visibleMonths = q.months.filter(m => activeMonthSet.has(m))
-            const qStats = visibleMonths.reduce(
-              (acc, mi) => sumStats(acc, monthStats[mi]!),
-              emptyMonthStats(),
-            )
+            const qStats = quarterDedupeStats[q.qi] ?? emptyMonthStats()
             return (
               <React.Fragment key={q.label}>
                 <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -822,17 +818,17 @@ function YearTable({ monthStats, hideValues, ano, activeMonths }: { monthStats: 
 
           <tr className="border-t-2 border-border-default bg-neutral-grey-50">
             <td className="px-4 py-2.5 font-bold text-text-primary">Total</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{inv(totalAnual.investimentoCentavos)}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{formatHHMM(totalAnual.totalSeconds)}</td>
-            <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{totalAnual.totalIssues}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.novosPrototipos + totalAnual.melhorias}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.pesquisa}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.usabilidade}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.outros}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{totalAnual.novosPrototipos}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{totalAnual.melhorias}</td>
-            <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{totalAnual.ajustes}</td>
-            <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{totalAnual.retornos}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{inv(periodTotalRow.investimentoCentavos)}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{formatHHMM(periodTotalRow.totalSeconds)}</td>
+            <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{periodTotalRow.totalIssues}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{periodTotalRow.novosPrototipos + periodTotalRow.melhorias}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{periodTotalRow.pesquisa}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{periodTotalRow.usabilidade}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{periodTotalRow.outros}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{periodTotalRow.novosPrototipos}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{periodTotalRow.melhorias}</td>
+            <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{periodTotalRow.ajustes}</td>
+            <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{periodTotalRow.retornos}</td>
           </tr>
         </tbody>
       </table>
@@ -979,7 +975,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
   }, [visibleMembros])
 
   // ── Derived stats (instant — no fetch on user toggle) ─────────────────────
-  const { monthStats, totalUniqueIssues, yearTotals, distribByTag, approvalByTag } = React.useMemo(() => {
+  const { monthStats, totalUniqueIssues, yearTotals, distribByTag, approvalByTag, quarterDedupeStats, periodTotalRow } = React.useMemo(() => {
     const empty: YearTypeTotals = {
       novosPrototipos: 0, melhorias: 0, ajustes: 0, pesquisa: 0,
       usabilidade: 0, criticos: 0, outros: 0, aguardando: 0, retornos: 0,
@@ -1013,6 +1009,8 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
         approvalByTag: [...approvalTagMap.entries()]
           .map(([tag, count]) => ({ tag, count }))
           .sort((a, b) => b.count - a.count),
+        quarterDedupeStats: QUARTERS.map(() => emptyMonthStats()),
+        periodTotalRow: emptyMonthStats(),
       }
     }
 
@@ -1058,88 +1056,137 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       if (firstEntry?.authorJiraAccountId) activeJiraAccountIds.add(firstEntry.authorJiraAccountId)
     }
 
-    // Anchored entries: only issues whose FIRST worklog falls within the active period.
-    // Declared here so it can be populated inside the Pass 2 block scope and read afterwards.
-    const anchoredIssueKeys = new Set<string>()
+    // Pass 2 — global: count unique issues per month.
+    // An issue is counted in EVERY month it has a worklog in (not just its first month),
+    // so combined[m].totalIssues matches what lançamentos shows for each month.
+    // canonical typeField (first non-empty typeField per issue) prevents double-counting
+    // issues whose worklogs carry inconsistent typeField values.
 
-    // Pass 2 — global: count issues per month with first-month anchor.
-    // Each issue is counted in exactly ONE month (the month of its earliest worklog),
-    // so sum(combined[i].totalIssues) === totalUniqueIssues (no double-counting).
-    {
-      // Build first-month anchor: minimum month index across all worklogs per issue.
-      const issueFirstMonth = new Map<string, number>()
-      for (const e of allEntries) {
-        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-        if (m < 0 || m > 11) continue
-        const cur = issueFirstMonth.get(e.issueKey)
-        if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
-      }
-
-      type CB = {
-        all: Set<string>; novosProto: Set<string>; melhorias: Set<string>
-        ajustes: Set<string>; pesq: Set<string>; usab: Set<string>
-        criticos: Set<string>; outros: Set<string>; ag: Set<string>
-        retornosPerIssue: Map<string, number>
-      }
-      const buckets: CB[] = Array.from({ length: 12 }, () => ({
-        all: new Set(), novosProto: new Set(), melhorias: new Set(),
-        ajustes: new Set(), pesq: new Set(), usab: new Set(),
-        criticos: new Set(), outros: new Set(), ag: new Set(),
-        retornosPerIssue: new Map(),
-      }))
-
-      for (const e of allEntries) {
-        const firstMonth = issueFirstMonth.get(e.issueKey)
-        if (firstMonth === undefined) continue
-        const cb = buckets[firstMonth]!
+    // Canonical typeField per issue: first non-empty typeField across all entries.
+    const issueCanonicalType = new Map<string, string>()
+    for (const e of allEntries) {
+      if (!issueCanonicalType.has(e.issueKey)) {
         const tf = (e.typeField ?? "").trim().toLowerCase()
-        cb.all.add(e.issueKey)
-        if (tf === "new/redesign" || tf === "new" || tf === "redesign") cb.novosProto.add(e.issueKey)
-        if (tf === "improvement") cb.melhorias.add(e.issueKey)
-        if (tf === "ajust/return" || tf === "adjustment/return") cb.ajustes.add(e.issueKey)
-        if (tf === "research") cb.pesq.add(e.issueKey)
-        if (tf === "usability") cb.usab.add(e.issueKey)
-        if (tf === "others" || tf === "other") cb.outros.add(e.issueKey)
-        if (e.priority?.toLowerCase().trim() === "critical") cb.criticos.add(e.issueKey)
-        const sl = (e.status ?? "").toLowerCase().trim()
-        if (sl.includes("approval") || sl.includes("aprova")) cb.ag.add(e.issueKey)
-        const r = activeJiraAccountIds.size > 0
-          ? Array.from(activeJiraAccountIds).reduce((s, id) => s + (e.retornosByAssignee?.[id] ?? 0), 0)
-          : (e.retornos ?? 0)
-        if (r > 0) cb.retornosPerIssue.set(e.issueKey, Math.max(cb.retornosPerIssue.get(e.issueKey) ?? 0, r))
-      }
-
-      // Merge untyped issues into "outros"
-      for (const cb of buckets) {
-        const typed = new Set([...cb.novosProto, ...cb.melhorias, ...cb.ajustes, ...cb.pesq, ...cb.usab, ...cb.outros])
-        for (const key of cb.all) { if (!typed.has(key)) cb.outros.add(key) }
-      }
-
-      // Overlay issue counts onto combined (hours/investment already set in pass 1)
-      for (let i = 0; i < 12; i++) {
-        const cb = buckets[i]!
-        combined[i]!.totalIssues = cb.all.size
-        combined[i]!.novosPrototipos = cb.novosProto.size
-        combined[i]!.melhorias = cb.melhorias.size
-        combined[i]!.ajustes = cb.ajustes.size
-        combined[i]!.pesquisa = cb.pesq.size
-        combined[i]!.usabilidade = cb.usab.size
-        combined[i]!.criticos = cb.criticos.size
-        combined[i]!.outros = cb.outros.size
-        combined[i]!.aguardando = cb.ag.size
-        combined[i]!.retornos = Array.from(cb.retornosPerIssue.values()).reduce((s, v) => s + v, 0)
-      }
-
-      // Populate anchoredIssueKeys inside the block where buckets is in scope
-      for (const m of activeMonths) {
-        for (const key of buckets[m]!.all) anchoredIssueKeys.add(key)
+        if (tf) issueCanonicalType.set(e.issueKey, tf)
       }
     }
 
-    const anchoredEntries = allEntries.filter(e => anchoredIssueKeys.has(e.issueKey))
+    type UxCB = {
+      all: Set<string>; novosProto: Set<string>; melhorias: Set<string>
+      ajustes: Set<string>; pesq: Set<string>; usab: Set<string>
+      criticos: Set<string>; outros: Set<string>; ag: Set<string>
+      retornosPerIssue: Map<string, number>
+    }
+    const buckets: UxCB[] = Array.from({ length: 12 }, () => ({
+      all: new Set(), novosProto: new Set(), melhorias: new Set(),
+      ajustes: new Set(), pesq: new Set(), usab: new Set(),
+      criticos: new Set(), outros: new Set(), ag: new Set(),
+      retornosPerIssue: new Map(),
+    }))
+
+    for (const e of allEntries) {
+      const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+      if (m < 0 || m > 11) continue
+      const cb = buckets[m]!
+      const tf = issueCanonicalType.get(e.issueKey) ?? ""
+      cb.all.add(e.issueKey)
+      if (tf === "new/redesign" || tf === "new" || tf === "redesign") cb.novosProto.add(e.issueKey)
+      if (tf === "improvement") cb.melhorias.add(e.issueKey)
+      if (tf === "ajust/return" || tf === "adjustment/return") cb.ajustes.add(e.issueKey)
+      if (tf === "research") cb.pesq.add(e.issueKey)
+      if (tf === "usability") cb.usab.add(e.issueKey)
+      if (tf === "others" || tf === "other") cb.outros.add(e.issueKey)
+      if (e.priority?.toLowerCase().trim() === "critical") cb.criticos.add(e.issueKey)
+      const sl = (e.status ?? "").toLowerCase().trim()
+      if (sl.includes("approval") || sl.includes("aprova")) cb.ag.add(e.issueKey)
+      const r = activeJiraAccountIds.size > 0
+        ? Array.from(activeJiraAccountIds).reduce((s, id) => s + (e.retornosByAssignee?.[id] ?? 0), 0)
+        : (e.retornos ?? 0)
+      if (r > 0) cb.retornosPerIssue.set(e.issueKey, Math.max(cb.retornosPerIssue.get(e.issueKey) ?? 0, r))
+    }
+
+    // Merge untyped issues into "outros"
+    for (const cb of buckets) {
+      const typed = new Set([...cb.novosProto, ...cb.melhorias, ...cb.ajustes, ...cb.pesq, ...cb.usab, ...cb.outros])
+      for (const key of cb.all) { if (!typed.has(key)) cb.outros.add(key) }
+    }
+
+    // Overlay issue counts onto combined (hours/investment already set in pass 1)
+    for (let i = 0; i < 12; i++) {
+      const cb = buckets[i]!
+      combined[i]!.totalIssues = cb.all.size
+      combined[i]!.novosPrototipos = cb.novosProto.size
+      combined[i]!.melhorias = cb.melhorias.size
+      combined[i]!.ajustes = cb.ajustes.size
+      combined[i]!.pesquisa = cb.pesq.size
+      combined[i]!.usabilidade = cb.usab.size
+      combined[i]!.criticos = cb.criticos.size
+      combined[i]!.outros = cb.outros.size
+      combined[i]!.aguardando = cb.ag.size
+      combined[i]!.retornos = Array.from(cb.retornosPerIssue.values()).reduce((s, v) => s + v, 0)
+    }
+
+    const dedupeUxStats = (monthIndices: number[]): MonthStats => {
+      const allSet = new Set<string>(); const ndSet = new Set<string>()
+      const mlSet = new Set<string>(); const ajSet = new Set<string>()
+      const psSet = new Set<string>(); const usSet = new Set<string>()
+      const crSet = new Set<string>(); const otSet = new Set<string>()
+      const agSet = new Set<string>()
+      const retMap = new Map<string, number>()
+      for (const m of monthIndices) {
+        const cb = buckets[m]!
+        for (const k of cb.all) allSet.add(k)
+        for (const k of cb.novosProto) ndSet.add(k)
+        for (const k of cb.melhorias) mlSet.add(k)
+        for (const k of cb.ajustes) ajSet.add(k)
+        for (const k of cb.pesq) psSet.add(k)
+        for (const k of cb.usab) usSet.add(k)
+        for (const k of cb.criticos) crSet.add(k)
+        for (const k of cb.outros) otSet.add(k)
+        for (const k of cb.ag) agSet.add(k)
+        for (const [k, v] of cb.retornosPerIssue) retMap.set(k, Math.max(retMap.get(k) ?? 0, v))
+      }
+      return {
+        totalSeconds: monthIndices.reduce((s, m) => s + (combined[m]?.totalSeconds ?? 0), 0),
+        investimentoCentavos: monthIndices.reduce((s, m) => s + (combined[m]?.investimentoCentavos ?? 0), 0),
+        totalIssues: allSet.size, novosPrototipos: ndSet.size, melhorias: mlSet.size,
+        ajustes: ajSet.size, pesquisa: psSet.size, usabilidade: usSet.size,
+        criticos: crSet.size, outros: otSet.size, aguardando: agSet.size,
+        retornos: Array.from(retMap.values()).reduce((s, v) => s + v, 0),
+      }
+    }
+
+    const quarterDedupeStats: MonthStats[] = QUARTERS.map(q => dedupeUxStats(q.months))
+    const periodTotalRow = dedupeUxStats(activeMonths)
+
+    // Entries from active months only (for yearTotals seconds and distribByTag)
+    const anchoredEntries = allEntries.filter(e => {
+      const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+      return activeMonths.includes(m)
+    })
 
     // Period-level unique counts and type totals for the metric cards
-    const yTotals = aggregateYearTotals(anchoredEntries, activeJiraAccountIds)
+    let novosPrototiposSeconds = 0, melhorasSeconds = 0, ajustesSeconds = 0
+    let pesquisaSeconds = 0, usabilidadeSeconds = 0, outrosSeconds = 0
+    for (const e of anchoredEntries) {
+      const tf = issueCanonicalType.get(e.issueKey) ?? ""
+      const s = e.timeSpentSeconds
+      if (tf === "new/redesign" || tf === "new" || tf === "redesign") novosPrototiposSeconds += s
+      else if (tf === "improvement") melhorasSeconds += s
+      else if (tf === "ajust/return" || tf === "adjustment/return") ajustesSeconds += s
+      else if (tf === "research") pesquisaSeconds += s
+      else if (tf === "usability") usabilidadeSeconds += s
+      else outrosSeconds += s
+    }
+    const yTotals: YearTypeTotals = {
+      novosPrototipos: periodTotalRow.novosPrototipos, melhorias: periodTotalRow.melhorias,
+      ajustes: periodTotalRow.ajustes, pesquisa: periodTotalRow.pesquisa,
+      usabilidade: periodTotalRow.usabilidade, criticos: periodTotalRow.criticos,
+      outros: periodTotalRow.outros, aguardando: periodTotalRow.aguardando,
+      retornos: periodTotalRow.retornos,
+      novosPrototiposSeconds, melhorasSeconds, ajustesSeconds,
+      pesquisaSeconds, usabilidadeSeconds, outrosSeconds,
+    }
 
     // Group anchored issues by tag for Jiras por Produto
     const tagDistribMap = new Map<string, Set<string>>()
@@ -1168,10 +1215,12 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
 
     return {
       monthStats: combined,
-      totalUniqueIssues: anchoredIssueKeys.size,
+      totalUniqueIssues: periodTotalRow.totalIssues,
       yearTotals: yTotals,
       distribByTag: toTagItems(tagDistribMap),
       approvalByTag,
+      quarterDedupeStats,
+      periodTotalRow,
     }
   }, [rawMemberEntries, activeMembers, progressaoMap, ano, activeMonths, liveApprovalIssues, selectedUserIds, memberJiraIds])
 
@@ -1398,7 +1447,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       {loading || monthStats === null ? (
         <SectionSpinner minHeight="min-h-[300px]" />
       ) : (
-        <YearTable monthStats={monthStats} hideValues={hideValues} ano={ano} activeMonths={activeMonths} />
+        <YearTable monthStats={monthStats} hideValues={hideValues} ano={ano} activeMonths={activeMonths} quarterDedupeStats={quarterDedupeStats} periodTotalRow={periodTotalRow} />
       )}
     </div>
   )

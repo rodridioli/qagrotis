@@ -595,18 +595,18 @@ function QaYearTable({
   hideValues,
   ano,
   activeMonths,
+  quarterDedupeStats,
+  periodTotalRow,
 }: {
   monthStats: QaMonthStats[]
   hideValues: boolean
   ano: number
   activeMonths: number[]
+  quarterDedupeStats: QaMonthStats[]
+  periodTotalRow: QaMonthStats
 }) {
   const activeMonthSet = new Set(activeMonths)
-  const visibleQuarters = QUARTERS.filter(q => q.months.some(m => activeMonthSet.has(m)))
-  const totalAnual = activeMonths.reduce(
-    (acc, m) => sumQaStats(acc, monthStats[m] ?? emptyQaMonthStats()),
-    emptyQaMonthStats(),
-  )
+  const visibleQuarters = QUARTERS.map((q, qi) => ({ ...q, qi })).filter(q => q.months.some(m => activeMonthSet.has(m)))
   const today = new Date()
   const currentMonthIndex = ano === today.getFullYear() ? today.getMonth() : -1
   const inv = (v: number) =>
@@ -640,10 +640,7 @@ function QaYearTable({
         <tbody>
           {visibleQuarters.map((q) => {
             const visibleMonths = q.months.filter(m => activeMonthSet.has(m))
-            const qStats = visibleMonths.reduce(
-              (acc, mi) => sumQaStats(acc, monthStats[mi]!),
-              emptyQaMonthStats(),
-            )
+            const qStats = quarterDedupeStats[q.qi] ?? emptyQaMonthStats()
             return (
               <React.Fragment key={q.label}>
                 <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -681,12 +678,12 @@ function QaYearTable({
 
           <tr className="border-t-2 border-border-default bg-neutral-grey-50">
             <td className="px-4 py-2.5 font-bold text-text-primary">Total</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{inv(totalAnual.investimentoCentavos)}</td>
-            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{formatHHMM(totalAnual.totalSeconds)}</td>
-            <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{totalAnual.totalIssues}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.cenariosTestados}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.cenariosErro}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.jirasBroken}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{inv(periodTotalRow.investimentoCentavos)}</td>
+            <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{formatHHMM(periodTotalRow.totalSeconds)}</td>
+            <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{periodTotalRow.totalIssues}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{periodTotalRow.cenariosTestados}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{periodTotalRow.cenariosErro}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{periodTotalRow.jirasBroken}</td>
           </tr>
         </tbody>
       </table>
@@ -754,7 +751,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
   )
 
   // ── Derived stats ─────────────────────────────────────────────────────────
-  const { monthStats, totalUniqueIssues, yearTotals, distribByProject } = React.useMemo(() => {
+  const { monthStats, totalUniqueIssues, yearTotals, distribByProject, quarterDedupeStats, periodTotalRow } = React.useMemo(() => {
     const empty: QaYearTotals = { cenariosTestados: 0, cenariosErro: 0, jirasBroken: 0, criticos: 0 }
 
     if (Object.keys(rawMemberEntries).length === 0) {
@@ -763,6 +760,8 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
         totalUniqueIssues: 0,
         yearTotals: empty,
         distribByProject: [] as { project: string; count: number; investimentoCentavos: number }[],
+        quarterDedupeStats: QUARTERS.map(() => emptyQaMonthStats()),
+        periodTotalRow: emptyQaMonthStats(),
       }
     }
 
@@ -801,94 +800,109 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
       }
     }
 
-    // Anchored entries: only issues whose FIRST worklog falls within the active period.
-    // Declared here so it can be populated inside the Pass 2 block scope and read afterwards.
-    const anchoredIssueKeys = new Set<string>()
+    // Pass 2 — global: count unique issues per month.
+    // An issue is counted in EVERY month it has a worklog in (not just its first month),
+    // so combined[m].totalIssues matches what lançamentos shows for each month.
 
-    // Pass 2 — global: count issues per month with first-month anchor.
-    // Each issue is counted in exactly ONE month (the month of its earliest worklog),
-    // so sum(combined[i].totalIssues) === totalUniqueIssues (no double-counting).
-    {
-      // Build first-month anchor: minimum month index across all worklogs per issue.
-      const issueFirstMonth = new Map<string, number>()
-      for (const e of allEntries) {
-        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-        if (m < 0 || m > 11) continue
-        const cur = issueFirstMonth.get(e.issueKey)
-        if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
+    // isBrokenTest and priorityIsCritical imported from @/features/qa/lib/jira-stats-kpis
+    const isBrokenTestEntry = (e: JiraEntry) => isBrokenTest(e.issueType, normalizedBrokenTypes)
+
+    type QaCB = {
+      all: Set<string>
+      brokenIssues: Set<string>
+      criticoIssues: Set<string>
+      cenariosQAByIssue: Map<string, number>
+      cenariosErroByIssue: Map<string, number>
+      brokenTestQAByIssue: Map<string, number>
+    }
+    const buckets: QaCB[] = Array.from({ length: 12 }, () => ({
+      all: new Set(),
+      brokenIssues: new Set(),
+      criticoIssues: new Set(),
+      cenariosQAByIssue: new Map(),
+      cenariosErroByIssue: new Map(),
+      brokenTestQAByIssue: new Map(),
+    }))
+
+    for (const e of allEntries) {
+      const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+      if (m < 0 || m > 11) continue
+      const cb = buckets[m]!
+      cb.all.add(e.issueKey)
+      if (isBrokenTestEntry(e)) cb.brokenIssues.add(e.issueKey)
+      if (priorityIsCritical(e.priority)) cb.criticoIssues.add(e.issueKey)
+      if (e.qtdCenariosQA > 0) {
+        cb.cenariosQAByIssue.set(
+          e.issueKey,
+          Math.max(cb.cenariosQAByIssue.get(e.issueKey) ?? 0, e.qtdCenariosQA),
+        )
       }
-
-      // isBrokenTest and priorityIsCritical imported from @/features/qa/lib/jira-stats-kpis
-      const isBrokenTestEntry = (e: JiraEntry) => isBrokenTest(e.issueType, normalizedBrokenTypes)
-
-      type CB = {
-        all: Set<string>
-        brokenIssues: Set<string>
-        criticoIssues: Set<string>
-        cenariosQAByIssue: Map<string, number>
-        cenariosErroByIssue: Map<string, number>
-        brokenTestQAByIssue: Map<string, number>
+      if (e.qtdCenariosErro > 0) {
+        cb.cenariosErroByIssue.set(
+          e.issueKey,
+          Math.max(cb.cenariosErroByIssue.get(e.issueKey) ?? 0, e.qtdCenariosErro),
+        )
       }
-      const buckets: CB[] = Array.from({ length: 12 }, () => ({
-        all: new Set(),
-        brokenIssues: new Set(),
-        criticoIssues: new Set(),
-        cenariosQAByIssue: new Map(),
-        cenariosErroByIssue: new Map(),
-        brokenTestQAByIssue: new Map(),
-      }))
-
-      for (const e of allEntries) {
-        const firstMonth = issueFirstMonth.get(e.issueKey)
-        if (firstMonth === undefined) continue
-        const cb = buckets[firstMonth]!
-        cb.all.add(e.issueKey)
-        if (isBrokenTestEntry(e)) cb.brokenIssues.add(e.issueKey)
-        if (priorityIsCritical(e.priority)) cb.criticoIssues.add(e.issueKey)
-        if (e.qtdCenariosQA > 0) {
-          cb.cenariosQAByIssue.set(
-            e.issueKey,
-            Math.max(cb.cenariosQAByIssue.get(e.issueKey) ?? 0, e.qtdCenariosQA),
-          )
-        }
-        if (e.qtdCenariosErro > 0) {
-          cb.cenariosErroByIssue.set(
-            e.issueKey,
-            Math.max(cb.cenariosErroByIssue.get(e.issueKey) ?? 0, e.qtdCenariosErro),
-          )
-        }
-        // Tipo B: Broken Test sem qtdCenariosErro → accumulate qtdCenariosQA for fallback
-        if (isBrokenTestEntry(e) && e.qtdCenariosQA > 0) {
-          cb.brokenTestQAByIssue.set(
-            e.issueKey,
-            Math.max(cb.brokenTestQAByIssue.get(e.issueKey) ?? 0, e.qtdCenariosQA),
-          )
-        }
-      }
-
-      for (let i = 0; i < 12; i++) {
-        const cb = buckets[i]!
-        combined[i]!.totalIssues = cb.all.size
-        combined[i]!.jirasBroken = cb.brokenIssues.size
-        combined[i]!.criticos = cb.criticoIssues.size
-        combined[i]!.cenariosTestados = Array.from(cb.cenariosQAByIssue.values()).reduce((s, v) => s + v, 0)
-        // Cenários com erro: Tipo A + Tipo B fallback
-        let cenariosErroMonth = Array.from(cb.cenariosErroByIssue.values()).reduce((s, v) => s + v, 0)
-        for (const [key, v] of cb.brokenTestQAByIssue.entries()) {
-          if (!cb.cenariosErroByIssue.has(key)) {
-            cenariosErroMonth += v
-          }
-        }
-        combined[i]!.cenariosErro = cenariosErroMonth
-      }
-
-      // Populate anchoredIssueKeys inside the block where buckets is in scope
-      for (const m of activeMonths) {
-        for (const key of buckets[m]!.all) anchoredIssueKeys.add(key)
+      // Tipo B: Broken Test sem qtdCenariosErro → accumulate qtdCenariosQA for fallback
+      if (isBrokenTestEntry(e) && e.qtdCenariosQA > 0) {
+        cb.brokenTestQAByIssue.set(
+          e.issueKey,
+          Math.max(cb.brokenTestQAByIssue.get(e.issueKey) ?? 0, e.qtdCenariosQA),
+        )
       }
     }
 
-    const anchoredEntries = allEntries.filter(e => anchoredIssueKeys.has(e.issueKey))
+    for (let i = 0; i < 12; i++) {
+      const cb = buckets[i]!
+      combined[i]!.totalIssues = cb.all.size
+      combined[i]!.jirasBroken = cb.brokenIssues.size
+      combined[i]!.criticos = cb.criticoIssues.size
+      combined[i]!.cenariosTestados = Array.from(cb.cenariosQAByIssue.values()).reduce((s, v) => s + v, 0)
+      // Cenários com erro: Tipo A + Tipo B fallback
+      let cenariosErroMonth = Array.from(cb.cenariosErroByIssue.values()).reduce((s, v) => s + v, 0)
+      for (const [key, v] of cb.brokenTestQAByIssue.entries()) {
+        if (!cb.cenariosErroByIssue.has(key)) {
+          cenariosErroMonth += v
+        }
+      }
+      combined[i]!.cenariosErro = cenariosErroMonth
+    }
+
+    const dedupeQaStats = (monthIndices: number[]): QaMonthStats => {
+      const allSet = new Set<string>(); const brokenSet = new Set<string>(); const critSet = new Set<string>()
+      const cenariosQA = new Map<string, number>()
+      const cenariosErro = new Map<string, number>()
+      const brokenTestQA = new Map<string, number>()
+      for (const m of monthIndices) {
+        const cb = buckets[m]!
+        for (const k of cb.all) allSet.add(k)
+        for (const k of cb.brokenIssues) brokenSet.add(k)
+        for (const k of cb.criticoIssues) critSet.add(k)
+        for (const [k, v] of cb.cenariosQAByIssue) cenariosQA.set(k, Math.max(cenariosQA.get(k) ?? 0, v))
+        for (const [k, v] of cb.cenariosErroByIssue) cenariosErro.set(k, Math.max(cenariosErro.get(k) ?? 0, v))
+        for (const [k, v] of cb.brokenTestQAByIssue) brokenTestQA.set(k, Math.max(brokenTestQA.get(k) ?? 0, v))
+      }
+      let cenariosErroTotal = Array.from(cenariosErro.values()).reduce((s, v) => s + v, 0)
+      for (const [key, v] of brokenTestQA) { if (!cenariosErro.has(key)) cenariosErroTotal += v }
+      return {
+        totalSeconds: monthIndices.reduce((s, m) => s + (combined[m]?.totalSeconds ?? 0), 0),
+        investimentoCentavos: monthIndices.reduce((s, m) => s + (combined[m]?.investimentoCentavos ?? 0), 0),
+        totalIssues: allSet.size,
+        cenariosTestados: Array.from(cenariosQA.values()).reduce((s, v) => s + v, 0),
+        cenariosErro: cenariosErroTotal,
+        jirasBroken: brokenSet.size,
+        criticos: critSet.size,
+      }
+    }
+
+    const quarterDedupeStats: QaMonthStats[] = QUARTERS.map(q => dedupeQaStats(q.months))
+    const periodTotalRow = dedupeQaStats(activeMonths)
+
+    // Entries from active months only (for yearTotals and distribByProject)
+    const anchoredEntries = allEntries.filter(e => {
+      const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+      return activeMonths.includes(m)
+    })
 
     // Use shared computeJiraKpis — single source of truth for KPI logic across all screens
     const yKpis = computeJiraKpis(anchoredEntries, brokenTestIssueTypeNames)
@@ -915,9 +929,11 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
 
     return {
       monthStats: combined,
-      totalUniqueIssues: anchoredIssueKeys.size,
+      totalUniqueIssues: periodTotalRow.totalIssues,
       yearTotals: yTotals,
       distribByProject,
+      quarterDedupeStats,
+      periodTotalRow,
     }
   }, [rawMemberEntries, activeMembers, progressaoMap, ano, activeMonths, normalizedBrokenTypes])
 
@@ -1147,7 +1163,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
       {loading || monthStats === null ? (
         <SectionSpinner minHeight="min-h-[300px]" />
       ) : (
-        <QaYearTable monthStats={monthStats} hideValues={hideValues} ano={ano} activeMonths={activeMonths} />
+        <QaYearTable monthStats={monthStats} hideValues={hideValues} ano={ano} activeMonths={activeMonths} quarterDedupeStats={quarterDedupeStats} periodTotalRow={periodTotalRow} />
       )}
     </div>
   )
