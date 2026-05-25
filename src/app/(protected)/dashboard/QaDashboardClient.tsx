@@ -158,6 +158,10 @@ function sumQaStats(a: QaMonthStats, b: QaMonthStats): QaMonthStats {
   }
 }
 
+/**
+ * Retorna o valorHora (centavos) vigente para um dado mês/ano.
+ * Mantido para uso em métricas de resumo (avgValorHora).
+ */
 function getValorHoraForMonth(
   history: ProgressaoHistoricoEntry[],
   year: number,
@@ -167,6 +171,29 @@ function getValorHoraForMonth(
   const active = history.find((r) => r.dataYmd <= lastDay && r.valorHora != null)
   if (active) return active.valorHora
   return null
+}
+
+/**
+ * Retorna o valorHora (centavos) vigente na data exata de um lançamento.
+ * Mais preciso que getValorHoraForMonth: aplica a taxa correta para cada entrada,
+ * respeitando mudanças de progressão que ocorrem no meio de um mês.
+ * history deve estar ordenado por data DESC.
+ */
+function getValorHoraForDate(
+  history: ProgressaoHistoricoEntry[],
+  dateYmd: string,
+): number | null {
+  const active = history.find((r) => r.dataYmd <= dateYmd && r.valorHora != null)
+  return active?.valorHora ?? null
+}
+
+/**
+ * Retorna a data de desligamento (YYYY-MM-DD) se existir uma progressão
+ * com tipo DESLIGAMENTO no histórico, ou null caso contrário.
+ */
+function getDesligamentoDate(history: ProgressaoHistoricoEntry[]): string | null {
+  const entry = history.find((r) => r.tipo === "DESLIGAMENTO")
+  return entry?.dataYmd ?? null
 }
 
 // ─── QA year-level totals ──────────────────────────────────────────────────────
@@ -670,19 +697,44 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
   const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([])
   const [rawMemberEntries, setRawMemberEntries] = React.useState<Record<string, JiraEntry[]>>({})
 
-  const activeMembers = React.useMemo(
-    () =>
-      selectedUserIds.length > 0
-        ? membros.filter((m) => selectedUserIds.includes(m.userId))
-        : membros,
-    [membros, selectedUserIds],
-  )
-
   function toggleUser(userId: string) {
     setSelectedUserIds((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
     )
   }
+
+  // ── Visible members ────────────────────────────────────────────────────────
+  // Um membro é exibido apenas se:
+  //   1. Possui ao menos um lançamento no período selecionado (activeMonths), E
+  //   2. Não foi desligado ANTES do início do período.
+  // Antes de os dados carregarem, todos os membros são exibidos (skeleton state).
+  const visibleMembros = React.useMemo(() => {
+    const loaded = Object.keys(rawMemberEntries).length > 0
+    if (!loaded) return membros
+    const activeMonthSet = new Set(activeMonths)
+    const firstActiveMonth = Math.min(...activeMonths)
+    const firstDayOfPeriod = `${ano}-${pad(firstActiveMonth + 1)}-01`
+    return membros.filter((m) => {
+      const history = progressaoMap[m.userId] ?? []
+      const desligamento = getDesligamentoDate(history)
+      // Ocultar se desligado antes do início do período
+      if (desligamento != null && desligamento < firstDayOfPeriod) return false
+      // Verificação existente: tem ao menos um lançamento no período
+      return (rawMemberEntries[m.userId] ?? []).some((e) => {
+        const month = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+        return activeMonthSet.has(month)
+      })
+    })
+  }, [rawMemberEntries, membros, activeMonths, progressaoMap, ano])
+
+  // Active members: todos os visíveis quando sem seleção; filtrados por seleção caso contrário
+  const activeMembers = React.useMemo(
+    () =>
+      selectedUserIds.length > 0
+        ? visibleMembros.filter((m) => selectedUserIds.includes(m.userId))
+        : visibleMembros,
+    [visibleMembros, selectedUserIds],
+  )
 
   const normalizedBrokenTypes = React.useMemo(
     () => brokenTestIssueTypeNames.map((t) => t.toLowerCase().trim()),
@@ -706,16 +758,23 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
     const allEntries: JiraEntry[] = []
     const projectMonthInvestmentMap = new Map<string, number[]>()
 
-    // Pass 1 — per-member: accumulate hours and investment
+    // Pass 1 — per-member: accumulate hours and investment.
+    // Lançamentos após a data de desligamento são ignorados (regra de negócio).
+    // O cálculo de investimento usa getValorHoraForDate (por data de lançamento),
+    // que é mais preciso que por mês — respeita mudanças de progressão intra-mês.
     for (const m of activeMembers) {
       const entries = rawMemberEntries[m.userId] ?? []
-      allEntries.push(...entries)
       const history = progressaoMap[m.userId] ?? []
+      const desligamento = getDesligamentoDate(history)
       for (const e of entries) {
-        const month = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+        const entryDate = e.started.slice(0, 10)
+        // Regra de desligamento: ignorar lançamentos após a data de desligamento
+        if (desligamento != null && entryDate > desligamento) continue
+        allEntries.push(e)
+        const month = new Date(`${entryDate}T12:00:00`).getMonth()
         if (month < 0 || month > 11) continue
         combined[month]!.totalSeconds += e.timeSpentSeconds
-        const valorHora = getValorHoraForMonth(history, ano, month)
+        const valorHora = getValorHoraForDate(history, entryDate)
         if (valorHora != null) {
           const cost = Math.round((e.timeSpentSeconds / 3600) * valorHora)
           combined[month]!.investimentoCentavos += cost
@@ -846,22 +905,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
     }
   }, [rawMemberEntries, activeMembers, progressaoMap, ano, activeMonths, normalizedBrokenTypes])
 
-  // ── Visible members ────────────────────────────────────────────────────────
-  // A member (active OR inactive) is shown only if they have at least one worklog
-  // entry within the selected period (activeMonths). Before data loads, all members
-  // are shown (skeleton state).
-  const visibleMembros = React.useMemo(() => {
-    const loaded = Object.keys(rawMemberEntries).length > 0
-    if (!loaded) return membros
-    const activeMonthSet = new Set(activeMonths)
-    return membros.filter((m) =>
-      (rawMemberEntries[m.userId] ?? []).some((e) => {
-        const month = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-        return activeMonthSet.has(month)
-      }),
-    )
-  }, [rawMemberEntries, membros, activeMonths])
-
+  // Limpar seleções que não são mais visíveis (ex.: mudança de ano ou desligamento)
   React.useEffect(() => {
     const visibleIds = new Set(visibleMembros.map((m) => m.userId))
     setSelectedUserIds((prev) => prev.filter((id) => visibleIds.has(id)))

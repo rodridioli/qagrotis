@@ -80,7 +80,7 @@ export async function listMinhasProgressoes(): Promise<ProgressaoListRow[]> {
 const progressaoSchema = z.object({
   evaluatedUserId: z.string().min(1).max(128),
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida."),
-  tipo: z.enum(["ADMISSAO", "DISSIDIO", "PROMOCAO", "MERITO"]),
+  tipo: z.enum(["ADMISSAO", "DISSIDIO", "PROMOCAO", "MERITO", "DESLIGAMENTO"]),
   regime: z.enum(["CLT", "PJ", "COOPERADO"]),
   cargo: z.string().min(1, "Cargo obrigatório.").max(200),
   valorHora: z.number().int().min(0).max(999_999_900).nullable().optional(),
@@ -236,6 +236,7 @@ export async function getValorHoraAtualBatch(
 export interface ProgressaoHistoricoEntry {
   dataYmd: string
   valorHora: number | null
+  tipo: string
 }
 
 /**
@@ -251,8 +252,8 @@ export async function getProgressaoHistoricoBatch(
   await ensureIndividualProgressaoTable()
   await ensureIndividualProgressaoValorHoraColumn()
 
-  const rows = await prisma.$queryRaw<{ evaluatedUserId: string; data: Date; valorHora: number | null }[]>`
-    SELECT "evaluatedUserId", data, "valorHora"
+  const rows = await prisma.$queryRaw<{ evaluatedUserId: string; data: Date; tipo: string; valorHora: number | null }[]>`
+    SELECT "evaluatedUserId", data, tipo, "valorHora"
     FROM "IndividualProgressao"
     WHERE "evaluatedUserId" = ANY(${userIds}::text[])
     ORDER BY "evaluatedUserId", data DESC
@@ -264,6 +265,7 @@ export async function getProgressaoHistoricoBatch(
     result[row.evaluatedUserId]!.push({
       dataYmd: row.data.toISOString().slice(0, 10),
       valorHora: row.valorHora,
+      tipo: row.tipo,
     })
   }
   return result

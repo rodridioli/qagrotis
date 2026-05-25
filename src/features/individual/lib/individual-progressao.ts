@@ -1,4 +1,4 @@
-export type ProgressaoTipo = "ADMISSAO" | "DISSIDIO" | "PROMOCAO" | "MERITO"
+export type ProgressaoTipo = "ADMISSAO" | "DISSIDIO" | "PROMOCAO" | "MERITO" | "DESLIGAMENTO"
 export type ProgressaoRegime = "CLT" | "PJ" | "COOPERADO"
 
 export interface ProgressaoListRow {
@@ -13,10 +13,11 @@ export interface ProgressaoListRow {
 }
 
 export const PROGRESSAO_TIPO_OPTIONS: { value: ProgressaoTipo; label: string }[] = [
-  { value: "ADMISSAO", label: "Admissão" },
-  { value: "DISSIDIO", label: "Dissídio" },
-  { value: "PROMOCAO", label: "Promoção" },
-  { value: "MERITO",   label: "Mérito"   },
+  { value: "ADMISSAO",     label: "Admissão"    },
+  { value: "DISSIDIO",     label: "Dissídio"    },
+  { value: "PROMOCAO",     label: "Promoção"    },
+  { value: "MERITO",       label: "Mérito"      },
+  { value: "DESLIGAMENTO", label: "Desligamento" },
 ]
 
 export const PROGRESSAO_REGIME_OPTIONS: { value: ProgressaoRegime; label: string }[] = [
@@ -26,10 +27,11 @@ export const PROGRESSAO_REGIME_OPTIONS: { value: ProgressaoRegime; label: string
 ]
 
 const TIPO_LABELS: Record<ProgressaoTipo, string> = {
-  ADMISSAO: "Admissão",
-  DISSIDIO: "Dissídio",
-  PROMOCAO: "Promoção",
-  MERITO:   "Mérito",
+  ADMISSAO:     "Admissão",
+  DISSIDIO:     "Dissídio",
+  PROMOCAO:     "Promoção",
+  MERITO:       "Mérito",
+  DESLIGAMENTO: "Desligamento",
 }
 
 const REGIME_LABELS: Record<ProgressaoRegime, string> = {
