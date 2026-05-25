@@ -210,6 +210,18 @@ function getDesligamentoDate(history: ProgressaoHistoricoEntry[]): string | null
   return entry?.dataYmd ?? null
 }
 
+/**
+ * Para usuários desligados, retorna o valorHora (centavos) definido no
+ * próprio registro de DESLIGAMENTO. Esse valor representa a taxa final
+ * acordada e deve ser usado para TODOS os cálculos de investimento
+ * independentemente da data do lançamento.
+ * Retorna null se o registro de desligamento não possuir valorHora.
+ */
+function getValorHoraDesligamento(history: ProgressaoHistoricoEntry[]): number | null {
+  const entry = history.find((r) => r.tipo === "DESLIGAMENTO" && r.valorHora != null)
+  return entry?.valorHora ?? null
+}
+
 // ─── TW year-level totals ──────────────────────────────────────────────────────
 
 interface TwYearTotals {
@@ -960,12 +972,15 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
 
     // Pass 1 — per-member: accumulate hours and investment.
     // Lançamentos após a data de desligamento são ignorados (regra de negócio).
-    // O cálculo de investimento usa getValorHoraForDate (por data de lançamento),
-    // que é mais preciso que por mês — respeita mudanças de progressão intra-mês.
+    // Para usuários desligados (inativos): o valorHora é sempre o do registro de
+    // DESLIGAMENTO (taxa final acordada), independentemente da data do lançamento.
+    // Para usuários ativos: getValorHoraForDate resolve a taxa vigente por lançamento.
     for (const m of activeMembers) {
       const entries = rawMemberEntries[m.userId] ?? []
       const history = progressaoMap[m.userId] ?? []
       const desligamento = getDesligamentoDate(history)
+      // Usuário inativo: pré-resolve a taxa do desligamento (ou null → fallback por data)
+      const valorHoraFixo = desligamento != null ? getValorHoraDesligamento(history) : null
       for (const e of entries) {
         const entryDate = e.started.slice(0, 10)
         // Regra de desligamento: ignorar lançamentos após a data de desligamento
@@ -974,7 +989,8 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
         const month = new Date(`${entryDate}T12:00:00`).getMonth()
         if (month < 0 || month > 11) continue
         combined[month]!.totalSeconds += e.timeSpentSeconds
-        const valorHora = getValorHoraForDate(history, entryDate)
+        // Inativo: usa a taxa do desligamento; ativo: resolve pela data do lançamento
+        const valorHora = valorHoraFixo ?? getValorHoraForDate(history, entryDate)
         if (valorHora != null) {
           const cost = Math.round((e.timeSpentSeconds / 3600) * valorHora)
           combined[month]!.investimentoCentavos += cost
