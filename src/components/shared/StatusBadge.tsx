@@ -183,14 +183,18 @@ function ProgressaoTipoBadge({ tipo }: { tipo: string }) {
 
 function ProgressaoRegimeBadge({ regime }: { regime: string }) {
   const styles: Record<string, string> = {
-    CLT:       "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
-    PJ:        "border-badge-orange/35 bg-badge-orange/10 text-badge-orange-text",
-    COOPERADO: "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
+    CLT:        "border-brand-primary/30 bg-brand-primary/10 text-brand-primary",
+    PJ:         "border-badge-orange/35 bg-badge-orange/10 text-badge-orange-text",
+    COOPERADO:  "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
+    ESTAGIARIO: "border-badge-info/30 bg-badge-info/10 text-badge-info-text",
+    TRAINEE:    "border-[#8b5cf6]/30 bg-[#8b5cf6]/10 text-[#7c3aed]",
   }
   const labels: Record<string, string> = {
-    CLT:       "CLT",
-    PJ:        "PJ",
-    COOPERADO: "Cooperado",
+    CLT:        "CLT",
+    PJ:         "PJ",
+    COOPERADO:  "Cooperado",
+    ESTAGIARIO: "Estagiário",
+    TRAINEE:    "Trainee",
   }
   const colorClass = styles[regime] ?? "border-border-default bg-neutral-grey-50 text-text-secondary"
   return badge(colorClass, labels[regime] ?? regime)

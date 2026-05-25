@@ -81,7 +81,7 @@ const progressaoSchema = z.object({
   evaluatedUserId: z.string().min(1).max(128),
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida."),
   tipo: z.enum(["ADMISSAO", "DISSIDIO", "PROMOCAO", "MERITO", "DESLIGAMENTO"]),
-  regime: z.enum(["CLT", "PJ", "COOPERADO"]),
+  regime: z.enum(["CLT", "PJ", "COOPERADO", "ESTAGIARIO", "TRAINEE"]),
   cargo: z.string().min(1, "Cargo obrigatório.").max(200),
   valorHora: z.number().int().min(0).max(999_999_900).nullable().optional(),
   valor: z.number().int().min(1, "Valor obrigatório.").max(999_999_900),

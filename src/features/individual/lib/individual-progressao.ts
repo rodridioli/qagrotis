@@ -1,5 +1,5 @@
 export type ProgressaoTipo = "ADMISSAO" | "DISSIDIO" | "PROMOCAO" | "MERITO" | "DESLIGAMENTO"
-export type ProgressaoRegime = "CLT" | "PJ" | "COOPERADO"
+export type ProgressaoRegime = "CLT" | "PJ" | "COOPERADO" | "ESTAGIARIO" | "TRAINEE"
 
 export interface ProgressaoListRow {
   id: string
@@ -21,9 +21,11 @@ export const PROGRESSAO_TIPO_OPTIONS: { value: ProgressaoTipo; label: string }[]
 ]
 
 export const PROGRESSAO_REGIME_OPTIONS: { value: ProgressaoRegime; label: string }[] = [
-  { value: "CLT",       label: "CLT"       },
-  { value: "PJ",        label: "PJ"        },
-  { value: "COOPERADO", label: "Cooperado" },
+  { value: "CLT",        label: "CLT"        },
+  { value: "PJ",         label: "PJ"         },
+  { value: "COOPERADO",  label: "Cooperado"  },
+  { value: "ESTAGIARIO", label: "Estagiário" },
+  { value: "TRAINEE",    label: "Trainee"    },
 ]
 
 const TIPO_LABELS: Record<ProgressaoTipo, string> = {
@@ -35,9 +37,11 @@ const TIPO_LABELS: Record<ProgressaoTipo, string> = {
 }
 
 const REGIME_LABELS: Record<ProgressaoRegime, string> = {
-  CLT:       "CLT",
-  PJ:        "PJ",
-  COOPERADO: "Cooperado",
+  CLT:        "CLT",
+  PJ:         "PJ",
+  COOPERADO:  "Cooperado",
+  ESTAGIARIO: "Estagiário",
+  TRAINEE:    "Trainee",
 }
 
 export function progressaoDisplayCodigo(codigo: number): string {
