@@ -1324,9 +1324,8 @@ export async function fetchWorklogsForAuthorInRange(
 
 /**
  * For each issue key, counts how many times it transitioned FROM a status
- * containing "approval" BACK TO a status containing "pending" or "in progress".
- * Uses the dedicated GET /rest/api/3/issue/{key}/changelog endpoint (reliable,
- * paginated) instead of search+expand which is inconsistent in Jira Cloud.
+ * containing "approval" BACK TO a "work" status (to do, doing, in progress,
+ * pending, or any equivalent). Uses GET /rest/api/3/issue/{key}/changelog.
  */
 export type RetornosResult = { total: number; byAssignee: Record<string, number> }
 
@@ -1381,7 +1380,7 @@ export async function fetchRetornosForKeys(
             if (
               item.field === "status" &&
               from.includes("approval") &&
-              (to.includes("pending") || to === "in progress")
+              (to.includes("pending") || to.includes("in progress") || to === "to do" || to === "doing")
             ) {
               total++
               if (currentAssignee) {
