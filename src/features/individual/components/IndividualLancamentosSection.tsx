@@ -639,18 +639,17 @@ export function IndividualLancamentosSection({
                   const showTagCol = evaluatedUserAccessProfile === "TW" || evaluatedUserAccessProfile === "UX"
                   const thCls = "px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4"
                   return (
-                  <table className={`qagrotis-table-row-hover-muted w-full border-collapse text-left text-sm ${showTagCol ? "min-w-[62rem]" : "min-w-[56rem]"}`}>
+                  <table className="qagrotis-table-row-hover-muted w-full min-w-[56rem] border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50">
                       <th className={thCls}>Jira</th>
                       <th className={thCls}>Tipo</th>
-                      <th className={thCls}>{showTagCol ? "Produto" : "Projeto"}</th>
+                      <th className={thCls}>Projeto</th>
                       <th className={thCls}>Prioridade</th>
                       <th className={thCls}>Título</th>
                       <th className={thCls}>Data</th>
                       <th className={thCls}>Tempo</th>
                       <th className={thCls}>Comentário</th>
-                      {showTagCol && <th className={thCls} aria-label="Tag do produto">Tag</th>}
                       <th className={thCls}>Situação</th>
                     </tr>
                   </thead>
@@ -681,9 +680,11 @@ export function IndividualLancamentosSection({
                           <td className="whitespace-nowrap px-3 py-3 text-sm text-text-secondary sm:px-4">
                             {row.issueType?.trim() ? row.issueType : "—"}
                           </td>
-                          {/* Produto / Projeto */}
+                          {/* Projeto — tag para TW/UX; projectName para demais perfis */}
                           <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-text-primary sm:px-4">
-                            {row.projectName?.trim() || row.projectKey || row.issueKey.split("-")[0]}
+                            {showTagCol
+                              ? (row.tag?.trim() || "—")
+                              : (row.projectName?.trim() || row.projectKey || row.issueKey.split("-")[0])}
                           </td>
                           {/* Prioridade */}
                           <td className="whitespace-nowrap px-3 py-3 sm:px-4">
@@ -712,12 +713,6 @@ export function IndividualLancamentosSection({
                               {row.comment ?? "—"}
                             </span>
                           </td>
-                          {/* Tag — apenas para TW e UX */}
-                          {showTagCol && (
-                            <td className="whitespace-nowrap px-3 py-3 text-sm text-text-secondary sm:px-4">
-                              {row.tag?.trim() || "—"}
-                            </td>
-                          )}
                           {/* Situação */}
                           <td className="px-3 py-3 text-center sm:px-4">
                             <TooltipProvider>

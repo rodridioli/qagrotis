@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, Info, RefreshCw, TrendingUp } from "lucide-react"
-import { AreaChart, Area, BarChart, Bar, Cell, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart, Pie, Legend } from "recharts"
+import { AreaChart, Area, BarChart, Bar, Cell, LineChart, Line, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart, Pie, Legend } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -552,27 +552,31 @@ function TagBarChart({
   items,
   ariaLabel,
   hideValues,
+  totalCount,
 }: {
   title: string
   items: { tag: string; count: number; investimentoCentavos: number }[]
   ariaLabel: string
   hideValues?: boolean
+  totalCount?: number
 }) {
   const chartHeight = Math.max(300, items.length * 28)
 
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
-      <p className="mb-4 text-sm font-semibold text-text-primary">{title}</p>
+      <p className="mb-4 text-sm font-semibold text-text-primary">
+        {title}
+        {totalCount != null && totalCount > 0 && (
+          <span className="ml-1.5 font-normal text-text-secondary">({totalCount})</span>
+        )}
+      </p>
       {items.length === 0 ? (
         <p className="text-sm text-text-secondary">Sem dados no período.</p>
       ) : (
         <div role="img" aria-label={ariaLabel}>
           <ResponsiveContainer width="100%" height={chartHeight}>
-            <BarChart
-              data={items}
-              margin={{ top: 4, right: 8, bottom: 40, left: 8 }}
-            >
-              <CartesianGrid vertical={false} stroke="#f1f5f9" />
+            <LineChart data={items} margin={{ top: 8, right: 16, bottom: 40, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis
                 dataKey="tag"
                 axisLine={false}
@@ -591,7 +595,7 @@ function TagBarChart({
                 width={28}
               />
               <RechartsTooltip
-                cursor={{ fill: `${BAR_COLOR}14` }}
+                cursor={{ stroke: BAR_COLOR, strokeWidth: 1, strokeDasharray: "3 3" }}
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null
                   const d = payload[0]?.payload as { tag: string; count: number; investimentoCentavos: number }
@@ -610,12 +614,17 @@ function TagBarChart({
                   )
                 }}
               />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                {items.map((_, index) => (
-                  <Cell key={index} fill={BAR_PALETTE[index % BAR_PALETTE.length]} fillOpacity={0.9} />
-                ))}
-              </Bar>
-            </BarChart>
+              <Line
+                type="monotone"
+                dataKey="count"
+                stroke={BAR_COLOR}
+                strokeWidth={2}
+                dot={{ fill: BAR_COLOR, r: 4, strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: BAR_COLOR, strokeWidth: 0 }}
+                isAnimationActive={true}
+                animationDuration={600}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       )}
@@ -754,7 +763,7 @@ function YearTable({ monthStats, hideValues, ano, activeMonths }: { monthStats: 
             <TH center group="blue">Outros</TH>
             <TH center group="violet">Novos</TH>
             <TH center group="violet">Melhorias</TH>
-            <TH center group="violet">Ajustes</TH>
+            <TH center>Ajustes</TH>
             <TH center>Retornos</TH>
           </tr>
         </thead>
@@ -773,13 +782,13 @@ function YearTable({ monthStats, hideValues, ano, activeMonths }: { monthStats: 
                   <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{inv(qStats.investimentoCentavos)}</td>
                   <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-text-primary">{formatHHMM(qStats.totalSeconds)}</td>
                   <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary">{qStats.totalIssues}</td>
-                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.novosPrototipos + qStats.melhorias + qStats.ajustes}</td>
+                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.novosPrototipos + qStats.melhorias}</td>
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.pesquisa}</td>
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.usabilidade}</td>
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "blue")}>{qStats.outros}</td>
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "violet")}>{qStats.novosPrototipos}</td>
                   <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "violet")}>{qStats.melhorias}</td>
-                  <td className={tdCls("px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary", "violet")}>{qStats.ajustes}</td>
+                  <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary">{qStats.ajustes}</td>
                   <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-text-primary">{qStats.retornos}</td>
                 </tr>
                 {visibleMonths.map((mi) => {
@@ -789,20 +798,20 @@ function YearTable({ monthStats, hideValues, ano, activeMonths }: { monthStats: 
                       key={mi}
                       className={cn(
                         "border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50",
-                        mi === currentMonthIndex && "[&_td]:!text-[#C9A870] [&_td]:font-semibold",
+                        mi === currentMonthIndex && "[&_td]:!text-[#CB8275] [&_td]:font-semibold",
                       )}
                     >
                       <td className="px-4 py-2 pl-8 text-text-secondary">{MONTHS_PT[mi]}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-text-primary">{inv(ms.investimentoCentavos)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-text-primary">{formatHHMM(ms.totalSeconds)}</td>
                       <td className="px-3 py-2 text-center tabular-nums text-text-primary">{ms.totalIssues}</td>
-                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.novosPrototipos + ms.melhorias + ms.ajustes}</td>
+                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.novosPrototipos + ms.melhorias}</td>
                       <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.pesquisa}</td>
                       <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.usabilidade}</td>
                       <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "blue")}>{ms.outros}</td>
                       <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "violet")}>{ms.novosPrototipos}</td>
                       <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "violet")}>{ms.melhorias}</td>
-                      <td className={tdCls("px-3 py-2 text-center tabular-nums text-text-primary", "violet")}>{ms.ajustes}</td>
+                      <td className="px-3 py-2 text-center tabular-nums text-text-primary">{ms.ajustes}</td>
                       <td className="px-3 py-2 text-center tabular-nums text-text-primary">{ms.retornos}</td>
                     </tr>
                   )
@@ -816,13 +825,13 @@ function YearTable({ monthStats, hideValues, ano, activeMonths }: { monthStats: 
             <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{inv(totalAnual.investimentoCentavos)}</td>
             <td className="px-3 py-2.5 text-right font-bold tabular-nums text-text-primary">{formatHHMM(totalAnual.totalSeconds)}</td>
             <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{totalAnual.totalIssues}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.novosPrototipos + totalAnual.melhorias + totalAnual.ajustes}</td>
+            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.novosPrototipos + totalAnual.melhorias}</td>
             <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.pesquisa}</td>
             <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.usabilidade}</td>
             <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "blue")}>{totalAnual.outros}</td>
             <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{totalAnual.novosPrototipos}</td>
             <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{totalAnual.melhorias}</td>
-            <td className={tdCls("px-3 py-2.5 text-center font-bold tabular-nums text-text-primary", "violet")}>{totalAnual.ajustes}</td>
+            <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{totalAnual.ajustes}</td>
             <td className="px-3 py-2.5 text-center font-bold tabular-nums text-text-primary">{totalAnual.retornos}</td>
           </tr>
         </tbody>
@@ -1342,22 +1351,22 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       {!loading && (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
           {/* Group: scope / visão global — blue tint */}
-          <TypeCard label="Prototipação" count={yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.novosPrototiposSeconds + yearTotals.melhorasSeconds + yearTotals.ajustesSeconds} hideValues={hideValues} tint="blue" />
+          <TypeCard label="Prototipação" count={yearTotals.novosPrototipos + yearTotals.melhorias} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.novosPrototiposSeconds + yearTotals.melhorasSeconds} hideValues={hideValues} tint="blue" />
           <TypeCard label="Pesquisas"    count={yearTotals.pesquisa}      totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.pesquisaSeconds}    hideValues={hideValues} tint="blue" />
           <TypeCard label="Usabilidade"  count={yearTotals.usabilidade}   totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.usabilidadeSeconds}  hideValues={hideValues} tint="blue" />
           <TypeCard label="Outros"       count={yearTotals.outros}        totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.outrosSeconds}       hideValues={hideValues} tint="blue" />
           {/* Group: delivery sub-types — violet tint; pct relative to Prototipação so they sum to 100% */}
           {(() => {
-            const prototiposTotal = yearTotals.novosPrototipos + yearTotals.melhorias + yearTotals.ajustes
+            const prototiposTotal = yearTotals.novosPrototipos + yearTotals.melhorias
             return (
               <>
                 <TypeCard label="Novos"     count={yearTotals.novosPrototipos} totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.novosPrototiposSeconds} hideValues={hideValues} tint="violet" />
                 <TypeCard label="Melhorias" count={yearTotals.melhorias}       totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.melhorasSeconds}        hideValues={hideValues} tint="violet" />
-                <TypeCard label="Ajustes"   count={yearTotals.ajustes}         totalIssues={totalUniqueIssues} pctDenominator={prototiposTotal} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.ajustesSeconds}         hideValues={hideValues} tint="violet" />
               </>
             )
           })()}
-          {/* Isolated: returns — warning tint */}
+          {/* Isolated: adjustments and returns — warning (coral) tint */}
+          <TypeCard label="Ajustes"  count={yearTotals.ajustes}  totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={yearTotals.ajustesSeconds} hideValues={hideValues} tint="warning" />
           <TypeCard label="Retornos" count={yearTotals.retornos} totalIssues={totalUniqueIssues} totalInvestimentoCentavos={totalAnual.investimentoCentavos} timeSpentSeconds={0} hideValues={hideValues} tint="warning" />
         </div>
       )}
@@ -1371,11 +1380,12 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
               items={distribByTag}
               ariaLabel="Distribuição de jiras por produto"
               hideValues={hideValues}
+              totalCount={distribByTag.reduce((s, i) => s + i.count, 0)}
             />
           </div>
           <div className="lg:col-span-1">
             <TagPieChart
-              title="Atividades em Aprovação"
+              title="Jiras aguardando aprovação"
               items={approvalByTag}
               ariaLabel="Prototipação em aprovação por tag"
               totalCount={approvalByTag.reduce((s, i) => s + i.count, 0)}

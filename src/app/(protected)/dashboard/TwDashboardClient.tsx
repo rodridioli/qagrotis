@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, Info, RefreshCw, TrendingUp } from "lucide-react"
-import { AreaChart, Area, BarChart, Bar, Cell, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart, Pie, Legend } from "recharts"
+import { AreaChart, Area, BarChart, Bar, Cell, LineChart, Line, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart, Pie, Legend } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -533,8 +533,8 @@ function TagBarChart({
       ) : (
         <div role="img" aria-label={ariaLabel}>
           <ResponsiveContainer width="100%" height={chartHeight}>
-            <BarChart data={items} margin={{ top: 4, right: 8, bottom: 40, left: 8 }}>
-              <CartesianGrid vertical={false} stroke="#f1f5f9" />
+            <LineChart data={items} margin={{ top: 8, right: 16, bottom: 40, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis
                 dataKey="tag"
                 axisLine={false}
@@ -553,7 +553,7 @@ function TagBarChart({
                 width={28}
               />
               <RechartsTooltip
-                cursor={{ fill: `${BAR_COLOR}14` }}
+                cursor={{ stroke: BAR_COLOR, strokeWidth: 1, strokeDasharray: "3 3" }}
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null
                   const d = payload[0]?.payload as { tag: string; count: number; investimentoCentavos: number }
@@ -572,12 +572,17 @@ function TagBarChart({
                   )
                 }}
               />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                {items.map((_, index) => (
-                  <Cell key={index} fill={BAR_PALETTE[index % BAR_PALETTE.length]} fillOpacity={0.9} />
-                ))}
-              </Bar>
-            </BarChart>
+              <Line
+                type="monotone"
+                dataKey="count"
+                stroke={BAR_COLOR}
+                strokeWidth={2}
+                dot={{ fill: BAR_COLOR, r: 4, strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: BAR_COLOR, strokeWidth: 0 }}
+                isAnimationActive={true}
+                animationDuration={600}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       )}
