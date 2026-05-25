@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { AlertTriangle, BarChart2, CheckSquare2, Clock, Eye, EyeOff, Flame, RefreshCw, TrendingUp } from "lucide-react"
-import { AreaChart, Area, BarChart, Bar, Cell, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts"
+import { AreaChart, Area, BarChart, Bar, Cell, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, LineChart, Line } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -428,7 +428,7 @@ function MetricCard({
   )
 }
 
-// ─── TagBarChart ──────────────────────────────────────────────────────────────
+// ─── TagLineChart ─────────────────────────────────────────────────────────────
 
 const BAR_PALETTE = [
   "#5C9E8D",
@@ -443,20 +443,46 @@ const BAR_PALETTE = [
   "#3D5E7A",
 ]
 
-function TagBarChart({
+const LINE_MONTHS_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
+
+/**
+ * Multi-line time series: X = selected months, Y = unique issue count,
+ * one colored line per project (top 5, rest grouped as "Outros").
+ */
+function TagLineChart({
   title,
   items,
+  activeMonths,
   ariaLabel,
-  hideValues,
   totalCount,
 }: {
   title: string
-  items: { project: string; count: number; investimentoCentavos: number }[]
+  items: { project: string; count: number; countByMonth: number[] }[]
+  activeMonths: number[]
   ariaLabel: string
-  hideValues?: boolean
   totalCount?: number
 }) {
-  const chartHeight = Math.max(300, items.length * 28)
+  const sorted = [...items].sort((a, b) => b.count - a.count)
+  const topItems = sorted.length <= 5 ? sorted : (() => {
+    const top = sorted.slice(0, 5)
+    const otherCountByMonth = sorted.slice(5).reduce<number[]>(
+      (acc, item) => acc.map((v, i) => v + (item.countByMonth[i] ?? 0)),
+      Array(12).fill(0) as number[],
+    )
+    const otherTotal = sorted.slice(5).reduce((s, item) => s + item.count, 0)
+    return [...top, { project: "Outros", count: otherTotal, countByMonth: otherCountByMonth }]
+  })()
+
+  const chartData = activeMonths.map((m) => {
+    const obj: Record<string, string | number> = {
+      month: LINE_MONTHS_SHORT[m] ?? String(m + 1),
+    }
+    for (const item of topItems) {
+      obj[item.project] = item.countByMonth[m] ?? 0
+    }
+    return obj
+  })
+
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <p className="mb-4 text-sm font-semibold text-text-primary">
@@ -465,22 +491,19 @@ function TagBarChart({
           <span className="ml-1.5 font-normal text-text-secondary">({totalCount})</span>
         )}
       </p>
-      {items.length === 0 ? (
+      {topItems.length === 0 ? (
         <p className="text-sm text-text-secondary">Sem dados no período.</p>
       ) : (
         <div role="img" aria-label={ariaLabel}>
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <BarChart data={items} margin={{ top: 4, right: 8, bottom: 40, left: 8 }}>
-              <CartesianGrid vertical={false} stroke="#f1f5f9" />
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+              <CartesianGrid horizontal={true} vertical={false} stroke="#f1f5f9" />
               <XAxis
-                dataKey="project"
+                dataKey="month"
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 11, fill: "#5C7FA0" }}
                 interval={0}
-                angle={-35}
-                textAnchor="end"
-                height={48}
               />
               <YAxis
                 axisLine={false}
@@ -490,31 +513,40 @@ function TagBarChart({
                 width={28}
               />
               <RechartsTooltip
-                cursor={{ fill: `${BAR_PALETTE[0]}14` }}
-                content={({ active, payload }) => {
+                content={({ active, payload, label }) => {
                   if (!active || !payload?.length) return null
-                  const d = payload[0]?.payload as { project: string; count: number; investimentoCentavos: number }
                   return (
                     <div className="rounded-lg border border-border-default bg-surface-card px-3 py-2 text-xs shadow-card">
-                      <p className="mb-1 font-semibold text-text-primary">{d.project}</p>
-                      <p className="text-text-secondary">{d.count} {d.count === 1 ? "jira" : "jiras"}</p>
-                      {d.investimentoCentavos > 0 && (
-                        <p className="text-text-secondary">
-                          {hideValues
-                            ? <span className="tracking-widest text-text-disabled">••••</span>
-                            : formatBRL(d.investimentoCentavos)}
+                      <p className="mb-1 font-semibold text-text-primary">{label as string}</p>
+                      {payload.map((p) => (
+                        <p key={p.dataKey as string} style={{ color: p.color }} className="text-text-secondary">
+                          {p.name}: {p.value as number} {(p.value as number) === 1 ? "jira" : "jiras"}
                         </p>
-                      )}
+                      ))}
                     </div>
                   )
                 }}
               />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                {items.map((_, index) => (
-                  <Cell key={index} fill={BAR_PALETTE[index % BAR_PALETTE.length]} fillOpacity={0.9} />
-                ))}
-              </Bar>
-            </BarChart>
+              <Legend
+                verticalAlign="top"
+                align="left"
+                iconType="circle"
+                iconSize={8}
+                wrapperStyle={{ fontSize: 11, paddingBottom: 8 }}
+              />
+              {topItems.map((item, index) => (
+                <Line
+                  key={item.project}
+                  type="monotone"
+                  dataKey={item.project}
+                  stroke={BAR_PALETTE[index % BAR_PALETTE.length]}
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5, strokeWidth: 0 }}
+                  isAnimationActive={false}
+                />
+              ))}
+            </LineChart>
           </ResponsiveContainer>
         </div>
       )}
@@ -759,7 +791,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
         monthStats: null,
         totalUniqueIssues: 0,
         yearTotals: empty,
-        distribByProject: [] as { project: string; count: number; investimentoCentavos: number }[],
+        distribByProject: [] as { project: string; count: number; investimentoCentavos: number; countByMonth: number[] }[],
         quarterDedupeStats: QUARTERS.map(() => emptyQaMonthStats()),
         periodTotalRow: emptyQaMonthStats(),
       }
@@ -798,6 +830,20 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
           projectMonthInvestmentMap.get(project)![month] = (projectMonthInvestmentMap.get(project)![month] ?? 0) + cost
         }
       }
+    }
+
+    // Build projectMonthIssueCountMap: unique issues per project per month
+    const projectMonthIssueCountMap = new Map<string, number[]>()
+    const seenIssueProjectMonth = new Set<string>()
+    for (const e of allEntries) {
+      const month = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+      if (month < 0 || month > 11) continue
+      const project = e.projectName?.trim() || "Sem projeto"
+      const key = `${e.issueKey}\x00${project}\x00${month}`
+      if (seenIssueProjectMonth.has(key)) continue
+      seenIssueProjectMonth.add(key)
+      if (!projectMonthIssueCountMap.has(project)) projectMonthIssueCountMap.set(project, Array(12).fill(0) as number[])
+      projectMonthIssueCountMap.get(project)![month]!++
     }
 
     // Pass 2 — global: count unique issues per month.
@@ -924,7 +970,12 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
     }
 
     const distribByProject = [...projectDistribMap.entries()]
-      .map(([project, keys]) => ({ project, count: keys.size, investimentoCentavos: periodProjectInvestment(project) }))
+      .map(([project, keys]) => ({
+        project,
+        count: keys.size,
+        investimentoCentavos: periodProjectInvestment(project),
+        countByMonth: projectMonthIssueCountMap.get(project) ?? (Array(12).fill(0) as number[]),
+      }))
       .sort((a, b) => b.count - a.count)
 
     return {
@@ -1150,12 +1201,12 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
 
       {/* Jiras por Projeto */}
       {!loading && (
-        <TagBarChart
-          title="Jiras por Projeto"
+        <TagLineChart
+          title="Testes por Projeto"
           items={distribByProject}
+          activeMonths={activeMonths}
           totalCount={distribByProject.reduce((s, i) => s + i.count, 0)}
           ariaLabel="Distribuição de testes por projeto"
-          hideValues={hideValues}
         />
       )}
 

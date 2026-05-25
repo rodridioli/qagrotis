@@ -542,9 +542,9 @@ function MetricCard({
   )
 }
 
-// ─── TagBarChart ──────────────────────────────────────────────────────────────
+// ─── TagLineChart ─────────────────────────────────────────────────────────────
 
-// Brand-primary green for bars; individual Cell overrides give per-bar depth variation.
+// Shared palette — 10 distinct colours for up to 5 series + Outros
 const BAR_PALETTE = [
   "#5C9E8D", // teal primary
   "#5C7FA0", // slate primary
@@ -557,22 +557,48 @@ const BAR_PALETTE = [
   "#3D7A6C", // teal dark
   "#3D5E7A", // slate dark
 ]
-const BAR_COLOR = BAR_PALETTE[0]
 
-function TagBarChart({
+const LINE_MONTHS_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
+
+/**
+ * Multi-line time series: X = selected months, Y = unique issue count,
+ * one colored line per tag (top 5, rest grouped as "Outros").
+ */
+function TagLineChart({
   title,
   items,
+  activeMonths,
   ariaLabel,
-  hideValues,
   totalCount,
 }: {
   title: string
-  items: { tag: string; count: number; investimentoCentavos: number }[]
+  items: { tag: string; count: number; countByMonth: number[] }[]
+  activeMonths: number[]
   ariaLabel: string
-  hideValues?: boolean
   totalCount?: number
 }) {
-  const chartHeight = Math.max(300, items.length * 28)
+  // Cap to top 5 tags; group the rest as "Outros"
+  const sorted = [...items].sort((a, b) => b.count - a.count)
+  const topItems = sorted.length <= 5 ? sorted : (() => {
+    const top = sorted.slice(0, 5)
+    const otherCountByMonth = sorted.slice(5).reduce<number[]>(
+      (acc, item) => acc.map((v, i) => v + (item.countByMonth[i] ?? 0)),
+      Array(12).fill(0) as number[],
+    )
+    const otherTotal = sorted.slice(5).reduce((s, item) => s + item.count, 0)
+    return [...top, { tag: "Outros", count: otherTotal, countByMonth: otherCountByMonth }]
+  })()
+
+  // Build Recharts data: one point per active month, series keys = tag names
+  const chartData = activeMonths.map((m) => {
+    const obj: Record<string, string | number> = {
+      month: LINE_MONTHS_SHORT[m] ?? String(m + 1),
+    }
+    for (const item of topItems) {
+      obj[item.tag] = item.countByMonth[m] ?? 0
+    }
+    return obj
+  })
 
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
@@ -582,22 +608,19 @@ function TagBarChart({
           <span className="ml-1.5 font-normal text-text-secondary">({totalCount})</span>
         )}
       </p>
-      {items.length === 0 ? (
+      {topItems.length === 0 ? (
         <p className="text-sm text-text-secondary">Sem dados no período.</p>
       ) : (
         <div role="img" aria-label={ariaLabel}>
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <LineChart data={items} margin={{ top: 8, right: 16, bottom: 40, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+              <CartesianGrid horizontal={true} vertical={false} stroke="#f1f5f9" />
               <XAxis
-                dataKey="tag"
+                dataKey="month"
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 11, fill: "#5C7FA0" }}
                 interval={0}
-                angle={-35}
-                textAnchor="end"
-                height={48}
               />
               <YAxis
                 axisLine={false}
@@ -607,35 +630,39 @@ function TagBarChart({
                 width={28}
               />
               <RechartsTooltip
-                cursor={{ stroke: BAR_COLOR, strokeWidth: 1, strokeDasharray: "3 3" }}
-                content={({ active, payload }) => {
+                content={({ active, payload, label }) => {
                   if (!active || !payload?.length) return null
-                  const d = payload[0]?.payload as { tag: string; count: number; investimentoCentavos: number }
                   return (
                     <div className="rounded-lg border border-border-default bg-surface-card px-3 py-2 text-xs shadow-card">
-                      <p className="mb-1 font-semibold text-text-primary">{d.tag}</p>
-                      <p className="text-text-secondary">{d.count} {d.count === 1 ? "jira" : "jiras"}</p>
-                      {d.investimentoCentavos > 0 && (
-                        <p className="text-text-secondary">
-                          {hideValues
-                            ? <span className="tracking-widest text-text-disabled">••••</span>
-                            : formatBRL(d.investimentoCentavos)}
+                      <p className="mb-1 font-semibold text-text-primary">{label as string}</p>
+                      {payload.map((p) => (
+                        <p key={p.dataKey as string} style={{ color: p.color }} className="text-text-secondary">
+                          {p.name}: {p.value as number} {(p.value as number) === 1 ? "jira" : "jiras"}
                         </p>
-                      )}
+                      ))}
                     </div>
                   )
                 }}
               />
-              <Line
-                type="monotone"
-                dataKey="count"
-                stroke={BAR_COLOR}
-                strokeWidth={2}
-                dot={{ fill: BAR_COLOR, r: 4, strokeWidth: 0 }}
-                activeDot={{ r: 6, fill: BAR_COLOR, strokeWidth: 0 }}
-                isAnimationActive={true}
-                animationDuration={600}
+              <Legend
+                verticalAlign="top"
+                align="left"
+                iconType="circle"
+                iconSize={8}
+                wrapperStyle={{ fontSize: 11, paddingBottom: 8 }}
               />
+              {topItems.map((item, index) => (
+                <Line
+                  key={item.tag}
+                  type="monotone"
+                  dataKey={item.tag}
+                  stroke={BAR_PALETTE[index % BAR_PALETTE.length]}
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5, strokeWidth: 0 }}
+                  isAnimationActive={false}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -1017,7 +1044,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
         monthStats: null,
         totalUniqueIssues: 0,
         yearTotals: empty,
-        distribByTag: [] as { tag: string; count: number; investimentoCentavos: number }[],
+        distribByTag: [] as { tag: string; count: number; investimentoCentavos: number; countByMonth: number[] }[],
         approvalByTag: [...approvalTagMap.entries()]
           .map(([tag, count]) => ({ tag, count }))
           .sort((a, b) => b.count - a.count),
@@ -1062,6 +1089,21 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
           tagMonthInvestmentMap.set(tag, tagArr)
         }
       }
+    }
+
+    // Per-tag, per-month unique issue counts — used by TagLineChart.
+    // Each (issueKey, tag, month) triplet is counted once.
+    const tagMonthIssueCountMap = new Map<string, number[]>()
+    const seenIssueTagMonth = new Set<string>()
+    for (const e of allEntries) {
+      const month = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+      if (month < 0 || month > 11) continue
+      const tag = e.tag?.trim() || "Sem tag"
+      const key = `${e.issueKey}\x00${tag}\x00${month}`
+      if (seenIssueTagMonth.has(key)) continue
+      seenIssueTagMonth.add(key)
+      if (!tagMonthIssueCountMap.has(tag)) tagMonthIssueCountMap.set(tag, Array(12).fill(0) as number[])
+      tagMonthIssueCountMap.get(tag)![month]!++
     }
 
     // Collect Jira account IDs for all active members — used to filter retornos
@@ -1218,7 +1260,12 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
 
     const toTagItems = (m: Map<string, Set<string>>) =>
       [...m.entries()]
-        .map(([tag, keys]) => ({ tag, count: keys.size, investimentoCentavos: periodTagInvestment(tag) }))
+        .map(([tag, keys]) => ({
+          tag,
+          count: keys.size,
+          investimentoCentavos: periodTagInvestment(tag),
+          countByMonth: tagMonthIssueCountMap.get(tag) ?? (Array(12).fill(0) as number[]),
+        }))
         .sort((a, b) => b.count - a.count)
 
     const approvalTagMap = new Map<string, number>()
@@ -1440,11 +1487,11 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
       {!loading && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
           <div className="lg:col-span-3">
-            <TagBarChart
+            <TagLineChart
               title="Jiras por Produto"
               items={distribByTag}
+              activeMonths={activeMonths}
               ariaLabel="Distribuição de jiras por produto"
-              hideValues={hideValues}
               totalCount={distribByTag.reduce((s, i) => s + i.count, 0)}
             />
           </div>
