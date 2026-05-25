@@ -235,7 +235,7 @@ interface TwYearTotals {
 function aggregateTwYearTotals(entries: JiraEntry[], activeAccountIds?: Set<string>): TwYearTotals {
   const novasDocs = new Set<string>()
   const revisoes = new Set<string>()
-  let outrasAtividades = new Set<string>()
+  const outrasAtividades = new Set<string>()
   const criticos = new Set<string>()
   const ag = new Set<string>()
   const retornosPerIssue = new Map<string, number>()
@@ -244,8 +244,19 @@ function aggregateTwYearTotals(entries: JiraEntry[], activeAccountIds?: Set<stri
   let revisoesSeconds = 0
   let outrasAtividadesSeconds = 0
 
+  // Build canonical typeField per issue: first non-empty typeField seen.
+  // Prevents an issue with mixed typeFields on different worklogs from being
+  // counted in multiple type buckets simultaneously.
+  const issueCanonicalTypeYr = new Map<string, string>()
   for (const e of entries) {
-    const tf = (e.typeField ?? "").trim().toLowerCase()
+    if (!issueCanonicalTypeYr.has(e.issueKey)) {
+      const tf = (e.typeField ?? "").trim().toLowerCase()
+      if (tf) issueCanonicalTypeYr.set(e.issueKey, tf)
+    }
+  }
+
+  for (const e of entries) {
+    const tf = issueCanonicalTypeYr.get(e.issueKey) ?? ""
     const s = e.timeSpentSeconds
     if (tf === "new documentation") { novasDocs.add(e.issueKey); novasDocsSeconds += s }
     else if (tf === "documentation review") { revisoes.add(e.issueKey); revisoesSeconds += s }
@@ -708,9 +719,9 @@ function TwYearTable({
             <TH>Investimento</TH>
             <TH>Horas</TH>
             <TH center>Jiras</TH>
-            <TH center group="blue">Novas Docs</TH>
+            <TH center group="blue">Novos Docs</TH>
             <TH center group="blue">Revisões</TH>
-            <TH center group="blue">Outras Atividades</TH>
+            <TH center group="blue">Outros</TH>
             <TH center>
               <TooltipProvider delay={400} closeDelay={0}>
                 <Tooltip>
@@ -980,21 +991,22 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       if (firstEntry?.authorJiraAccountId) activeJiraAccountIds.add(firstEntry.authorJiraAccountId)
     }
 
-    // Anchored entries: only issues whose FIRST worklog falls within the active period.
-    // Declared here so it can be populated inside the Pass 2 block scope and read afterwards.
+    // Period-level unique issue keys: populated inside Pass 2 block scope.
     const anchoredIssueKeys = new Set<string>()
 
-    // Pass 2 — global: count issues per month with first-month anchor.
-    // Each issue is counted in exactly ONE month (the month of its earliest worklog),
-    // so sum(combined[i].totalIssues) === totalUniqueIssues (no double-counting).
+    // Pass 2 — global: count unique issues per month.
+    // An issue is counted in EVERY month it has a worklog in (not just its first month),
+    // so combined[m].totalIssues matches what lançamentos shows for each month.
+    // canonical typeField (first non-empty typeField per issue) prevents double-counting
+    // issues whose worklogs carry inconsistent typeField values.
     {
-      // Build first-month anchor: minimum month index across all worklogs per issue.
-      const issueFirstMonth = new Map<string, number>()
+      // Canonical typeField per issue: first non-empty typeField across all entries.
+      const issueCanonicalType = new Map<string, string>()
       for (const e of allEntries) {
-        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
-        if (m < 0 || m > 11) continue
-        const cur = issueFirstMonth.get(e.issueKey)
-        if (cur === undefined || m < cur) issueFirstMonth.set(e.issueKey, m)
+        if (!issueCanonicalType.has(e.issueKey)) {
+          const tf = (e.typeField ?? "").trim().toLowerCase()
+          if (tf) issueCanonicalType.set(e.issueKey, tf)
+        }
       }
 
       type CB = {
@@ -1017,11 +1029,11 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       }))
 
       for (const e of allEntries) {
-        const firstMonth = issueFirstMonth.get(e.issueKey)
-        if (firstMonth === undefined) continue
-        const cb = buckets[firstMonth]!
-        const tf = (e.typeField ?? "").trim().toLowerCase()
+        const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+        if (m < 0 || m > 11) continue
+        const cb = buckets[m]!
         cb.all.add(e.issueKey)
+        const tf = issueCanonicalType.get(e.issueKey) ?? ""
         if (tf === "new documentation") cb.novasDocs.add(e.issueKey)
         else if (tf === "documentation review") cb.revisoes.add(e.issueKey)
         else if (tf === "others" || tf === "other") cb.outrasAtividades.add(e.issueKey)
@@ -1034,7 +1046,7 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
         if (r > 0) cb.retornosPerIssue.set(e.issueKey, Math.max(cb.retornosPerIssue.get(e.issueKey) ?? 0, r))
       }
 
-      // Residual: untyped issues → outrasAtividades
+      // Residual: issues not in any named type bucket → outrasAtividades
       for (const cb of buckets) {
         const typed = new Set([...cb.novasDocs, ...cb.revisoes, ...cb.outrasAtividades])
         for (const key of cb.all) { if (!typed.has(key)) cb.outrasAtividades.add(key) }
@@ -1051,13 +1063,17 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
         combined[i]!.retornos = Array.from(cb.retornosPerIssue.values()).reduce((s, v) => s + v, 0)
       }
 
-      // Populate anchoredIssueKeys inside the block where buckets is in scope
+      // Period unique issues: all unique issues with any worklog in any active month
       for (const m of activeMonths) {
         for (const key of buckets[m]!.all) anchoredIssueKeys.add(key)
       }
     }
 
-    const anchoredEntries = allEntries.filter(e => anchoredIssueKeys.has(e.issueKey))
+    // Entries from active months only (for yearTotals and distribByTag)
+    const anchoredEntries = allEntries.filter(e => {
+      const m = new Date(`${e.started.slice(0, 10)}T12:00:00`).getMonth()
+      return activeMonths.includes(m)
+    })
 
     const yTotals = aggregateTwYearTotals(anchoredEntries, activeJiraAccountIds)
 
