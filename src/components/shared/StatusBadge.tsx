@@ -166,16 +166,18 @@ function ResultadoBadge({ resultado }: { resultado: ResultadoTipo | string }) {
 
 function ProgressaoTipoBadge({ tipo }: { tipo: string }) {
   const styles: Record<string, string> = {
-    ADMISSAO: "border-badge-info/30 bg-badge-info/10 text-badge-info-text",
-    DISSIDIO: "border-badge-warning/40 bg-badge-warning/10 text-badge-warning-text",
-    PROMOCAO: "border-badge-success/30 bg-badge-success/10 text-badge-success-text",
-    MERITO:   "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
+    ADMISSAO:     "border-badge-info/30 bg-badge-info/10 text-badge-info-text",
+    DISSIDIO:     "border-badge-warning/40 bg-badge-warning/10 text-badge-warning-text",
+    PROMOCAO:     "border-badge-success/30 bg-badge-success/10 text-badge-success-text",
+    MERITO:       "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
+    DESLIGAMENTO: "border-destructive/30 bg-destructive/10 text-destructive",
   }
   const labels: Record<string, string> = {
-    ADMISSAO: "Admissão",
-    DISSIDIO: "Dissídio",
-    PROMOCAO: "Promoção",
-    MERITO:   "Mérito",
+    ADMISSAO:     "Admissão",
+    DISSIDIO:     "Dissídio",
+    PROMOCAO:     "Promoção",
+    MERITO:       "Mérito",
+    DESLIGAMENTO: "Desligamento",
   }
   const colorClass = styles[tipo] ?? "border-border-default bg-neutral-grey-50 text-text-secondary"
   return badge(colorClass, labels[tipo] ?? tipo)
