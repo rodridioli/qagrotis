@@ -12,7 +12,8 @@ import {
   User,
 } from "lucide-react"
 import { cn } from "@/core/utils"
-import { getKanbanSubtasks, KANBAN_PROJECT_NAMES, type KanbanIssue, type KanbanResult } from "@/features/kanban/actions/kanban"
+import { getKanbanSubtasks, type KanbanResult } from "@/features/kanban/actions/kanban"
+import { KANBAN_PROJECT_NAMES, type KanbanIssue } from "@/features/kanban/kanban-constants"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

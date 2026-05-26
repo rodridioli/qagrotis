@@ -3,14 +3,8 @@
 import { requireSession } from "@/core/session"
 import { buildRole, can } from "@/core/rbac/policy"
 import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credentials-db"
-import {
-  fetchKanbanSubtasks,
-  KANBAN_PROJECT_NAMES,
-  type KanbanIssue,
-} from "@/features/qa/lib/jira-worklogs-fetch"
-
-export type { KanbanIssue }
-export { KANBAN_PROJECT_NAMES }
+import { fetchKanbanSubtasks } from "@/features/qa/lib/jira-worklogs-fetch"
+import type { KanbanIssue } from "@/features/qa/lib/jira-worklogs-fetch"
 
 export type KanbanResult =
   | { ok: true; issues: KanbanIssue[] }
