@@ -93,7 +93,7 @@ function Avatar({ url, name }: { url: string | null; name: string | null }) {
 // ── JiraCard ──────────────────────────────────────────────────────────────────
 
 function JiraCard({ issue }: { issue: KanbanIssue }) {
-  const jiraUrl = `https://agrosmart.atlassian.net/browse/${issue.key}`
+  const jiraUrl = `https://agrotis.atlassian.net/browse/${issue.key}`
   const { prefix, title } = parseSummary(issue.summary)
   const projectLabel = extractProjectLabel(issue.summary, issue.projectName)
   const dateStr = formatDate(issue.dueDate)
