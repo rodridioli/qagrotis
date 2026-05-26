@@ -1,13 +1,6 @@
+// O dashboard gerencia o próprio estado de loading via SectionSpinner no cliente.
+// Retornar null evita que o Suspense do Next.js exiba um fallback intermediário
+// antes de o componente cliente assumir o controle.
 export default function Loading() {
-  return (
-    <div className="space-y-3 p-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div
-          key={i}
-          className="h-14 w-full animate-pulse rounded-xl bg-neutral-grey-100"
-          style={{ animationDelay: `${i * 60}ms` }}
-        />
-      ))}
-    </div>
-  )
+  return null
 }
