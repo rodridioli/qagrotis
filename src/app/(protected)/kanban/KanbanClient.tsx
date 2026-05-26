@@ -171,13 +171,19 @@ function JiraCard({ issue }: { issue: KanbanIssue }) {
 
 // ── KanbanColumn ──────────────────────────────────────────────────────────────
 
-function KanbanColumn({ status, issues }: { status: string; issues: KanbanIssue[] }) {
+function KanbanColumn({ projectName, issues }: { projectName: string; issues: KanbanIssue[] }) {
+  // Show short name in header: "Plataforma Agro - REC" → "Agro REC", "UX" → "UX"
+  const displayName = projectName.replace(/^Plataforma Agro - /, "Agro ")
+
   return (
     <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3">
-        <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-text-primary">
-          {status}
+        <span
+          className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-text-primary"
+          title={projectName}
+        >
+          {displayName}
         </span>
         <span className="shrink-0 rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-xs font-bold tabular-nums text-text-secondary">
           {issues.length}
@@ -191,48 +197,34 @@ function KanbanColumn({ status, issues }: { status: string; issues: KanbanIssue[
         className="flex flex-col gap-3 overflow-y-auto p-4 scrollbar-thin"
         style={{ maxHeight: "calc(100dvh - 180px)" }}
       >
-        {issues.length === 0 ? (
-          <p className="py-10 text-center text-sm italic text-text-disabled">Nenhum item</p>
-        ) : (
-          issues.map((issue) => <JiraCard key={issue.key} issue={issue} />)
-        )}
+        {issues.map((issue) => <JiraCard key={issue.key} issue={issue} />)}
       </div>
     </div>
   )
 }
 
-// ── Group issues by status ────────────────────────────────────────────────────
+// ── Group issues by project (only non-empty) ──────────────────────────────────
 
-/** Columns sorted: "blue" (In Progress) → "blue-grey" (To Do/Waiting) → "yellow" (Paused) → rest. */
-const STATUS_SORT: Record<string, number> = {
-  "blue":      0,
-  "blue-grey": 1,
-  "yellow":    2,
-  "green":     3,
-}
+type ProjectGroup = { projectName: string; issues: KanbanIssue[] }
 
-type StatusGroup = { status: string; color: string; issues: KanbanIssue[] }
-
-function groupByStatus(result: KanbanResult): StatusGroup[] {
+function groupByProject(result: KanbanResult): ProjectGroup[] {
   if (!result.ok) return []
-  const map = new Map<string, StatusGroup>()
+  const map = new Map<string, ProjectGroup>()
   for (const issue of result.issues) {
-    if (!map.has(issue.status)) {
-      map.set(issue.status, { status: issue.status, color: issue.statusCategoryColor, issues: [] })
+    const key = issue.projectName || issue.projectKey
+    if (!map.has(key)) {
+      map.set(key, { projectName: key, issues: [] })
     }
-    map.get(issue.status)!.issues.push(issue)
+    map.get(key)!.issues.push(issue)
   }
-  return [...map.values()].sort((a, b) => {
-    const oa = STATUS_SORT[a.color] ?? 99
-    const ob = STATUS_SORT[b.color] ?? 99
-    return oa !== ob ? oa - ob : a.status.localeCompare(b.status)
-  })
+  // Sort alphabetically by project name
+  return [...map.values()].sort((a, b) => a.projectName.localeCompare(b.projectName))
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 
 export function KanbanClient({ initialResult }: { initialResult: KanbanResult }) {
-  const groups = groupByStatus(initialResult)
+  const groups = groupByProject(initialResult)
   const totalCols = Math.max(groups.length, 1)
 
   return (
@@ -245,15 +237,22 @@ export function KanbanClient({ initialResult }: { initialResult: KanbanResult })
         </div>
       )}
 
+      {/* Empty state */}
+      {initialResult.ok && groups.length === 0 && (
+        <p className="py-16 text-center text-sm italic text-text-disabled">
+          Nenhum Jira com situação UX encontrado.
+        </p>
+      )}
+
       {/* Board */}
-      {initialResult.ok && (
+      {initialResult.ok && groups.length > 0 && (
         <div className="overflow-x-auto">
           <div
             className="flex gap-4 pt-2"
             style={{ minWidth: `${totalCols * (288 + 16)}px` }}
           >
             {groups.map((g) => (
-              <KanbanColumn key={g.status} status={g.status} issues={g.issues} />
+              <KanbanColumn key={g.projectName} projectName={g.projectName} issues={g.issues} />
             ))}
           </div>
         </div>
