@@ -93,23 +93,14 @@ function parsePeriod(value: string, fallbackYear: number): { year: number; activ
 }
 
 function buildPeriodOptions(currentYear: number) {
-  const prevYear = currentYear - 1
-  return [
-    { value: `Q1-${currentYear}`, label: `1° Trimestre / ${currentYear}`, group: "q" as const },
-    { value: `Q2-${currentYear}`, label: `2° Trimestre / ${currentYear}`, group: "q" as const },
-    { value: `Q3-${currentYear}`, label: `3° Trimestre / ${currentYear}`, group: "q" as const },
-    { value: `Q4-${currentYear}`, label: `4° Trimestre / ${currentYear}`, group: "q" as const },
-    { value: `H1-${currentYear}`, label: `1° Semestre / ${currentYear}`, group: "h" as const },
-    { value: `H2-${currentYear}`, label: `2° Semestre / ${currentYear}`, group: "h" as const },
-    { value: `FULL-${currentYear}`, label: String(currentYear), group: "y" as const },
-    { value: `FULL-${prevYear}`, label: String(prevYear), group: "y" as const },
-  ]
+  const MIN_YEAR = 2026
+  const years: number[] = []
+  for (let y = currentYear; y >= MIN_YEAR; y--) years.push(y)
+  return years.map((y) => ({ value: `FULL-${y}`, label: String(y), group: "y" as const }))
 }
 
 function defaultPeriodValue(currentYear: number): string {
-  const month = new Date().getMonth()
-  const q = Math.floor(month / 3) + 1
-  return `Q${q}-${currentYear}`
+  return `FULL-${currentYear}`
 }
 
 function pad(n: number) {

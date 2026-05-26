@@ -204,6 +204,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
         <EmptyState message="Nenhum membro encontrado neste perfil." />
       ) : selectedUserId ? (
         <IndividualLancamentosSection
+          key={selectedUserId}
           evaluatedUserId={selectedUserId}
           evaluatedUserAccessProfile={
             (membros.find((m) => m.userId === selectedUserId)?.accessProfile as "QA" | "UX" | "TW" | "MGR" | null) ?? null
