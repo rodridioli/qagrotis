@@ -669,3 +669,15 @@ model JiraAccountIdCache {
   resolvedAt  DateTime @updatedAt
   resolvedBy  String?  /// "email" | "displayName" | "db-worklog-cache" | "admin"
 }
+
+/// Atribuição de issue do kanban UX a um membro do sistema.
+/// Controle interno — não altera nenhum dado no Jira.
+model KanbanAssignment {
+  issueKey   String   @id
+  userId     String
+  assignedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@map("kanban_assignments")
+}
