@@ -1,9 +1,6 @@
-"use client"
-
-import * as React from "react"
-import { RefreshCw, AlertCircle, ExternalLink } from "lucide-react"
+import { AlertCircle, ExternalLink } from "lucide-react"
 import { cn } from "@/core/utils"
-import { getKanbanSubtasks, type KanbanResult } from "@/features/kanban/actions/kanban"
+import type { KanbanResult } from "@/features/kanban/actions/kanban"
 import { KANBAN_PROJECT_NAMES, type KanbanIssue } from "@/features/kanban/kanban-constants"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -124,9 +121,7 @@ function JiraCard({ issue }: { issue: KanbanIssue }) {
             {issue.status}
           </span>
           {issue.priority && (
-            <span className="text-xs text-text-disabled">
-              {priorityLabel(issue.priority)}
-            </span>
+            <span className="text-xs text-text-disabled">{priorityLabel(issue.priority)}</span>
           )}
         </div>
       </div>
@@ -146,7 +141,6 @@ function KanbanColumn({ projectName, issues }: { projectName: string; issues: Ka
 
   return (
     <div className="flex w-80 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
-      {/* Column header */}
       <div className="flex items-center gap-2.5 px-4 py-3">
         <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary" title={projectName}>
           {shortName}
@@ -158,7 +152,6 @@ function KanbanColumn({ projectName, issues }: { projectName: string; issues: Ka
 
       <div className="mx-4 h-px bg-border-default" />
 
-      {/* Cards */}
       <div
         className="flex flex-col gap-3 overflow-y-auto p-4 scrollbar-thin"
         style={{ maxHeight: "calc(100dvh - 220px)" }}
@@ -175,67 +168,50 @@ function KanbanColumn({ projectName, issues }: { projectName: string; issues: Ka
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 
-export function KanbanClient({ initialResult }: { initialResult: KanbanResult }) {
-  const [result, setResult] = React.useState<KanbanResult>(initialResult)
-  const [refreshing, setRefreshing] = React.useState(false)
-
-  async function handleRefresh() {
-    setRefreshing(true)
-    try {
-      const fresh = await getKanbanSubtasks()
-      setResult(fresh)
-    } finally {
-      setRefreshing(false)
+function groupByProject(result: KanbanResult): Record<string, KanbanIssue[]> {
+  if (!result.ok) return {}
+  const map: Record<string, KanbanIssue[]> = {}
+  for (const name of KANBAN_PROJECT_NAMES) map[name] = []
+  for (const issue of result.issues) {
+    if (map[issue.projectName]) {
+      map[issue.projectName]!.push(issue)
+    } else {
+      const found = KANBAN_PROJECT_NAMES.find((n) =>
+        n.toUpperCase().includes(issue.projectKey.toUpperCase()),
+      )
+      const target = found ?? issue.projectName
+      if (!map[target]) map[target] = []
+      map[target]!.push(issue)
     }
   }
+  return map
+}
 
-  const issuesByProject = React.useMemo<Record<string, KanbanIssue[]>>(() => {
-    if (!result.ok) return {}
-    const map: Record<string, KanbanIssue[]> = {}
-    for (const name of KANBAN_PROJECT_NAMES) map[name] = []
-    for (const issue of result.issues) {
-      if (map[issue.projectName]) {
-        map[issue.projectName]!.push(issue)
-      } else {
-        const found = KANBAN_PROJECT_NAMES.find((n) =>
-          n.toUpperCase().includes(issue.projectKey.toUpperCase()),
-        )
-        const target = found ?? issue.projectName
-        if (!map[target]) map[target] = []
-        map[target]!.push(issue)
-      }
-    }
-    return map
-  }, [result])
+export function KanbanClient({ initialResult }: { initialResult: KanbanResult }) {
+  const issuesByProject = groupByProject(initialResult)
 
   return (
     <div className="flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 border-b border-border-default px-2 pb-4">
+      <div className="border-b border-border-default px-2 pb-4">
         <h1 className="text-base font-bold text-text-primary">Kanban UX</h1>
-
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-card px-3 py-1.5 text-sm font-medium text-text-primary shadow-sm transition-colors hover:bg-surface-overlay disabled:opacity-60"
-        >
-          <RefreshCw className={cn("size-4 shrink-0", refreshing && "animate-spin")} />
-          {refreshing ? "Atualizando…" : "Atualizar"}
-        </button>
       </div>
 
       {/* Error */}
-      {!result.ok && (
+      {!initialResult.ok && (
         <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          <span>{result.error}</span>
+          <span>{initialResult.error}</span>
         </div>
       )}
 
       {/* Board */}
-      {result.ok && (
+      {initialResult.ok && (
         <div className="overflow-x-auto">
-          <div className="flex gap-4 pt-4" style={{ minWidth: `${KANBAN_PROJECT_NAMES.length * (320 + 16)}px` }}>
+          <div
+            className="flex gap-4 pt-4"
+            style={{ minWidth: `${KANBAN_PROJECT_NAMES.length * (320 + 16)}px` }}
+          >
             {KANBAN_PROJECT_NAMES.map((name) => (
               <KanbanColumn key={name} projectName={name} issues={issuesByProject[name] ?? []} />
             ))}
