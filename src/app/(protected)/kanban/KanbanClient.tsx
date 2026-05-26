@@ -6,39 +6,43 @@ import { cn } from "@/core/utils"
 import { getKanbanSubtasks, type KanbanResult } from "@/features/kanban/actions/kanban"
 import { KANBAN_PROJECT_NAMES, type KanbanIssue } from "@/features/kanban/kanban-constants"
 
-// ── Colour helpers ────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-function priorityBarColor(priority: string | null): string {
+function priorityBar(priority: string | null): string {
   const p = priority?.toLowerCase() ?? ""
   if (p === "highest") return "bg-red-500"
-  if (p === "high")    return "bg-orange-500"
+  if (p === "high")    return "bg-orange-400"
   if (p === "medium")  return "bg-amber-400"
   if (p === "low")     return "bg-blue-400"
   if (p === "lowest")  return "bg-slate-300"
-  return "bg-slate-200"
+  return "bg-border-default"
 }
 
-function statusBadgeClass(colorName: string): string {
+function statusClasses(colorName: string): string {
   switch (colorName) {
-    case "green":  return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
-    case "yellow": return "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
-    case "blue":   return "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
-    default:       return "bg-surface-overlay text-text-secondary"
+    case "green":  return "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:ring-emerald-800"
+    case "yellow": return "bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:ring-amber-800"
+    case "blue":   return "bg-blue-100 text-blue-700 ring-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:ring-blue-800"
+    default:       return "bg-surface-overlay text-text-secondary ring-border-default"
   }
+}
+
+function priorityLabel(priority: string | null): string | null {
+  if (!priority) return null
+  return priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase()
 }
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
 
 function Avatar({ url, name }: { url: string | null; name: string | null }) {
   const initials = name
-    ? name.split(" ").map((w) => w[0] ?? "").join("").slice(0, 2).toUpperCase()
+    ? name.split(" ").filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase()
     : "?"
-  const colors = [
+  const palettes = [
     "bg-violet-500", "bg-blue-500", "bg-emerald-500",
-    "bg-amber-500",  "bg-rose-500", "bg-cyan-500",
+    "bg-rose-500",   "bg-amber-500", "bg-cyan-600",
   ]
-  const colorIdx = (initials.charCodeAt(0) ?? 0) % colors.length
-  const colorClass = colors[colorIdx]!
+  const colorClass = palettes[(initials.charCodeAt(0) ?? 0) % palettes.length]!
 
   if (url) {
     return (
@@ -46,14 +50,14 @@ function Avatar({ url, name }: { url: string | null; name: string | null }) {
       <img
         src={url}
         alt={name ?? ""}
-        className="size-9 rounded-full object-cover ring-2 ring-border-default shrink-0"
+        className="size-10 shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-surface-card"
       />
     )
   }
   return (
     <span
       className={cn(
-        "size-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ring-2 ring-border-default",
+        "flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ring-2 ring-white dark:ring-surface-card",
         colorClass,
       )}
       aria-label={name ?? ""}
@@ -63,49 +67,45 @@ function Avatar({ url, name }: { url: string | null; name: string | null }) {
   )
 }
 
-// ── Jira-style Card ───────────────────────────────────────────────────────────
+// ── Jira Card ─────────────────────────────────────────────────────────────────
 
 function JiraCard({ issue }: { issue: KanbanIssue }) {
-  return (
-    <div className="group flex flex-col overflow-hidden rounded-lg border border-border-default bg-surface-card shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex flex-col gap-2 p-3">
-        {/* Header: avatar + key + external link */}
-        <div className="flex items-start gap-2.5">
-          <Avatar url={issue.assigneeAvatarUrl} name={issue.assigneeDisplayName} />
+  const jiraUrl = `https://agrosmart.atlassian.net/browse/${issue.key}`
 
+  return (
+    <div className="group flex flex-col overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-sm transition-all hover:shadow-lg hover:-translate-y-0.5">
+      <div className="flex flex-col gap-3 p-4">
+
+        {/* Row 1 — avatar + key (link) + assignee */}
+        <div className="flex items-center gap-3">
+          <Avatar url={issue.assigneeAvatarUrl} name={issue.assigneeDisplayName} />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-1">
-              <span className="font-bold text-sm text-text-primary leading-tight">
-                {issue.key}
-              </span>
-              <a
-                href={`https://agrosmart.atlassian.net/browse/${issue.key}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-text-disabled hover:text-brand-primary"
-                title={`Abrir ${issue.key} no Jira`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ExternalLink className="size-3" />
-              </a>
-            </div>
+            <a
+              href={jiraUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-bold text-brand-primary hover:underline"
+            >
+              <span className="text-sm">{issue.key}</span>
+              <ExternalLink className="size-3 opacity-60" />
+            </a>
             {issue.assigneeDisplayName && (
-              <p className="truncate text-[10px] text-text-secondary leading-none mt-0.5">
+              <p className="mt-0.5 truncate text-xs text-text-secondary">
                 {issue.assigneeDisplayName}
               </p>
             )}
           </div>
         </div>
 
-        {/* Summary */}
-        <p className="text-xs text-text-primary leading-relaxed line-clamp-3">
+        {/* Row 2 — summary */}
+        <p className="text-sm leading-relaxed text-text-primary line-clamp-3">
           {issue.summary || "—"}
         </p>
 
-        {/* Parent link */}
+        {/* Row 3 — parent */}
         {issue.parentKey && (
           <p
-            className="truncate text-[10px] text-text-disabled"
+            className="truncate text-xs text-text-disabled"
             title={issue.parentSummary ?? issue.parentKey}
           >
             ↳ {issue.parentKey}
@@ -113,64 +113,58 @@ function JiraCard({ issue }: { issue: KanbanIssue }) {
           </p>
         )}
 
-        {/* Status badge */}
-        <span
-          className={cn(
-            "self-start rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none",
-            statusBadgeClass(issue.statusCategoryColor),
+        {/* Row 4 — status + priority */}
+        <div className="flex items-center justify-between gap-2">
+          <span
+            className={cn(
+              "inline-block rounded-md px-2 py-0.5 text-xs font-semibold ring-1 ring-inset",
+              statusClasses(issue.statusCategoryColor),
+            )}
+          >
+            {issue.status}
+          </span>
+          {issue.priority && (
+            <span className="text-xs text-text-disabled">
+              {priorityLabel(issue.priority)}
+            </span>
           )}
-        >
-          {issue.status}
-        </span>
+        </div>
       </div>
 
-      {/* Priority colour bar at the bottom */}
-      <div className={cn("h-1 w-full shrink-0 mt-auto", priorityBarColor(issue.priority))} />
+      {/* Priority accent bar */}
+      <div className={cn("h-1.5 w-full shrink-0", priorityBar(issue.priority))} />
     </div>
   )
 }
 
 // ── Kanban Column ─────────────────────────────────────────────────────────────
 
-function KanbanColumn({
-  projectName,
-  issues,
-}: {
-  projectName: string
-  issues: KanbanIssue[]
-}) {
+function KanbanColumn({ projectName, issues }: { projectName: string; issues: KanbanIssue[] }) {
   const shortName = projectName.startsWith("Plataforma Agro - ")
     ? projectName.replace("Plataforma Agro - ", "Agro ")
     : projectName
 
   return (
-    <div className="flex w-[17rem] shrink-0 flex-col rounded-xl bg-surface-overlay border border-border-default">
+    <div className="flex w-80 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
       {/* Column header */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <h2
-            className="truncate text-sm font-semibold text-text-primary"
-            title={projectName}
-          >
-            {shortName}
-          </h2>
-          <span className="shrink-0 rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-[11px] font-semibold text-text-secondary">
-            {issues.length}
-          </span>
-        </div>
+      <div className="flex items-center gap-2.5 px-4 py-3">
+        <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary" title={projectName}>
+          {shortName}
+        </h2>
+        <span className="shrink-0 rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-xs font-semibold text-text-secondary">
+          {issues.length}
+        </span>
       </div>
 
-      <div className="mx-3 h-px bg-border-default" />
+      <div className="mx-4 h-px bg-border-default" />
 
-      {/* Cards list */}
+      {/* Cards */}
       <div
-        className="flex flex-col gap-2.5 overflow-y-auto p-3 scrollbar-thin"
+        className="flex flex-col gap-3 overflow-y-auto p-4 scrollbar-thin"
         style={{ maxHeight: "calc(100dvh - 220px)" }}
       >
         {issues.length === 0 ? (
-          <p className="py-8 text-center text-xs italic text-text-disabled">
-            Nenhum item
-          </p>
+          <p className="py-10 text-center text-sm italic text-text-disabled">Nenhum item</p>
         ) : (
           issues.map((issue) => <JiraCard key={issue.key} issue={issue} />)
         )}
@@ -179,7 +173,7 @@ function KanbanColumn({
   )
 }
 
-// ── Root client component ─────────────────────────────────────────────────────
+// ── Root ──────────────────────────────────────────────────────────────────────
 
 export function KanbanClient({ initialResult }: { initialResult: KanbanResult }) {
   const [result, setResult] = React.useState<KanbanResult>(initialResult)
@@ -203,7 +197,6 @@ export function KanbanClient({ initialResult }: { initialResult: KanbanResult })
       if (map[issue.projectName]) {
         map[issue.projectName]!.push(issue)
       } else {
-        // fallback: match by project key prefix
         const found = KANBAN_PROJECT_NAMES.find((n) =>
           n.toUpperCase().includes(issue.projectKey.toUpperCase()),
         )
@@ -217,11 +210,9 @@ export function KanbanClient({ initialResult }: { initialResult: KanbanResult })
 
   return (
     <div className="flex flex-col">
-      {/* Topbar */}
+      {/* Header */}
       <div className="flex items-center justify-between gap-4 border-b border-border-default px-2 pb-4">
-        <div>
-          <h1 className="text-base font-bold text-text-primary">Kanban UX/UI</h1>
-        </div>
+        <h1 className="text-base font-bold text-text-primary">Kanban UX</h1>
 
         <button
           onClick={handleRefresh}
@@ -235,25 +226,18 @@ export function KanbanClient({ initialResult }: { initialResult: KanbanResult })
 
       {/* Error */}
       {!result.ok && (
-        <div className="m-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           <span>{result.error}</span>
         </div>
       )}
 
-      {/* Board — horizontal scroll */}
+      {/* Board */}
       {result.ok && (
         <div className="overflow-x-auto">
-          <div
-            className="flex gap-4 pt-4"
-            style={{ minWidth: `${KANBAN_PROJECT_NAMES.length * (17 * 4 + 16)}px` }}
-          >
+          <div className="flex gap-4 pt-4" style={{ minWidth: `${KANBAN_PROJECT_NAMES.length * (320 + 16)}px` }}>
             {KANBAN_PROJECT_NAMES.map((name) => (
-              <KanbanColumn
-                key={name}
-                projectName={name}
-                issues={issuesByProject[name] ?? []}
-              />
+              <KanbanColumn key={name} projectName={name} issues={issuesByProject[name] ?? []} />
             ))}
           </div>
         </div>
