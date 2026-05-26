@@ -37,6 +37,7 @@ import { AssistenteDrawer } from "@/components/shared/AssistenteDrawer"
 import type { IntegracaoSafeRecord } from "@/features/integracoes/actions/integracoes"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { BackToTop } from "@/components/shared/BackToTop"
+import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { DominioResponderSheet } from "@/features/individual/components/DominioResponderSheet"
 import {
   completarDominioAvaliacao,
@@ -907,13 +908,16 @@ export default function LayoutClient({
             />
           </Suspense>
           <main className="relative flex-1 overflow-auto bg-surface-default p-4 lg:p-6">
-            {(isPending || sistemaSwitchOverlay) && (
+            {isPending && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-default/80">
+                <SectionSpinner label="Carregando…" minHeight="min-h-0" />
+              </div>
+            )}
+            {sistemaSwitchOverlay && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-default/80 backdrop-blur-sm">
                 <div className="flex flex-col items-center gap-3">
                   <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
-                  <span className="text-sm text-text-secondary">
-                    {isPending ? "Carregando…" : "A trocar de sistema…"}
-                  </span>
+                  <span className="text-sm text-text-secondary">A trocar de sistema…</span>
                 </div>
               </div>
             )}
