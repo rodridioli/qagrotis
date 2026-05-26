@@ -187,6 +187,7 @@ function Lane({
   title,
   issues,
   headerRight,
+  filter,
   emptyText,
   wide,
   memberAvatar,
@@ -195,6 +196,7 @@ function Lane({
   title: string
   issues: KanbanIssue[]
   headerRight?: React.ReactNode
+  filter?: React.ReactNode
   emptyText?: string
   wide?: boolean
   memberAvatar?: { url: string | null; name: string }
@@ -222,6 +224,13 @@ function Lane({
         </span>
         {headerRight && <div className="ml-auto shrink-0">{headerRight}</div>}
       </div>
+
+      {/* Optional filter row */}
+      {filter && (
+        <div className="px-4 pb-3">
+          {filter}
+        </div>
+      )}
 
       <div className="mx-4 h-px bg-border-default" />
 
@@ -359,19 +368,17 @@ export function UxKanbanClient({ initialResult, members, initialAssignments }: P
                     ? "Nenhuma demanda neste projeto"
                     : "Nenhuma demanda"
                 }
-                headerRight={
-                  projectNames.length > 1 ? (
+                filter={
+                  projectNames.length > 0 ? (
                     <select
                       value={projectFilter}
                       onChange={(e) => setProjectFilter(e.target.value)}
-                      className="rounded border border-border-default bg-surface-input px-1.5 py-0.5 text-[10px] text-text-secondary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                      className="w-full rounded-lg border border-border-default bg-surface-input px-2 py-1.5 text-xs text-text-secondary focus:outline-none focus:ring-1 focus:ring-brand-primary"
                       aria-label="Filtrar por projeto"
                     >
-                      <option value="">Todos</option>
+                      <option value="">Todos os projetos</option>
                       {projectNames.map((name) => (
-                        <option key={name} value={name}>
-                          {name.replace(/^Plataforma Agro - /, "")}
-                        </option>
+                        <option key={name} value={name}>{name}</option>
                       ))}
                     </select>
                   ) : undefined
