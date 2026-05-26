@@ -2,6 +2,7 @@
 
 export const INDIVIDUAL_SECTION_ORDER = [
   "ficha",
+  "progressao",
   "dominio",
   "ferias",
   "ausencias",
@@ -9,7 +10,6 @@ export const INDIVIDUAL_SECTION_ORDER = [
   "feedbacks",
   "conquistas",
   "pdi",
-  "progressao",
   "lancamentos",
 ] as const
 
