@@ -26,6 +26,7 @@ export type Capability =
   | "menu.feedbacks"
   | "menu.individual"
   | "menu.kanban"
+  | "menu.gestao"
   // Individual
   | "individual.viewOthers"
   | "individual.lancamentos"
@@ -185,6 +186,7 @@ const POLICY: Record<Role, RoleConfig> = {
     capabilities: [
       "menu.painel",
       "menu.kanban",
+      "menu.gestao",
       "menu.documentos",
       "menu.assistente",
       "menu.equipe",

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, FileText, Rocket, Clock, Timer,
   Settings, LogOut, PanelLeftClose,
   PanelLeftOpen, Menu, Moon, Sun, Sparkles, Users,
-  Network, ClipboardCheck, MessageSquare, User, BarChart3, KanbanSquare,
+  Network, ClipboardCheck, MessageSquare, User, BarChart3, KanbanSquare, Briefcase,
 } from "lucide-react"
 import { buildRole, can, isDisabled, isVisible, type Role, type Capability, type AccessProfile } from "@/core/rbac/policy"
 import {
@@ -29,6 +29,7 @@ import { individualSectionLabel } from "@/features/individual/lib/individual-sec
 import { EquipeSidebarNavGroup } from "@/features/equipe/components/EquipeSidebarNavGroup"
 import { EQUIPE_NAV_ENTRIES } from "@/features/equipe/components/equipeNavEntries"
 import { PainelSidebarNavGroup } from "@/features/painel/components/PainelSidebarNavGroup"
+import { GestaoSidebarNavGroup } from "@/features/gestao/components/GestaoSidebarNavGroup"
 import { QAgrotisLogo } from "@/components/shared/QAgrotisLogo"
 import { QAgrotisIcon } from "@/components/shared/QAgrotisIcon"
 import { signOut, useSession } from "next-auth/react"
@@ -51,6 +52,7 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false, capability: "menu.painel" },
   { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false, capability: "menu.suites" },
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
+  { href: "/gestao",                   icon: Briefcase,    label: "Gestão",      alwaysEnabled: true,  capability: "menu.gestao" },
   { href: "/kanban",                  icon: KanbanSquare, label: "Kanban",      alwaysEnabled: true,  capability: "menu.kanban" },
   { href: "/equipe?tab=lancamentos", icon: Timer,       label: "Lançamentos", alwaysEnabled: true,  capability: "equipe.lancamentos" },
   { href: "/equipe?tab=performance", icon: BarChart3,  label: "Indicadores", alwaysEnabled: true,  capability: "equipe.performance" },
@@ -72,8 +74,7 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
 const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability; label?: string }>>> = {
   "Administrador:MGR": [
     { capability: "menu.painel" },
-    { capability: "menu.kanban" },
-    { capability: "equipe.lancamentos", label: "Lançamentos" },
+    { capability: "menu.gestao" },
     { capability: "equipe.performance", label: "Indicadores" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
@@ -276,6 +277,27 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                     }
                   >
                     <PainelSidebarNavGroup collapsed={collapsed} onNavigate={onNavigate} />
+                  </Suspense>
+                )
+              }
+
+              if (href === "/gestao") {
+                return (
+                  <Suspense
+                    key="gestao-sidebar-tree"
+                    fallback={
+                      <div
+                        className={cn(
+                          "flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-text-secondary",
+                          collapsed ? "lg:justify-center" : "",
+                        )}
+                      >
+                        <Briefcase className="size-4.5 shrink-0 text-text-secondary" aria-hidden />
+                        {!collapsed ? <span className="truncate">Gestão</span> : null}
+                      </div>
+                    }
+                  >
+                    <GestaoSidebarNavGroup collapsed={collapsed} onNavigate={onNavigate} />
                   </Suspense>
                 )
               }
