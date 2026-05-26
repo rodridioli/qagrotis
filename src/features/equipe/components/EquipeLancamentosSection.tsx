@@ -32,14 +32,13 @@ import {
 
 type AccessProfileId = "QA" | "UX" | "TW" | "MGR"
 
-const VALID_PROFILES = new Set<string>(["QA", "UX", "TW", "MGR"])
+const VALID_PROFILES = new Set<string>(["QA", "UX", "TW"])
 const VALID_PRESETS = new Set<string>(["today", "anterior", "week", "lastWeek", "month", "lastMonth"])
 
-const ALL_PROFILE_OPTIONS: { value: AccessProfileId; label: string }[] = [
-  { value: "QA",  label: "QA"      },
-  { value: "UX",  label: "UX"      },
-  { value: "TW",  label: "TW"      },
-  { value: "MGR", label: "Manager" },
+const ALL_PROFILE_OPTIONS: { value: Exclude<AccessProfileId, "MGR">; label: string }[] = [
+  { value: "QA", label: "QA" },
+  { value: "UX", label: "UX" },
+  { value: "TW", label: "TW" },
 ]
 
 const AVATAR_SIZE = 38
@@ -54,16 +53,13 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const isViewerMgr = userAccessProfile === "MGR"
+  // MGR não tem lançamentos próprios — default para QA
+  const defaultProfile: Exclude<AccessProfileId, "MGR"> =
+    userAccessProfile === "MGR" ? "QA" : userAccessProfile as Exclude<AccessProfileId, "MGR">
 
-  // Viewers não-MGR não veem a opção Manager no dropdown
-  const profileOptions = isViewerMgr
-    ? ALL_PROFILE_OPTIONS
-    : ALL_PROFILE_OPTIONS.filter((o) => o.value !== "MGR")
-
-  const [profileFilter, setProfileFilter] = React.useState<AccessProfileId>(() => {
+  const [profileFilter, setProfileFilter] = React.useState<Exclude<AccessProfileId, "MGR">>(() => {
     const v = searchParams.get("lp")
-    return v && VALID_PROFILES.has(v) ? (v as AccessProfileId) : userAccessProfile
+    return v && VALID_PROFILES.has(v) ? (v as Exclude<AccessProfileId, "MGR">) : defaultProfile
   })
   const [preset, setPreset] = React.useState<LancamentosPeriodPreset>(() => {
     const v = searchParams.get("periodo")
@@ -82,7 +78,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }
 
-  function handleProfileChange(v: AccessProfileId) {
+  function handleProfileChange(v: Exclude<AccessProfileId, "MGR">) {
     setProfileFilter(v)
     setParam("lp", v)
   }
@@ -104,8 +100,8 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
     const profile = canFilterByProfile ? profileFilter : userAccessProfile
     getEquipeMembrosParaLancamentos(profile).then((data) => {
       if (!cancelled) {
-        // Viewers não-MGR não veem avatares de membros MGR
-        const visible = isViewerMgr ? data : data.filter((m) => m.accessProfile !== "MGR")
+        // Lançamentos exibe apenas perfis QA, UX e TW
+        const visible = data.filter((m) => m.accessProfile !== "MGR")
         setMembros(visible)
         // Restore member from URL on first load; fall back to first member on profile changes
         const urlMembro = initialMembroRef.current
@@ -116,7 +112,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
       }
     })
     return () => { cancelled = true }
-  }, [profileFilter, canFilterByProfile, userAccessProfile, isViewerMgr])
+  }, [profileFilter, canFilterByProfile, userAccessProfile])
 
   return (
     <div className="flex flex-col gap-4">
@@ -168,13 +164,13 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
           {canFilterByProfile && (
             <Select
               value={profileFilter}
-              onValueChange={(v) => v && handleProfileChange(v as AccessProfileId)}
+              onValueChange={(v) => v && handleProfileChange(v as Exclude<AccessProfileId, "MGR">)}
             >
               <SelectTrigger className="w-36" aria-label="Filtrar por perfil">
                 <SelectValue />
               </SelectTrigger>
               <SelectPopup>
-                {profileOptions.map((o) => (
+                {ALL_PROFILE_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                 ))}
               </SelectPopup>
