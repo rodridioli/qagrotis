@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { auth } from "@/core/auth"
 import { buildRole, can } from "@/core/rbac/policy"
-import { getKanbanSubtasks } from "@/features/kanban/actions/kanban"
+import { getKanbanSubtasks, getUxTarefas } from "@/features/kanban/actions/kanban"
 import { getKanbanAssignments } from "@/features/kanban/actions/ux-kanban"
 import { getEquipeMembrosParaLancamentosComInativos } from "@/features/equipe/actions/equipe"
 import { serializeRscProps } from "@/core/rsc-serialize"
@@ -16,10 +16,11 @@ export default async function KanbanPage() {
   const role = buildRole(session.user.type, session.user.accessProfile)
   if (!can(role, "menu.kanban")) redirect("/dashboard")
 
-  const [result, members, assignments] = await Promise.all([
+  const [result, members, assignments, tarefasResult] = await Promise.all([
     getKanbanSubtasks(),
     getEquipeMembrosParaLancamentosComInativos("UX"),
     getKanbanAssignments(),
+    getUxTarefas(),
   ])
 
   return (
@@ -27,6 +28,7 @@ export default async function KanbanPage() {
       initialResult={result}
       members={serializeRscProps(members)}
       initialAssignments={assignments}
+      initialTarefasResult={serializeRscProps(tarefasResult)}
     />
   )
 }

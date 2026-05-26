@@ -1496,6 +1496,71 @@ export async function fetchKanbanSubtasks(
   return issues
 }
 
+// ── UX Tarefas (Open / Backlog / Priority / Pending UX from project UX) ──────
+
+export type UxTarefa = {
+  key: string
+  summary: string
+  status: string
+  priority: string | null
+  priorityIconUrl: string | null
+  reporterDisplayName: string | null
+  dueDate: string | null
+  tag: string | null
+}
+
+const UX_TAREFAS_STATUSES = ["Open", "Backlog", "Priority", "Pending UX"]
+const UX_TAREFAS_MAX = 300
+
+export async function fetchUxTarefas(
+  base: string,
+  credentials: string,
+): Promise<UxTarefa[]> {
+  const tagFieldId = await resolveTagFieldId(base, credentials)
+  const statusList = UX_TAREFAS_STATUSES.map((s) => `"${s}"`).join(", ")
+  const jql = `project = "UX" AND status in (${statusList}) ORDER BY priority ASC, updated DESC`
+
+  const extraFields: string[] = [
+    "status",
+    "priority",
+    "reporter",
+    "duedate",
+    ...(tagFieldId ? [tagFieldId] : []),
+  ]
+
+  const tarefas: UxTarefa[] = []
+  let nextPageToken: string | null = null
+
+  while (tarefas.length < UX_TAREFAS_MAX) {
+    const page = await searchIssuesByJql(base, credentials, jql, nextPageToken, extraFields)
+    if (!page) break
+
+    for (const issue of page.issues) {
+      const f = issue.fields as Record<string, unknown> | undefined
+      const statusObj = f?.status as { name?: string } | null
+      const priorityObj = f?.priority as { name?: string; iconUrl?: string } | null
+      const reporterObj = f?.reporter as { displayName?: string } | null
+      const tagRaw = tagFieldId ? f?.[tagFieldId] : undefined
+
+      tarefas.push({
+        key: issue.key,
+        summary: (typeof f?.summary === "string" ? f.summary.trim() : "") || "",
+        status: statusObj?.name ?? "",
+        priority: priorityObj?.name ?? null,
+        priorityIconUrl: priorityObj?.iconUrl ?? null,
+        reporterDisplayName: reporterObj?.displayName ?? null,
+        dueDate: typeof f?.duedate === "string" ? f.duedate : null,
+        tag: parseTypeFieldValue(tagRaw),
+      })
+    }
+
+    if (page.isLast) break
+    nextPageToken = page.nextPageToken
+  }
+
+  return tarefas
+}
+
 // ── Approval issues by tag (live JQL query, no cache) ─────────────────────────
 
 export interface ApprovalIssueEntry {

@@ -9,11 +9,11 @@ import {
 } from "@hello-pangea/dnd"
 import { AlertCircle, ChevronDown, User } from "lucide-react"
 import { cn } from "@/core/utils"
-import type { KanbanResult } from "@/features/kanban/actions/kanban"
+import type { KanbanResult, UxTarefasResult } from "@/features/kanban/actions/kanban"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
 import type { KanbanAssignments } from "@/features/kanban/actions/ux-kanban"
 import { assignIssueToUser } from "@/features/kanban/actions/ux-kanban"
-import type { KanbanIssue } from "@/features/kanban/kanban-constants"
+import type { KanbanIssue, UxTarefa } from "@/features/kanban/kanban-constants"
 
 // ─── Priority sort ────────────────────────────────────────────────────────────
 
@@ -29,8 +29,8 @@ function priorityRank(p: string | null): number {
   return PRIORITY_RANK[p?.toLowerCase() ?? ""] ?? 99
 }
 
-function sortByPriority(issues: KanbanIssue[]): KanbanIssue[] {
-  return [...issues].sort((a, b) => {
+function sortByPriority<T extends { priority: string | null; dueDate: string | null }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
     const pr = priorityRank(a.priority) - priorityRank(b.priority)
     if (pr !== 0) return pr
     if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate)
@@ -254,25 +254,172 @@ function Lane({
   )
 }
 
+// ─── Tarefa card content ──────────────────────────────────────────────────────
+
+function TarefaCardContent({ tarefa }: { tarefa: UxTarefa }) {
+  const jiraUrl = `https://agrotis.atlassian.net/browse/${tarefa.key}`
+  const dateStr = formatDate(tarefa.dueDate)
+
+  return (
+    <>
+      {/* Cabeçalho: chave + prioridade */}
+      <div className="flex items-center justify-between gap-2">
+        <a
+          href={jiraUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-sm font-bold text-text-primary underline-offset-2 hover:underline"
+        >
+          {tarefa.key}
+        </a>
+        {(tarefa.priorityIconUrl ?? tarefa.priority) && (
+          <div className="flex shrink-0 items-center gap-1">
+            {tarefa.priority && (
+              <span className="text-xs font-medium text-text-secondary">{tarefa.priority}</span>
+            )}
+            {tarefa.priorityIconUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={tarefa.priorityIconUrl} alt="" className="size-4 shrink-0" />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Título */}
+      <p className="text-sm leading-snug text-text-primary line-clamp-3">
+        {tarefa.summary || "—"}
+      </p>
+
+      {/* Data de entrega */}
+      {dateStr && (
+        <span className="text-sm text-brand-primary">{dateStr}</span>
+      )}
+
+      {/* Relator + tag */}
+      <div className="flex items-center justify-between gap-2">
+        {tarefa.reporterDisplayName ? (
+          <div className="flex min-w-0 items-center gap-1 text-xs text-text-secondary">
+            <User className="size-3 shrink-0" aria-hidden />
+            <span className="truncate underline underline-offset-2">{tarefa.reporterDisplayName}</span>
+          </div>
+        ) : (
+          <div />
+        )}
+        {tarefa.tag && (
+          <span className="shrink-0 rounded border border-border-default bg-surface-card px-2 py-0.5 text-xs font-medium text-text-secondary">
+            {tarefa.tag}
+          </span>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ─── Tarefas lane (read-only, no drag-and-drop) ───────────────────────────────
+
+function TarefasLane({
+  tarefas,
+  tagFilter,
+  onTagFilterChange,
+  tags,
+}: {
+  tarefas: UxTarefa[]
+  tagFilter: string
+  onTagFilterChange: (v: string) => void
+  tags: string[]
+}) {
+  return (
+    <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-4 py-3">
+        <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-text-primary">
+          Tarefas
+        </span>
+        <span className="shrink-0 rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-xs font-bold tabular-nums text-text-secondary">
+          {tarefas.length}
+        </span>
+        {tags.length > 0 && (
+          <div className="relative ml-auto">
+            <select
+              value={tagFilter}
+              onChange={(e) => onTagFilterChange(e.target.value)}
+              className="appearance-none rounded-lg border border-border-default bg-surface-card py-1 pl-3 pr-7 text-xs font-medium text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+              aria-label="Filtrar por tag"
+            >
+              <option value="">Todos</option>
+              {tags.map((tag) => (
+                <option key={tag} value={tag}>{tag}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-text-secondary" />
+          </div>
+        )}
+      </div>
+
+      <div className="mx-4 h-px bg-border-default" />
+
+      {/* List */}
+      <div
+        className="flex flex-col gap-3 overflow-y-auto p-4 scrollbar-thin min-h-[80px] rounded-b-xl"
+        style={{ maxHeight: "calc(100dvh - 180px)" }}
+      >
+        {tarefas.length === 0 ? (
+          <p className="py-6 text-center text-xs italic text-text-disabled">
+            {tagFilter ? "Nenhuma tarefa nesta tag" : "Nenhuma tarefa"}
+          </p>
+        ) : (
+          tarefas.map((tarefa) => (
+            <div
+              key={tarefa.key}
+              className={cn(
+                "flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-card p-4",
+                "border-l-[3px] border-l-brand-primary shadow-sm",
+              )}
+            >
+              <TarefaCardContent tarefa={tarefa} />
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 type Props = {
   initialResult: KanbanResult
   members: EquipeMembroLancamentos[]
   initialAssignments: KanbanAssignments
+  initialTarefasResult: UxTarefasResult
 }
 
-export function UxKanbanClient({ initialResult, members, initialAssignments }: Props) {
+export function UxKanbanClient({ initialResult, members, initialAssignments, initialTarefasResult }: Props) {
   const [assignments, setAssignments] = React.useState<KanbanAssignments>(initialAssignments)
   const [projectFilter, setProjectFilter] = React.useState<string>("")
+  const [tagFilter, setTagFilter] = React.useState<string>("")
 
   const issues = initialResult.ok ? initialResult.issues : []
+  const allTarefas = initialTarefasResult.ok ? initialTarefasResult.tarefas : []
 
-  // Unique project names for filter (Pendências only)
+  // Unique project names for Demandas filter
   const projectNames = React.useMemo(() => {
     const names = new Set(issues.map((i) => i.projectName).filter(Boolean))
     return [...names].sort()
   }, [issues])
+
+  // Unique tags for Tarefas filter
+  const tags = React.useMemo(() => {
+    const set = new Set(allTarefas.map((t) => t.tag).filter((t): t is string => !!t))
+    return [...set].sort()
+  }, [allTarefas])
+
+  // Tarefas filtered by tag, sorted by priority
+  const filteredTarefas = React.useMemo(
+    () => sortByPriority(allTarefas.filter((t) => !tagFilter || t.tag === tagFilter)),
+    [allTarefas, tagFilter],
+  )
 
   // Active members only (exclude isInactive)
   const activeMembers = React.useMemo(
@@ -328,11 +475,9 @@ export function UxKanbanClient({ initialResult, members, initialAssignments }: P
     })
   }
 
-  const totalCols = 1 + activeMembers.length
-
   return (
     <div className="flex flex-col">
-      {/* Error */}
+      {/* Errors */}
       {!initialResult.ok && (
         <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
@@ -346,9 +491,9 @@ export function UxKanbanClient({ initialResult, members, initialAssignments }: P
           <div className="overflow-x-auto">
             <div
               className="flex gap-4 pt-2"
-              style={{ minWidth: `${320 + activeMembers.length * (288 + 16)}px` }}
+              style={{ minWidth: `${320 + 288 + 16 + activeMembers.length * (288 + 16)}px` }}
             >
-              {/* Pendências — fixed first lane */}
+              {/* Demandas — draggable, filterable by project */}
               <Lane
                 droppableId="pending"
                 title="Demandas"
@@ -379,6 +524,14 @@ export function UxKanbanClient({ initialResult, members, initialAssignments }: P
                     </div>
                   ) : undefined
                 }
+              />
+
+              {/* Tarefas — read-only, filterable by Tag */}
+              <TarefasLane
+                tarefas={filteredTarefas}
+                tagFilter={tagFilter}
+                onTagFilterChange={setTagFilter}
+                tags={tags}
               />
 
               {/* One lane per active UX member */}
