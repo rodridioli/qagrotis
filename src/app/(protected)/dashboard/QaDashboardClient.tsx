@@ -390,7 +390,7 @@ function MetricCard({
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm text-text-secondary">{label}</p>
+          <p className="text-xs font-medium text-text-secondary">{label}</p>
           <p className="mt-1 select-none text-2xl font-bold text-text-primary">
             {sensitive && hidden
               ? <span className="tracking-widest text-text-disabled">••••</span>
@@ -528,7 +528,7 @@ function TagLineChart({
                   const payload = props.payload as Array<{ value: string; color: string; dataKey: string }> | undefined
                   if (!payload?.length) return null
                   return (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 pb-2">
+                    <div className="flex flex-wrap gap-x-2 gap-y-1 pb-4">
                       {payload.map((entry) => {
                         const isActive = activeKey === null || activeKey === entry.dataKey
                         return (
@@ -536,8 +536,8 @@ function TagLineChart({
                             key={entry.dataKey}
                             type="button"
                             onClick={() => setActiveKey((prev) => prev === entry.dataKey ? null : entry.dataKey)}
-                            className="flex cursor-pointer items-center gap-1.5 transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary"
-                            style={{ opacity: isActive ? 1 : 0.35, fontSize: 14, color: "#475569" }}
+                            className="flex cursor-pointer items-center gap-1.5 rounded px-2 py-1 transition-all hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary"
+                            style={{ opacity: isActive ? 1 : 0.4, fontSize: 14, color: "#475569" }}
                           >
                             <span
                               className="inline-block h-2 w-2 shrink-0 rounded-full"
@@ -625,11 +625,11 @@ function TypeCard({
     <div className="rounded-xl bg-surface-card p-4 shadow-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-xs font-medium text-text-secondary" style={tintStyle}>{label}</p>
+          <div className="flex items-center justify-between gap-1">
+            <p className="truncate text-xs font-medium text-text-secondary" style={tintStyle}>{label}</p>
             {!hideBadge && (
               <span
-                className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums leading-none"
+                className="ml-1 inline-flex shrink-0 items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums leading-none"
                 style={badgeStyle}
                 aria-hidden
               >
@@ -637,7 +637,7 @@ function TypeCard({
               </span>
             )}
           </div>
-          <p className="mt-1 text-3xl font-bold text-text-primary tabular-nums">{count}</p>
+          <p className="mt-1 text-2xl font-bold text-text-primary tabular-nums">{count}</p>
           {!hideCostTime && (
             <div className="mt-1.5 flex items-center justify-between text-xs text-text-secondary">
               <span className="tabular-nums">
@@ -779,7 +779,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
     [periodValue, currentYear],
   )
   const periodOptions = React.useMemo(() => buildPeriodOptions(currentYear), [currentYear])
-  const [loading, setLoading] = React.useState(false)
+  const [loading, setLoading] = React.useState(true)
   const [hideValues, setHideValues] = React.useState(true)
   const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([])
   const [rawMemberEntries, setRawMemberEntries] = React.useState<Record<string, JiraEntry[]>>({})

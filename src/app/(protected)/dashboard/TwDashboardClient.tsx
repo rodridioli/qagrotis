@@ -613,7 +613,7 @@ function TagLineChart({
                   const payload = props.payload as Array<{ value: string; color: string; dataKey: string }> | undefined
                   if (!payload?.length) return null
                   return (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 pb-2">
+                    <div className="flex flex-wrap gap-x-2 gap-y-1 pb-4">
                       {payload.map((entry) => {
                         const isActive = activeKey === null || activeKey === entry.dataKey
                         return (
@@ -621,8 +621,8 @@ function TagLineChart({
                             key={entry.dataKey}
                             type="button"
                             onClick={() => setActiveKey((prev) => prev === entry.dataKey ? null : entry.dataKey)}
-                            className="flex cursor-pointer items-center gap-1.5 transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary"
-                            style={{ opacity: isActive ? 1 : 0.35, fontSize: 14, color: "#475569" }}
+                            className="flex cursor-pointer items-center gap-1.5 rounded px-2 py-1 transition-all hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary"
+                            style={{ opacity: isActive ? 1 : 0.4, fontSize: 14, color: "#475569" }}
                           >
                             <span
                               className="inline-block h-2 w-2 shrink-0 rounded-full"
