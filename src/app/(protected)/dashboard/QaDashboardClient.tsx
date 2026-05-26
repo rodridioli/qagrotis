@@ -369,7 +369,6 @@ function MetricCard({
   hidden,
   sparkData,
   sparkFormatter,
-  smallValue,
   labelColor,
 }: {
   label: string
@@ -381,7 +380,6 @@ function MetricCard({
   hidden?: boolean
   sparkData?: number[]
   sparkFormatter?: (v: number) => string
-  smallValue?: boolean
   labelColor?: string
 }) {
   const iconColor = VARIANT_COLOR[iconVariant]
@@ -394,8 +392,8 @@ function MetricCard({
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-text-secondary" style={labelColor ? { color: labelColor } : undefined}>{label}</p>
-          <p className={cn("mt-1 select-none font-bold text-text-primary", smallValue ? "text-sm" : "text-2xl")}>
+          <p className="text-sm text-text-secondary" style={labelColor ? { color: labelColor } : undefined}>{label}</p>
+          <p className="mt-1 select-none text-2xl font-bold text-text-primary">
             {sensitive && hidden
               ? <span className="tracking-widest text-text-disabled">••••</span>
               : value}
@@ -1211,7 +1209,6 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
               iconVariant="brand"
               sparkData={sparkTempo}
               sparkFormatter={formatDurationAvg}
-              smallValue
             />
             <MetricCard
               label="Custo médio 🠆 Jira"
@@ -1222,7 +1219,6 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
               hidden={hideValues}
               sparkData={sparkValor}
               sparkFormatter={formatBRL}
-              smallValue
             />
             <MetricCard
               label="Total de Jiras"
@@ -1231,7 +1227,6 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
               iconVariant="info"
               sparkData={sparkJiras}
               sparkFormatter={(v) => `${v} jira${v !== 1 ? "s" : ""}`}
-              smallValue
             />
             <MetricCard
               label="Jiras Críticos"
@@ -1240,7 +1235,6 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
               iconVariant="warning"
               sparkData={sparkCriticos}
               sparkFormatter={(v) => `${v} crítico${v !== 1 ? "s" : ""}`}
-              smallValue
             />
           </div>
 

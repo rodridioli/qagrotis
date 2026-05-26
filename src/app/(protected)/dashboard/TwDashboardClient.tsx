@@ -919,7 +919,7 @@ function TypeCard({
 export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memberJiraIds }: Props) {
   const currentYear = new Date().getFullYear()
   const [periodValue, setPeriodValue] = React.useState(() => defaultPeriodValue(currentYear))
-  const [loading, setLoading] = React.useState(false)
+  const [loading, setLoading] = React.useState(true)
   const [hideValues, setHideValues] = React.useState(true)
   const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([])
   const [rawMemberEntries, setRawMemberEntries] = React.useState<Record<string, JiraEntry[]>>({})
@@ -1313,171 +1313,173 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-w-0 space-y-6">
-      {/* Avatar strip + year selector */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {visibleMembros.length > 0 && (
-            <AvatarStrip
-              membros={visibleMembros}
-              selectedUserIds={selectedUserIds}
-              onToggle={toggleUser}
-            />
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Select
-            value={periodValue}
-            onValueChange={(v) => { if (v) setPeriodValue(v) }}
-          >
-            <SelectTrigger
-              className="w-52"
-              aria-label="Selecionar período"
-            >
-              <SelectValue>
-                {periodOptions.find(o => o.value === periodValue)?.label ?? periodValue}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectPopup>
-              {periodOptions.map((opt, idx) => {
-                const prevOpt = periodOptions[idx - 1]
-                const showSep = idx > 0 && prevOpt && prevOpt.group !== opt.group
-                return (
-                  <React.Fragment key={opt.value}>
-                    {showSep && <hr className="my-1 border-border-default/40" />}
-                    <SelectItem value={opt.value}>{opt.label}</SelectItem>
-                  </React.Fragment>
-                )
-              })}
-            </SelectPopup>
-          </Select>
-          <button
-            type="button"
-            aria-label="Sincronizar dados"
-            disabled={loading}
-            onClick={() => void fetchAll(ano, true)}
-            className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <RefreshCw className={cn("size-4", loading && "animate-spin")} aria-hidden />
-          </button>
-          <button
-            type="button"
-            aria-label={hideValues ? "Exibir valores monetários" : "Ocultar valores monetários"}
-            onClick={() => setHideValues((v) => !v)}
-            className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
-          >
-            {hideValues ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Metric cards — linha 1 (4 cards com sparkline) */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricCard
-          label="Tempo médio 🠆 Jira"
-          value={loading ? "—" : formatDurationAvg(avgSecondsPerIssue)}
-          icon={Clock}
-          iconVariant="brand"
-          sparkData={loading ? undefined : sparkTempo}
-          sparkFormatter={formatDurationAvg}
-        />
-        <MetricCard
-          label="Custo médio 🠆 Jira"
-          value={loading ? "—" : formatBRL(avgInvestimentoCentavos)}
-          icon={DollarSign}
-          iconVariant="success"
-          sensitive
-          hidden={hideValues}
-          sparkData={loading ? undefined : sparkValor}
-          sparkFormatter={formatBRL}
-        />
-        <MetricCard
-          label="Total de Jiras"
-          value={loading ? "—" : String(totalUniqueIssues)}
-          icon={BarChart2}
-          iconVariant="info"
-          sparkData={loading ? undefined : sparkJiras}
-          sparkFormatter={(v) => `${v} jira${v !== 1 ? "s" : ""}`}
-        />
-        <MetricCard
-          label="Total de Críticos"
-          value={loading ? "—" : String(yearTotals.criticos)}
-          icon={AlertTriangle}
-          iconVariant="warning"
-          sparkData={loading ? undefined : sparkCriticos}
-          sparkFormatter={(v) => `${v} crítico${v !== 1 ? "s" : ""}`}
-        />
-      </div>
-
-      {/* Metric cards — linha 2: Novas Documentações, Revisões, Outras Atividades, Retornos */}
-      {!loading && (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <TypeCard
-            label="Novas Documentações"
-            count={yearTotals.novasDocs}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            timeSpentSeconds={yearTotals.novasDocsSeconds}
-            hideValues={hideValues}
-            tint="blue"
-          />
-          <TypeCard
-            label="Revisões"
-            count={yearTotals.revisoes}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            timeSpentSeconds={yearTotals.revisoesSeconds}
-            hideValues={hideValues}
-            tint="blue"
-          />
-          <TypeCard
-            label="Outras Atividades"
-            count={yearTotals.outrasAtividades}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            timeSpentSeconds={yearTotals.outrasAtividadesSeconds}
-            hideValues={hideValues}
-            tint="blue"
-          />
-          <TypeCard
-            label="Retornos"
-            count={yearTotals.retornos}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            timeSpentSeconds={0}
-            hideValues={hideValues}
-            tint="warning"
-          />
-        </div>
-      )}
-
-      {/* Tag breakdown charts */}
-      {!loading && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-          <div className="lg:col-span-3">
-            <TagLineChart
-              title="Jiras por Produto"
-              items={distribByTag}
-              activeMonths={activeMonths}
-              ariaLabel="Distribuição de jiras por produto"
-              totalCount={distribByTag.reduce((s, i) => s + i.count, 0)}
-            />
-          </div>
-          <div className="lg:col-span-1">
-            <TagPieChart
-              title="Atividades em Aprovação"
-              items={approvalByTag}
-              ariaLabel="Documentações em aprovação por tag"
-              totalCount={approvalByTag.reduce((s, i) => s + i.count, 0)}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Yearly table */}
-      {loading || monthStats === null ? (
-        <SectionSpinner minHeight="min-h-[300px]" />
+      {loading ? (
+        <SectionSpinner minHeight="min-h-[400px]" label="Carregando dados..." />
       ) : (
-        <TwYearTable monthStats={monthStats} hideValues={hideValues} ano={ano} activeMonths={activeMonths} quarterDedupeStats={quarterDedupeStats} periodTotalRow={periodTotalRow} />
+        <>
+          {/* Avatar strip + year selector */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              {visibleMembros.length > 0 && (
+                <AvatarStrip
+                  membros={visibleMembros}
+                  selectedUserIds={selectedUserIds}
+                  onToggle={toggleUser}
+                />
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Select
+                value={periodValue}
+                onValueChange={(v) => { if (v) setPeriodValue(v) }}
+              >
+                <SelectTrigger
+                  className="w-52"
+                  aria-label="Selecionar período"
+                >
+                  <SelectValue>
+                    {periodOptions.find(o => o.value === periodValue)?.label ?? periodValue}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectPopup>
+                  {periodOptions.map((opt, idx) => {
+                    const prevOpt = periodOptions[idx - 1]
+                    const showSep = idx > 0 && prevOpt && prevOpt.group !== opt.group
+                    return (
+                      <React.Fragment key={opt.value}>
+                        {showSep && <hr className="my-1 border-border-default/40" />}
+                        <SelectItem value={opt.value}>{opt.label}</SelectItem>
+                      </React.Fragment>
+                    )
+                  })}
+                </SelectPopup>
+              </Select>
+              <button
+                type="button"
+                aria-label="Sincronizar dados"
+                disabled={loading}
+                onClick={() => void fetchAll(ano, true)}
+                className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw className={cn("size-4", loading && "animate-spin")} aria-hidden />
+              </button>
+              <button
+                type="button"
+                aria-label={hideValues ? "Exibir valores monetários" : "Ocultar valores monetários"}
+                onClick={() => setHideValues((v) => !v)}
+                className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              >
+                {hideValues ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Metric cards — linha 1 (4 cards com sparkline) */}
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <MetricCard
+              label="Tempo médio 🠆 Jira"
+              value={formatDurationAvg(avgSecondsPerIssue)}
+              icon={Clock}
+              iconVariant="brand"
+              sparkData={sparkTempo}
+              sparkFormatter={formatDurationAvg}
+            />
+            <MetricCard
+              label="Custo médio 🠆 Jira"
+              value={formatBRL(avgInvestimentoCentavos)}
+              icon={DollarSign}
+              iconVariant="success"
+              sensitive
+              hidden={hideValues}
+              sparkData={sparkValor}
+              sparkFormatter={formatBRL}
+            />
+            <MetricCard
+              label="Total de Jiras"
+              value={String(totalUniqueIssues)}
+              icon={BarChart2}
+              iconVariant="info"
+              sparkData={sparkJiras}
+              sparkFormatter={(v) => `${v} jira${v !== 1 ? "s" : ""}`}
+            />
+            <MetricCard
+              label="Total de Críticos"
+              value={String(yearTotals.criticos)}
+              icon={AlertTriangle}
+              iconVariant="warning"
+              sparkData={sparkCriticos}
+              sparkFormatter={(v) => `${v} crítico${v !== 1 ? "s" : ""}`}
+            />
+          </div>
+
+          {/* Metric cards — linha 2: Novas Documentações, Revisões, Outras Atividades, Retornos */}
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <TypeCard
+              label="Novas Documentações"
+              count={yearTotals.novasDocs}
+              totalIssues={totalUniqueIssues}
+              totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+              timeSpentSeconds={yearTotals.novasDocsSeconds}
+              hideValues={hideValues}
+              tint="blue"
+            />
+            <TypeCard
+              label="Revisões"
+              count={yearTotals.revisoes}
+              totalIssues={totalUniqueIssues}
+              totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+              timeSpentSeconds={yearTotals.revisoesSeconds}
+              hideValues={hideValues}
+              tint="blue"
+            />
+            <TypeCard
+              label="Outras Atividades"
+              count={yearTotals.outrasAtividades}
+              totalIssues={totalUniqueIssues}
+              totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+              timeSpentSeconds={yearTotals.outrasAtividadesSeconds}
+              hideValues={hideValues}
+              tint="blue"
+            />
+            <TypeCard
+              label="Retornos"
+              count={yearTotals.retornos}
+              totalIssues={totalUniqueIssues}
+              totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+              timeSpentSeconds={0}
+              hideValues={hideValues}
+              tint="warning"
+            />
+          </div>
+
+          {/* Tag breakdown charts */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+            <div className="lg:col-span-3">
+              <TagLineChart
+                title="Jiras por Produto"
+                items={distribByTag}
+                activeMonths={activeMonths}
+                ariaLabel="Distribuição de jiras por produto"
+                totalCount={distribByTag.reduce((s, i) => s + i.count, 0)}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <TagPieChart
+                title="Atividades em Aprovação"
+                items={approvalByTag}
+                ariaLabel="Documentações em aprovação por tag"
+                totalCount={approvalByTag.reduce((s, i) => s + i.count, 0)}
+              />
+            </div>
+          </div>
+
+          {/* Yearly table */}
+          {monthStats === null ? (
+            <SectionSpinner minHeight="min-h-[300px]" />
+          ) : (
+            <TwYearTable monthStats={monthStats} hideValues={hideValues} ano={ano} activeMonths={activeMonths} quarterDedupeStats={quarterDedupeStats} periodTotalRow={periodTotalRow} />
+          )}
+        </>
       )}
     </div>
   )
