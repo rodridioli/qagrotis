@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd"
-import { AlertCircle, ChevronsRight, MinusCircle } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { cn } from "@/core/utils"
 import type { KanbanResult } from "@/features/kanban/actions/kanban"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
@@ -53,36 +53,6 @@ function formatDate(dateStr: string | null | undefined): string | null {
   return `${d.getUTCDate()}/${MONTHS_PT[d.getUTCMonth()]}/${String(d.getUTCFullYear()).slice(2)}`
 }
 
-function parseSummary(summary: string): { prefix: string | null; title: string } {
-  if (summary.includes(" > ")) {
-    const parts = summary.split(" > ")
-    return {
-      prefix: parts.slice(0, -1).join(" > ") + " >",
-      title: parts[parts.length - 1]!.trim(),
-    }
-  }
-  return { prefix: null, title: summary }
-}
-
-function extractProjectLabel(summary: string, projectName: string): string {
-  if (summary.includes(" > ")) {
-    const parts = summary.split(" > ")
-    return parts.length >= 2 ? (parts[parts.length - 2] ?? "").trim() : ""
-  }
-  if (summary.includes(" - ")) {
-    return summary.split(" - ")[0]!.trim()
-  }
-  return projectName.replace(/^Plataforma Agro - /, "")
-}
-
-function priorityDotColor(priority: string | null): string {
-  const p = priority?.toLowerCase() ?? ""
-  if (p === "highest") return "text-rose-500"
-  if (p === "high")    return "text-orange-400"
-  if (p === "medium")  return "text-amber-400"
-  if (p === "low")     return "text-blue-400"
-  return "text-slate-400"
-}
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
@@ -126,68 +96,49 @@ function Avatar({
 
 function CardContent({ issue }: { issue: KanbanIssue }) {
   const jiraUrl = `https://agrotis.atlassian.net/browse/${issue.key}`
-  const { prefix, title } = parseSummary(issue.summary)
-  const projectLabel = extractProjectLabel(issue.summary, issue.projectName)
   const dateStr = formatDate(issue.dueDate)
-  const dotColor = priorityDotColor(issue.priority)
-  const isPaused = issue.statusCategoryColor === "yellow"
+  const shortProject = issue.projectName.replace(/^Plataforma Agro - /, "")
 
   return (
     <>
-      {prefix && (
-        <p className="truncate text-[11px] leading-none text-text-disabled">{prefix}</p>
-      )}
-
-      <p className="text-sm font-semibold leading-snug text-text-primary line-clamp-3">
-        {title || "—"}
+      {/* 1. Título — sem negrito */}
+      <p className="text-sm leading-snug text-text-primary line-clamp-3">
+        {issue.summary || "—"}
       </p>
 
-      <div className="flex flex-col gap-0.5">
-        {projectLabel && <span className="text-xs text-text-secondary">{projectLabel}</span>}
-        {dateStr && <span className="text-xs text-text-disabled">{dateStr}</span>}
-      </div>
+      {/* 2. Badge do projeto */}
+      {shortProject && (
+        <span className="w-fit rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-600 ring-1 ring-inset ring-blue-200">
+          {shortProject}
+        </span>
+      )}
 
+      {/* 3. Data limite */}
+      {dateStr && (
+        <span className="text-xs text-text-disabled">{dateStr}</span>
+      )}
+
+      {/* 4. Número do jira (link) + 6. Ícone de prioridade do Jira */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          {issue.priority && (
-            <span className={cn("text-sm leading-none tracking-tighter", dotColor)}>
-              {"●●●●"}
-            </span>
-          )}
-          {isPaused
-            ? <MinusCircle className="size-[18px] shrink-0 text-rose-500" />
-            : <ChevronsRight className="size-[18px] shrink-0 text-rose-500" />
-          }
-        </div>
-        <Avatar url={issue.assigneeAvatarUrl} name={issue.assigneeDisplayName} />
-      </div>
-
-      <a
-        href={jiraUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => e.stopPropagation()}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary hover:text-brand-primary"
-      >
-        <svg
-          className="size-3.5 shrink-0 text-brand-primary"
-          viewBox="0 0 16 16"
-          fill="none"
-          aria-hidden="true"
+        <a
+          href={jiraUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-xs font-medium text-text-secondary hover:text-brand-primary hover:underline"
         >
-          <rect
-            x="1.5" y="1.5" width="13" height="13" rx="2"
-            stroke="currentColor" strokeWidth="1.5"
-            fill="currentColor" fillOpacity="0.12"
+          {issue.key}
+        </a>
+        {issue.priorityIconUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={issue.priorityIconUrl}
+            alt={issue.priority ?? ""}
+            title={issue.priority ?? ""}
+            className="size-4 shrink-0"
           />
-          <path
-            d="M4.5 8l2.5 2.5 4.5-4.5"
-            stroke="currentColor" strokeWidth="1.5"
-            strokeLinecap="round" strokeLinejoin="round"
-          />
-        </svg>
-        {issue.key}
-      </a>
+        )}
+      </div>
     </>
   )
 }
