@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { RefreshCw, AlertCircle, ExternalLink, Plus } from "lucide-react"
+import { RefreshCw, AlertCircle, ExternalLink } from "lucide-react"
 import { cn } from "@/core/utils"
 import { getKanbanSubtasks, type KanbanResult } from "@/features/kanban/actions/kanban"
 import { KANBAN_PROJECT_NAMES, type KanbanIssue } from "@/features/kanban/kanban-constants"
@@ -158,13 +158,6 @@ function KanbanColumn({
             {issues.length}
           </span>
         </div>
-        <button
-          className="shrink-0 rounded p-0.5 text-text-disabled transition-colors hover:bg-surface-card hover:text-text-primary"
-          aria-label={`Adicionar item em ${shortName}`}
-          disabled
-        >
-          <Plus className="size-3.5" />
-        </button>
       </div>
 
       <div className="mx-3 h-px bg-border-default" />
@@ -191,14 +184,12 @@ function KanbanColumn({
 export function KanbanClient({ initialResult }: { initialResult: KanbanResult }) {
   const [result, setResult] = React.useState<KanbanResult>(initialResult)
   const [refreshing, setRefreshing] = React.useState(false)
-  const [lastUpdated, setLastUpdated] = React.useState<Date>(new Date())
 
   async function handleRefresh() {
     setRefreshing(true)
     try {
       const fresh = await getKanbanSubtasks()
       setResult(fresh)
-      setLastUpdated(new Date())
     } finally {
       setRefreshing(false)
     }
@@ -224,20 +215,12 @@ export function KanbanClient({ initialResult }: { initialResult: KanbanResult })
     return map
   }, [result])
 
-  const totalIssues = result.ok ? result.issues.length : 0
-
   return (
     <div className="flex flex-col">
       {/* Topbar */}
       <div className="flex items-center justify-between gap-4 border-b border-border-default px-2 pb-4">
         <div>
           <h1 className="text-base font-bold text-text-primary">Kanban UX/UI</h1>
-          {result.ok && (
-            <p className="mt-0.5 text-xs text-text-secondary">
-              {totalIssues} {totalIssues !== 1 ? "subtarefas" : "subtarefa"} · atualizado às{" "}
-              {lastUpdated.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-            </p>
-          )}
         </div>
 
         <button

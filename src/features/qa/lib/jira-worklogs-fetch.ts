@@ -1403,7 +1403,7 @@ export async function fetchRetornosForKeys(
   return result
 }
 
-// ── Kanban: subtasks UX/UI por projeto ───────────────────────────────────────
+// ── Kanban: issues com status "UX" por projeto ───────────────────────────────
 
 export type KanbanIssue = {
   key: string
@@ -1439,7 +1439,7 @@ export async function fetchKanbanSubtasks(
   credentials: string,
 ): Promise<KanbanIssue[]> {
   const projectList = KANBAN_PROJECTS.map((p) => `"${p}"`).join(", ")
-  const jql = `issuetype = "UX/UI" AND project in (${projectList}) ORDER BY project ASC, updated DESC`
+  const jql = `status = "UX" AND project in (${projectList}) ORDER BY project ASC, updated DESC`
 
   const issues: KanbanIssue[] = []
   let nextPageToken: string | null = null
