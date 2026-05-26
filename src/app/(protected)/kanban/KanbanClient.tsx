@@ -1,143 +1,192 @@
 "use client"
 
 import * as React from "react"
-import {
-  RefreshCw,
-  AlertCircle,
-  ArrowUp,
-  Minus,
-  ArrowDown,
-  ChevronDown,
-  ExternalLink,
-  User,
-} from "lucide-react"
+import { RefreshCw, AlertCircle, ExternalLink, Plus } from "lucide-react"
 import { cn } from "@/core/utils"
 import { getKanbanSubtasks, type KanbanResult } from "@/features/kanban/actions/kanban"
 import { KANBAN_PROJECT_NAMES, type KanbanIssue } from "@/features/kanban/kanban-constants"
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Colour helpers ────────────────────────────────────────────────────────────
 
-function statusStyle(colorName: string): { dot: string; badge: string } {
+function priorityBarColor(priority: string | null): string {
+  const p = priority?.toLowerCase() ?? ""
+  if (p === "highest") return "bg-red-500"
+  if (p === "high")    return "bg-orange-500"
+  if (p === "medium")  return "bg-amber-400"
+  if (p === "low")     return "bg-blue-400"
+  if (p === "lowest")  return "bg-slate-300"
+  return "bg-slate-200"
+}
+
+function statusBadgeClass(colorName: string): string {
   switch (colorName) {
-    case "green":     return { dot: "bg-emerald-500", badge: "text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-950" }
-    case "yellow":    return { dot: "bg-amber-400",   badge: "text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-950" }
-    case "blue":      return { dot: "bg-blue-500",    badge: "text-blue-700 bg-blue-50 dark:text-blue-300 dark:bg-blue-950" }
-    default:          return { dot: "bg-text-disabled", badge: "text-text-secondary bg-surface-overlay" }
+    case "green":  return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+    case "yellow": return "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+    case "blue":   return "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+    default:       return "bg-surface-overlay text-text-secondary"
   }
 }
 
-function PriorityIcon({ priority }: { priority: string | null }) {
-  const p = priority?.toLowerCase() ?? ""
-  if (p === "highest") return <AlertCircle className="size-3 text-red-500" aria-label="Highest" />
-  if (p === "high")    return <ArrowUp      className="size-3 text-orange-500" aria-label="High" />
-  if (p === "medium")  return <Minus        className="size-3 text-amber-500" aria-label="Medium" />
-  if (p === "low")     return <ArrowDown    className="size-3 text-blue-400" aria-label="Low" />
-  if (p === "lowest")  return <ChevronDown  className="size-3 text-blue-300" aria-label="Lowest" />
-  return null
-}
+// ── Avatar ────────────────────────────────────────────────────────────────────
 
-function Assignee({ url, name }: { url: string | null; name: string | null }) {
-  if (!name) return null
-  const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+function Avatar({ url, name }: { url: string | null; name: string | null }) {
+  const initials = name
+    ? name.split(" ").map((w) => w[0] ?? "").join("").slice(0, 2).toUpperCase()
+    : "?"
+  const colors = [
+    "bg-violet-500", "bg-blue-500", "bg-emerald-500",
+    "bg-amber-500",  "bg-rose-500", "bg-cyan-500",
+  ]
+  const colorIdx = (initials.charCodeAt(0) ?? 0) % colors.length
+  const colorClass = colors[colorIdx]!
+
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={name ?? ""}
+        className="size-9 rounded-full object-cover ring-2 ring-border-default shrink-0"
+      />
+    )
+  }
   return (
-    <span className="flex items-center gap-1" title={name}>
-      {url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt={name} className="size-5 rounded-full object-cover" />
-      ) : (
-        <span className="flex size-5 items-center justify-center rounded-full bg-brand-primary/20 text-[9px] font-semibold text-brand-primary">
-          {initials || <User className="size-3" />}
-        </span>
+    <span
+      className={cn(
+        "size-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ring-2 ring-border-default",
+        colorClass,
       )}
-      <span className="max-w-[80px] truncate text-[10px] text-text-secondary">{name.split(" ")[0]}</span>
+      aria-label={name ?? ""}
+    >
+      {initials}
     </span>
   )
 }
 
-// ── Jira Card ─────────────────────────────────────────────────────────────────
+// ── Jira-style Card ───────────────────────────────────────────────────────────
 
 function JiraCard({ issue }: { issue: KanbanIssue }) {
-  const { dot, badge } = statusStyle(issue.statusCategoryColor)
-
   return (
-    <div className="flex w-64 shrink-0 flex-col gap-2 rounded-lg border border-border-default bg-surface-card p-3 shadow-card transition-shadow hover:shadow-md">
-      {/* Top: issue type icon + issue key */}
-      <div className="flex items-center gap-1.5">
-        {issue.issueTypeIconUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={issue.issueTypeIconUrl} alt="" className="size-3.5 shrink-0" aria-hidden />
-        ) : null}
-        <span className="font-mono text-[11px] font-semibold text-brand-primary">{issue.key}</span>
-        <a
-          href={`https://agrosmart.atlassian.net/browse/${issue.key}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ml-auto shrink-0 text-text-disabled hover:text-text-secondary"
-          title="Abrir no Jira"
-          aria-label={`Abrir ${issue.key} no Jira`}
+    <div className="group flex flex-col overflow-hidden rounded-lg border border-border-default bg-surface-card shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex flex-col gap-2 p-3">
+        {/* Header: avatar + key + external link */}
+        <div className="flex items-start gap-2.5">
+          <Avatar url={issue.assigneeAvatarUrl} name={issue.assigneeDisplayName} />
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-1">
+              <span className="font-bold text-sm text-text-primary leading-tight">
+                {issue.key}
+              </span>
+              <a
+                href={`https://agrosmart.atlassian.net/browse/${issue.key}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-text-disabled hover:text-brand-primary"
+                title={`Abrir ${issue.key} no Jira`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink className="size-3" />
+              </a>
+            </div>
+            {issue.assigneeDisplayName && (
+              <p className="truncate text-[10px] text-text-secondary leading-none mt-0.5">
+                {issue.assigneeDisplayName}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Summary */}
+        <p className="text-xs text-text-primary leading-relaxed line-clamp-3">
+          {issue.summary || "—"}
+        </p>
+
+        {/* Parent link */}
+        {issue.parentKey && (
+          <p
+            className="truncate text-[10px] text-text-disabled"
+            title={issue.parentSummary ?? issue.parentKey}
+          >
+            ↳ {issue.parentKey}
+            {issue.parentSummary ? ` — ${issue.parentSummary}` : ""}
+          </p>
+        )}
+
+        {/* Status badge */}
+        <span
+          className={cn(
+            "self-start rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none",
+            statusBadgeClass(issue.statusCategoryColor),
+          )}
         >
-          <ExternalLink className="size-3" />
-        </a>
+          {issue.status}
+        </span>
       </div>
 
-      {/* Summary */}
-      <p className="line-clamp-3 text-xs font-medium text-text-primary leading-snug">{issue.summary || "—"}</p>
+      {/* Priority colour bar at the bottom */}
+      <div className={cn("h-1 w-full shrink-0 mt-auto", priorityBarColor(issue.priority))} />
+    </div>
+  )
+}
 
-      {/* Parent */}
-      {issue.parentKey && (
-        <p className="truncate text-[10px] text-text-disabled" title={issue.parentSummary ?? issue.parentKey}>
-          ↳ {issue.parentKey}{issue.parentSummary ? ` — ${issue.parentSummary}` : ""}
-        </p>
-      )}
+// ── Kanban Column ─────────────────────────────────────────────────────────────
 
-      {/* Status badge */}
-      <span className={cn("inline-flex w-fit items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none", badge)}>
-        <span className={cn("size-1.5 rounded-full shrink-0", dot)} aria-hidden />
-        {issue.status}
-      </span>
+function KanbanColumn({
+  projectName,
+  issues,
+}: {
+  projectName: string
+  issues: KanbanIssue[]
+}) {
+  const shortName = projectName.startsWith("Plataforma Agro - ")
+    ? projectName.replace("Plataforma Agro - ", "Agro ")
+    : projectName
 
-      {/* Footer: priority + assignee */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1">
-          <PriorityIcon priority={issue.priority} />
-          {issue.priority && (
-            <span className="text-[10px] text-text-secondary">{issue.priority}</span>
-          )}
-        </span>
-        <Assignee url={issue.assigneeAvatarUrl} name={issue.assigneeDisplayName} />
+  return (
+    <div className="flex w-[17rem] shrink-0 flex-col rounded-xl bg-surface-overlay border border-border-default">
+      {/* Column header */}
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <h2
+            className="truncate text-sm font-semibold text-text-primary"
+            title={projectName}
+          >
+            {shortName}
+          </h2>
+          <span className="shrink-0 rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-[11px] font-semibold text-text-secondary">
+            {issues.length}
+          </span>
+        </div>
+        <button
+          className="shrink-0 rounded p-0.5 text-text-disabled transition-colors hover:bg-surface-card hover:text-text-primary"
+          aria-label={`Adicionar item em ${shortName}`}
+          disabled
+        >
+          <Plus className="size-3.5" />
+        </button>
+      </div>
+
+      <div className="mx-3 h-px bg-border-default" />
+
+      {/* Cards list */}
+      <div
+        className="flex flex-col gap-2.5 overflow-y-auto p-3 scrollbar-thin"
+        style={{ maxHeight: "calc(100dvh - 220px)" }}
+      >
+        {issues.length === 0 ? (
+          <p className="py-8 text-center text-xs italic text-text-disabled">
+            Nenhum item
+          </p>
+        ) : (
+          issues.map((issue) => <JiraCard key={issue.key} issue={issue} />)
+        )}
       </div>
     </div>
   )
 }
 
-// ── Swimlane ──────────────────────────────────────────────────────────────────
-
-function Swimlane({ projectName, issues }: { projectName: string; issues: KanbanIssue[] }) {
-  return (
-    <section className="rounded-xl border border-border-default bg-surface-base overflow-hidden">
-      {/* Lane header */}
-      <div className="flex items-center gap-3 border-b border-border-default bg-surface-card px-4 py-2.5">
-        <h2 className="text-sm font-semibold text-text-primary">{projectName}</h2>
-        <span className="rounded-full bg-brand-primary/10 px-2 py-0.5 text-[11px] font-semibold text-brand-primary">
-          {issues.length}
-        </span>
-      </div>
-
-      {/* Cards row */}
-      {issues.length === 0 ? (
-        <p className="px-4 py-4 text-xs text-text-disabled italic">Nenhum item encontrado.</p>
-      ) : (
-        <div className="flex gap-3 overflow-x-auto px-4 py-3 scrollbar-thin">
-          {issues.map((issue) => (
-            <JiraCard key={issue.key} issue={issue} />
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-// ── Main client component ──────────────────────────────────────────────────────
+// ── Root client component ─────────────────────────────────────────────────────
 
 export function KanbanClient({ initialResult }: { initialResult: KanbanResult }) {
   const [result, setResult] = React.useState<KanbanResult>(initialResult)
@@ -155,17 +204,17 @@ export function KanbanClient({ initialResult }: { initialResult: KanbanResult })
     }
   }
 
-  const issuesByProject = React.useMemo(() => {
+  const issuesByProject = React.useMemo<Record<string, KanbanIssue[]>>(() => {
     if (!result.ok) return {}
     const map: Record<string, KanbanIssue[]> = {}
     for (const name of KANBAN_PROJECT_NAMES) map[name] = []
     for (const issue of result.issues) {
-      const bucket = map[issue.projectName]
-      if (bucket) bucket.push(issue)
-      else {
-        // Issue cujo projectName não bateu exato — tenta via key prefix
-        const found = KANBAN_PROJECT_NAMES.find(
-          (n) => n.toUpperCase().includes(issue.projectKey.toUpperCase()),
+      if (map[issue.projectName]) {
+        map[issue.projectName]!.push(issue)
+      } else {
+        // fallback: match by project key prefix
+        const found = KANBAN_PROJECT_NAMES.find((n) =>
+          n.toUpperCase().includes(issue.projectKey.toUpperCase()),
         )
         const target = found ?? issue.projectName
         if (!map[target]) map[target] = []
@@ -178,49 +227,52 @@ export function KanbanClient({ initialResult }: { initialResult: KanbanResult })
   const totalIssues = result.ok ? result.issues.length : 0
 
   return (
-    <div className="flex flex-col gap-5 p-6">
-      {/* Page header */}
-      <div className="flex items-center justify-between gap-4">
+    <div className="flex flex-col">
+      {/* Topbar */}
+      <div className="flex items-center justify-between gap-4 border-b border-border-default px-2 pb-4">
         <div>
-          <h1 className="text-xl font-bold text-text-primary">Kanban UX/UI</h1>
-          <p className="mt-0.5 text-xs text-text-secondary">
-            {result.ok
-              ? `${totalIssues} subtarefa${totalIssues !== 1 ? "s" : ""} encontrada${totalIssues !== 1 ? "s" : ""} • Atualizado às ${lastUpdated.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
-              : "Subtarefas do tipo UX/UI por projeto"}
-          </p>
+          <h1 className="text-base font-bold text-text-primary">Kanban UX/UI</h1>
+          {result.ok && (
+            <p className="mt-0.5 text-xs text-text-secondary">
+              {totalIssues} {totalIssues !== 1 ? "subtarefas" : "subtarefa"} · atualizado às{" "}
+              {lastUpdated.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+          )}
         </div>
 
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className={cn(
-            "flex items-center gap-2 rounded-lg border border-border-default bg-surface-card px-3 py-1.5 text-sm font-medium text-text-primary shadow-card transition-colors hover:bg-surface-overlay disabled:opacity-60",
-          )}
-          aria-label="Atualizar kanban"
+          className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-card px-3 py-1.5 text-sm font-medium text-text-primary shadow-sm transition-colors hover:bg-surface-overlay disabled:opacity-60"
         >
-          <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
-          <span>{refreshing ? "Atualizando…" : "Atualizar"}</span>
+          <RefreshCw className={cn("size-4 shrink-0", refreshing && "animate-spin")} />
+          {refreshing ? "Atualizando…" : "Atualizar"}
         </button>
       </div>
 
-      {/* Error state */}
+      {/* Error */}
       {!result.ok && (
-        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-          <AlertCircle className="size-4 shrink-0" />
+        <div className="m-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
           <span>{result.error}</span>
         </div>
       )}
 
-      {/* Swimlanes */}
+      {/* Board — horizontal scroll */}
       {result.ok && (
-        <div className="flex flex-col gap-4">
-          {KANBAN_PROJECT_NAMES.map((projectName) => (
-            <Swimlane
-              key={projectName}
-              projectName={projectName}
-              issues={issuesByProject[projectName] ?? []}
-            />
-          ))}
+        <div className="overflow-x-auto">
+          <div
+            className="flex gap-4 pt-4"
+            style={{ minWidth: `${KANBAN_PROJECT_NAMES.length * (17 * 4 + 16)}px` }}
+          >
+            {KANBAN_PROJECT_NAMES.map((name) => (
+              <KanbanColumn
+                key={name}
+                projectName={name}
+                issues={issuesByProject[name] ?? []}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
