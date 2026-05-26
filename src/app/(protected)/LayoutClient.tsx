@@ -115,6 +115,7 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
   "Administrador:UX": [
     { capability: "menu.painel" },
     { capability: "menu.kanban" },
+    { capability: "equipe.lancamentos", label: "Lançamentos" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
@@ -312,7 +313,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                     <EquipeSidebarNavGroup
                       collapsed={collapsed}
                       onNavigate={onNavigate}
-                      canAccessLancamentos={role === "Administrador:MGR" ? false : canAccessEquipeLancamentos}
+                      canAccessLancamentos={role === "Administrador:MGR" || role === "Administrador:UX" ? false : canAccessEquipeLancamentos}
                       canAccessPerformance={role === "Administrador:MGR" ? false : canAccessEquipePerformance}
                     />
                   </Suspense>

@@ -1413,6 +1413,7 @@ export type KanbanIssue = {
   assigneeAccountId: string | null
   assigneeDisplayName: string | null
   assigneeAvatarUrl: string | null
+  reporterDisplayName: string | null
   priority: string | null
   priorityIconUrl: string | null
   issueTypeIconUrl: string | null
@@ -1449,6 +1450,7 @@ export async function fetchKanbanSubtasks(
     const page = await searchIssuesByJql(base, credentials, jql, nextPageToken, [
       "status",
       "assignee",
+      "reporter",
       "priority",
       "project",
       "parent",
@@ -1461,6 +1463,7 @@ export async function fetchKanbanSubtasks(
 
       const statusObj = f?.status as { name?: string; statusCategory?: { colorName?: string } } | null
       const assigneeObj = f?.assignee as { accountId?: string; displayName?: string; avatarUrls?: Record<string, string> } | null
+      const reporterObj = f?.reporter as { displayName?: string } | null
       const priorityObj = f?.priority as { name?: string; iconUrl?: string } | null
       const issueTypeObj = f?.issuetype as { name?: string; iconUrl?: string } | null
       const projectObj = f?.project as { key?: string; name?: string } | null
@@ -1474,6 +1477,7 @@ export async function fetchKanbanSubtasks(
         assigneeAccountId: assigneeObj?.accountId ?? null,
         assigneeDisplayName: assigneeObj?.displayName ?? null,
         assigneeAvatarUrl: assigneeObj?.avatarUrls?.["48x48"] ?? null,
+        reporterDisplayName: reporterObj?.displayName ?? null,
         priority: priorityObj?.name ?? null,
         priorityIconUrl: priorityObj?.iconUrl ?? null,
         issueTypeIconUrl: issueTypeObj?.iconUrl ?? null,

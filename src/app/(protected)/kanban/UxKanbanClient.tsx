@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, User } from "lucide-react"
 import { cn } from "@/core/utils"
 import type { KanbanResult } from "@/features/kanban/actions/kanban"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
@@ -118,27 +118,41 @@ function CardContent({ issue }: { issue: KanbanIssue }) {
         <span className="text-xs text-text-disabled">{dateStr}</span>
       )}
 
-      {/* 4. Número do jira (link) + 6. Ícone de prioridade do Jira */}
+      {/* 4. Número do jira (link em destaque) + prioridade (ícone + texto) */}
       <div className="flex items-center justify-between gap-2">
         <a
           href={jiraUrl}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="text-xs font-medium text-text-secondary hover:text-brand-primary hover:underline"
+          className="text-xs font-bold text-brand-primary underline-offset-2 hover:underline"
         >
           {issue.key}
         </a>
-        {issue.priorityIconUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={issue.priorityIconUrl}
-            alt={issue.priority ?? ""}
-            title={issue.priority ?? ""}
-            className="size-4 shrink-0"
-          />
+        {(issue.priorityIconUrl ?? issue.priority) && (
+          <div className="flex shrink-0 items-center gap-1">
+            {issue.priorityIconUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={issue.priorityIconUrl}
+                alt=""
+                className="size-3.5 shrink-0"
+              />
+            )}
+            {issue.priority && (
+              <span className="text-[11px] text-text-secondary">{issue.priority}</span>
+            )}
+          </div>
         )}
       </div>
+
+      {/* 5. Relator */}
+      {issue.reporterDisplayName && (
+        <div className="flex items-center gap-1 text-[11px] text-text-disabled">
+          <User className="size-3 shrink-0" aria-hidden />
+          <span className="truncate">{issue.reporterDisplayName}</span>
+        </div>
+      )}
     </>
   )
 }
