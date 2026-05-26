@@ -7,7 +7,7 @@ import {
   LayoutDashboard, FileText, Rocket, Clock, Timer,
   Settings, LogOut, PanelLeftClose,
   PanelLeftOpen, Menu, Moon, Sun, Sparkles, Users,
-  Network, ClipboardCheck, MessageSquare, User, BarChart3,
+  Network, ClipboardCheck, MessageSquare, User, BarChart3, KanbanSquare,
 } from "lucide-react"
 import { buildRole, can, isDisabled, isVisible, type Role, type Capability, type AccessProfile } from "@/core/rbac/policy"
 import {
@@ -50,7 +50,8 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false, capability: "menu.painel" },
   { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false, capability: "menu.suites" },
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
-  { href: "/equipe?tab=lancamentos", icon: Timer,      label: "Lançamentos", alwaysEnabled: true,  capability: "equipe.lancamentos" },
+  { href: "/kanban",                  icon: KanbanSquare, label: "Kanban",      alwaysEnabled: true,  capability: "menu.kanban" },
+  { href: "/equipe?tab=lancamentos", icon: Timer,       label: "Lançamentos", alwaysEnabled: true,  capability: "equipe.lancamentos" },
   { href: "/equipe?tab=performance", icon: BarChart3,  label: "Indicadores", alwaysEnabled: true,  capability: "equipe.performance" },
   { href: "/individual/lancamentos", icon: Clock,      label: "Lançamentos", alwaysEnabled: false, capability: "individual.lancamentos" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
@@ -70,6 +71,7 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
 const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability; label?: string }>>> = {
   "Administrador:MGR": [
     { capability: "menu.painel" },
+    { capability: "menu.kanban" },
     { capability: "equipe.lancamentos", label: "Lançamentos" },
     { capability: "equipe.performance", label: "Indicadores" },
     { capability: "menu.equipe" },
@@ -78,6 +80,7 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
   ],
   "Padrão:UX": [
     { capability: "menu.painel" },
+    { capability: "menu.kanban" },
     { capability: "individual.lancamentos" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
@@ -111,6 +114,7 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
   ],
   "Administrador:UX": [
     { capability: "menu.painel" },
+    { capability: "menu.kanban" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
@@ -124,6 +128,7 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
 }
 
 const TITLE_MAP: Record<string, string> = {
+  "/kanban":        "Kanban",
   "/dashboard":     "Painel",
   "/cenarios":      "Cenários",
   "/gerador":       "Gerador",

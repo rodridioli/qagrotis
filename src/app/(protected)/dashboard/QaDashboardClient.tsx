@@ -561,6 +561,8 @@ function TypeCard({
   totalInvestimentoCentavos,
   timeSpentSeconds,
   hideValues,
+  hideBadge,
+  hideCostTime,
   tint,
 }: {
   label: string
@@ -570,6 +572,8 @@ function TypeCard({
   totalInvestimentoCentavos: number
   timeSpentSeconds: number
   hideValues: boolean
+  hideBadge?: boolean
+  hideCostTime?: boolean
   tint?: "blue" | "violet" | "warning"
 }) {
   const denomPct = pctDenominator ?? totalIssues
@@ -586,27 +590,31 @@ function TypeCard({
     <div className="rounded-xl bg-surface-card p-4 shadow-card">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-text-secondary" style={tintStyle}>{label}</p>
-        <span
-          className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums leading-none"
-          style={badgeStyle}
-          aria-hidden
-        >
-          {hideValues ? "••" : `${pct}%`}
-        </span>
+        {!hideBadge && (
+          <span
+            className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums leading-none"
+            style={badgeStyle}
+            aria-hidden
+          >
+            {hideValues ? "••" : `${pct}%`}
+          </span>
+        )}
       </div>
       <p className="mt-1 text-xl font-bold text-text-primary tabular-nums">{count}</p>
-      <div className="mt-1.5 flex items-center justify-between text-xs text-text-secondary">
-        <span className="tabular-nums">
-          {hideValues
-            ? <span className="tracking-widest text-text-disabled">••••</span>
-            : formatDurationAvg(timeSpentSeconds)}
-        </span>
-        <span className="tabular-nums">
-          {hideValues
-            ? <span className="tracking-widest text-text-disabled">••••</span>
-            : formatBRL(costCentavos)}
-        </span>
-      </div>
+      {!hideCostTime && (
+        <div className="mt-1.5 flex items-center justify-between text-xs text-text-secondary">
+          <span className="tabular-nums">
+            {hideValues
+              ? <span className="tracking-widest text-text-disabled">••••</span>
+              : formatDurationAvg(timeSpentSeconds)}
+          </span>
+          <span className="tabular-nums">
+            {hideValues
+              ? <span className="tracking-widest text-text-disabled">••••</span>
+              : formatBRL(costCentavos)}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
@@ -1022,6 +1030,13 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
   const avgInvestimentoCentavos =
     avgValorHora != null ? Math.round(avgValorHora * (avgSecondsPerIssue / 3600)) : 0
 
+  const avgSecondsPerCenario = yearTotals.cenariosTestados > 0
+    ? Math.round(totalAnual.totalSeconds / yearTotals.cenariosTestados)
+    : 0
+  const avgCentavosPerCenario = yearTotals.cenariosTestados > 0
+    ? Math.round(totalAnual.investimentoCentavos / yearTotals.cenariosTestados)
+    : 0
+
   // ── Sparklines ────────────────────────────────────────────────────────────
   const sparkJiras    = activeMonths.map(m => (monthStats ?? [])[m]?.totalIssues ?? 0)
   const sparkCriticos = activeMonths.map(m => (monthStats ?? [])[m]?.criticos ?? 0)
@@ -1135,7 +1150,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
       {/* Metric cards — linha 1 (4 cards com sparkline) */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard
-          label="Tempo médio 🠆 Atividade"
+          label="Tempo médio 🠆 Jira"
           value={loading ? "—" : formatDurationAvg(avgSecondsPerIssue)}
           icon={Clock}
           iconVariant="brand"
@@ -1143,7 +1158,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
           sparkFormatter={formatDurationAvg}
         />
         <MetricCard
-          label="Valor médio 🠆 Atividade"
+          label="Custo médio 🠆 Jira"
           value={loading ? "—" : formatBRL(avgInvestimentoCentavos)}
           icon={TrendingUp}
           iconVariant="success"
@@ -1170,9 +1185,9 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
         />
       </div>
 
-      {/* Type cards — Cenários Testados | Cenários com Erro | Jiras de Retorno (Broken) */}
+      {/* Type cards — Cenários Testados | Tempo médio → Cenário | Custo médio → Cenário | Cenários com Erro | Jiras de Retorno (Broken) */}
       {!loading && (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
           <TypeCard
             label="Cenários Testados"
             count={yearTotals.cenariosTestados}
@@ -1180,7 +1195,23 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
             totalInvestimentoCentavos={totalAnual.investimentoCentavos}
             timeSpentSeconds={0}
             hideValues={hideValues}
+            hideBadge
+            hideCostTime
             tint="blue"
+          />
+          <MetricCard
+            label="Tempo médio 🠆 Cenário"
+            value={formatDurationAvg(avgSecondsPerCenario)}
+            icon={Clock}
+            iconVariant="brand"
+          />
+          <MetricCard
+            label="Custo médio 🠆 Cenário"
+            value={formatBRL(avgCentavosPerCenario)}
+            icon={TrendingUp}
+            iconVariant="success"
+            sensitive
+            hidden={hideValues}
           />
           <TypeCard
             label="Cenários com Erro"
@@ -1190,6 +1221,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
             totalInvestimentoCentavos={totalAnual.investimentoCentavos}
             timeSpentSeconds={0}
             hideValues={hideValues}
+            hideCostTime
             tint="warning"
           />
           <TypeCard
@@ -1199,6 +1231,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
             totalInvestimentoCentavos={totalAnual.investimentoCentavos}
             timeSpentSeconds={0}
             hideValues={hideValues}
+            hideCostTime
             tint="warning"
           />
         </div>

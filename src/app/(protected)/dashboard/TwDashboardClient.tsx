@@ -1346,7 +1346,7 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
       {/* Metric cards — linha 1 (4 cards com sparkline) */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard
-          label="Tempo médio 🠆 Atividade"
+          label="Tempo médio 🠆 Jira"
           value={loading ? "—" : formatDurationAvg(avgSecondsPerIssue)}
           icon={Clock}
           iconVariant="brand"
@@ -1354,7 +1354,7 @@ export function TwDashboardClient({ membros, progressaoMap, approvalIssues, memb
           sparkFormatter={formatDurationAvg}
         />
         <MetricCard
-          label="Valor médio 🠆 Atividade"
+          label="Custo médio 🠆 Jira"
           value={loading ? "—" : formatBRL(avgInvestimentoCentavos)}
           icon={TrendingUp}
           iconVariant="success"

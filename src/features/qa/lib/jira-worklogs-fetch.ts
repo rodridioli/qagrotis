@@ -1403,6 +1403,92 @@ export async function fetchRetornosForKeys(
   return result
 }
 
+// ── Kanban: subtasks UX/UI por projeto ───────────────────────────────────────
+
+export type KanbanIssue = {
+  key: string
+  summary: string
+  status: string
+  statusCategoryColor: string
+  assigneeAccountId: string | null
+  assigneeDisplayName: string | null
+  assigneeAvatarUrl: string | null
+  priority: string | null
+  priorityIconUrl: string | null
+  issueTypeIconUrl: string | null
+  projectKey: string
+  projectName: string
+  parentKey: string | null
+  parentSummary: string | null
+}
+
+const KANBAN_PROJECTS = [
+  "Plataforma Agro - REC",
+  "Plataforma Agro - UBA",
+  "Plataforma Agro - SEM",
+  "Plataforma Agro - ARM",
+  "UX",
+] as const
+
+export const KANBAN_PROJECT_NAMES: readonly string[] = KANBAN_PROJECTS
+
+const KANBAN_MAX_ISSUES = 300
+
+export async function fetchKanbanSubtasks(
+  base: string,
+  credentials: string,
+): Promise<KanbanIssue[]> {
+  const projectList = KANBAN_PROJECTS.map((p) => `"${p}"`).join(", ")
+  const jql = `issuetype = "UX/UI" AND project in (${projectList}) ORDER BY project ASC, updated DESC`
+
+  const issues: KanbanIssue[] = []
+  let nextPageToken: string | null = null
+
+  while (issues.length < KANBAN_MAX_ISSUES) {
+    const page = await searchIssuesByJql(base, credentials, jql, nextPageToken, [
+      "status",
+      "assignee",
+      "priority",
+      "project",
+      "parent",
+    ])
+    if (!page) break
+
+    for (const issue of page.issues) {
+      const f = issue.fields as Record<string, unknown> | undefined
+
+      const statusObj = f?.status as { name?: string; statusCategory?: { colorName?: string } } | null
+      const assigneeObj = f?.assignee as { accountId?: string; displayName?: string; avatarUrls?: Record<string, string> } | null
+      const priorityObj = f?.priority as { name?: string; iconUrl?: string } | null
+      const issueTypeObj = f?.issuetype as { name?: string; iconUrl?: string } | null
+      const projectObj = f?.project as { key?: string; name?: string } | null
+      const parentObj = f?.parent as { key?: string; fields?: { summary?: string } } | null
+
+      issues.push({
+        key: issue.key,
+        summary: (typeof f?.summary === "string" ? f.summary.trim() : "") || "",
+        status: statusObj?.name ?? "",
+        statusCategoryColor: statusObj?.statusCategory?.colorName ?? "blue-grey",
+        assigneeAccountId: assigneeObj?.accountId ?? null,
+        assigneeDisplayName: assigneeObj?.displayName ?? null,
+        assigneeAvatarUrl: assigneeObj?.avatarUrls?.["48x48"] ?? null,
+        priority: priorityObj?.name ?? null,
+        priorityIconUrl: priorityObj?.iconUrl ?? null,
+        issueTypeIconUrl: issueTypeObj?.iconUrl ?? null,
+        projectKey: projectObj?.key ?? issue.key.split("-")[0] ?? "",
+        projectName: projectObj?.name ?? "",
+        parentKey: parentObj?.key ?? null,
+        parentSummary: parentObj?.fields?.summary ?? null,
+      })
+    }
+
+    if (page.isLast) break
+    nextPageToken = page.nextPageToken
+  }
+
+  return issues
+}
+
 // ── Approval issues by tag (live JQL query, no cache) ─────────────────────────
 
 export interface ApprovalIssueEntry {

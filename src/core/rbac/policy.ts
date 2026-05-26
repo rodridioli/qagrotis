@@ -25,6 +25,7 @@ export type Capability =
   | "menu.avaliacaoDesempenho"
   | "menu.feedbacks"
   | "menu.individual"
+  | "menu.kanban"
   // Individual
   | "individual.viewOthers"
   | "individual.lancamentos"
@@ -111,6 +112,7 @@ const POLICY: Record<Role, RoleConfig> = {
   "Padrão:UX": {
     capabilities: [
       "menu.painel",
+      "menu.kanban",
       "menu.assistente",
       "menu.equipe",
       "menu.individual",
@@ -125,6 +127,7 @@ const POLICY: Record<Role, RoleConfig> = {
   "Administrador:UX": {
     capabilities: [
       "menu.painel",
+      "menu.kanban",
       "menu.assistente",
       "menu.equipe",
       "menu.individual",
@@ -181,6 +184,7 @@ const POLICY: Record<Role, RoleConfig> = {
   "Administrador:MGR": {
     capabilities: [
       "menu.painel",
+      "menu.kanban",
       "menu.documentos",
       "menu.assistente",
       "menu.equipe",
