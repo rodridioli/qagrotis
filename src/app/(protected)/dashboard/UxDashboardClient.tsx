@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { AlertTriangle, BarChart2, Clock, Eye, EyeOff, Info, RefreshCw, TrendingUp } from "lucide-react"
+import { AlertTriangle, BarChart2, Clock, DollarSign, Eye, EyeOff, Info, RefreshCw } from "lucide-react"
 import { AreaChart, Area, BarChart, Bar, Cell, LineChart, Line, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart, Pie, Legend } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -568,6 +568,7 @@ function TagLineChart({
   ariaLabel: string
   totalCount?: number
 }) {
+  const [activeKey, setActiveKey] = React.useState<string | null>(null)
   // Cap to top 5 tags; group the rest as "Outros"
   const sorted = [...items].sort((a, b) => b.count - a.count)
   const topItems = sorted.length <= 5 ? sorted : (() => {
@@ -590,6 +591,8 @@ function TagLineChart({
     }
     return obj
   })
+
+  const colors = topItems.map((_, i) => BAR_PALETTE[i % BAR_PALETTE.length] as string)
 
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
@@ -638,20 +641,44 @@ function TagLineChart({
               <Legend
                 verticalAlign="top"
                 align="left"
-                iconType="circle"
-                iconSize={8}
-                wrapperStyle={{ fontSize: 11, paddingBottom: 8 }}
+                content={(props) => {
+                  const payload = props.payload as Array<{ value: string; color: string; dataKey: string }> | undefined
+                  if (!payload?.length) return null
+                  return (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 pb-2">
+                      {payload.map((entry) => {
+                        const isActive = activeKey === null || activeKey === entry.dataKey
+                        return (
+                          <button
+                            key={entry.dataKey}
+                            type="button"
+                            onClick={() => setActiveKey((prev) => prev === entry.dataKey ? null : entry.dataKey)}
+                            className="flex cursor-pointer items-center gap-1.5 transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary"
+                            style={{ opacity: isActive ? 1 : 0.35, fontSize: 13, color: "#475569" }}
+                          >
+                            <span
+                              className="inline-block h-2 w-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: entry.color }}
+                            />
+                            {entry.value}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )
+                }}
               />
               {topItems.map((item, index) => (
                 <Line
                   key={item.tag}
                   type="monotone"
                   dataKey={item.tag}
-                  stroke={BAR_PALETTE[index % BAR_PALETTE.length]}
+                  stroke={colors[index]}
                   strokeWidth={2}
                   dot={{ r: 3 }}
                   activeDot={{ r: 5, strokeWidth: 0 }}
                   isAnimationActive={false}
+                  hide={activeKey !== null && activeKey !== item.tag}
                 />
               ))}
             </LineChart>
@@ -1425,7 +1452,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
         <MetricCard
           label="Custo médio 🠆 Jira"
           value={loading ? "—" : formatBRL(avgInvestimentoCentavos)}
-          icon={TrendingUp}
+          icon={DollarSign}
           iconVariant="success"
           sensitive
           hidden={hideValues}

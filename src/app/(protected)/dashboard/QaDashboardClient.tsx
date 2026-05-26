@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { AlertTriangle, BarChart2, CheckSquare2, Clock, Eye, EyeOff, Flame, RefreshCw, TrendingUp } from "lucide-react"
+import { AlertTriangle, BarChart2, CheckSquare2, Clock, DollarSign, Eye, EyeOff, Flame, RefreshCw } from "lucide-react"
 import { AreaChart, Area, BarChart, Bar, Cell, YAxis, ResponsiveContainer, XAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, LineChart, Line } from "recharts"
 import { cn } from "@/core/utils"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -453,6 +453,7 @@ function TagLineChart({
   ariaLabel: string
   totalCount?: number
 }) {
+  const [activeKey, setActiveKey] = React.useState<string | null>(null)
   const sorted = [...items].sort((a, b) => b.count - a.count)
   const topItems = sorted.length <= 5 ? sorted : (() => {
     const top = sorted.slice(0, 5)
@@ -473,6 +474,8 @@ function TagLineChart({
     }
     return obj
   })
+
+  const colors = topItems.map((_, i) => BAR_PALETTE[i % BAR_PALETTE.length] as string)
 
   return (
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
@@ -521,20 +524,44 @@ function TagLineChart({
               <Legend
                 verticalAlign="top"
                 align="left"
-                iconType="circle"
-                iconSize={8}
-                wrapperStyle={{ fontSize: 11, paddingBottom: 8 }}
+                content={(props) => {
+                  const payload = props.payload as Array<{ value: string; color: string; dataKey: string }> | undefined
+                  if (!payload?.length) return null
+                  return (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 pb-2">
+                      {payload.map((entry) => {
+                        const isActive = activeKey === null || activeKey === entry.dataKey
+                        return (
+                          <button
+                            key={entry.dataKey}
+                            type="button"
+                            onClick={() => setActiveKey((prev) => prev === entry.dataKey ? null : entry.dataKey)}
+                            className="flex cursor-pointer items-center gap-1.5 transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary"
+                            style={{ opacity: isActive ? 1 : 0.35, fontSize: 13, color: "#475569" }}
+                          >
+                            <span
+                              className="inline-block h-2 w-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: entry.color }}
+                            />
+                            {entry.value}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )
+                }}
               />
               {topItems.map((item, index) => (
                 <Line
                   key={item.project}
                   type="monotone"
                   dataKey={item.project}
-                  stroke={BAR_PALETTE[index % BAR_PALETTE.length]}
+                  stroke={colors[index]}
                   strokeWidth={2}
                   dot={{ r: 3 }}
                   activeDot={{ r: 5, strokeWidth: 0 }}
                   isAnimationActive={false}
+                  hide={activeKey !== null && activeKey !== item.project}
                 />
               ))}
             </LineChart>
@@ -564,6 +591,8 @@ function TypeCard({
   hideBadge,
   hideCostTime,
   tint,
+  icon: Icon,
+  iconVariant,
 }: {
   label: string
   count: number
@@ -575,6 +604,8 @@ function TypeCard({
   hideBadge?: boolean
   hideCostTime?: boolean
   tint?: "blue" | "violet" | "warning"
+  icon?: React.ElementType
+  iconVariant?: "brand" | "warning" | "success" | "info"
 }) {
   const denomPct = pctDenominator ?? totalIssues
   const pct = denomPct > 0 ? Math.round((count / denomPct) * 100) : 0
@@ -586,35 +617,51 @@ function TypeCard({
   const badgeStyle: React.CSSProperties | undefined = tintHex
     ? { backgroundColor: `${tintHex}1a`, color: tintHex }
     : undefined
+  const iconColor = Icon && iconVariant ? VARIANT_COLOR[iconVariant] : undefined
+  const iconStyle: React.CSSProperties | undefined = iconColor
+    ? { backgroundColor: `${iconColor}1a`, color: iconColor }
+    : undefined
   return (
     <div className="rounded-xl bg-surface-card p-4 shadow-card">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-text-secondary" style={tintStyle}>{label}</p>
-        {!hideBadge && (
-          <span
-            className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums leading-none"
-            style={badgeStyle}
-            aria-hidden
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-medium text-text-secondary" style={tintStyle}>{label}</p>
+            {!hideBadge && (
+              <span
+                className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums leading-none"
+                style={badgeStyle}
+                aria-hidden
+              >
+                {hideValues ? "••" : `${pct}%`}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-2xl font-bold text-text-primary tabular-nums">{count}</p>
+          {!hideCostTime && (
+            <div className="mt-1.5 flex items-center justify-between text-xs text-text-secondary">
+              <span className="tabular-nums">
+                {hideValues
+                  ? <span className="tracking-widest text-text-disabled">••••</span>
+                  : formatDurationAvg(timeSpentSeconds)}
+              </span>
+              <span className="tabular-nums">
+                {hideValues
+                  ? <span className="tracking-widest text-text-disabled">••••</span>
+                  : formatBRL(costCentavos)}
+              </span>
+            </div>
+          )}
+        </div>
+        {Icon && iconStyle && (
+          <div
+            className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-lg"
+            style={iconStyle}
           >
-            {hideValues ? "••" : `${pct}%`}
-          </span>
+            <Icon className="size-5" aria-hidden />
+          </div>
         )}
       </div>
-      <p className="mt-1 text-xl font-bold text-text-primary tabular-nums">{count}</p>
-      {!hideCostTime && (
-        <div className="mt-1.5 flex items-center justify-between text-xs text-text-secondary">
-          <span className="tabular-nums">
-            {hideValues
-              ? <span className="tracking-widest text-text-disabled">••••</span>
-              : formatDurationAvg(timeSpentSeconds)}
-          </span>
-          <span className="tabular-nums">
-            {hideValues
-              ? <span className="tracking-widest text-text-disabled">••••</span>
-              : formatBRL(costCentavos)}
-          </span>
-        </div>
-      )}
     </div>
   )
 }
@@ -1160,7 +1207,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
         <MetricCard
           label="Custo médio 🠆 Jira"
           value={loading ? "—" : formatBRL(avgInvestimentoCentavos)}
-          icon={TrendingUp}
+          icon={DollarSign}
           iconVariant="success"
           sensitive
           hidden={hideValues}
@@ -1198,6 +1245,8 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
             hideBadge
             hideCostTime
             tint="blue"
+            icon={CheckSquare2}
+            iconVariant="brand"
           />
           <MetricCard
             label="Tempo médio 🠆 Cenário"
@@ -1208,7 +1257,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
           <MetricCard
             label="Custo médio 🠆 Cenário"
             value={formatBRL(avgCentavosPerCenario)}
-            icon={TrendingUp}
+            icon={DollarSign}
             iconVariant="success"
             sensitive
             hidden={hideValues}
