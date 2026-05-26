@@ -42,15 +42,13 @@ function sortByPriority(issues: KanbanIssue[]): KanbanIssue[] {
 
 // ─── Card helpers ─────────────────────────────────────────────────────────────
 
-const MONTHS_PT = [
-  "jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez",
-]
-
 function formatDate(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null
   const d = new Date(dateStr + "T12:00:00Z")
   if (isNaN(d.getTime())) return null
-  return `${d.getUTCDate()}/${MONTHS_PT[d.getUTCMonth()]}/${String(d.getUTCFullYear()).slice(2)}`
+  const day = String(d.getUTCDate()).padStart(2, "0")
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0")
+  return `${day}/${month}/${d.getUTCFullYear()}`
 }
 
 
@@ -101,58 +99,56 @@ function CardContent({ issue }: { issue: KanbanIssue }) {
 
   return (
     <>
-      {/* 1. Título — sem negrito */}
-      <p className="text-sm leading-snug text-text-primary line-clamp-3">
-        {issue.summary || "—"}
-      </p>
-
-      {/* 2. Badge do projeto */}
-      {shortProject && (
-        <span className="w-fit rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-600 ring-1 ring-inset ring-blue-200">
-          {shortProject}
-        </span>
-      )}
-
-      {/* 3. Data limite */}
-      {dateStr && (
-        <span className="text-xs text-text-disabled">{dateStr}</span>
-      )}
-
-      {/* 4. Número do jira (link em destaque) + prioridade (ícone + texto) */}
+      {/* 1. Cabeçalho: chave do Jira (negrito) + prioridade (texto + ícone) */}
       <div className="flex items-center justify-between gap-2">
         <a
           href={jiraUrl}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="text-xs font-bold text-brand-primary underline-offset-2 hover:underline"
+          className="text-sm font-bold text-text-primary underline-offset-2 hover:underline"
         >
           {issue.key}
         </a>
         {(issue.priorityIconUrl ?? issue.priority) && (
           <div className="flex shrink-0 items-center gap-1">
+            {issue.priority && (
+              <span className="text-xs font-medium text-text-secondary">{issue.priority}</span>
+            )}
             {issue.priorityIconUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={issue.priorityIconUrl}
-                alt=""
-                className="size-3.5 shrink-0"
-              />
-            )}
-            {issue.priority && (
-              <span className="text-[11px] text-text-secondary">{issue.priority}</span>
+              <img src={issue.priorityIconUrl} alt="" className="size-4 shrink-0" />
             )}
           </div>
         )}
       </div>
 
-      {/* 5. Relator */}
-      {issue.reporterDisplayName && (
-        <div className="flex items-center gap-1 text-[11px] text-text-disabled">
-          <User className="size-3 shrink-0" aria-hidden />
-          <span className="truncate">{issue.reporterDisplayName}</span>
-        </div>
+      {/* 2. Título */}
+      <p className="text-sm leading-snug text-text-primary line-clamp-3">
+        {issue.summary || "—"}
+      </p>
+
+      {/* 3. Data de entrega (somente se existir) */}
+      {dateStr && (
+        <span className="text-sm text-brand-primary">{dateStr}</span>
       )}
+
+      {/* 4. Relator + badge do projeto */}
+      <div className="flex items-center justify-between gap-2">
+        {issue.reporterDisplayName ? (
+          <div className="flex min-w-0 items-center gap-1 text-xs text-text-secondary">
+            <User className="size-3 shrink-0" aria-hidden />
+            <span className="truncate underline underline-offset-2">{issue.reporterDisplayName}</span>
+          </div>
+        ) : (
+          <div />
+        )}
+        {shortProject && (
+          <span className="shrink-0 rounded border border-border-default bg-surface-card px-2 py-0.5 text-xs font-medium text-text-secondary">
+            {shortProject}
+          </span>
+        )}
+      </div>
     </>
   )
 }
@@ -171,6 +167,7 @@ function DraggableCard({ issue, index }: { issue: KanbanIssue; index: number }) 
           className={cn(
             "flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-card p-4",
             "cursor-grab select-none",
+            "border-l-[3px] border-l-brand-primary",
             snapshot.isDragging
               ? "shadow-xl rotate-[0.5deg] opacity-90 scale-[1.01]"
               : "shadow-sm transition-shadow hover:shadow-md",
