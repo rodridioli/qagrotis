@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd"
-import { AlertCircle, User } from "lucide-react"
+import { AlertCircle, ChevronDown, User } from "lucide-react"
 import { cn } from "@/core/utils"
 import type { KanbanResult } from "@/features/kanban/actions/kanban"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
@@ -187,7 +187,6 @@ function Lane({
   title,
   issues,
   headerRight,
-  filter,
   emptyText,
   wide,
   memberAvatar,
@@ -196,7 +195,6 @@ function Lane({
   title: string
   issues: KanbanIssue[]
   headerRight?: React.ReactNode
-  filter?: React.ReactNode
   emptyText?: string
   wide?: boolean
   memberAvatar?: { url: string | null; name: string }
@@ -224,13 +222,6 @@ function Lane({
         </span>
         {headerRight && <div className="ml-auto shrink-0">{headerRight}</div>}
       </div>
-
-      {/* Optional filter row */}
-      {filter && (
-        <div className="px-4 pb-3">
-          {filter}
-        </div>
-      )}
 
       <div className="mx-4 h-px bg-border-default" />
 
@@ -368,19 +359,24 @@ export function UxKanbanClient({ initialResult, members, initialAssignments }: P
                     ? "Nenhuma demanda neste projeto"
                     : "Nenhuma demanda"
                 }
-                filter={
+                headerRight={
                   projectNames.length > 0 ? (
-                    <select
-                      value={projectFilter}
-                      onChange={(e) => setProjectFilter(e.target.value)}
-                      className="w-full rounded-lg border border-border-default bg-surface-input px-2 py-1.5 text-xs text-text-secondary focus:outline-none focus:ring-1 focus:ring-brand-primary"
-                      aria-label="Filtrar por projeto"
-                    >
-                      <option value="">Todos os projetos</option>
-                      {projectNames.map((name) => (
-                        <option key={name} value={name}>{name}</option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={projectFilter}
+                        onChange={(e) => setProjectFilter(e.target.value)}
+                        className="appearance-none rounded-lg border border-border-default bg-surface-card py-1 pl-3 pr-7 text-xs font-medium text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                        aria-label="Filtrar por projeto"
+                      >
+                        <option value="">Projeto</option>
+                        {projectNames.map((name) => (
+                          <option key={name} value={name}>
+                            {name.replace(/^Plataforma Agro - /, "")}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-text-secondary" />
+                    </div>
                   ) : undefined
                 }
               />
