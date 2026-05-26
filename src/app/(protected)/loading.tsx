@@ -1,10 +1,7 @@
+import { SectionSpinner } from "@/components/shared/SectionSpinner"
+
+// Suspense fallback padrão para todas as rotas da área protegida que não
+// possuem loading.tsx próprio. Renderiza dentro do layout (sidebar visível).
 export default function ProtectedLoading() {
-  return (
-    <div className="flex h-screen items-center justify-center bg-surface-default">
-      <div className="flex flex-col items-center gap-3">
-        <div className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary" />
-        <span className="text-sm text-text-secondary">Carregando…</span>
-      </div>
-    </div>
-  )
+  return <SectionSpinner minHeight="min-h-[400px]" label="Carregando…" />
 }
