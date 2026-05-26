@@ -351,13 +351,13 @@ export function UxKanbanClient({ initialResult, members, initialAssignments }: P
               {/* Pendências — fixed first lane */}
               <Lane
                 droppableId="pending"
-                title="Pendências"
+                title="Demandas"
                 issues={pendingIssues}
                 wide
                 emptyText={
                   projectFilter
-                    ? "Nenhuma pendência neste projeto"
-                    : "Nenhuma pendência"
+                    ? "Nenhuma demanda neste projeto"
+                    : "Nenhuma demanda"
                 }
                 headerRight={
                   projectNames.length > 1 ? (
