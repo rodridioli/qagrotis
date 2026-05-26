@@ -1,32 +1,58 @@
-import { AlertCircle, ExternalLink } from "lucide-react"
+import { AlertCircle, ChevronsRight, MinusCircle } from "lucide-react"
 import { cn } from "@/core/utils"
 import type { KanbanResult } from "@/features/kanban/actions/kanban"
-import { KANBAN_PROJECT_NAMES, type KanbanIssue } from "@/features/kanban/kanban-constants"
+import type { KanbanIssue } from "@/features/kanban/kanban-constants"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function priorityBar(priority: string | null): string {
-  const p = priority?.toLowerCase() ?? ""
-  if (p === "highest") return "bg-red-500"
-  if (p === "high")    return "bg-orange-400"
-  if (p === "medium")  return "bg-amber-400"
-  if (p === "low")     return "bg-blue-400"
-  if (p === "lowest")  return "bg-slate-300"
-  return "bg-border-default"
+const MONTHS_PT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+
+function formatDate(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null
+  const d = new Date(dateStr + "T12:00:00Z")
+  if (isNaN(d.getTime())) return null
+  return `${d.getUTCDate()}/${MONTHS_PT[d.getUTCMonth()]}/${String(d.getUTCFullYear()).slice(2)}`
 }
 
-function statusClasses(colorName: string): string {
-  switch (colorName) {
-    case "green":  return "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:ring-emerald-800"
-    case "yellow": return "bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:ring-amber-800"
-    case "blue":   return "bg-blue-100 text-blue-700 ring-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:ring-blue-800"
-    default:       return "bg-surface-overlay text-text-secondary ring-border-default"
+/**
+ * "A > B > Title" → { prefix: "A > B >", title: "Title" }
+ * "SEM - Painel"  → { prefix: null, title: "SEM - Painel" }
+ */
+function parseSummary(summary: string): { prefix: string | null; title: string } {
+  if (summary.includes(" > ")) {
+    const parts = summary.split(" > ")
+    return {
+      prefix: parts.slice(0, -1).join(" > ") + " >",
+      title: parts[parts.length - 1]!.trim(),
+    }
   }
+  return { prefix: null, title: summary }
 }
 
-function priorityLabel(priority: string | null): string | null {
-  if (!priority) return null
-  return priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase()
+/**
+ * Derives a short project label for display below the title:
+ * - " > " summary: second-to-last path segment (e.g. "PRO" from "OUT > PRO > Title")
+ * - " - " summary: first segment before " - " (e.g. "SEM" from "SEM - Painel")
+ * - fallback: strip "Plataforma Agro - " prefix from projectName
+ */
+function extractProjectLabel(summary: string, projectName: string): string {
+  if (summary.includes(" > ")) {
+    const parts = summary.split(" > ")
+    return parts.length >= 2 ? (parts[parts.length - 2] ?? "").trim() : ""
+  }
+  if (summary.includes(" - ")) {
+    return summary.split(" - ")[0]!.trim()
+  }
+  return projectName.replace(/^Plataforma Agro - /, "")
+}
+
+function priorityDotColor(priority: string | null): string {
+  const p = priority?.toLowerCase() ?? ""
+  if (p === "highest") return "text-rose-500"
+  if (p === "high")    return "text-orange-400"
+  if (p === "medium")  return "text-amber-400"
+  if (p === "low")     return "text-blue-400"
+  return "text-slate-400"
 }
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
@@ -47,14 +73,14 @@ function Avatar({ url, name }: { url: string | null; name: string | null }) {
       <img
         src={url}
         alt={name ?? ""}
-        className="size-10 shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-surface-card"
+        className="size-8 shrink-0 rounded-full object-cover"
       />
     )
   }
   return (
     <span
       className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ring-2 ring-white dark:ring-surface-card",
+        "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white",
         colorClass,
       )}
       aria-label={name ?? ""}
@@ -64,97 +90,106 @@ function Avatar({ url, name }: { url: string | null; name: string | null }) {
   )
 }
 
-// ── Jira Card ─────────────────────────────────────────────────────────────────
+// ── JiraCard ──────────────────────────────────────────────────────────────────
 
 function JiraCard({ issue }: { issue: KanbanIssue }) {
   const jiraUrl = `https://agrosmart.atlassian.net/browse/${issue.key}`
+  const { prefix, title } = parseSummary(issue.summary)
+  const projectLabel = extractProjectLabel(issue.summary, issue.projectName)
+  const dateStr = formatDate(issue.dueDate)
+  const dotColor = priorityDotColor(issue.priority)
+  const isPaused = issue.statusCategoryColor === "yellow"
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-sm transition-all hover:shadow-lg hover:-translate-y-0.5">
-      <div className="flex flex-col gap-3 p-4">
+    <div className="flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-card p-4 shadow-sm transition-shadow hover:shadow-md">
 
-        {/* Row 1 — avatar + key (link) + assignee */}
-        <div className="flex items-center gap-3">
-          <Avatar url={issue.assigneeAvatarUrl} name={issue.assigneeDisplayName} />
-          <div className="min-w-0 flex-1">
-            <a
-              href={jiraUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-bold text-brand-primary hover:underline"
-            >
-              <span className="text-sm">{issue.key}</span>
-              <ExternalLink className="size-3 opacity-60" />
-            </a>
-            {issue.assigneeDisplayName && (
-              <p className="mt-0.5 truncate text-xs text-text-secondary">
-                {issue.assigneeDisplayName}
-              </p>
-            )}
-          </div>
-        </div>
+      {/* Breadcrumb prefix (e.g. "OUT > PRO >") */}
+      {prefix && (
+        <p className="truncate text-[11px] leading-none text-text-disabled">{prefix}</p>
+      )}
 
-        {/* Row 2 — summary */}
-        <p className="text-sm leading-relaxed text-text-primary line-clamp-3">
-          {issue.summary || "—"}
-        </p>
+      {/* Title */}
+      <p className="text-sm font-semibold leading-snug text-text-primary line-clamp-3">
+        {title || "—"}
+      </p>
 
-        {/* Row 3 — parent */}
-        {issue.parentKey && (
-          <p
-            className="truncate text-xs text-text-disabled"
-            title={issue.parentSummary ?? issue.parentKey}
-          >
-            ↳ {issue.parentKey}
-            {issue.parentSummary ? ` — ${issue.parentSummary}` : ""}
-          </p>
+      {/* Project label + optional due date */}
+      <div className="flex flex-col gap-0.5">
+        {projectLabel && (
+          <span className="text-xs text-text-secondary">{projectLabel}</span>
         )}
-
-        {/* Row 4 — status + priority */}
-        <div className="flex items-center justify-between gap-2">
-          <span
-            className={cn(
-              "inline-block rounded-md px-2 py-0.5 text-xs font-semibold ring-1 ring-inset",
-              statusClasses(issue.statusCategoryColor),
-            )}
-          >
-            {issue.status}
-          </span>
-          {issue.priority && (
-            <span className="text-xs text-text-disabled">{priorityLabel(issue.priority)}</span>
-          )}
-        </div>
+        {dateStr && (
+          <span className="text-xs text-text-disabled">{dateStr}</span>
+        )}
       </div>
 
-      {/* Priority accent bar */}
-      <div className={cn("h-1.5 w-full shrink-0", priorityBar(issue.priority))} />
+      {/* Priority dots + status icon (left) · Avatar (right) */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          {issue.priority && (
+            <span className={cn("text-sm leading-none tracking-tighter", dotColor)}>
+              {"●●●●"}
+            </span>
+          )}
+          {isPaused
+            ? <MinusCircle className="size-[18px] shrink-0 text-rose-500" />
+            : <ChevronsRight className="size-[18px] shrink-0 text-rose-500" />
+          }
+        </div>
+        <Avatar url={issue.assigneeAvatarUrl} name={issue.assigneeDisplayName} />
+      </div>
+
+      {/* Issue key link with checkbox icon */}
+      <a
+        href={jiraUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary hover:text-brand-primary"
+      >
+        <svg
+          className="size-3.5 shrink-0 text-brand-primary"
+          viewBox="0 0 16 16"
+          fill="none"
+          aria-hidden="true"
+        >
+          <rect
+            x="1.5" y="1.5" width="13" height="13" rx="2"
+            stroke="currentColor" strokeWidth="1.5"
+            fill="currentColor" fillOpacity="0.12"
+          />
+          <path
+            d="M4.5 8l2.5 2.5 4.5-4.5"
+            stroke="currentColor" strokeWidth="1.5"
+            strokeLinecap="round" strokeLinejoin="round"
+          />
+        </svg>
+        {issue.key}
+      </a>
     </div>
   )
 }
 
-// ── Kanban Column ─────────────────────────────────────────────────────────────
+// ── KanbanColumn ──────────────────────────────────────────────────────────────
 
-function KanbanColumn({ projectName, issues }: { projectName: string; issues: KanbanIssue[] }) {
-  const shortName = projectName.startsWith("Plataforma Agro - ")
-    ? projectName.replace("Plataforma Agro - ", "Agro ")
-    : projectName
-
+function KanbanColumn({ status, issues }: { status: string; issues: KanbanIssue[] }) {
   return (
-    <div className="flex w-80 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
-      <div className="flex items-center gap-2.5 px-4 py-3">
-        <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary" title={projectName}>
-          {shortName}
-        </h2>
-        <span className="shrink-0 rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-xs font-semibold text-text-secondary">
+    <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-4 py-3">
+        <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-text-primary">
+          {status}
+        </span>
+        <span className="shrink-0 rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-xs font-bold tabular-nums text-text-secondary">
           {issues.length}
         </span>
       </div>
 
       <div className="mx-4 h-px bg-border-default" />
 
+      {/* Cards */}
       <div
         className="flex flex-col gap-3 overflow-y-auto p-4 scrollbar-thin"
-        style={{ maxHeight: "calc(100dvh - 220px)" }}
+        style={{ maxHeight: "calc(100dvh - 180px)" }}
       >
         {issues.length === 0 ? (
           <p className="py-10 text-center text-sm italic text-text-disabled">Nenhum item</p>
@@ -166,40 +201,45 @@ function KanbanColumn({ projectName, issues }: { projectName: string; issues: Ka
   )
 }
 
-// ── Root ──────────────────────────────────────────────────────────────────────
+// ── Group issues by status ────────────────────────────────────────────────────
 
-function groupByProject(result: KanbanResult): Record<string, KanbanIssue[]> {
-  if (!result.ok) return {}
-  const map: Record<string, KanbanIssue[]> = {}
-  for (const name of KANBAN_PROJECT_NAMES) map[name] = []
-  for (const issue of result.issues) {
-    if (map[issue.projectName]) {
-      map[issue.projectName]!.push(issue)
-    } else {
-      const found = KANBAN_PROJECT_NAMES.find((n) =>
-        n.toUpperCase().includes(issue.projectKey.toUpperCase()),
-      )
-      const target = found ?? issue.projectName
-      if (!map[target]) map[target] = []
-      map[target]!.push(issue)
-    }
-  }
-  return map
+/** Columns sorted: "blue" (In Progress) → "blue-grey" (To Do/Waiting) → "yellow" (Paused) → rest. */
+const STATUS_SORT: Record<string, number> = {
+  "blue":      0,
+  "blue-grey": 1,
+  "yellow":    2,
+  "green":     3,
 }
 
+type StatusGroup = { status: string; color: string; issues: KanbanIssue[] }
+
+function groupByStatus(result: KanbanResult): StatusGroup[] {
+  if (!result.ok) return []
+  const map = new Map<string, StatusGroup>()
+  for (const issue of result.issues) {
+    if (!map.has(issue.status)) {
+      map.set(issue.status, { status: issue.status, color: issue.statusCategoryColor, issues: [] })
+    }
+    map.get(issue.status)!.issues.push(issue)
+  }
+  return [...map.values()].sort((a, b) => {
+    const oa = STATUS_SORT[a.color] ?? 99
+    const ob = STATUS_SORT[b.color] ?? 99
+    return oa !== ob ? oa - ob : a.status.localeCompare(b.status)
+  })
+}
+
+// ── Root ──────────────────────────────────────────────────────────────────────
+
 export function KanbanClient({ initialResult }: { initialResult: KanbanResult }) {
-  const issuesByProject = groupByProject(initialResult)
+  const groups = groupByStatus(initialResult)
+  const totalCols = Math.max(groups.length, 1)
 
   return (
     <div className="flex flex-col">
-      {/* Header */}
-      <div className="border-b border-border-default px-2 pb-4">
-        <h1 className="text-base font-bold text-text-primary">Kanban UX</h1>
-      </div>
-
-      {/* Error */}
+      {/* Error state */}
       {!initialResult.ok && (
-        <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           <span>{initialResult.error}</span>
         </div>
@@ -209,11 +249,11 @@ export function KanbanClient({ initialResult }: { initialResult: KanbanResult })
       {initialResult.ok && (
         <div className="overflow-x-auto">
           <div
-            className="flex gap-4 pt-4"
-            style={{ minWidth: `${KANBAN_PROJECT_NAMES.length * (320 + 16)}px` }}
+            className="flex gap-4 pt-2"
+            style={{ minWidth: `${totalCols * (288 + 16)}px` }}
           >
-            {KANBAN_PROJECT_NAMES.map((name) => (
-              <KanbanColumn key={name} projectName={name} issues={issuesByProject[name] ?? []} />
+            {groups.map((g) => (
+              <KanbanColumn key={g.status} status={g.status} issues={g.issues} />
             ))}
           </div>
         </div>

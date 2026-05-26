@@ -1420,6 +1420,7 @@ export type KanbanIssue = {
   projectName: string
   parentKey: string | null
   parentSummary: string | null
+  dueDate: string | null  // YYYY-MM-DD or null
 }
 
 const KANBAN_PROJECTS = [
@@ -1439,7 +1440,7 @@ export async function fetchKanbanSubtasks(
   credentials: string,
 ): Promise<KanbanIssue[]> {
   const projectList = KANBAN_PROJECTS.map((p) => `"${p}"`).join(", ")
-  const jql = `status = "UX" AND project in (${projectList}) ORDER BY project ASC, updated DESC`
+  const jql = `project in (${projectList}) AND statusCategory in ("To Do", "In Progress") ORDER BY updated DESC`
 
   const issues: KanbanIssue[] = []
   let nextPageToken: string | null = null
@@ -1451,6 +1452,7 @@ export async function fetchKanbanSubtasks(
       "priority",
       "project",
       "parent",
+      "duedate",
     ])
     if (!page) break
 
@@ -1479,6 +1481,7 @@ export async function fetchKanbanSubtasks(
         projectName: projectObj?.name ?? "",
         parentKey: parentObj?.key ?? null,
         parentSummary: parentObj?.fields?.summary ?? null,
+        dueDate: typeof f?.duedate === "string" ? f.duedate : null,
       })
     }
 
