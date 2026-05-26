@@ -370,6 +370,7 @@ function MetricCard({
   sparkData,
   sparkFormatter,
   labelColor,
+  labelClassName,
 }: {
   label: string
   value: string
@@ -381,6 +382,7 @@ function MetricCard({
   sparkData?: number[]
   sparkFormatter?: (v: number) => string
   labelColor?: string
+  labelClassName?: string
 }) {
   const iconColor = VARIANT_COLOR[iconVariant]
   const iconStyle: React.CSSProperties = {
@@ -392,7 +394,7 @@ function MetricCard({
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm text-text-secondary" style={labelColor ? { color: labelColor } : undefined}>{label}</p>
+          <p className={cn("text-sm text-text-secondary", labelClassName)} style={labelColor ? { color: labelColor } : undefined}>{label}</p>
           <p className="mt-1 select-none text-2xl font-bold text-text-primary">
             {sensitive && hidden
               ? <span className="tracking-widest text-text-disabled">••••</span>
@@ -1259,6 +1261,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
               icon={Clock}
               iconVariant="brand"
               labelColor="rgb(59, 130, 246)"
+              labelClassName="text-xs font-medium"
             />
             <MetricCard
               label="Custo médio 🠆 Cenário"
@@ -1268,6 +1271,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
               sensitive
               hidden={hideValues}
               labelColor="rgb(59, 130, 246)"
+              labelClassName="text-xs font-medium"
             />
             <TypeCard
               label="Cenários com Erro"
