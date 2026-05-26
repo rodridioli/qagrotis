@@ -368,7 +368,7 @@ export function UxKanbanClient({ initialResult, members, initialAssignments }: P
                         className="appearance-none rounded-lg border border-border-default bg-surface-card py-1 pl-3 pr-7 text-xs font-medium text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
                         aria-label="Filtrar por projeto"
                       >
-                        <option value="">Projeto</option>
+                        <option value="">Todos</option>
                         {projectNames.map((name) => (
                           <option key={name} value={name}>
                             {name.replace(/^Plataforma Agro - /, "")}
