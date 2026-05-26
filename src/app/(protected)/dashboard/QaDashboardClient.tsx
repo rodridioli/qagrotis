@@ -537,7 +537,7 @@ function TagLineChart({
                             type="button"
                             onClick={() => setActiveKey((prev) => prev === entry.dataKey ? null : entry.dataKey)}
                             className="flex cursor-pointer items-center gap-1.5 transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary"
-                            style={{ opacity: isActive ? 1 : 0.35, fontSize: 13, color: "#475569" }}
+                            style={{ opacity: isActive ? 1 : 0.35, fontSize: 14, color: "#475569" }}
                           >
                             <span
                               className="inline-block h-2 w-2 shrink-0 rounded-full"
@@ -637,7 +637,7 @@ function TypeCard({
               </span>
             )}
           </div>
-          <p className="mt-1 text-2xl font-bold text-text-primary tabular-nums">{count}</p>
+          <p className="mt-1 text-3xl font-bold text-text-primary tabular-nums">{count}</p>
           {!hideCostTime && (
             <div className="mt-1.5 flex items-center justify-between text-xs text-text-secondary">
               <span className="tabular-nums">
