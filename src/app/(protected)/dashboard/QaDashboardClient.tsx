@@ -369,6 +369,8 @@ function MetricCard({
   hidden,
   sparkData,
   sparkFormatter,
+  smallValue,
+  labelColor,
 }: {
   label: string
   value: string
@@ -379,6 +381,8 @@ function MetricCard({
   hidden?: boolean
   sparkData?: number[]
   sparkFormatter?: (v: number) => string
+  smallValue?: boolean
+  labelColor?: string
 }) {
   const iconColor = VARIANT_COLOR[iconVariant]
   const iconStyle: React.CSSProperties = {
@@ -390,8 +394,8 @@ function MetricCard({
     <div className="rounded-xl bg-surface-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-text-secondary">{label}</p>
-          <p className="mt-1 select-none text-2xl font-bold text-text-primary">
+          <p className="text-xs font-medium text-text-secondary" style={labelColor ? { color: labelColor } : undefined}>{label}</p>
+          <p className={cn("mt-1 select-none font-bold text-text-primary", smallValue ? "text-sm" : "text-2xl")}>
             {sensitive && hidden
               ? <span className="tracking-widest text-text-disabled">••••</span>
               : value}
@@ -528,7 +532,7 @@ function TagLineChart({
                   const payload = props.payload as Array<{ value: string; color: string; dataKey: string }> | undefined
                   if (!payload?.length) return null
                   return (
-                    <div className="flex flex-wrap gap-x-2 gap-y-1 pb-4">
+                    <div className="flex flex-wrap gap-x-2 gap-y-1 pb-6">
                       {payload.map((entry) => {
                         const isActive = activeKey === null || activeKey === entry.dataKey
                         return (
@@ -536,7 +540,7 @@ function TagLineChart({
                             key={entry.dataKey}
                             type="button"
                             onClick={() => setActiveKey((prev) => prev === entry.dataKey ? null : entry.dataKey)}
-                            className="flex cursor-pointer items-center gap-1.5 rounded px-2 py-1 transition-all hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary"
+                            className="flex cursor-pointer items-center gap-1.5 rounded border border-border-default px-2 py-1 transition-all hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary"
                             style={{ opacity: isActive ? 1 : 0.4, fontSize: 14, color: "#475569" }}
                           >
                             <span
@@ -624,7 +628,7 @@ function TypeCard({
   return (
     <div className="rounded-xl bg-surface-card p-4 shadow-card">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-1">
             <p className="truncate text-xs font-medium text-text-secondary" style={tintStyle}>{label}</p>
             {!hideBadge && (
@@ -1137,171 +1141,179 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-w-0 space-y-6">
-      {/* Avatar strip + year selector */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {visibleMembros.length > 0 && (
-            <AvatarStrip
-              membros={visibleMembros}
-              selectedUserIds={selectedUserIds}
-              onToggle={toggleUser}
-            />
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Select
-            value={periodValue}
-            onValueChange={(v) => { if (v) setPeriodValue(v) }}
-          >
-            <SelectTrigger
-              className="w-52"
-              aria-label="Selecionar período"
-            >
-              <SelectValue>
-                {periodOptions.find(o => o.value === periodValue)?.label ?? periodValue}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectPopup>
-              {periodOptions.map((opt, idx) => {
-                const prevOpt = periodOptions[idx - 1]
-                const showSep = idx > 0 && prevOpt && prevOpt.group !== opt.group
-                return (
-                  <React.Fragment key={opt.value}>
-                    {showSep && <hr className="my-1 border-border-default/40" />}
-                    <SelectItem value={opt.value}>{opt.label}</SelectItem>
-                  </React.Fragment>
-                )
-              })}
-            </SelectPopup>
-          </Select>
-          <button
-            type="button"
-            aria-label="Sincronizar dados"
-            disabled={loading}
-            onClick={() => void fetchAll(ano, true)}
-            className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <RefreshCw className={cn("size-4", loading && "animate-spin")} aria-hidden />
-          </button>
-          <button
-            type="button"
-            aria-label={hideValues ? "Exibir valores monetários" : "Ocultar valores monetários"}
-            onClick={() => setHideValues((v) => !v)}
-            className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
-          >
-            {hideValues ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Metric cards — linha 1 (4 cards com sparkline) */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricCard
-          label="Tempo médio 🠆 Jira"
-          value={loading ? "—" : formatDurationAvg(avgSecondsPerIssue)}
-          icon={Clock}
-          iconVariant="brand"
-          sparkData={loading ? undefined : sparkTempo}
-          sparkFormatter={formatDurationAvg}
-        />
-        <MetricCard
-          label="Custo médio 🠆 Jira"
-          value={loading ? "—" : formatBRL(avgInvestimentoCentavos)}
-          icon={DollarSign}
-          iconVariant="success"
-          sensitive
-          hidden={hideValues}
-          sparkData={loading ? undefined : sparkValor}
-          sparkFormatter={formatBRL}
-        />
-        <MetricCard
-          label="Total de Jiras"
-          value={loading ? "—" : String(totalUniqueIssues)}
-          icon={BarChart2}
-          iconVariant="info"
-          sparkData={loading ? undefined : sparkJiras}
-          sparkFormatter={(v) => `${v} jira${v !== 1 ? "s" : ""}`}
-        />
-        <MetricCard
-          label="Jiras Críticos"
-          value={loading ? "—" : String(yearTotals.criticos)}
-          icon={Flame}
-          iconVariant="warning"
-          sparkData={loading ? undefined : sparkCriticos}
-          sparkFormatter={(v) => `${v} crítico${v !== 1 ? "s" : ""}`}
-        />
-      </div>
-
-      {/* Type cards — Cenários Testados | Tempo médio → Cenário | Custo médio → Cenário | Cenários com Erro | Jiras de Retorno (Broken) */}
-      {!loading && (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-          <TypeCard
-            label="Cenários Testados"
-            count={yearTotals.cenariosTestados}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            timeSpentSeconds={0}
-            hideValues={hideValues}
-            hideBadge
-            hideCostTime
-            tint="blue"
-            icon={CheckSquare2}
-            iconVariant="brand"
-          />
-          <MetricCard
-            label="Tempo médio 🠆 Cenário"
-            value={formatDurationAvg(avgSecondsPerCenario)}
-            icon={Clock}
-            iconVariant="brand"
-          />
-          <MetricCard
-            label="Custo médio 🠆 Cenário"
-            value={formatBRL(avgCentavosPerCenario)}
-            icon={DollarSign}
-            iconVariant="success"
-            sensitive
-            hidden={hideValues}
-          />
-          <TypeCard
-            label="Cenários com Erro"
-            count={yearTotals.cenariosErro}
-            totalIssues={totalUniqueIssues}
-            pctDenominator={yearTotals.cenariosTestados}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            timeSpentSeconds={0}
-            hideValues={hideValues}
-            hideCostTime
-            tint="warning"
-          />
-          <TypeCard
-            label="Jiras de Retorno (Broken)"
-            count={yearTotals.jirasBroken}
-            totalIssues={totalUniqueIssues}
-            totalInvestimentoCentavos={totalAnual.investimentoCentavos}
-            timeSpentSeconds={0}
-            hideValues={hideValues}
-            hideCostTime
-            tint="warning"
-          />
-        </div>
-      )}
-
-      {/* Jiras por Projeto */}
-      {!loading && (
-        <TagLineChart
-          title="Testes por Projeto"
-          items={distribByProject}
-          activeMonths={activeMonths}
-          totalCount={distribByProject.reduce((s, i) => s + i.count, 0)}
-          ariaLabel="Distribuição de testes por projeto"
-        />
-      )}
-
-      {/* Yearly table */}
-      {loading || monthStats === null ? (
-        <SectionSpinner minHeight="min-h-[300px]" />
+      {loading ? (
+        <SectionSpinner minHeight="min-h-[400px]" label="Carregando dados..." />
       ) : (
-        <QaYearTable monthStats={monthStats} hideValues={hideValues} ano={ano} activeMonths={activeMonths} quarterDedupeStats={quarterDedupeStats} periodTotalRow={periodTotalRow} />
+        <>
+          {/* Avatar strip + year selector */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              {visibleMembros.length > 0 && (
+                <AvatarStrip
+                  membros={visibleMembros}
+                  selectedUserIds={selectedUserIds}
+                  onToggle={toggleUser}
+                />
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Select
+                value={periodValue}
+                onValueChange={(v) => { if (v) setPeriodValue(v) }}
+              >
+                <SelectTrigger
+                  className="w-52"
+                  aria-label="Selecionar período"
+                >
+                  <SelectValue>
+                    {periodOptions.find(o => o.value === periodValue)?.label ?? periodValue}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectPopup>
+                  {periodOptions.map((opt, idx) => {
+                    const prevOpt = periodOptions[idx - 1]
+                    const showSep = idx > 0 && prevOpt && prevOpt.group !== opt.group
+                    return (
+                      <React.Fragment key={opt.value}>
+                        {showSep && <hr className="my-1 border-border-default/40" />}
+                        <SelectItem value={opt.value}>{opt.label}</SelectItem>
+                      </React.Fragment>
+                    )
+                  })}
+                </SelectPopup>
+              </Select>
+              <button
+                type="button"
+                aria-label="Sincronizar dados"
+                disabled={loading}
+                onClick={() => void fetchAll(ano, true)}
+                className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw className={cn("size-4", loading && "animate-spin")} aria-hidden />
+              </button>
+              <button
+                type="button"
+                aria-label={hideValues ? "Exibir valores monetários" : "Ocultar valores monetários"}
+                onClick={() => setHideValues((v) => !v)}
+                className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-input text-text-secondary transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              >
+                {hideValues ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Metric cards — linha 1 (4 cards com sparkline) */}
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <MetricCard
+              label="Tempo médio 🠆 Jira"
+              value={formatDurationAvg(avgSecondsPerIssue)}
+              icon={Clock}
+              iconVariant="brand"
+              sparkData={sparkTempo}
+              sparkFormatter={formatDurationAvg}
+              smallValue
+            />
+            <MetricCard
+              label="Custo médio 🠆 Jira"
+              value={formatBRL(avgInvestimentoCentavos)}
+              icon={DollarSign}
+              iconVariant="success"
+              sensitive
+              hidden={hideValues}
+              sparkData={sparkValor}
+              sparkFormatter={formatBRL}
+              smallValue
+            />
+            <MetricCard
+              label="Total de Jiras"
+              value={String(totalUniqueIssues)}
+              icon={BarChart2}
+              iconVariant="info"
+              sparkData={sparkJiras}
+              sparkFormatter={(v) => `${v} jira${v !== 1 ? "s" : ""}`}
+              smallValue
+            />
+            <MetricCard
+              label="Jiras Críticos"
+              value={String(yearTotals.criticos)}
+              icon={Flame}
+              iconVariant="warning"
+              sparkData={sparkCriticos}
+              sparkFormatter={(v) => `${v} crítico${v !== 1 ? "s" : ""}`}
+              smallValue
+            />
+          </div>
+
+          {/* Type cards — Cenários Testados | Tempo médio → Cenário | Custo médio → Cenário | Cenários com Erro | Jiras de Retorno (Broken) */}
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+            <TypeCard
+              label="Cenários Testados"
+              count={yearTotals.cenariosTestados}
+              totalIssues={totalUniqueIssues}
+              totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+              timeSpentSeconds={0}
+              hideValues={hideValues}
+              hideBadge
+              hideCostTime
+              tint="blue"
+              icon={CheckSquare2}
+              iconVariant="brand"
+            />
+            <MetricCard
+              label="Tempo médio 🠆 Cenário"
+              value={formatDurationAvg(avgSecondsPerCenario)}
+              icon={Clock}
+              iconVariant="brand"
+              labelColor="rgb(59, 130, 246)"
+            />
+            <MetricCard
+              label="Custo médio 🠆 Cenário"
+              value={formatBRL(avgCentavosPerCenario)}
+              icon={DollarSign}
+              iconVariant="success"
+              sensitive
+              hidden={hideValues}
+              labelColor="rgb(59, 130, 246)"
+            />
+            <TypeCard
+              label="Cenários com Erro"
+              count={yearTotals.cenariosErro}
+              totalIssues={totalUniqueIssues}
+              pctDenominator={yearTotals.cenariosTestados}
+              totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+              timeSpentSeconds={0}
+              hideValues={hideValues}
+              hideCostTime
+              tint="warning"
+            />
+            <TypeCard
+              label="Jiras de Retorno (Broken)"
+              count={yearTotals.jirasBroken}
+              totalIssues={totalUniqueIssues}
+              totalInvestimentoCentavos={totalAnual.investimentoCentavos}
+              timeSpentSeconds={0}
+              hideValues={hideValues}
+              hideCostTime
+              tint="warning"
+            />
+          </div>
+
+          {/* Testes por Projeto */}
+          <TagLineChart
+            title="Testes por Projeto"
+            items={distribByProject}
+            activeMonths={activeMonths}
+            totalCount={distribByProject.reduce((s, i) => s + i.count, 0)}
+            ariaLabel="Distribuição de testes por projeto"
+          />
+
+          {/* Yearly table */}
+          {monthStats === null ? (
+            <SectionSpinner minHeight="min-h-[300px]" />
+          ) : (
+            <QaYearTable monthStats={monthStats} hideValues={hideValues} ano={ano} activeMonths={activeMonths} quarterDedupeStats={quarterDedupeStats} periodTotalRow={periodTotalRow} />
+          )}
+        </>
       )}
     </div>
   )
