@@ -351,7 +351,7 @@ export default function UsuarioFormTabs({
         </div>
 
         {/* Tab content */}
-        <div>
+        <fieldset disabled={readOnly} className="block border-0 p-0 m-0 min-w-0">
           {activeTab === "cadastro" && (
             <div className="p-5">
             <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
@@ -688,7 +688,7 @@ export default function UsuarioFormTabs({
             </div>
             </div>
           )}
-        </div>
+        </fieldset>
       </div>
     </div>
   )
