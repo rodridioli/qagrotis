@@ -527,6 +527,44 @@
 }
 
 @layer utilities {
+  /* ── Scrollbar discreta — adapta automaticamente ao dark mode via tokens ── */
+
+  /* Oculta scrollbar mantendo scroll funcional (tabs horizontais, etc.) */
+  .no-scrollbar {
+    scrollbar-width: none;           /* Firefox */
+    -ms-overflow-style: none;        /* IE 11 */
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;                   /* WebKit */
+  }
+
+  /* Scrollbar fina e discreta, usando tokens semânticos do sistema */
+  .scrollbar-thin {
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-default) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--border-default);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: var(--neutral-grey-400);
+    background-clip: content-box;
+  }
+  .scrollbar-thin::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
   /* ── Tabelas: Padronização de Altura e Hover ── */
   
   /* Altura padrão da linha ~56px para acomodar botões size-8 e badges com respiro */
