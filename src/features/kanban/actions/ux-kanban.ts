@@ -70,7 +70,7 @@ const UX_TAREFA_STATUS_TO_COLUMN: Record<string, UserKanbanColumn> = {
   "cancelado":     "canceled",
 }
 
-export function jiraStatusToColumn(status: string): UserKanbanColumn {
+function jiraStatusToColumn(status: string): UserKanbanColumn {
   return UX_TAREFA_STATUS_TO_COLUMN[status.toLowerCase()] ?? "backlog"
 }
 
