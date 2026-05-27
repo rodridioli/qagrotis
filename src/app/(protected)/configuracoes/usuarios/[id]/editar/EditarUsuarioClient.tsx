@@ -12,9 +12,10 @@ interface Props {
   isAdmin: boolean
   canEditSensitive: boolean
   manageableProfiles: AccessProfile[]
+  readOnly?: boolean
 }
 
-export default function EditarUsuarioClient({ id, initialProfile, manageableProfiles }: Props) {
+export default function EditarUsuarioClient({ id, initialProfile, manageableProfiles, readOnly }: Props) {
   const { data: session } = useSession()
 
   return (
@@ -23,6 +24,7 @@ export default function EditarUsuarioClient({ id, initialProfile, manageableProf
       userId={id}
       initialData={initialProfile}
       manageableProfiles={manageableProfiles}
+      readOnly={readOnly}
       sessionUser={
         session?.user?.id
           ? {

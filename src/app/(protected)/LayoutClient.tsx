@@ -75,7 +75,6 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
   "Administrador:MGR": [
     { capability: "menu.painel" },
     { capability: "menu.gestao" },
-    { capability: "equipe.performance", label: "Indicadores" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
@@ -88,7 +87,6 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
     { capability: "menu.configuracoes" },
   ],
   "Padrão:TW": [
-    { capability: "menu.painel" },
     { capability: "individual.lancamentos" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
@@ -114,7 +112,6 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
     { capability: "menu.configuracoes" },
   ],
   "Administrador:UX": [
-    { capability: "menu.painel" },
     { capability: "menu.kanban" },
     { capability: "equipe.lancamentos", label: "Lançamentos" },
     { capability: "menu.equipe" },
@@ -122,7 +119,7 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
     { capability: "menu.configuracoes" },
   ],
   "Administrador:TW": [
-    { capability: "menu.painel" },
+    { capability: "equipe.lancamentos", label: "Lançamentos" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
@@ -335,7 +332,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                     <EquipeSidebarNavGroup
                       collapsed={collapsed}
                       onNavigate={onNavigate}
-                      canAccessLancamentos={role === "Administrador:MGR" || role === "Administrador:UX" ? false : canAccessEquipeLancamentos}
+                      canAccessLancamentos={role === "Administrador:MGR" || role === "Administrador:UX" || role === "Administrador:TW" ? false : canAccessEquipeLancamentos}
                       canAccessPerformance={role === "Administrador:MGR" ? false : canAccessEquipePerformance}
                     />
                   </Suspense>
@@ -930,7 +927,7 @@ export default function LayoutClient({
           </Suspense>
           <main className="relative flex-1 overflow-auto bg-surface-default p-4 lg:p-6">
             {isPending && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-default/80">
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-default">
                 <SectionSpinner label="Carregando…" minHeight="min-h-0" />
               </div>
             )}

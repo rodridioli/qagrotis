@@ -56,6 +56,8 @@ interface UsuarioFormTabsProps {
   initialData?: QaUserProfile
   manageableProfiles?: AccessProfile[]
   sessionUser?: { id: string; type: string; accessProfile?: string }
+  /** Quando true, todos os campos ficam desabilitados e o botão Salvar é ocultado. */
+  readOnly?: boolean
 }
 
 export default function UsuarioFormTabs({
@@ -64,6 +66,7 @@ export default function UsuarioFormTabs({
   initialData,
   manageableProfiles = ACCESS_PROFILES,
   sessionUser,
+  readOnly = false,
 }: UsuarioFormTabsProps) {
   const router = useRouter()
   const { update: updateSession } = useSession()
@@ -127,9 +130,10 @@ export default function UsuarioFormTabs({
     (initialData?.certifications as CertificationEntry[] | undefined) ?? [],
   )
 
-  const canSeeRestricted = mode === "create"
-    ? sessionUser?.accessProfile === "MGR"
-    : (sessionUser?.id === userId || (sessionUser?.type === "Administrador" && sessionUser?.accessProfile === "MGR"))
+  const canSeeRestricted = readOnly
+    || (mode === "create"
+      ? sessionUser?.accessProfile === "MGR"
+      : (sessionUser?.id === userId || (sessionUser?.type === "Administrador" && sessionUser?.accessProfile === "MGR")))
 
   const TABS = [
     { id: "cadastro" as const, label: "Cadastro", icon: UserIcon, disabled: false },
@@ -309,10 +313,16 @@ export default function UsuarioFormTabs({
             { label: mode === "create" ? "Novo Usuário" : (initialData?.name ?? "Editar") },
           ]}
         />
-        <Button onClick={handleSave} disabled={isPending} className="ml-auto">
-          <Check className="size-4" />
-          {isPending ? "Salvando…" : "Salvar"}
-        </Button>
+        {readOnly ? (
+          <span className="ml-auto rounded-full border border-border-default bg-surface-card px-3 py-1 text-xs font-medium text-text-secondary">
+            Visualização
+          </span>
+        ) : (
+          <Button onClick={handleSave} disabled={isPending} className="ml-auto">
+            <Check className="size-4" />
+            {isPending ? "Salvando…" : "Salvar"}
+          </Button>
+        )}
       </div>
 
       {/* Tab container */}
