@@ -223,40 +223,37 @@ export async function getUserKanbanData(userId: string): Promise<UserKanbanData>
   if (!creds) return { ok: false, error: "Credenciais Jira não configuradas." }
   const { base, credentials } = creds
 
-  // Fetch assignments for this user
+  // Step 1: assignments must resolve first — tarefaKeys/demandaKeys derive from it
   const assignments = await db.kanbanAssignment.findMany({ where: { userId } })
   const tarefaKeys = assignments.filter((a) => a.cardType === "ux_tarefa").map((a) => a.issueKey)
   const demandaKeys = assignments.filter((a) => a.cardType === "demanda").map((a) => a.issueKey)
 
-  // Fetch column states for Demandas
-  const columnStates = await db.kanbanUserCardState.findMany({ where: { userId } })
+  // Step 2: remaining DB queries are independent — run in parallel
+  const [columnStates, jiraCache, profile] = await Promise.all([
+    db.kanbanUserCardState.findMany({ where: { userId } }),
+    db.jiraAccountIdCache.findUnique({ where: { userId } }).catch(() => null),
+    db.userProfile.findUnique({ where: { userId }, select: { name: true } }).catch(() => null),
+  ])
   const columnMap = Object.fromEntries(columnStates.map((s) => [s.issueKey, s.column as UserKanbanColumn]))
-
-  // Fetch member Jira accountId
-  const jiraCache = await db.jiraAccountIdCache.findUnique({ where: { userId } }).catch(() => null)
   const jiraAccountId = jiraCache?.accountId ?? null
 
-  // Fetch member name from DB
-  const profile = await db.userProfile.findUnique({
-    where: { userId },
-    select: { name: true },
-  }).catch(() => null)
-  const createdUser = !profile ? await db.createdUser.findUnique({
-    where: { id: userId },
-    select: { name: true },
-  }).catch(() => null) : null
+  // Step 3: createdUser only needed when profile is absent (sequential by design)
+  const createdUser = !profile
+    ? await db.createdUser.findUnique({ where: { id: userId }, select: { name: true } }).catch(() => null)
+    : null
   const memberName = profile?.name ?? createdUser?.name ?? userId
 
-  // Check and send In Approval reminders before returning data
-  await _checkAndSendApprovalReminders(base, credentials, userId)
+  // Fire-and-forget: approval reminders don't affect returned data — no blocking await
+  void _checkAndSendApprovalReminders(base, credentials, userId)
 
-  // Fetch UX Tarefas by Jira assignee
-  const tarefasFromJira: UxTarefa[] = jiraAccountId
-    ? await fetchUxTarefasForUser(base, credentials, jiraAccountId).catch(() => [])
-    : []
-
-  // Also fetch any tarefaKeys that might not be in Jira result (edge cases)
-  const tarefaDetailsMap = await fetchIssueDetailsByKeys(base, credentials, tarefaKeys).catch(() => new Map<string, KanbanIssueDetail>())
+  // Step 4: all three Jira fetches are independent — run in parallel
+  const [tarefasFromJira, tarefaDetailsMap, demandaDetailsMap] = await Promise.all([
+    jiraAccountId
+      ? fetchUxTarefasForUser(base, credentials, jiraAccountId).catch(() => [] as UxTarefa[])
+      : Promise.resolve([] as UxTarefa[]),
+    fetchIssueDetailsByKeys(base, credentials, tarefaKeys).catch(() => new Map<string, KanbanIssueDetail>()),
+    fetchIssueDetailsByKeys(base, credentials, demandaKeys).catch(() => new Map<string, KanbanIssueDetail>()),
+  ])
 
   // Build UxTarefa cards: use Jira assignee fetch as primary, fall back to key-based fetch
   const tarefaCards: UserKanbanCard[] = []
@@ -305,9 +302,6 @@ export async function getUserKanbanData(userId: string): Promise<UserKanbanData>
       column: jiraStatusToColumn(detail.jiraStatus),
     })
   }
-
-  // Fetch Demanda details by key
-  const demandaDetailsMap = await fetchIssueDetailsByKeys(base, credentials, demandaKeys).catch(() => new Map<string, KanbanIssueDetail>())
 
   const demandaCards: UserKanbanCard[] = demandaKeys.flatMap((key) => {
     const detail = demandaDetailsMap.get(key.toUpperCase())

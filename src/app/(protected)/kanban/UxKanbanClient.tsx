@@ -413,9 +413,10 @@ function MemberLane({
           onClick={onOpenUserKanban}
           title={`Abrir kanban de ${member.name}`}
           aria-label={`Abrir kanban de ${member.name}`}
-          className="ml-auto flex size-6 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+          className="ml-auto flex cursor-pointer items-center gap-1 rounded-full bg-brand-primary px-2.5 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
         >
-          <ArrowRight className="size-3.5" />
+          Ver
+          <ArrowRight className="size-3" />
         </button>
       </div>
 
