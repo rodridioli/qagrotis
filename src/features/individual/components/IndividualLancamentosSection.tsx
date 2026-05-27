@@ -15,12 +15,12 @@ import {
   LayoutDashboard,
   Layers,
   LoaderCircle,
-  PlugZap,
   Search,
   Users,
 } from "lucide-react"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { JiraNotConfiguredCard } from "@/components/shared/JiraNotConfiguredCard"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { TableToolbar } from "@/components/shared/TableToolbar"
 import { JiraPriorityBadge } from "@/components/shared/StatusBadge"
@@ -554,23 +554,7 @@ export function IndividualLancamentosSection({
       )}
 
       {jiraConfigured === false ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-border-default bg-surface-card py-16 text-center shadow-card">
-          <span className="flex size-14 items-center justify-center rounded-full bg-badge-warning/10">
-            <PlugZap className="size-7 text-badge-warning-text" aria-hidden />
-          </span>
-          <div className="max-w-sm">
-            <p className="text-base font-semibold text-text-primary">Integração com Jira não configurada</p>
-            <p className="mt-1 text-sm text-text-secondary">
-              Configure sua conta Jira para visualizar os lançamentos e estatísticas de trabalho.
-            </p>
-          </div>
-          <a
-            href="/configuracoes"
-            className="inline-flex items-center gap-2 rounded-custom border border-border-default bg-surface-input px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
-          >
-            Ir para Configurações
-          </a>
-        </div>
+        <JiraNotConfiguredCard />
       ) : isLoading ? (
         <SectionSpinner />
       ) : error ? (

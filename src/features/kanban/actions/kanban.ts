@@ -6,13 +6,15 @@ import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credent
 import { fetchKanbanSubtasks, fetchUxTarefas } from "@/features/qa/lib/jira-worklogs-fetch"
 import type { KanbanIssue, UxTarefa } from "@/features/qa/lib/jira-worklogs-fetch"
 
+export type JiraErrorReason = "jira_not_configured" | "access_denied" | "fetch_error"
+
 export type KanbanResult =
   | { ok: true; issues: KanbanIssue[] }
-  | { ok: false; error: string }
+  | { ok: false; error: string; reason: JiraErrorReason }
 
 export type UxTarefasResult =
   | { ok: true; tarefas: UxTarefa[] }
-  | { ok: false; error: string }
+  | { ok: false; error: string; reason: JiraErrorReason }
 
 async function resolveCredentials(userId: string) {
   const resolved = await resolveJiraCredentialsForRequest(userId).catch(() => null)
@@ -27,19 +29,19 @@ export async function getKanbanSubtasks(): Promise<KanbanResult> {
   const role = buildRole(session.user.type, session.user.accessProfile)
 
   if (!can(role, "menu.kanban")) {
-    return { ok: false, error: "Acesso negado." }
+    return { ok: false, error: "Acesso negado.", reason: "access_denied" }
   }
 
   const creds = await resolveCredentials(session.user.id)
   if (!creds) {
-    return { ok: false, error: "Credenciais Jira não configuradas. Acesse Configurações → Jira." }
+    return { ok: false, error: "Credenciais Jira não configuradas.", reason: "jira_not_configured" }
   }
 
   try {
     const issues = await fetchKanbanSubtasks(creds.base, creds.credentials)
     return { ok: true, issues }
   } catch {
-    return { ok: false, error: "Erro ao buscar dados do Jira. Tente novamente." }
+    return { ok: false, error: "Erro ao buscar dados do Jira. Tente novamente.", reason: "fetch_error" }
   }
 }
 
@@ -48,18 +50,18 @@ export async function getUxTarefas(): Promise<UxTarefasResult> {
   const role = buildRole(session.user.type, session.user.accessProfile)
 
   if (!can(role, "menu.kanban")) {
-    return { ok: false, error: "Acesso negado." }
+    return { ok: false, error: "Acesso negado.", reason: "access_denied" }
   }
 
   const creds = await resolveCredentials(session.user.id)
   if (!creds) {
-    return { ok: false, error: "Credenciais Jira não configuradas. Acesse Configurações → Jira." }
+    return { ok: false, error: "Credenciais Jira não configuradas.", reason: "jira_not_configured" }
   }
 
   try {
     const tarefas = await fetchUxTarefas(creds.base, creds.credentials)
     return { ok: true, tarefas }
   } catch {
-    return { ok: false, error: "Erro ao buscar tarefas UX do Jira." }
+    return { ok: false, error: "Erro ao buscar tarefas UX do Jira.", reason: "fetch_error" }
   }
 }

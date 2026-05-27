@@ -8,6 +8,7 @@ import {
   type DropResult,
 } from "@hello-pangea/dnd"
 import { AlertCircle, ChevronDown, User } from "lucide-react"
+import { JiraNotConfiguredCard } from "@/components/shared/JiraNotConfiguredCard"
 import { cn } from "@/core/utils"
 import type { KanbanResult, UxTarefasResult } from "@/features/kanban/actions/kanban"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
@@ -561,10 +562,14 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
     <div className="flex flex-col">
       {/* Errors */}
       {!initialResult.ok && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          <span>{initialResult.error}</span>
-        </div>
+        initialResult.reason === "jira_not_configured" ? (
+          <JiraNotConfiguredCard />
+        ) : (
+          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            <span>{initialResult.error}</span>
+          </div>
+        )
       )}
 
       {/* Board */}
