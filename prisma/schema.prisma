@@ -671,13 +671,38 @@ model JiraAccountIdCache {
 }
 
 /// Atribuição de issue do kanban UX a um membro do sistema.
-/// Controle interno — não altera nenhum dado no Jira.
+/// cardType distingue Demandas (status "UX" vindo de projetos externos) de
+/// UX Tarefas (projeto UX, vinhas da coluna "Tarefas").
 model KanbanAssignment {
   issueKey   String   @id
   userId     String
+  cardType   String   @default("demanda") // "demanda" | "ux_tarefa"
   assignedAt DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@index([userId])
   @@map("kanban_assignments")
+}
+
+/// Estado local da coluna no kanban individual por membro.
+/// Usado APENAS para Demandas — UX Tarefas derivam a coluna do status Jira.
+model KanbanUserCardState {
+  issueKey  String   @id
+  userId    String
+  column    String   // "backlog"|"in_progress"|"paused"|"waiting"|"in_approval"|"done"|"canceled"
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("kanban_user_card_states")
+}
+
+/// Rastreia cards em "In Approval" para comentários automáticos no Jira a cada 24 h.
+model KanbanInApprovalTracker {
+  issueKey      String    @id
+  userId        String
+  cardType      String    // "demanda" | "ux_tarefa"
+  enteredAt     DateTime  @default(now())
+  lastCommentAt DateTime?
+
+  @@map("kanban_in_approval_trackers")
 }

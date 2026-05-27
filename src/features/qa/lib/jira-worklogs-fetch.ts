@@ -1595,7 +1595,9 @@ export type UxTarefa = {
   tag: string | null
 }
 
-const UX_TAREFAS_STATUSES = ["Open", "Backlog", "Priority"]
+// "Pending UX" is included so assigned tarefas are still returned when page re-loads.
+// The client filters them into the correct column (Tarefas vs member) based on DB assignments.
+const UX_TAREFAS_STATUSES = ["Open", "Backlog", "Priority", "Pending UX"]
 const UX_TAREFAS_MAX = 300
 
 export async function fetchUxTarefas(
@@ -1706,4 +1708,226 @@ export async function fetchApprovalIssuesByTag(
   }
 
   return issues
+}
+
+// ── Kanban utilities ──────────────────────────────────────────────────────────
+
+/**
+ * Executes a named Jira status transition on an issue.
+ * Matches by exact name first (case-insensitive), then by substring.
+ */
+export async function transitionIssueToStatus(
+  base: string,
+  credentials: string,
+  issueKey: string,
+  targetStatusName: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const transRes = await jiraJson<{ transitions: { id: string; name: string }[] }>(
+    `${base}/rest/api/3/issue/${encodeURIComponent(issueKey)}/transitions`,
+    credentials,
+  )
+  if (!transRes.ok || !transRes.data?.transitions) {
+    return { ok: false, error: "Erro ao buscar transições do Jira." }
+  }
+
+  const lower = targetStatusName.trim().toLowerCase()
+  const transitions = transRes.data.transitions
+  const exactMatch = transitions.find((t) => t.name.trim().toLowerCase() === lower)
+  const fuzzyMatch = transitions.find((t) => t.name.trim().toLowerCase().includes(lower))
+  const transition = exactMatch ?? fuzzyMatch
+
+  if (!transition) {
+    return { ok: false, error: `Transição '${targetStatusName}' não encontrada no workflow.` }
+  }
+
+  const res = await jiraJson(
+    `${base}/rest/api/3/issue/${encodeURIComponent(issueKey)}/transitions`,
+    credentials,
+    { method: "POST", body: JSON.stringify({ transition: { id: transition.id } }) },
+  )
+  if (!res.ok) return { ok: false, error: "Erro ao executar transição no Jira." }
+  return { ok: true }
+}
+
+/** Posts an ADF comment to a Jira issue. */
+export async function postJiraComment(
+  base: string,
+  credentials: string,
+  issueKey: string,
+  body: object,
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await jiraJson(
+    `${base}/rest/api/3/issue/${encodeURIComponent(issueKey)}/comment`,
+    credentials,
+    { method: "POST", body: JSON.stringify({ body }) },
+  )
+  if (!res.ok) return { ok: false, error: "Erro ao postar comentário no Jira." }
+  return { ok: true }
+}
+
+/** Builds an ADF paragraph with an optional @mention followed by text. */
+export function buildAdfComment(
+  text: string,
+  mention?: { accountId: string; displayName: string },
+): object {
+  const content: object[] = []
+  if (mention) {
+    content.push({
+      type: "mention",
+      attrs: { id: mention.accountId, text: `@${mention.displayName}`, accessLevel: "APPLICATION" },
+    })
+    content.push({ type: "text", text: " " })
+  }
+  content.push({ type: "text", text })
+  return { version: 1, type: "doc", content: [{ type: "paragraph", content }] }
+}
+
+/** Searches Jira users by display name or email (for @mention autocomplete). */
+export async function searchJiraUsersForMention(
+  base: string,
+  credentials: string,
+  query: string,
+): Promise<{ accountId: string; displayName: string; avatarUrl: string | null }[]> {
+  if (!query.trim()) return []
+  const url = `${base}/rest/api/3/user/search?query=${encodeURIComponent(query.trim())}&maxResults=10`
+  const { ok, data } = await jiraJson<
+    { accountId: string; displayName?: string; avatarUrls?: Record<string, string> }[]
+  >(url, credentials)
+  if (!ok || !Array.isArray(data)) return []
+  return data
+    .filter((u): u is typeof u & { accountId: string } => typeof u.accountId === "string" && u.accountId.length > 0)
+    .map((u) => ({
+      accountId: u.accountId,
+      displayName: u.displayName ?? u.accountId,
+      avatarUrl: u.avatarUrls?.["48x48"] ?? null,
+    }))
+}
+
+/** Fetches full issue details for an array of issue keys. Returns a map: uppercase key → data. */
+export type KanbanIssueDetail = {
+  key: string
+  summary: string
+  jiraStatus: string
+  priority: string | null
+  priorityIconUrl: string | null
+  dueDate: string | null
+  reporterDisplayName: string | null
+  reporterAccountId: string | null
+  projectName: string
+  projectKey: string
+}
+
+export async function fetchIssueDetailsByKeys(
+  base: string,
+  credentials: string,
+  keys: string[],
+): Promise<Map<string, KanbanIssueDetail>> {
+  const result = new Map<string, KanbanIssueDetail>()
+  if (keys.length === 0) return result
+
+  const unique = [...new Set(keys.map((k) => k.trim().toUpperCase()))]
+  const CHUNK = 50
+  for (let i = 0; i < unique.length; i += CHUNK) {
+    const chunk = unique.slice(i, i + CHUNK)
+    const quoted = chunk.map((k) => `"${k.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`).join(", ")
+    try {
+      const { ok, data } = await jiraJson<{
+        issues?: {
+          key: string
+          fields?: {
+            summary?: unknown
+            status?: { name?: string }
+            priority?: { name?: string; iconUrl?: string }
+            duedate?: string
+            reporter?: { displayName?: string; accountId?: string }
+            project?: { key?: string; name?: string }
+          }
+        }[]
+      }>(`${base}/rest/api/3/search/jql`, credentials, {
+        method: "POST",
+        body: JSON.stringify({
+          jql: `key in (${quoted})`,
+          fields: ["summary", "status", "priority", "duedate", "reporter", "project"],
+          maxResults: CHUNK,
+        }),
+      })
+      if (ok && Array.isArray(data?.issues)) {
+        for (const issue of data.issues) {
+          const f = issue.fields ?? {}
+          result.set(issue.key.toUpperCase(), {
+            key: issue.key,
+            summary: typeof f.summary === "string" ? f.summary.trim() : "",
+            jiraStatus: f.status?.name ?? "",
+            priority: f.priority?.name ?? null,
+            priorityIconUrl: f.priority?.iconUrl ?? null,
+            dueDate: typeof f.duedate === "string" ? f.duedate : null,
+            reporterDisplayName: f.reporter?.displayName ?? null,
+            reporterAccountId: f.reporter?.accountId ?? null,
+            projectName: f.project?.name ?? "",
+            projectKey: f.project?.key ?? issue.key.split("-")[0] ?? "",
+          })
+        }
+      }
+    } catch {
+      // non-fatal
+    }
+  }
+  return result
+}
+
+/**
+ * Fetches UX project issues assigned to a specific Jira accountId (any status).
+ * Returns UxTarefa-compatible objects with current Jira status.
+ */
+export async function fetchUxTarefasForUser(
+  base: string,
+  credentials: string,
+  accountId: string,
+): Promise<UxTarefa[]> {
+  const [tagFieldId, solicitanteFieldId, deadlineFieldId] = await Promise.all([
+    resolveTagFieldId(base, credentials),
+    resolveSolicitanteFieldId(base, credentials),
+    resolveDeadlineFieldId(base, credentials),
+  ])
+
+  const escaped = accountId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+  const jql = `project = "UX" AND assignee = "${escaped}" ORDER BY priority ASC, updated DESC`
+  const extraFields: string[] = [
+    "status", "priority", "reporter", "duedate",
+    ...(tagFieldId ? [tagFieldId] : []),
+    ...(solicitanteFieldId ? [solicitanteFieldId] : []),
+    ...(deadlineFieldId ? [deadlineFieldId] : []),
+  ]
+
+  const tarefas: UxTarefa[] = []
+  let nextPageToken: string | null = null
+
+  while (tarefas.length < UX_TAREFAS_MAX) {
+    const page = await searchIssuesByJql(base, credentials, jql, nextPageToken, extraFields)
+    if (!page) break
+    for (const issue of page.issues) {
+      const f = issue.fields as Record<string, unknown> | undefined
+      const statusObj = f?.status as { name?: string } | null
+      const priorityObj = f?.priority as { name?: string; iconUrl?: string } | null
+      const reporterObj = f?.reporter as { displayName?: string } | null
+      const tagRaw = tagFieldId ? f?.[tagFieldId] : undefined
+      const solicitanteRaw = solicitanteFieldId ? f?.[solicitanteFieldId] : undefined
+      const deadlineRaw = deadlineFieldId ? f?.[deadlineFieldId] : undefined
+      tarefas.push({
+        key: issue.key,
+        summary: (typeof f?.summary === "string" ? f.summary.trim() : "") || "",
+        status: statusObj?.name ?? "",
+        priority: priorityObj?.name ?? null,
+        priorityIconUrl: priorityObj?.iconUrl ?? null,
+        reporterDisplayName: reporterObj?.displayName ?? null,
+        solicitanteDisplayName: parseSolicitanteField(solicitanteRaw),
+        dueDate: typeof f?.duedate === "string" ? f.duedate : null,
+        deadline: typeof deadlineRaw === "string" ? deadlineRaw : null,
+        tag: parseTypeFieldValue(tagRaw),
+      })
+    }
+    if (page.isLast) break
+    nextPageToken = page.nextPageToken
+  }
+  return tarefas
 }

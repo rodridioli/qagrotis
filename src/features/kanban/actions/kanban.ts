@@ -3,7 +3,11 @@
 import { requireSession } from "@/core/session"
 import { buildRole, can } from "@/core/rbac/policy"
 import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credentials-db"
-import { fetchKanbanSubtasks, fetchUxTarefas } from "@/features/qa/lib/jira-worklogs-fetch"
+import {
+  fetchKanbanSubtasks,
+  fetchUxTarefas,
+  fetchUxTarefasForUser,
+} from "@/features/qa/lib/jira-worklogs-fetch"
 import type { KanbanIssue, UxTarefa } from "@/features/qa/lib/jira-worklogs-fetch"
 
 export type JiraErrorReason = "jira_not_configured" | "access_denied" | "fetch_error"
@@ -63,5 +67,28 @@ export async function getUxTarefas(): Promise<UxTarefasResult> {
     return { ok: true, tarefas }
   } catch {
     return { ok: false, error: "Erro ao buscar tarefas UX do Jira.", reason: "fetch_error" }
+  }
+}
+
+export async function getUxTarefasForUser(
+  jiraAccountId: string,
+): Promise<UxTarefasResult> {
+  const session = await requireSession()
+  const role = buildRole(session.user.type, session.user.accessProfile)
+
+  if (!can(role, "menu.kanban")) {
+    return { ok: false, error: "Acesso negado.", reason: "access_denied" }
+  }
+
+  const creds = await resolveCredentials(session.user.id)
+  if (!creds) {
+    return { ok: false, error: "Credenciais Jira não configuradas.", reason: "jira_not_configured" }
+  }
+
+  try {
+    const tarefas = await fetchUxTarefasForUser(creds.base, creds.credentials, jiraAccountId)
+    return { ok: true, tarefas }
+  } catch {
+    return { ok: false, error: "Erro ao buscar tarefas do usuário no Jira.", reason: "fetch_error" }
   }
 }
