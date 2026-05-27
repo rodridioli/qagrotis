@@ -112,7 +112,7 @@ export async function listIndividualAusencias(
     assertAusenciasModelReady()
 
     const [rows, allUsers] = await Promise.all([
-      (prisma.individualAusencias.findMany as Function)({
+      (prisma.individualAusencias.findMany as (...args: unknown[]) => Promise<unknown>)({
         where: {
           evaluatedUserId,
           ...(canViewOthers ? {} : { situacao: { in: ["APROVADA", "RECUSADA"] } }),
@@ -180,7 +180,7 @@ export async function listAllAusenciasAprovadas(): Promise<IndividualAusenciasRo
     assertAusenciasModelReady()
 
     const [rows, allUsers] = await Promise.all([
-      (prisma.individualAusencias.findMany as Function)({
+      (prisma.individualAusencias.findMany as (...args: unknown[]) => Promise<unknown>)({
         where: { situacao: "APROVADA" },
         orderBy: [{ data: "desc" }],
         select: {
@@ -263,7 +263,7 @@ export async function createIndividualAusencias(
     await ensureIndividualAusenciasTable()
     assertAusenciasModelReady()
 
-    const existing = (await (prisma.individualAusencias.findMany as Function)({
+    const existing = (await (prisma.individualAusencias.findMany as (...args: unknown[]) => Promise<unknown>)({
       where: { evaluatedUserId: data.evaluatedUserId },
       select: { codigo: true },
       orderBy: { codigo: "desc" },
@@ -272,7 +272,7 @@ export async function createIndividualAusencias(
     const nextCodigo = existing.length > 0 ? (existing[0]?.codigo ?? 0) + 1 : 1
 
     const isMgr = role === "Administrador:MGR"
-    const row = (await (prisma.individualAusencias.create as Function)({
+    const row = (await (prisma.individualAusencias.create as (...args: unknown[]) => Promise<unknown>)({
       data: {
         evaluatedUserId: data.evaluatedUserId,
         createdByUserId: session.user.id,
@@ -340,14 +340,14 @@ export async function approveIndividualAusencias(
     await ensureIndividualAusenciasTable()
     assertAusenciasModelReady()
 
-    const existing = (await (prisma.individualAusencias.findUnique as Function)({
+    const existing = (await (prisma.individualAusencias.findUnique as (...args: unknown[]) => Promise<unknown>)({
       where: { id: idR.data },
       select: { id: true, situacao: true },
     })) as { id: string; situacao: AusenciaSituacao } | null
     if (!existing) return { error: "Ausência não encontrada." }
     if (existing.situacao !== "PENDENTE") return { error: "Esta ausência já foi processada." }
 
-    await (prisma.individualAusencias.update as Function)({
+    await (prisma.individualAusencias.update as (...args: unknown[]) => Promise<unknown>)({
       where: { id: idR.data },
       data: {
         situacao: "APROVADA",
@@ -383,7 +383,7 @@ export async function refuseIndividualAusencias(
     await ensureIndividualAusenciasTable()
     assertAusenciasModelReady()
 
-    const existing = (await (prisma.individualAusencias.findUnique as Function)({
+    const existing = (await (prisma.individualAusencias.findUnique as (...args: unknown[]) => Promise<unknown>)({
       where: { id },
       select: { id: true, situacao: true, evaluatedUserId: true, tipo: true, data: true },
     })) as {
@@ -396,7 +396,7 @@ export async function refuseIndividualAusencias(
     if (!existing) return { error: "Ausência não encontrada." }
     if (existing.situacao !== "PENDENTE") return { error: "Esta ausência já foi processada." }
 
-    await (prisma.individualAusencias.update as Function)({
+    await (prisma.individualAusencias.update as (...args: unknown[]) => Promise<unknown>)({
       where: { id },
       data: {
         situacao: "RECUSADA",
@@ -449,13 +449,13 @@ export async function updateIndividualAusencias(
     await ensureIndividualAusenciasTable()
     assertAusenciasModelReady()
 
-    const existing = (await (prisma.individualAusencias.findUnique as Function)({
+    const existing = (await (prisma.individualAusencias.findUnique as (...args: unknown[]) => Promise<unknown>)({
       where: { id: data.id },
       select: { id: true },
     })) as { id: string } | null
     if (!existing) return { error: "Ausência não encontrada." }
 
-    await (prisma.individualAusencias.update as Function)({
+    await (prisma.individualAusencias.update as (...args: unknown[]) => Promise<unknown>)({
       where: { id: data.id },
       data: {
         tipo: data.tipo,
@@ -489,13 +489,13 @@ export async function deleteIndividualAusencias(
     await ensureIndividualAusenciasTable()
     assertAusenciasModelReady()
 
-    const existing = (await (prisma.individualAusencias.findUnique as Function)({
+    const existing = (await (prisma.individualAusencias.findUnique as (...args: unknown[]) => Promise<unknown>)({
       where: { id: idR.data },
       select: { id: true },
     })) as { id: string } | null
     if (!existing) return { error: "Ausência não encontrada." }
 
-    await (prisma.individualAusencias.delete as Function)({ where: { id: idR.data } })
+    await (prisma.individualAusencias.delete as (...args: unknown[]) => Promise<unknown>)({ where: { id: idR.data } })
 
     revalidatePath("/individual/ausencias")
     revalidatePath("/equipe/ausencias")

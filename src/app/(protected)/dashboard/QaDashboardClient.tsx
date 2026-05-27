@@ -672,6 +672,15 @@ function TypeCard({
 
 // ─── QA Year Table ─────────────────────────────────────────────────────────────
 
+const qaThBase = "px-3 py-3 text-xs font-semibold text-text-secondary"
+function QaTH({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" }) {
+  return (
+    <th className={cn(qaThBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60")}>
+      {children}
+    </th>
+  )
+}
+
 function QaYearTable({
   monthStats,
   hideValues,
@@ -694,12 +703,6 @@ function QaYearTable({
   const inv = (v: number) =>
     hideValues ? <span className="tracking-widest text-text-disabled">••••</span> : formatBRL(v)
 
-  const thBase = "px-3 py-3 text-xs font-semibold text-text-secondary"
-  const TH = ({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" }) => (
-    <th className={cn(thBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60")}>
-      {children}
-    </th>
-  )
   const tdCls = (base: string, group?: "blue") =>
     cn(base, group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60")
 
@@ -711,12 +714,12 @@ function QaYearTable({
             <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">
               Período
             </th>
-            <TH>Investimento</TH>
-            <TH>Horas</TH>
-            <TH center>Jiras</TH>
-            <TH center group="blue">Cenários Testados</TH>
-            <TH center group="blue">Cenários com Erro</TH>
-            <TH center group="blue">Jiras de Retorno</TH>
+            <QaTH>Investimento</QaTH>
+            <QaTH>Horas</QaTH>
+            <QaTH center>Jiras</QaTH>
+            <QaTH center group="blue">Cenários Testados</QaTH>
+            <QaTH center group="blue">Cenários com Erro</QaTH>
+            <QaTH center group="blue">Jiras de Retorno</QaTH>
           </tr>
         </thead>
         <tbody>

@@ -112,7 +112,7 @@ export function EquipeHorariosTable({ rows }: EquipeHorariosTableProps) {
           {filtered.length === 0 && (
             <tr>
               <td colSpan={5} className="px-4 py-10 text-center text-sm text-text-secondary">
-                Nenhum usuário encontrado para "{search}".
+                Nenhum usuário encontrado para &ldquo;{search}&rdquo;.
               </td>
             </tr>
           )}

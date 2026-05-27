@@ -736,6 +736,15 @@ function TagPieChart({
 
 // ─── YearTable TW ─────────────────────────────────────────────────────────────
 
+const twThBase = "px-3 py-3 text-xs font-semibold text-text-secondary"
+function TwTH({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" }) {
+  return (
+    <th className={cn(twThBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60")}>
+      {children}
+    </th>
+  )
+}
+
 function TwYearTable({
   monthStats,
   hideValues,
@@ -758,12 +767,6 @@ function TwYearTable({
   const inv = (v: number) =>
     hideValues ? <span className="tracking-widest text-text-disabled">••••</span> : formatBRL(v)
 
-  const thBase = "px-3 py-3 text-xs font-semibold text-text-secondary"
-  const TH = ({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" }) => (
-    <th className={cn(thBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60")}>
-      {children}
-    </th>
-  )
   const tdCls = (base: string, group?: "blue") =>
     cn(base, group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60")
 
@@ -775,20 +778,20 @@ function TwYearTable({
             <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">
               Período
             </th>
-            <TH>Investimento</TH>
-            <TH>Horas</TH>
-            <TH center>Jiras</TH>
-            <TH center group="blue">Novos Docs</TH>
-            <TH center group="blue">Revisões</TH>
-            <TH center group="blue">Outros</TH>
-            <TH center>
+            <TwTH>Investimento</TwTH>
+            <TwTH>Horas</TwTH>
+            <TwTH center>Jiras</TwTH>
+            <TwTH center group="blue">Novos Docs</TwTH>
+            <TwTH center group="blue">Revisões</TwTH>
+            <TwTH center group="blue">Outros</TwTH>
+            <TwTH center>
               <TooltipProvider delay={400} closeDelay={0}>
                 <Tooltip>
                   <TooltipTrigger render={<span className="inline-flex cursor-default items-center gap-1">Retornos<Info className="h-3 w-3 text-text-disabled" /></span>} />
                   <TooltipContent>Issues devolvidos do status Aprovação para In Progress — indica retrabalho.</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            </TH>
+            </TwTH>
           </tr>
         </thead>
         <tbody>

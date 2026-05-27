@@ -253,7 +253,7 @@ function aggregateYearTotals(entries: JiraEntry[], activeAccountIds?: Set<string
   const pesq = new Set<string>()
   const usab = new Set<string>()
   const criticos = new Set<string>()
-  let outros = new Set<string>()
+  const outros = new Set<string>()
   const ag = new Set<string>()
   // retornos: sum per unique issue (take the max value seen for each key)
   const retornosPerIssue = new Map<string, number>()
@@ -778,6 +778,15 @@ function TagPieChart({
 
 // ─── YearTable ────────────────────────────────────────────────────────────────
 
+const uxThBase = "px-3 py-3 text-xs font-semibold text-text-secondary"
+function UxTH({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" | "violet" }) {
+  return (
+    <th className={cn(uxThBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60", group === "violet" && "bg-[#EEF3F7]/70 dark:bg-[#101e2c]/60")}>
+      {children}
+    </th>
+  )
+}
+
 // YearTable uses de-duplicated Sets for quarterly and total rows:
 // quarterly row = union of its months' issue Sets (no double-counting across months),
 // total row = union across all active months' issue Sets.
@@ -790,15 +799,6 @@ function YearTable({ monthStats, hideValues, ano, activeMonths, quarterDedupeSta
   const inv = (v: number) =>
     hideValues ? <span className="tracking-widest text-text-disabled">••••</span> : formatBRL(v)
 
-  // Column group helpers — applied to <th> and all <td> for the same column
-  const thBase = "px-3 py-3 text-xs font-semibold text-text-secondary"
-  // "blue"   → lighter primary-50 tint   (Protótipos / Pesquisas / Usabilidade / Outros)
-  // "violet" → primary-100 tint           (Novos / Melhorias / Ajustes)
-  const TH = ({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" | "violet" }) => (
-    <th className={cn(thBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60", group === "violet" && "bg-[#EEF3F7]/70 dark:bg-[#101e2c]/60")}>
-      {children}
-    </th>
-  )
   const tdCls = (base: string, group?: "blue" | "violet") =>
     cn(base, group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60", group === "violet" && "bg-[#EEF3F7]/70 dark:bg-[#101e2c]/60")
 
@@ -810,17 +810,17 @@ function YearTable({ monthStats, hideValues, ano, activeMonths, quarterDedupeSta
             <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">
               Período
             </th>
-            <TH>Investimento</TH>
-            <TH>Horas</TH>
-            <TH center>Jiras</TH>
-            <TH center group="blue">Prototipação</TH>
-            <TH center group="blue">Pesquisas</TH>
-            <TH center group="blue">Usabilidade</TH>
-            <TH center group="blue">Outros</TH>
-            <TH center group="violet">Novos</TH>
-            <TH center group="violet">Melhorias</TH>
-            <TH center>Ajustes</TH>
-            <TH center>Retornos</TH>
+            <UxTH>Investimento</UxTH>
+            <UxTH>Horas</UxTH>
+            <UxTH center>Jiras</UxTH>
+            <UxTH center group="blue">Prototipação</UxTH>
+            <UxTH center group="blue">Pesquisas</UxTH>
+            <UxTH center group="blue">Usabilidade</UxTH>
+            <UxTH center group="blue">Outros</UxTH>
+            <UxTH center group="violet">Novos</UxTH>
+            <UxTH center group="violet">Melhorias</UxTH>
+            <UxTH center>Ajustes</UxTH>
+            <UxTH center>Retornos</UxTH>
           </tr>
         </thead>
         <tbody>
