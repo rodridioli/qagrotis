@@ -64,7 +64,8 @@ const UX_TAREFA_STATUS_TO_COLUMN: Record<string, UserKanbanColumn> = {
   "design system": "in_progress",
   "paused":        "paused",
   "waiting":       "waiting",
-  "in approval":   "in_approval",
+  "in approval":   "in_approval",  // fallback: projetos com workflow em inglês
+  "aprovação":     "in_approval",  // workflow padrão Jira (português)
   "delivered":     "done",
   "canceled":      "canceled",
   "cancelado":     "canceled",
@@ -80,7 +81,7 @@ const COLUMN_TO_JIRA_STATUS: Record<UserKanbanColumn, string | null> = {
   in_progress:  "In Progress",
   paused:       "Paused",
   waiting:      "Waiting",
-  in_approval:  "In Approval",
+  in_approval:  "Aprovação",
   done:         "Delivered",
   canceled:     "Canceled",
 }
