@@ -12,7 +12,7 @@ import { cn } from "@/core/utils"
 import type { KanbanResult, UxTarefasResult } from "@/features/kanban/actions/kanban"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
 import type { KanbanAssignments } from "@/features/kanban/actions/ux-kanban"
-import { assignIssueToUser } from "@/features/kanban/actions/ux-kanban"
+import { assignIssueToUser, assignTarefaToMember } from "@/features/kanban/actions/ux-kanban"
 import type { KanbanIssue, UxTarefa } from "@/features/kanban/kanban-constants"
 
 // ─── Priority sort ────────────────────────────────────────────────────────────
@@ -36,6 +36,19 @@ function sortByPriority<T extends { priority: string | null; dueDate: string | n
     if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate)
     if (a.dueDate) return -1
     if (b.dueDate) return 1
+    return 0
+  })
+}
+
+function sortTarefas(items: UxTarefa[]): UxTarefa[] {
+  return [...items].sort((a, b) => {
+    const pr = priorityRank(a.priority) - priorityRank(b.priority)
+    if (pr !== 0) return pr
+    const aDate = a.deadline ?? a.dueDate
+    const bDate = b.deadline ?? b.dueDate
+    if (aDate && bDate) return aDate.localeCompare(bDate)
+    if (aDate) return -1
+    if (bDate) return 1
     return 0
   })
 }
@@ -258,7 +271,7 @@ function Lane({
 
 function TarefaCardContent({ tarefa }: { tarefa: UxTarefa }) {
   const jiraUrl = `https://agrotis.atlassian.net/browse/${tarefa.key}`
-  const dateStr = formatDate(tarefa.dueDate)
+  const dateStr = formatDate(tarefa.deadline ?? tarefa.dueDate)
 
   return (
     <>
@@ -296,12 +309,12 @@ function TarefaCardContent({ tarefa }: { tarefa: UxTarefa }) {
         <span className="text-sm text-brand-primary">{dateStr}</span>
       )}
 
-      {/* Relator + tag */}
+      {/* Solicitante + tag */}
       <div className="flex items-center justify-between gap-2">
-        {tarefa.reporterDisplayName ? (
+        {tarefa.solicitanteDisplayName ? (
           <div className="flex min-w-0 items-center gap-1 text-xs text-text-secondary">
             <User className="size-3 shrink-0" aria-hidden />
-            <span className="truncate underline underline-offset-2">{tarefa.reporterDisplayName}</span>
+            <span className="truncate underline underline-offset-2">{tarefa.solicitanteDisplayName}</span>
           </div>
         ) : (
           <div />
@@ -316,7 +329,34 @@ function TarefaCardContent({ tarefa }: { tarefa: UxTarefa }) {
   )
 }
 
-// ─── Tarefas lane (read-only, no drag-and-drop) ───────────────────────────────
+// ─── Draggable tarefa card ────────────────────────────────────────────────────
+
+function DraggableTarefaCard({ tarefa, index }: { tarefa: UxTarefa; index: number }) {
+  return (
+    <Draggable draggableId={tarefa.key} index={index}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          style={provided.draggableProps.style}
+          className={cn(
+            "flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-card p-4",
+            "cursor-grab select-none",
+            "border-l-[3px] border-l-brand-primary",
+            snapshot.isDragging
+              ? "shadow-xl rotate-[0.5deg] opacity-90 scale-[1.01]"
+              : "shadow-sm transition-shadow hover:shadow-md",
+          )}
+        >
+          <TarefaCardContent tarefa={tarefa} />
+        </div>
+      )}
+    </Draggable>
+  )
+}
+
+// ─── Tarefas lane (draggable source, not a drop target) ───────────────────────
 
 function TarefasLane({
   tarefas,
@@ -359,29 +399,28 @@ function TarefasLane({
 
       <div className="mx-4 h-px bg-border-default" />
 
-      {/* List */}
-      <div
-        className="flex flex-col gap-3 overflow-y-auto p-4 scrollbar-thin min-h-[80px] rounded-b-xl"
-        style={{ maxHeight: "calc(100dvh - 180px)" }}
-      >
-        {tarefas.length === 0 ? (
-          <p className="py-6 text-center text-xs italic text-text-disabled">
-            {tagFilter ? "Nenhuma tarefa nesta tag" : "Nenhuma tarefa"}
-          </p>
-        ) : (
-          tarefas.map((tarefa) => (
-            <div
-              key={tarefa.key}
-              className={cn(
-                "flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-card p-4",
-                "border-l-[3px] border-l-brand-primary shadow-sm",
-              )}
-            >
-              <TarefaCardContent tarefa={tarefa} />
-            </div>
-          ))
+      {/* Droppable — isDropDisabled prevents drops into this column */}
+      <Droppable droppableId="tarefas" isDropDisabled>
+        {(provided) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className="flex flex-col gap-3 overflow-y-auto p-4 scrollbar-thin min-h-[80px] rounded-b-xl"
+            style={{ maxHeight: "calc(100dvh - 180px)" }}
+          >
+            {tarefas.length === 0 ? (
+              <p className="py-6 text-center text-xs italic text-text-disabled">
+                {tagFilter ? "Nenhuma tarefa nesta tag" : "Nenhuma tarefa"}
+              </p>
+            ) : (
+              tarefas.map((tarefa, index) => (
+                <DraggableTarefaCard key={tarefa.key} tarefa={tarefa} index={index} />
+              ))
+            )}
+            {provided.placeholder}
+          </div>
         )}
-      </div>
+      </Droppable>
     </div>
   )
 }
@@ -399,9 +438,12 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
   const [assignments, setAssignments] = React.useState<KanbanAssignments>(initialAssignments)
   const [projectFilter, setProjectFilter] = React.useState<string>("")
   const [tagFilter, setTagFilter] = React.useState<string>("")
+  const [tarefas, setTarefas] = React.useState<UxTarefa[]>(
+    initialTarefasResult.ok ? initialTarefasResult.tarefas : [],
+  )
 
   const issues = initialResult.ok ? initialResult.issues : []
-  const allTarefas = initialTarefasResult.ok ? initialTarefasResult.tarefas : []
+  const allTarefas = tarefas
 
   // Unique project names for Demandas filter
   const projectNames = React.useMemo(() => {
@@ -415,9 +457,9 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
     return [...set].sort()
   }, [allTarefas])
 
-  // Tarefas filtered by tag, sorted by priority
+  // Tarefas filtered by tag, sorted by priority → deadline (nulos por último)
   const filteredTarefas = React.useMemo(
-    () => sortByPriority(allTarefas.filter((t) => !tagFilter || t.tag === tagFilter)),
+    () => sortTarefas(allTarefas.filter((t) => !tagFilter || t.tag === tagFilter)),
     [allTarefas, tagFilter],
   )
 
@@ -454,6 +496,25 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
     if (!destination) return
     if (source.droppableId === destination.droppableId) return
 
+    // ── Tarefa card dragged from Tarefas column ──────────────────────────────
+    if (source.droppableId === "tarefas") {
+      // Only allow drop on member columns (not pending/tarefas)
+      if (destination.droppableId === "pending" || destination.droppableId === "tarefas") return
+
+      const memberId = destination.droppableId
+      const prevTarefas = tarefas
+
+      // Optimistic: remove from Tarefas column
+      setTarefas((prev) => prev.filter((t) => t.key !== issueKey))
+
+      // Persist to Jira in background — revert on failure
+      assignTarefaToMember(issueKey, memberId).catch(() => {
+        setTarefas(prevTarefas)
+      })
+      return
+    }
+
+    // ── Regular Demandas card drag between columns ───────────────────────────
     const newUserId =
       destination.droppableId === "pending" ? null : destination.droppableId
 

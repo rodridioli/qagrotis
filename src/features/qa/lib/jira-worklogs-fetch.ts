@@ -101,7 +101,7 @@ function dayInRange(dayKey: string, fromIso: string, toIso: string): boolean {
   return dayKey >= fromIso && dayKey <= toIso
 }
 
-async function jiraJson<T>(
+export async function jiraJson<T>(
   url: string,
   credentials: string,
   init?: RequestInit,
@@ -1090,6 +1090,68 @@ export async function resolveTagFieldId(
   return cachedTagFieldId
 }
 
+const SOLICITANTE_ENV_FIELD_ID = process.env.JIRA_SOLICITANTE_FIELD_ID?.trim()
+
+let cachedSolicitanteFieldId: string | null | undefined = undefined
+
+export async function resolveSolicitanteFieldId(
+  base: string,
+  credentials: string,
+): Promise<string | null> {
+  if (SOLICITANTE_ENV_FIELD_ID) return SOLICITANTE_ENV_FIELD_ID
+  if (cachedSolicitanteFieldId !== undefined) return cachedSolicitanteFieldId
+
+  try {
+    const { ok, data } = await jiraJson<{ id: string; name: string; custom?: boolean }[]>(
+      `${base}/rest/api/3/field`,
+      credentials,
+    )
+    if (!ok || !Array.isArray(data)) {
+      cachedSolicitanteFieldId = null
+      return null
+    }
+    const found = data.find(
+      (f) => f.custom !== false && /^solicitante$/i.test(f.name.trim()),
+    )
+    cachedSolicitanteFieldId = found?.id ?? null
+  } catch {
+    cachedSolicitanteFieldId = null
+  }
+
+  return cachedSolicitanteFieldId
+}
+
+const DEADLINE_ENV_FIELD_ID = process.env.JIRA_DEADLINE_FIELD_ID?.trim()
+
+let cachedDeadlineFieldId: string | null | undefined = undefined
+
+export async function resolveDeadlineFieldId(
+  base: string,
+  credentials: string,
+): Promise<string | null> {
+  if (DEADLINE_ENV_FIELD_ID) return DEADLINE_ENV_FIELD_ID
+  if (cachedDeadlineFieldId !== undefined) return cachedDeadlineFieldId
+
+  try {
+    const { ok, data } = await jiraJson<{ id: string; name: string; custom?: boolean }[]>(
+      `${base}/rest/api/3/field`,
+      credentials,
+    )
+    if (!ok || !Array.isArray(data)) {
+      cachedDeadlineFieldId = null
+      return null
+    }
+    const found = data.find(
+      (f) => f.custom !== false && /^deadline$/i.test(f.name.trim()),
+    )
+    cachedDeadlineFieldId = found?.id ?? null
+  } catch {
+    cachedDeadlineFieldId = null
+  }
+
+  return cachedDeadlineFieldId
+}
+
 // ── Status transition counting ────────────────────────────────────────────────
 
 /**
@@ -1505,18 +1567,24 @@ export type UxTarefa = {
   priority: string | null
   priorityIconUrl: string | null
   reporterDisplayName: string | null
+  solicitanteDisplayName: string | null
   dueDate: string | null
+  deadline: string | null
   tag: string | null
 }
 
-const UX_TAREFAS_STATUSES = ["Open", "Backlog", "Priority", "Pending UX"]
+const UX_TAREFAS_STATUSES = ["Open", "Backlog", "Priority"]
 const UX_TAREFAS_MAX = 300
 
 export async function fetchUxTarefas(
   base: string,
   credentials: string,
 ): Promise<UxTarefa[]> {
-  const tagFieldId = await resolveTagFieldId(base, credentials)
+  const [tagFieldId, solicitanteFieldId, deadlineFieldId] = await Promise.all([
+    resolveTagFieldId(base, credentials),
+    resolveSolicitanteFieldId(base, credentials),
+    resolveDeadlineFieldId(base, credentials),
+  ])
   const statusList = UX_TAREFAS_STATUSES.map((s) => `"${s}"`).join(", ")
   const jql = `project = "UX" AND status in (${statusList}) ORDER BY priority ASC, updated DESC`
 
@@ -1526,6 +1594,8 @@ export async function fetchUxTarefas(
     "reporter",
     "duedate",
     ...(tagFieldId ? [tagFieldId] : []),
+    ...(solicitanteFieldId ? [solicitanteFieldId] : []),
+    ...(deadlineFieldId ? [deadlineFieldId] : []),
   ]
 
   const tarefas: UxTarefa[] = []
@@ -1541,6 +1611,9 @@ export async function fetchUxTarefas(
       const priorityObj = f?.priority as { name?: string; iconUrl?: string } | null
       const reporterObj = f?.reporter as { displayName?: string } | null
       const tagRaw = tagFieldId ? f?.[tagFieldId] : undefined
+      const solicitanteRaw = solicitanteFieldId ? f?.[solicitanteFieldId] : undefined
+      const solicitanteObj = solicitanteRaw as { displayName?: string } | null | undefined
+      const deadlineRaw = deadlineFieldId ? f?.[deadlineFieldId] : undefined
 
       tarefas.push({
         key: issue.key,
@@ -1549,7 +1622,12 @@ export async function fetchUxTarefas(
         priority: priorityObj?.name ?? null,
         priorityIconUrl: priorityObj?.iconUrl ?? null,
         reporterDisplayName: reporterObj?.displayName ?? null,
+        solicitanteDisplayName:
+          typeof solicitanteObj?.displayName === "string"
+            ? solicitanteObj.displayName.trim() || null
+            : null,
         dueDate: typeof f?.duedate === "string" ? f.duedate : null,
+        deadline: typeof deadlineRaw === "string" ? deadlineRaw : null,
         tag: parseTypeFieldValue(tagRaw),
       })
     }
