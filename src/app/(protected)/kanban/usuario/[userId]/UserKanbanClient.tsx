@@ -7,10 +7,11 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd"
-import { AlertCircle, ArrowLeft, Check, Flag, Loader2, Search, User, X } from "lucide-react"
+import { AlertCircle, Check, Flag, Loader2, Search, User, X } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/core/utils"
+import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import type { UserKanbanData, UserKanbanCard, UserKanbanColumn } from "@/features/kanban/actions/ux-kanban"
 import {
   moveCardInUserKanban,
@@ -509,22 +510,13 @@ export function UserKanbanClient({
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link
-          href="/kanban"
-          className="flex cursor-pointer items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
-        >
-          <ArrowLeft className="size-4" />
-          Kanban
-        </Link>
-        <span className="text-text-disabled">/</span>
-        <h1 className="text-base font-semibold text-text-primary">{memberName}</h1>
-        {data.ok && (
-          <span className="text-xs text-text-secondary tabular-nums">
-            ({data.cards.length} card{data.cards.length !== 1 ? "s" : ""})
-          </span>
-        )}
-      </div>
+      <PageBreadcrumb
+        backHref="/kanban"
+        items={[
+          { label: "Kanban", href: "/kanban" },
+          { label: memberName },
+        ]}
+      />
 
       {/* Error state */}
       {!data.ok && (
