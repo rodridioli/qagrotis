@@ -199,6 +199,7 @@ function Lane({
   droppableId,
   title,
   issues,
+  tarefas,
   headerRight,
   emptyText,
   wide,
@@ -207,11 +208,13 @@ function Lane({
   droppableId: string
   title: string
   issues: KanbanIssue[]
+  tarefas?: UxTarefa[]
   headerRight?: React.ReactNode
   emptyText?: string
   wide?: boolean
   memberAvatar?: { url: string | null; name: string }
 }) {
+  const totalCount = issues.length + (tarefas?.length ?? 0)
   return (
     <div
       className={cn(
@@ -231,7 +234,7 @@ function Lane({
           {title}
         </span>
         <span className="shrink-0 rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-xs font-bold tabular-nums text-text-secondary">
-          {issues.length}
+          {totalCount}
         </span>
         {headerRight && <div className="ml-auto shrink-0">{headerRight}</div>}
       </div>
@@ -251,7 +254,7 @@ function Lane({
             )}
             style={{ maxHeight: "calc(100dvh - 180px)" }}
           >
-            {issues.length === 0 && !snapshot.isDraggingOver && (
+            {totalCount === 0 && !snapshot.isDraggingOver && (
               <p className="py-6 text-center text-xs italic text-text-disabled">
                 {emptyText ?? "Nenhum item"}
               </p>
@@ -260,6 +263,14 @@ function Lane({
               <DraggableCard key={issue.key} issue={issue} index={index} />
             ))}
             {provided.placeholder}
+            {tarefas?.map((tarefa) => (
+              <div
+                key={tarefa.key}
+                className="flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-card p-4 border-l-[3px] border-l-brand-primary shadow-sm"
+              >
+                <TarefaCardContent tarefa={tarefa} />
+              </div>
+            ))}
           </div>
         )}
       </Droppable>
@@ -441,6 +452,7 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
   const [tarefas, setTarefas] = React.useState<UxTarefa[]>(
     initialTarefasResult.ok ? initialTarefasResult.tarefas : [],
   )
+  const [memberTarefas, setMemberTarefas] = React.useState<Record<string, UxTarefa[]>>({})
 
   const issues = initialResult.ok ? initialResult.issues : []
   const allTarefas = tarefas
@@ -502,14 +514,23 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
       if (destination.droppableId === "pending" || destination.droppableId === "tarefas") return
 
       const memberId = destination.droppableId
+      const tarefa = tarefas.find((t) => t.key === issueKey)
+      if (!tarefa) return
+
       const prevTarefas = tarefas
+      const prevMemberTarefas = memberTarefas
 
-      // Optimistic: remove from Tarefas column
+      // Optimistic: remove from Tarefas, add to member column
       setTarefas((prev) => prev.filter((t) => t.key !== issueKey))
+      setMemberTarefas((prev) => ({
+        ...prev,
+        [memberId]: [...(prev[memberId] ?? []), tarefa],
+      }))
 
-      // Persist to Jira in background — revert on failure
+      // Persist to Jira in background — revert both states on failure
       assignTarefaToMember(issueKey, memberId).catch(() => {
         setTarefas(prevTarefas)
+        setMemberTarefas(prevMemberTarefas)
       })
       return
     }
@@ -602,6 +623,7 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
                   droppableId={member.userId}
                   title={member.name}
                   issues={userIssues[member.userId] ?? []}
+                  tarefas={memberTarefas[member.userId]}
                   memberAvatar={{ url: member.photoPath, name: member.name }}
                   emptyText="Arraste cards aqui"
                 />
