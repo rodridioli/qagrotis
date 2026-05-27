@@ -18,7 +18,6 @@ import {
   Search,
   Users,
 } from "lucide-react"
-import { toast } from "sonner"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { JiraNotConfiguredCard } from "@/components/shared/JiraNotConfiguredCard"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
@@ -433,7 +432,6 @@ export function IndividualLancamentosSection({
   const [from, setFrom] = React.useState(() => getLancamentosPresetRange("week").from)
   const [to, setTo] = React.useState(() => getLancamentosPresetRange("week").to)
   const [search, setSearch] = React.useState("")
-  const toastShownRef = React.useRef(false)
 
   React.useEffect(() => {
     if (presetProp === undefined) return
@@ -455,20 +453,6 @@ export function IndividualLancamentosSection({
   })
 
   const jiraConfigured = credentialsQuery.data?.configured ?? null
-
-  React.useEffect(() => {
-    if (jiraConfigured !== false) return
-    if (toastShownRef.current) return
-    toastShownRef.current = true
-    toast.warning("Integração com Jira não configurada", {
-      description: "Configure sua conta Jira em Configurações para visualizar os lançamentos.",
-      action: {
-        label: "Configurações",
-        onClick: () => { window.location.href = "/configuracoes" },
-      },
-      duration: 8000,
-    })
-  }, [jiraConfigured])
 
   const lancamentosQuery = useQuery({
     queryKey: ["lancamentos", evaluatedUserId, from, to, preset],
@@ -531,8 +515,8 @@ export function IndividualLancamentosSection({
 
   return (
     <div className="flex w-full flex-col gap-6">
-      {/* Preset filter — só visível no modo autônomo (sem parent controlando) */}
-      {!isControlled && (
+      {/* Preset filter — só visível no modo autônomo (sem parent controlando) e com Jira configurado */}
+      {!isControlled && jiraConfigured === true && (
         <div className="flex items-center gap-3">
           <Select
             value={preset}

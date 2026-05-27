@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power, AlertCircle, RefreshCw } from "lucide-react"
+import { ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power, AlertCircle, RefreshCw, Eye } from "lucide-react"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -73,6 +73,8 @@ interface Props {
   initialUsers: QaUserRecord[]
   currentUserId: string | null
   isAdmin: boolean
+  /** true apenas para Administrador:MGR — único que pode criar, inativar e editar outros. */
+  isMgrAdmin?: boolean
   /** Admin QA/UX/TW: reaplica o filtro de perfil após recarregar lista no cliente. */
   listProfileFilter?: AccessProfile | null
   /** true quando getQaUsers() falhou no servidor — lista veio vazia por erro, não porque não há cadastros */
@@ -84,6 +86,7 @@ export default function UsuariosClient({
   initialUsers,
   currentUserId,
   isAdmin,
+  isMgrAdmin = false,
   listProfileFilter = null,
   usersFetchFailed = false,
   usersFetchErrorMessage = null,
@@ -151,7 +154,7 @@ export default function UsuariosClient({
   const activeFilterCount = [filters.tipo, filters.apenasInativos ? "1" : ""].filter(Boolean).length
   // Checkboxes and bulk inactivation only apply when there are other active users to act on
   const hasOtherActiveUsers = users.some((u) => u.id !== currentUserId && u.active)
-  const showBulkActions = isAdmin && !filters.apenasInativos && hasOtherActiveUsers
+  const showBulkActions = isMgrAdmin && !filters.apenasInativos && hasOtherActiveUsers
 
   // Protect the last active admin from being inactivated
   const activeAdminCount = useMemo(
@@ -295,7 +298,7 @@ export default function UsuariosClient({
           ]}
         />
 
-        {isAdmin && (
+        {isMgrAdmin && (
           <div className="flex items-center gap-3">
             {showBulkActions && (
               <Button
@@ -475,7 +478,7 @@ export default function UsuariosClient({
                           {u.classificacao ?? "—"}
                         </td>
                         <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
-                          {filters.apenasInativos && !isSelf ? (
+                          {filters.apenasInativos && !isSelf && isMgrAdmin ? (
                             <button
                               type="button"
                               aria-label="Ativar"
@@ -523,6 +526,15 @@ export default function UsuariosClient({
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
+                          ) : isAdmin && !isMgrAdmin && u.active ? (
+                            <Link
+                              href={`/configuracoes/usuarios/${u.id}/editar`}
+                              title="Visualizar cadastro"
+                              aria-label="Visualizar cadastro"
+                              className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                            >
+                              <Eye className="size-4" />
+                            </Link>
                           ) : null}
                         </td>
                       </tr>

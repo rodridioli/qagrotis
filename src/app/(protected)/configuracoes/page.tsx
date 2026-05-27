@@ -7,7 +7,6 @@ import { auth } from "@/core/auth"
 import { buildRole, can, type Capability } from "@/core/rbac/policy"
 import JiraConfigButton from "./JiraConfigButton"
 import ClockworkConfigButton from "./ClockworkConfigButton"
-import JiraAccountIdConfigButton from "./JiraAccountIdConfigButton"
 
 interface ConfigCard {
   href: string
@@ -89,7 +88,6 @@ export default async function ConfiguracoesPage() {
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {showJira && <JiraConfigButton defaultEmail={currentEmail} />}
             {showClockwork && <ClockworkConfigButton />}
-            {showJira && <JiraAccountIdConfigButton />}
             {visibleIntegrations.map((c) => (
               <CardLink key={c.href} href={c.href} icon={c.icon} label={c.label} />
             ))}

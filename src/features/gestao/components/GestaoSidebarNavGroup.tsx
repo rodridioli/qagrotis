@@ -2,13 +2,14 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Briefcase, ChevronRight, KanbanSquare, Timer } from "lucide-react"
+import { BarChart3, Briefcase, ChevronRight, KanbanSquare, Timer } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/core/utils"
 
 const GESTAO_SUBITEMS = [
   { id: "kanban",      label: "Kanban",      Icon: KanbanSquare, href: "/kanban" },
   { id: "lancamentos", label: "Lançamentos", Icon: Timer,        href: "/equipe?tab=lancamentos" },
+  { id: "performance", label: "Indicadores", Icon: BarChart3,    href: "/equipe?tab=performance" },
 ] as const
 
 export interface GestaoSidebarNavGroupProps {
@@ -25,9 +26,13 @@ export function GestaoSidebarNavGroup({ collapsed, onNavigate }: GestaoSidebarNa
   const prevPath = React.useRef("")
 
   const isGestaoActive = React.useCallback(
-    (path: string, params: ReturnType<typeof useSearchParams>) =>
-      path === "/kanban" ||
-      (path.startsWith("/equipe") && params.get("tab") === "lancamentos"),
+    (path: string, params: ReturnType<typeof useSearchParams>) => {
+      const tab = params.get("tab")
+      return (
+        path === "/kanban" ||
+        (path.startsWith("/equipe") && (tab === "lancamentos" || tab === "performance"))
+      )
+    },
     [],
   )
 
@@ -41,12 +46,15 @@ export function GestaoSidebarNavGroup({ collapsed, onNavigate }: GestaoSidebarNa
 
   const parentActive = isGestaoActive(pathname, searchParams)
 
+  const tab = searchParams.get("tab")
   const activeItemId =
     pathname === "/kanban"
       ? "kanban"
-      : pathname.startsWith("/equipe") && searchParams.get("tab") === "lancamentos"
+      : pathname.startsWith("/equipe") && tab === "lancamentos"
         ? "lancamentos"
-        : null
+        : pathname.startsWith("/equipe") && tab === "performance"
+          ? "performance"
+          : null
 
   function go(href: string) {
     if (onNavigate) onNavigate(href)

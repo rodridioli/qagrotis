@@ -22,9 +22,15 @@ export default async function EditarUsuarioPage({
 
   const role = buildRole(session?.user?.type, session?.user?.accessProfile)
   const isEditingSelf = (session?.user?.id ?? "") === id
+  const accessProfile = session?.user?.accessProfile
 
   // Padrão só pode editar o próprio cadastro.
   if (!isAdmin && !isEditingSelf) redirect("/forbidden")
+
+  // Admin não-MGR visualizando cadastro de outro usuário → modo leitura.
+  const isNonMgrAdmin = isAdmin && accessProfile !== "MGR"
+  const isReadOnly = isNonMgrAdmin && !isEditingSelf
+
   const targetProfile = (profile.accessProfile ?? null) as AccessProfile | null
 
   const canEditSensitive = canEditUserField(role, isEditingSelf, targetProfile)
@@ -40,6 +46,7 @@ export default async function EditarUsuarioPage({
       isAdmin={isAdmin}
       canEditSensitive={canEditSensitive}
       manageableProfiles={allowedProfiles}
+      readOnly={isReadOnly}
     />
   )
 }

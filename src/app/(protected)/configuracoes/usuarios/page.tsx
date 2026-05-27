@@ -5,6 +5,7 @@ import { serializeRscProps } from "@/core/rsc-serialize"
 import { type AccessProfile } from "@/core/rbac/policy"
 import UsuariosClient from "./UsuariosClient"
 
+
 // Always render fresh — Google OAuth creates users at login time and must appear immediately
 export const dynamic = "force-dynamic"
 
@@ -18,6 +19,8 @@ export default async function UsuariosPage() {
   const allUsers = rUsers.status === "fulfilled" ? rUsers.value : []
   const session = rSession.status === "fulfilled" ? rSession.value : null
   const isAdmin = rAdmin.status === "fulfilled" ? rAdmin.value : false
+  const isMgrAdmin =
+    session?.user?.type === "Administrador" && session?.user?.accessProfile === "MGR"
 
   // RBAC: Admin+QA/UX/TW só vê usuários do próprio perfil; Admin+MGR vê todos.
   const viewerType = session?.user?.type ?? null
@@ -66,6 +69,7 @@ export default async function UsuariosPage() {
       initialUsers={serializeRscProps(users)}
       currentUserId={currentUserId}
       isAdmin={isAdmin}
+      isMgrAdmin={isMgrAdmin}
       listProfileFilter={listProfileFilter}
       usersFetchFailed={usersFetchFailed}
       usersFetchErrorMessage={usersFetchErrorMessage}
