@@ -626,7 +626,7 @@ const Topbar = React.memo(function Topbar({
           type="button"
           onClick={onToggleMobile}
           aria-label="Abrir menu"
-          className="flex size-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-neutral-grey-100 lg:hidden"
+          className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-neutral-grey-100 lg:hidden"
         >
           <Menu className="size-4" />
         </button>
@@ -634,7 +634,7 @@ const Topbar = React.memo(function Topbar({
           type="button"
           onClick={onToggleDesktop}
           aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
-          className="hidden size-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-neutral-grey-100 lg:flex"
+          className="hidden size-8 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-neutral-grey-100 lg:flex"
         >
           {collapsed
             ? <PanelLeftOpen className="size-4" />
@@ -649,7 +649,7 @@ const Topbar = React.memo(function Topbar({
           type="button"
           onClick={onToggleTheme}
           aria-label={isDark ? "Mudar para tema claro" : "Mudar para tema escuro"}
-          className="flex size-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+          className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
         >
           {isDark
             ? <Sun className="size-4" />

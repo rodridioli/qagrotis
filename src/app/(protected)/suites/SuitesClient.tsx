@@ -348,7 +348,7 @@ const showBulkActions = !filters.apenasInativos
                         showBulkActions ? "left-10" : "left-0"
                       )}>
                         {s.active ? (
-                          <Link href={`/suites/${s.id}`} className="text-brand-primary hover:underline">
+                          <Link href={`/suites/${s.id}`} className="cursor-pointer text-brand-primary hover:underline">
                             {s.id}
                           </Link>
                         ) : (
@@ -377,7 +377,7 @@ const showBulkActions = !filters.apenasInativos
                             type="button"
                             aria-label="Ativar"
                             onClick={() => { setAtivarId(s.id); setAtivarOpen(true) }}
-                            className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                            className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
                           >
                             <RotateCcw className="size-4" />
                           </button>
@@ -388,7 +388,7 @@ const showBulkActions = !filters.apenasInativos
                                 <button
                                   type="button"
                                   aria-label="Mais ações"
-                                  className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                  className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                 />
                               }
                             >

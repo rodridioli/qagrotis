@@ -343,7 +343,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                           showBulkActions ? "left-10" : "left-0"
                         )}>
                           {s.active && isAdmin ? (
-                            <button type="button" onClick={() => openEditarSistema(s)} className="text-brand-primary hover:underline">{s.id}</button>
+                            <button type="button" onClick={() => openEditarSistema(s)} className="cursor-pointer text-brand-primary hover:underline">{s.id}</button>
                           ) : (
                             <span className="text-text-primary">{s.id}</span>
                           )}
@@ -357,7 +357,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                             <button
                               type="button"
                               onClick={() => setModulosModalSistema(s)}
-                              className="text-brand-primary hover:underline text-sm font-medium"
+                              className="cursor-pointer text-brand-primary hover:underline text-sm font-medium"
                               title={`Ver ${modulosDoSistema.length} módulo${modulosDoSistema.length !== 1 ? "s" : ""}`}
                               aria-label={`Ver ${modulosDoSistema.length} módulo${modulosDoSistema.length !== 1 ? "s" : ""} de ${s.name}`}
                             >
@@ -373,7 +373,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                               type="button"
                               aria-label="Ativar"
                               onClick={() => { setAtivarId(s.id); setAtivarOpen(true) }}
-                              className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                              className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
                             >
                               <RotateCcw className="size-4" />
                             </button>
@@ -384,7 +384,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                                   <button
                                     type="button"
                                     aria-label="Mais ações"
-                                    className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                    className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                   />
                                 }
                               >

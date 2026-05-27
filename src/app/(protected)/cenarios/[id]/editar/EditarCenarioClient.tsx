@@ -803,7 +803,7 @@ export default function EditarCenarioClient({
                               <button
                                 type="button"
                                 onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
-                                className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                                 aria-label="Remover passo"
                               >
                                 <Trash2 className="size-4" />
@@ -876,7 +876,7 @@ export default function EditarCenarioClient({
                     {deps.map((d) => (
                       <tr key={d.id} className="border-b border-border-default last:border-0 transition-colors">
                         <td className="px-4 py-3">
-                          <Link href={`/cenarios/${d.id}/editar`} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-primary hover:underline">{d.id}</Link>
+                          <Link href={`/cenarios/${d.id}/editar`} target="_blank" rel="noopener noreferrer" className="cursor-pointer font-medium text-brand-primary hover:underline">{d.id}</Link>
                         </td>
                         <td className="max-w-0 truncate px-4 py-3" title={d.name}>
                           <span className="block truncate text-text-primary">{d.name}</span>

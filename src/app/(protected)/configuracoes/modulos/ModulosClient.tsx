@@ -357,7 +357,7 @@ export default function ModulosClient({ initialModulos: initialModulosParam, ini
                         showBulkActions ? "left-10" : "left-0"
                       )}>
                         {m.active && isAdmin ? (
-                          <button type="button" onClick={() => openEditarModulo(m)} className="text-brand-primary hover:underline">{m.id}</button>
+                          <button type="button" onClick={() => openEditarModulo(m)} className="cursor-pointer text-brand-primary hover:underline">{m.id}</button>
                         ) : (
                           <span className="text-text-primary">{m.id}</span>
                         )}
@@ -376,7 +376,7 @@ export default function ModulosClient({ initialModulos: initialModulosParam, ini
                             type="button"
                             aria-label="Ativar"
                             onClick={() => { setAtivarId(m.id); setAtivarOpen(true) }}
-                            className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                            className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
                           >
                             <RotateCcw className="size-4" />
                           </button>
@@ -387,7 +387,7 @@ export default function ModulosClient({ initialModulos: initialModulosParam, ini
                                 <button
                                   type="button"
                                   aria-label="Mais ações"
-                                  className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                  className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                 />
                               }
                             >

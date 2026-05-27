@@ -436,7 +436,7 @@ export default function UsuariosClient({
                           showBulkActions ? "left-10" : "left-0"
                         )}>
                           {u.active && (isAdmin || isSelf) ? (
-                            <Link href={`/configuracoes/usuarios/${u.id}/editar`} className="text-brand-primary hover:underline">{u.id}</Link>
+                            <Link href={`/configuracoes/usuarios/${u.id}/editar`} className="cursor-pointer text-brand-primary hover:underline">{u.id}</Link>
                           ) : (
                             <span className="text-text-primary">{u.id}</span>
                           )}
@@ -483,7 +483,7 @@ export default function UsuariosClient({
                               type="button"
                               aria-label="Ativar"
                               onClick={() => { setAtivarId(u.id); setAtivarOpen(true) }}
-                              className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                              className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
                             >
                               <RotateCcw className="size-4" />
                             </button>
@@ -492,7 +492,7 @@ export default function UsuariosClient({
                               href={`/configuracoes/usuarios/${u.id}/editar`}
                               title="Editar meu cadastro"
                               aria-label="Editar meu cadastro"
-                              className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                              className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
                             >
                               <Pencil className="size-4" />
                             </Link>
@@ -503,7 +503,7 @@ export default function UsuariosClient({
                                   <button
                                     type="button"
                                     aria-label="Mais ações"
-                                    className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                    className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                   />
                                 }
                               >
@@ -531,7 +531,7 @@ export default function UsuariosClient({
                               href={`/configuracoes/usuarios/${u.id}/editar`}
                               title="Visualizar cadastro"
                               aria-label="Visualizar cadastro"
-                              className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                              className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
                             >
                               <Eye className="size-4" />
                             </Link>

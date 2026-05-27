@@ -40,7 +40,7 @@ export function PageBreadcrumb({ items, backHref, className }: PageBreadcrumbPro
                 {item.label}
               </span>
             ) : (
-              <Link href={item.href} className="text-text-secondary hover:text-brand-primary">
+              <Link href={item.href} className="cursor-pointer text-text-secondary hover:text-brand-primary">
                 {item.label}
               </Link>
             )}

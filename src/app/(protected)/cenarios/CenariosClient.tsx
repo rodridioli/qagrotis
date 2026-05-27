@@ -496,7 +496,7 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
                         showBulkActions ? "left-10" : "left-0"
                       )}>
                         {c.active ? (
-                          <Link href={`/cenarios/${c.id}/editar`} className="font-medium text-brand-primary hover:underline">
+                          <Link href={`/cenarios/${c.id}/editar`} className="cursor-pointer font-medium text-brand-primary hover:underline">
                             {c.id}
                           </Link>
                         ) : (
@@ -519,7 +519,7 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
                             type="button"
                             aria-label="Ativar"
                             onClick={(e) => { e.stopPropagation(); setAtivarId(c.id); setAtivarOpen(true) }}
-                            className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                            className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
                           >
                             <RotateCcw className="size-4" />
                           </button>
@@ -530,7 +530,7 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
                                 <button
                                   type="button"
                                   aria-label="Mais ações"
-                                  className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                  className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
                                 />
                               }
                             >

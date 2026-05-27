@@ -287,7 +287,7 @@ export function CredenciaisClient({ initialCredenciais, isAdmin }: Props) {
                             type="button"
                             aria-label="Ativar"
                             onClick={() => { setAtivarId(c.id); setAtivarOpen(true) }}
-                            className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                            className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
                           >
                             <RotateCcw className="size-4" />
                           </button>
@@ -298,7 +298,7 @@ export function CredenciaisClient({ initialCredenciais, isAdmin }: Props) {
                                 <button
                                   type="button"
                                   aria-label="Mais ações"
-                                  className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+                                  className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
                                 />
                               }
                             >

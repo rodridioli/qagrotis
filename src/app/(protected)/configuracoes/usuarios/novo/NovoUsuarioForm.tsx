@@ -368,7 +368,7 @@ export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-text-secondary transition-colors hover:text-text-primary"
                   >
                     {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
@@ -390,7 +390,7 @@ export default function NovoUsuarioForm({ manageableProfiles = ACCESS_PROFILES }
                     type="button"
                     onClick={() => setShowConfirm((v) => !v)}
                     aria-label={showConfirm ? "Ocultar confirmação de senha" : "Exibir confirmação de senha"}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-text-secondary transition-colors hover:text-text-primary"
                   >
                     {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>

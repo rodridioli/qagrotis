@@ -207,7 +207,7 @@ export function AtualizacoesClient({ entries }: Props) {
                             <button
                               type="button"
                               onClick={() => toggleExpand(entry.version)}
-                              className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+                              className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
                               title={isExpanded ? "Recolher" : "Expandir"}
                             >
                               {isExpanded

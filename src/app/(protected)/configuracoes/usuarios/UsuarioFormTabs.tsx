@@ -463,7 +463,7 @@ export default function UsuarioFormTabs({
                           placeholder="Nova senha"
                           aria-invalid={!!errors.password}
                         />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-text-secondary">
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 cursor-pointer text-text-secondary">
                           {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                         </button>
                       </div>
@@ -478,7 +478,7 @@ export default function UsuarioFormTabs({
                           placeholder="Confirmar senha"
                           aria-invalid={!!errors.confirmPassword}
                         />
-                        <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-2.5 text-text-secondary">
+                        <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-2.5 cursor-pointer text-text-secondary">
                           {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                         </button>
                       </div>
@@ -589,7 +589,7 @@ export default function UsuarioFormTabs({
                       <button
                         type="button"
                         onClick={() => setEducation(education.filter((_, i) => i !== idx))}
-                        className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                         aria-label="Remover formação"
                       >
                         <Trash2 className="size-4" />
@@ -617,7 +617,7 @@ export default function UsuarioFormTabs({
                       <button
                         type="button"
                         onClick={() => setCourses(courses.filter((_, i) => i !== idx))}
-                        className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                         aria-label="Remover curso"
                       >
                         <Trash2 className="size-4" />
@@ -650,7 +650,7 @@ export default function UsuarioFormTabs({
                       <button
                         type="button"
                         onClick={() => setLanguages(languages.filter((_, i) => i !== idx))}
-                        className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                         aria-label="Remover idioma"
                       >
                         <Trash2 className="size-4" />
@@ -677,7 +677,7 @@ export default function UsuarioFormTabs({
                       <button
                         type="button"
                         onClick={() => setCertifications(certifications.filter((_, i) => i !== idx))}
-                        className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                         aria-label="Remover certificação"
                       >
                         <Trash2 className="size-4" />

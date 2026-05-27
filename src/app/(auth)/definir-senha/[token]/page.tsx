@@ -75,7 +75,7 @@ export default function DefinirSenhaPage({
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-text-secondary transition-colors hover:text-text-primary"
                 >
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
@@ -95,7 +95,7 @@ export default function DefinirSenhaPage({
                 <button
                   type="button"
                   onClick={() => setShowConfirm((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-text-secondary transition-colors hover:text-text-primary"
                 >
                   {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>

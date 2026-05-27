@@ -32,7 +32,7 @@ export function NotificationBell() {
         aria-label={count > 0 ? `Notificações (${count} não lida${count > 1 ? "s" : ""})` : "Notificações"}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className="relative flex size-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+        className="relative flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
       >
         <Bell className="size-4" />
         {displayCount !== null && (

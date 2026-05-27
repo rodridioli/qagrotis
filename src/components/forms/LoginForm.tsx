@@ -216,7 +216,7 @@ function LoginView({ onForgotPassword, callbackUrl }: { onForgotPassword: () => 
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-              className="flex size-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-neutral-grey-100"
+              className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-neutral-grey-100"
             >
               {showPassword ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
             </button>
