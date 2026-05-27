@@ -494,6 +494,7 @@ export default function UsuarioFormTabs({
                   preview={photoPreview}
                   onFileSelect={handlePhotoSelect}
                   onRemove={() => { setPhotoFile(null); setPhotoPreview(null) }}
+                  disabled={readOnly}
                 />
               </aside>
             </div>
