@@ -1111,7 +1111,7 @@ export async function resolveSolicitanteFieldId(
       return null
     }
     const found = data.find(
-      (f) => f.custom !== false && /^solicitante$/i.test(f.name.trim()),
+      (f) => f.custom !== false && /^(solicitante|requester)$/i.test(f.name.trim()),
     )
     cachedSolicitanteFieldId = found?.id ?? null
   } catch {
