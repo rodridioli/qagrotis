@@ -1503,7 +1503,11 @@ export async function fetchKanbanSubtasks(
   credentials: string,
 ): Promise<KanbanIssue[]> {
   const projectList = KANBAN_PROJECTS.map((p) => `"${p}"`).join(", ")
-  const jql = `status = "UX" AND project in (${projectList}) ORDER BY project ASC, updated DESC`
+  const nonUxProjectList = KANBAN_PROJECTS.filter((p) => p !== "UX")
+    .map((p) => `"${p}"`)
+    .join(", ")
+  const jql =
+    `((status = "UX" AND project in (${projectList})) OR (issuetype = "UX" AND project in (${nonUxProjectList}))) ORDER BY project ASC, updated DESC`
 
   const issues: KanbanIssue[] = []
   let nextPageToken: string | null = null
