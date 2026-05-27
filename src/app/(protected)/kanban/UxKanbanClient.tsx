@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd"
-import { AlertCircle, ChevronDown, User } from "lucide-react"
+import { AlertCircle, ChevronDown, Flag, Search, User } from "lucide-react"
 import { JiraNotConfiguredCard } from "@/components/shared/JiraNotConfiguredCard"
 import { cn } from "@/core/utils"
 import type { KanbanResult, UxTarefasResult } from "@/features/kanban/actions/kanban"
@@ -16,14 +16,44 @@ import type { KanbanAssignments } from "@/features/kanban/actions/ux-kanban"
 import { assignIssueToUser, assignTarefaToMember } from "@/features/kanban/actions/ux-kanban"
 import type { KanbanIssue, UxTarefa } from "@/features/kanban/kanban-constants"
 
-// ─── Priority sort ────────────────────────────────────────────────────────────
+// ─── Debounce hook ────────────────────────────────────────────────────────────
+
+function useDebounce(value: string, delay: number): string {
+  const [debounced, setDebounced] = React.useState(value)
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
+  return debounced
+}
+
+// ─── Priority helpers ─────────────────────────────────────────────────────────
 
 const PRIORITY_RANK: Record<string, number> = {
   highest: 0,
+  critical: 0,
   high: 1,
   medium: 2,
   low: 3,
   lowest: 4,
+}
+
+const PRIORITY_PT: Record<string, string> = {
+  highest:  "Crítica",
+  critical: "Crítica",
+  crítica:  "Crítica",
+  high:     "Alta",
+  alta:     "Alta",
+  medium:   "Média",
+  média:    "Média",
+  low:      "Baixa",
+  baixa:    "Baixa",
+  lowest:   "Muito Baixa",
+}
+
+function translatePriority(priority: string | null): string | null {
+  if (!priority) return null
+  return PRIORITY_PT[priority.toLowerCase()] ?? priority
 }
 
 function priorityRank(p: string | null): number {
@@ -127,7 +157,9 @@ function CardContent({ issue }: { issue: KanbanIssue }) {
         {(issue.priorityIconUrl ?? issue.priority) && (
           <div className="flex shrink-0 items-center gap-1">
             {issue.priority && (
-              <span className="text-xs font-medium text-text-secondary">{issue.priority}</span>
+              <span className="text-xs font-medium text-text-secondary">
+                {translatePriority(issue.priority)}
+              </span>
             )}
             {issue.priorityIconUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -144,7 +176,10 @@ function CardContent({ issue }: { issue: KanbanIssue }) {
 
       {/* 3. Data de entrega (somente se existir) */}
       {dateStr && (
-        <span className="text-sm text-brand-primary">{dateStr}</span>
+        <div className="flex items-center gap-1">
+          <Flag className="size-3 shrink-0 text-red-500" aria-hidden />
+          <span className="text-xs text-brand-primary">{dateStr}</span>
+        </div>
       )}
 
       {/* 4. Relator + badge do projeto */}
@@ -205,6 +240,7 @@ function Lane({
   emptyText,
   wide,
   memberAvatar,
+  searchable,
 }: {
   droppableId: string
   title: string
@@ -214,8 +250,21 @@ function Lane({
   emptyText?: string
   wide?: boolean
   memberAvatar?: { url: string | null; name: string }
+  searchable?: boolean
 }) {
-  const totalCount = issues.length + (tarefas?.length ?? 0)
+  const [rawSearch, setRawSearch] = React.useState("")
+  const debouncedSearch = useDebounce(rawSearch, 200)
+
+  const displayedIssues = React.useMemo(() => {
+    if (!debouncedSearch.trim()) return issues
+    const q = debouncedSearch.trim().toLowerCase()
+    return issues.filter(
+      (i) => i.key.toLowerCase().includes(q) || (i.summary ?? "").toLowerCase().includes(q),
+    )
+  }, [issues, debouncedSearch])
+
+  const totalCount = displayedIssues.length + (tarefas?.length ?? 0)
+
   return (
     <div
       className={cn(
@@ -242,6 +291,22 @@ function Lane({
 
       <div className="mx-4 h-px bg-border-default" />
 
+      {/* Search bar */}
+      {searchable && (
+        <div className="px-3 py-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-secondary" />
+            <input
+              type="text"
+              value={rawSearch}
+              onChange={(e) => setRawSearch(e.target.value)}
+              placeholder="Buscar título ou código…"
+              className="w-full rounded-lg border border-border-default bg-surface-input py-1.5 pl-8 pr-3 text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-1 focus:ring-brand-primary"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Droppable */}
       <Droppable droppableId={droppableId}>
         {(provided, snapshot) => (
@@ -253,14 +318,16 @@ function Lane({
               "min-h-[80px] rounded-b-xl transition-colors duration-150",
               snapshot.isDraggingOver ? "bg-brand-primary/[0.04]" : "",
             )}
-            style={{ maxHeight: "calc(100dvh - 180px)" }}
+            style={{ maxHeight: searchable ? "calc(100dvh - 224px)" : "calc(100dvh - 180px)" }}
           >
             {totalCount === 0 && !snapshot.isDraggingOver && (
               <p className="py-6 text-center text-xs italic text-text-disabled">
-                {emptyText ?? "Nenhum item"}
+                {debouncedSearch.trim()
+                  ? "Nenhum resultado encontrado"
+                  : (emptyText ?? "Nenhum item")}
               </p>
             )}
-            {issues.map((issue, index) => (
+            {displayedIssues.map((issue, index) => (
               <DraggableCard key={issue.key} issue={issue} index={index} />
             ))}
             {provided.placeholder}
@@ -301,7 +368,9 @@ function TarefaCardContent({ tarefa }: { tarefa: UxTarefa }) {
         {(tarefa.priorityIconUrl ?? tarefa.priority) && (
           <div className="flex shrink-0 items-center gap-1">
             {tarefa.priority && (
-              <span className="text-xs font-medium text-text-secondary">{tarefa.priority}</span>
+              <span className="text-xs font-medium text-text-secondary">
+                {translatePriority(tarefa.priority)}
+              </span>
             )}
             {tarefa.priorityIconUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -318,7 +387,10 @@ function TarefaCardContent({ tarefa }: { tarefa: UxTarefa }) {
 
       {/* Data de entrega */}
       {dateStr && (
-        <span className="text-sm text-brand-primary">{dateStr}</span>
+        <div className="flex items-center gap-1">
+          <Flag className="size-3 shrink-0 text-red-500" aria-hidden />
+          <span className="text-xs text-brand-primary">{dateStr}</span>
+        </div>
       )}
 
       {/* Solicitante + tag */}
@@ -381,6 +453,17 @@ function TarefasLane({
   onTagFilterChange: (v: string) => void
   tags: string[]
 }) {
+  const [rawSearch, setRawSearch] = React.useState("")
+  const debouncedSearch = useDebounce(rawSearch, 200)
+
+  const displayedTarefas = React.useMemo(() => {
+    if (!debouncedSearch.trim()) return tarefas
+    const q = debouncedSearch.trim().toLowerCase()
+    return tarefas.filter(
+      (t) => t.key.toLowerCase().includes(q) || (t.summary ?? "").toLowerCase().includes(q),
+    )
+  }, [tarefas, debouncedSearch])
+
   return (
     <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
       {/* Header */}
@@ -389,7 +472,7 @@ function TarefasLane({
           Tarefas
         </span>
         <span className="shrink-0 rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-xs font-bold tabular-nums text-text-secondary">
-          {tarefas.length}
+          {displayedTarefas.length}
         </span>
         {tags.length > 0 && (
           <div className="relative ml-auto">
@@ -411,6 +494,20 @@ function TarefasLane({
 
       <div className="mx-4 h-px bg-border-default" />
 
+      {/* Search bar */}
+      <div className="px-3 py-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-secondary" />
+          <input
+            type="text"
+            value={rawSearch}
+            onChange={(e) => setRawSearch(e.target.value)}
+            placeholder="Buscar título ou código…"
+            className="w-full rounded-lg border border-border-default bg-surface-input py-1.5 pl-8 pr-3 text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-1 focus:ring-brand-primary"
+          />
+        </div>
+      </div>
+
       {/* Droppable — isDropDisabled prevents drops into this column */}
       <Droppable droppableId="tarefas" isDropDisabled>
         {(provided) => (
@@ -418,14 +515,18 @@ function TarefasLane({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className="flex flex-col gap-3 overflow-y-auto p-4 scrollbar-thin min-h-[80px] rounded-b-xl"
-            style={{ maxHeight: "calc(100dvh - 180px)" }}
+            style={{ maxHeight: "calc(100dvh - 224px)" }}
           >
-            {tarefas.length === 0 ? (
+            {displayedTarefas.length === 0 ? (
               <p className="py-6 text-center text-xs italic text-text-disabled">
-                {tagFilter ? "Nenhuma tarefa nesta tag" : "Nenhuma tarefa"}
+                {debouncedSearch.trim()
+                  ? "Nenhum resultado encontrado"
+                  : tagFilter
+                  ? "Nenhuma tarefa nesta tag"
+                  : "Nenhuma tarefa"}
               </p>
             ) : (
-              tarefas.map((tarefa, index) => (
+              displayedTarefas.map((tarefa, index) => (
                 <DraggableTarefaCard key={tarefa.key} tarefa={tarefa} index={index} />
               ))
             )}
@@ -580,12 +681,13 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
               className="flex gap-4 pt-2"
               style={{ minWidth: `${320 + 288 + 16 + activeMembers.length * (288 + 16)}px` }}
             >
-              {/* Demandas — draggable, filterable by project */}
+              {/* Demandas — draggable, filterable by project, searchable */}
               <Lane
                 droppableId="pending"
                 title="Demandas"
                 issues={pendingIssues}
                 wide
+                searchable
                 emptyText={
                   projectFilter
                     ? "Nenhuma demanda neste projeto"
