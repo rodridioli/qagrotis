@@ -1558,6 +1558,28 @@ export async function fetchKanbanSubtasks(
   return issues
 }
 
+// ── UX Tarefas helpers ───────────────────────────────────────────────────────
+
+/**
+ * Extrai o nome do solicitante de um campo Jira que pode ser:
+ * - string simples: "Carol"
+ * - user-picker: { displayName: "Carol", ... }
+ * - option: { value: "Carol" } ou { name: "Carol" }
+ */
+function parseSolicitanteField(raw: unknown): string | null {
+  if (raw == null) return null
+  if (typeof raw === "string") return raw.trim() || null
+  if (typeof raw === "object") {
+    const o = raw as Record<string, unknown>
+    const name =
+      (typeof o.displayName === "string" ? o.displayName : null) ??
+      (typeof o.name === "string" ? o.name : null) ??
+      (typeof o.value === "string" ? o.value : null)
+    return name?.trim() || null
+  }
+  return null
+}
+
 // ── UX Tarefas (Open / Backlog / Priority / Pending UX from project UX) ──────
 
 export type UxTarefa = {
@@ -1612,7 +1634,6 @@ export async function fetchUxTarefas(
       const reporterObj = f?.reporter as { displayName?: string } | null
       const tagRaw = tagFieldId ? f?.[tagFieldId] : undefined
       const solicitanteRaw = solicitanteFieldId ? f?.[solicitanteFieldId] : undefined
-      const solicitanteObj = solicitanteRaw as { displayName?: string } | null | undefined
       const deadlineRaw = deadlineFieldId ? f?.[deadlineFieldId] : undefined
 
       tarefas.push({
@@ -1622,10 +1643,7 @@ export async function fetchUxTarefas(
         priority: priorityObj?.name ?? null,
         priorityIconUrl: priorityObj?.iconUrl ?? null,
         reporterDisplayName: reporterObj?.displayName ?? null,
-        solicitanteDisplayName:
-          typeof solicitanteObj?.displayName === "string"
-            ? solicitanteObj.displayName.trim() || null
-            : null,
+        solicitanteDisplayName: parseSolicitanteField(solicitanteRaw),
         dueDate: typeof f?.duedate === "string" ? f.duedate : null,
         deadline: typeof deadlineRaw === "string" ? deadlineRaw : null,
         tag: parseTypeFieldValue(tagRaw),

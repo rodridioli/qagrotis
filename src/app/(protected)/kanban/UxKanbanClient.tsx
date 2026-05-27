@@ -150,7 +150,7 @@ function CardContent({ issue }: { issue: KanbanIssue }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="text-sm font-bold text-text-primary underline-offset-2 hover:underline"
+          className="text-sm font-bold text-brand-primary underline-offset-2 hover:underline"
         >
           {issue.key}
         </a>
@@ -361,7 +361,7 @@ function TarefaCardContent({ tarefa }: { tarefa: UxTarefa }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="text-sm font-bold text-text-primary underline-offset-2 hover:underline"
+          className="text-sm font-bold text-brand-primary underline-offset-2 hover:underline"
         >
           {tarefa.key}
         </a>
