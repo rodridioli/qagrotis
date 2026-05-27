@@ -882,11 +882,7 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
         </DragDropContext>
       )}
 
-      {initialResult.ok && issues.length === 0 && tarefas.length === 0 && (
-        <p className="py-16 text-center text-sm italic text-text-disabled">
-          Nenhum Jira com situação UX encontrado.
-        </p>
-      )}
+
     </div>
   )
 }
