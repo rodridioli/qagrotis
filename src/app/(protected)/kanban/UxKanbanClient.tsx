@@ -301,7 +301,7 @@ function TarefasLane({
   }, [tarefas, debouncedSearch])
 
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
+    <div className="flex h-full w-72 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
       <div className="flex items-center gap-2 px-4 py-3">
         <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-text-primary">
           Tarefas
@@ -347,10 +347,9 @@ function TarefasLane({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "flex flex-col gap-3 overflow-y-auto p-4 scrollbar-thin min-h-[80px] rounded-b-xl transition-colors duration-150",
+              "flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto p-4 scrollbar-thin rounded-b-xl transition-colors duration-150",
               snapshot.isDraggingOver ? "bg-emerald-500/[0.04]" : "",
             )}
-            style={{ maxHeight: "calc(100dvh - 224px)" }}
           >
             {displayedTarefas.length === 0 && !snapshot.isDraggingOver ? (
               <p className="py-6 text-center text-xs italic text-text-disabled">
@@ -400,7 +399,7 @@ function MemberLane({
   const totalCount = displayedIssues.length + tarefas.length
 
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
+    <div className="flex h-full w-72 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
       <div className="flex items-center gap-2 px-4 py-3">
         <Avatar url={member.photoPath} name={member.name} size="sm" />
         <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-text-primary" title={member.name}>
@@ -443,10 +442,9 @@ function MemberLane({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "flex flex-col gap-3 overflow-y-auto p-4 scrollbar-thin min-h-[80px] rounded-b-xl transition-colors duration-150",
+              "flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto p-4 scrollbar-thin rounded-b-xl transition-colors duration-150",
               snapshot.isDraggingOver ? "bg-brand-primary/[0.04]" : "",
             )}
-            style={{ maxHeight: searchable ? "calc(100dvh - 224px)" : "calc(100dvh - 180px)" }}
           >
             {totalCount === 0 && !snapshot.isDraggingOver && (
               <p className="py-6 text-center text-xs italic text-text-disabled">
@@ -493,7 +491,7 @@ function DemandasLane({
   }, [issues, debouncedSearch])
 
   return (
-    <div className="flex w-80 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
+    <div className="flex h-full w-80 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
       <div className="flex items-center gap-2 px-4 py-3">
         <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-text-primary">
           Demandas
@@ -540,10 +538,9 @@ function DemandasLane({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "flex flex-col gap-3 overflow-y-auto p-4 scrollbar-thin min-h-[80px] rounded-b-xl transition-colors duration-150",
+              "flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto p-4 scrollbar-thin rounded-b-xl transition-colors duration-150",
               snapshot.isDraggingOver ? "bg-brand-primary/[0.04]" : "",
             )}
-            style={{ maxHeight: "calc(100dvh - 224px)" }}
           >
             {displayedIssues.length === 0 && !snapshot.isDraggingOver && (
               <p className="py-6 text-center text-xs italic text-text-disabled">
@@ -825,7 +822,7 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full flex-col">
       {!initialResult.ok && (
         initialResult.reason === "jira_not_configured" ? (
           <JiraNotConfiguredCard />
@@ -839,9 +836,9 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
 
       {initialResult.ok && (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="overflow-x-auto">
+          <div className="flex-1 min-h-0 overflow-x-auto">
             <div
-              className="flex gap-4 pt-2"
+              className="flex h-full gap-4 pt-2"
               style={{ minWidth: `${320 + 288 + 16 + activeMembers.length * (288 + 16)}px` }}
             >
               {/* Demandas */}
