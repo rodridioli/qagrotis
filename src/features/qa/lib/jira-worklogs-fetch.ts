@@ -1880,6 +1880,71 @@ export async function fetchIssueDetailsByKeys(
 }
 
 /**
+ * Fetches full UxTarefa data (including tag, solicitante, deadline) for an
+ * explicit list of issue keys. Used to supplement JQL results with issues that
+ * are assigned in the DB but missing from the standard status-filtered query.
+ */
+export async function fetchUxTarefasByKeys(
+  base: string,
+  credentials: string,
+  keys: string[],
+): Promise<UxTarefa[]> {
+  if (keys.length === 0) return []
+
+  const [tagFieldId, solicitanteFieldId, deadlineFieldId] = await Promise.all([
+    resolveTagFieldId(base, credentials),
+    resolveSolicitanteFieldId(base, credentials),
+    resolveDeadlineFieldId(base, credentials),
+  ])
+
+  const unique = [...new Set(keys.map((k) => k.trim().toUpperCase()))]
+  const extraFields: string[] = [
+    "status", "priority", "reporter", "duedate",
+    ...(tagFieldId ? [tagFieldId] : []),
+    ...(solicitanteFieldId ? [solicitanteFieldId] : []),
+    ...(deadlineFieldId ? [deadlineFieldId] : []),
+  ]
+
+  const tarefas: UxTarefa[] = []
+  const CHUNK = 50
+
+  for (let i = 0; i < unique.length; i += CHUNK) {
+    const chunk = unique.slice(i, i + CHUNK)
+    const quoted = chunk.map((k) => `"${k.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`).join(", ")
+    const jql = `key in (${quoted})`
+    try {
+      const page = await searchIssuesByJql(base, credentials, jql, null, extraFields)
+      if (!page) continue
+      for (const issue of page.issues) {
+        const f = issue.fields as Record<string, unknown> | undefined
+        const statusObj = f?.status as { name?: string } | null
+        const priorityObj = f?.priority as { name?: string; iconUrl?: string } | null
+        const reporterObj = f?.reporter as { displayName?: string } | null
+        const tagRaw = tagFieldId ? f?.[tagFieldId] : undefined
+        const solicitanteRaw = solicitanteFieldId ? f?.[solicitanteFieldId] : undefined
+        const deadlineRaw = deadlineFieldId ? f?.[deadlineFieldId] : undefined
+        tarefas.push({
+          key: issue.key,
+          summary: (typeof f?.summary === "string" ? f.summary.trim() : "") || "",
+          status: statusObj?.name ?? "",
+          priority: priorityObj?.name ?? null,
+          priorityIconUrl: priorityObj?.iconUrl ?? null,
+          reporterDisplayName: reporterObj?.displayName ?? null,
+          solicitanteDisplayName: parseSolicitanteField(solicitanteRaw),
+          dueDate: typeof f?.duedate === "string" ? f.duedate : null,
+          deadline: typeof deadlineRaw === "string" ? deadlineRaw : null,
+          tag: parseTypeFieldValue(tagRaw),
+        })
+      }
+    } catch {
+      // non-fatal
+    }
+  }
+
+  return tarefas
+}
+
+/**
  * Fetches UX project issues assigned to a specific Jira accountId (any status).
  * Returns UxTarefa-compatible objects with current Jira status.
  */

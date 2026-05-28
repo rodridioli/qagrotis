@@ -7,7 +7,7 @@ import {
   fetchKanbanSubtasks,
   fetchUxTarefas,
   fetchUxTarefasForUser,
-  fetchIssueDetailsByKeys,
+  fetchUxTarefasByKeys,
 } from "@/features/qa/lib/jira-worklogs-fetch"
 import type { KanbanIssue, UxTarefa } from "@/features/qa/lib/jira-worklogs-fetch"
 import { db } from "@/core/db"
@@ -134,24 +134,13 @@ export async function getUxTarefasForMainKanban(): Promise<UxTarefasResult> {
 
     if (missingKeys.length === 0) return { ok: true, tarefas }
 
-    // Fetch missing keys directly from Jira
-    const detailsMap = await fetchIssueDetailsByKeys(creds.base, creds.credentials, missingKeys)
+    // Fetch missing keys with full custom fields (tag, solicitante, deadline)
+    const supplemental = await fetchUxTarefasByKeys(creds.base, creds.credentials, missingKeys)
 
-    for (const detail of detailsMap.values()) {
+    for (const tarefa of supplemental) {
       // Skip terminal statuses (already done/canceled in the user's kanban)
-      if (TERMINAL_JIRA_STATUSES.has(detail.jiraStatus.toLowerCase())) continue
-      tarefas.push({
-        key: detail.key,
-        summary: detail.summary,
-        status: detail.jiraStatus,
-        priority: detail.priority,
-        priorityIconUrl: detail.priorityIconUrl,
-        dueDate: detail.dueDate,
-        deadline: null,
-        reporterDisplayName: detail.reporterDisplayName,
-        solicitanteDisplayName: null,
-        tag: null,
-      })
+      if (TERMINAL_JIRA_STATUSES.has(tarefa.status.toLowerCase())) continue
+      tarefas.push(tarefa)
     }
 
     return { ok: true, tarefas }

@@ -21,19 +21,20 @@ import {
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
-const COLUMNS: { id: UserKanbanColumn; label: string; color: string }[] = [
-  { id: "backlog",     label: "Backlog",      color: "border-t-slate-400" },
-  { id: "in_progress", label: "In Progress",  color: "border-t-blue-500" },
-  { id: "paused",      label: "Paused",       color: "border-t-amber-500" },
-  { id: "waiting",     label: "Waiting",      color: "border-t-orange-500" },
-  { id: "in_approval", label: "In Approval",  color: "border-t-purple-500" },
-  { id: "done",        label: "Done",         color: "border-t-emerald-500" },
-  { id: "canceled",    label: "Canceled",     color: "border-t-slate-300" },
+const COLUMNS: { id: UserKanbanColumn; label: string; color: string; chipClass: string }[] = [
+  { id: "backlog",     label: "Pendências",    color: "border-t-slate-400",   chipClass: "border-secondary-500/30 bg-secondary-500/10 text-secondary-600" },
+  { id: "in_progress", label: "Em andamento",  color: "border-t-blue-500",    chipClass: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300" },
+  { id: "paused",      label: "Pausado",       color: "border-t-amber-400",   chipClass: "border-amber-400/30 bg-amber-400/10 text-amber-600 dark:text-amber-400" },
+  { id: "waiting",     label: "Aguardando",    color: "border-t-cyan-500",    chipClass: "border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400" },
+  { id: "in_approval", label: "Em aprovação",  color: "border-t-purple-500",  chipClass: "border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-400" },
+  { id: "done",        label: "Feito",         color: "border-t-emerald-500", chipClass: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
+  { id: "canceled",    label: "Cancelado",     color: "border-t-slate-300",   chipClass: "border-secondary-500/30 bg-secondary-500/10 text-secondary-600" },
 ]
 
 /** Columns the user can hide. Order preserved from COLUMNS. */
 const HIDEABLE_COLS = new Set<UserKanbanColumn>(["paused", "waiting", "canceled"])
 const LS_KEY = (uid: string) => `kanban-hidden-cols-v1-${uid}`
+const DEFAULT_HIDDEN: UserKanbanColumn[] = ["paused", "waiting", "canceled"]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -268,7 +269,7 @@ function UserKanbanCardView({
           className={cn(
             "flex flex-col gap-2 rounded-xl border border-border-default bg-surface-card p-3.5",
             "select-none border-l-[3px]",
-            isTarefa ? "border-l-emerald-500" : "border-l-purple-600 dark:border-l-purple-400",
+            isTarefa ? "border-l-emerald-500" : "border-l-blue-500 dark:border-l-blue-400",
             isCanceled && "opacity-40 grayscale cursor-not-allowed",
             isDone && "opacity-60",
             !isCanceled && !isDone && !snapshot.isDragging && "cursor-grab shadow-sm transition-shadow hover:shadow-md",
@@ -284,7 +285,7 @@ function UserKanbanCardView({
               onClick={(e) => e.stopPropagation()}
               className={cn(
                 "text-sm font-bold underline-offset-2 hover:underline",
-                isTarefa ? "text-emerald-600 dark:text-emerald-400" : "text-purple-600 dark:text-purple-400",
+                isTarefa ? "text-emerald-600 dark:text-emerald-400" : "text-blue-700 dark:text-blue-300",
               )}
             >
               {card.key}
@@ -439,16 +440,23 @@ export function UserKanbanClient({
   const [pendingDone, setPendingDone] = React.useState<UserKanbanCard | null>(null)
   const [hiddenColumns, setHiddenColumns] = React.useState<Set<UserKanbanColumn>>(new Set())
 
-  // Load hidden columns from localStorage after mount (SSR-safe)
+  // Load hidden columns from localStorage after mount (SSR-safe).
+  // Sentinel: if no entry exists for this user, default to hiding Pausado/Aguardando/Cancelado.
+  // If an entry exists (even an empty array), respect the saved preference.
   React.useEffect(() => {
     try {
       const stored = localStorage.getItem(LS_KEY(userId))
-      if (stored) {
+      if (stored === null) {
+        // First visit — apply defaults and persist them
+        setHiddenColumns(new Set(DEFAULT_HIDDEN))
+        localStorage.setItem(LS_KEY(userId), JSON.stringify(DEFAULT_HIDDEN))
+      } else {
         const parsed = JSON.parse(stored) as string[]
         const valid = parsed.filter((c): c is UserKanbanColumn => HIDEABLE_COLS.has(c as UserKanbanColumn))
-        if (valid.length > 0) setHiddenColumns(new Set(valid))
+        setHiddenColumns(new Set(valid))
       }
     } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
   function toggleColumn(colId: UserKanbanColumn) {
@@ -573,10 +581,13 @@ export function UserKanbanClient({
                   onClick={() => toggleColumn(col.id)}
                   title="Exibir coluna novamente"
                   aria-label={`Exibir coluna ${col.label}`}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border-default bg-surface-card px-2.5 py-1 text-xs font-medium text-text-secondary transition-colors hover:border-brand-primary hover:text-brand-primary"
+                  className={cn(
+                    "inline-flex cursor-pointer items-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium transition-opacity hover:opacity-80",
+                    col.chipClass,
+                  )}
                 >
                   <span>{col.label}{count > 0 ? ` (${count})` : ""}</span>
-                  <X className="size-3 shrink-0" />
+                  <X className="ml-1.5 size-3 shrink-0" />
                 </button>
               )
             })}
