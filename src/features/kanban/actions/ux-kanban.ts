@@ -82,7 +82,7 @@ const COLUMN_TO_JIRA_STATUS: Record<UserKanbanColumn, string | null> = {
   paused:       "Paused",
   waiting:      "Waiting",
   in_approval:  "Aprovação",
-  done:         "Delivered",
+  done:         "Entregue",
   canceled:     "Canceled",
 }
 
@@ -432,8 +432,8 @@ export async function completeCardDone(
       : null
 
   if (cardType === "ux_tarefa") {
-    // UX Tarefa Done → transition to "Delivered" + comment
-    const transResult = await transitionIssueToStatus(base, credentials, issueKey, "Delivered")
+    // UX Tarefa Done → transition to "Entregue" (Jira status name in the UX workflow)
+    const transResult = await transitionIssueToStatus(base, credentials, issueKey, "Entregue")
     if (!transResult.ok) return transResult
 
     const commentBody = buildAdfComment(
@@ -442,10 +442,12 @@ export async function completeCardDone(
     )
     await postJiraComment(base, credentials, issueKey, commentBody)
   } else {
-    // Demanda Done → transition Jira to "Análise de Produto" + comment
+    // Demanda Done → transition Jira to "Análise de Produto"
+    // transitionIssueToStatus matches by to.name (status name), so "Análise de Produto"
+    // finds the "Iniciar ideação → ANÁLISE DE PRODUTO" transition correctly.
     const transResult = await transitionIssueToStatus(base, credentials, issueKey, "Análise de Produto")
     if (!transResult.ok) {
-      // Try fallback transition name
+      // Fallback: some workflows name the transition differently
       await transitionIssueToStatus(base, credentials, issueKey, "Produto").catch(() => null)
     }
 
