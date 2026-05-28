@@ -264,7 +264,7 @@ function UserKanbanCardView({
           className={cn(
             "flex flex-col gap-2 rounded-xl border border-border-default bg-surface-card p-3.5",
             "select-none border-l-[3px]",
-            isTarefa ? "border-l-emerald-500" : "border-l-secondary-500",
+            isTarefa ? "border-l-emerald-500" : "border-l-orange-500",
             isCanceled && "opacity-40 grayscale cursor-not-allowed",
             isDone && "opacity-60",
             !isCanceled && !isDone && !snapshot.isDragging && "cursor-grab shadow-sm transition-shadow hover:shadow-md",
@@ -280,7 +280,7 @@ function UserKanbanCardView({
               onClick={(e) => e.stopPropagation()}
               className={cn(
                 "text-sm font-bold underline-offset-2 hover:underline",
-                isTarefa ? "text-emerald-600 dark:text-emerald-400" : "text-secondary-500",
+                isTarefa ? "text-emerald-600 dark:text-emerald-400" : "text-orange-500",
               )}
             >
               {card.key}
@@ -309,22 +309,22 @@ function UserKanbanCardView({
             </div>
           )}
 
-          {/* Reporter / Solicitante */}
-          {(card.solicitanteDisplayName ?? card.reporterDisplayName) && !isCanceled && (
-            <div className="flex min-w-0 items-center gap-1 text-xs text-text-secondary">
-              <User className="size-3 shrink-0" aria-hidden />
-              <span className="truncate underline underline-offset-2">
-                {card.solicitanteDisplayName ?? card.reporterDisplayName}
-              </span>
-            </div>
-          )}
-
-          {/* Footer: tag / project */}
-          {(card.tag ?? card.projectName) && (
-            <div className="flex items-center gap-2">
-              <span className="shrink-0 rounded border border-border-default bg-surface-card px-2 py-0.5 text-xs font-medium text-text-secondary">
-                {card.tag ?? card.projectName.replace(/^Plataforma Agro - /, "")}
-              </span>
+          {/* Footer: reporter (left) + badge (right), same line */}
+          {!isCanceled && (
+            <div className="flex items-center justify-between gap-2">
+              {(card.solicitanteDisplayName ?? card.reporterDisplayName) ? (
+                <div className="flex min-w-0 items-center gap-1 text-xs text-text-secondary">
+                  <User className="size-3 shrink-0" aria-hidden />
+                  <span className="truncate underline underline-offset-2">
+                    {card.solicitanteDisplayName ?? card.reporterDisplayName}
+                  </span>
+                </div>
+              ) : <div />}
+              {(card.tag ?? card.projectName) && (
+                <span className="shrink-0 rounded border border-border-default bg-surface-card px-2 py-0.5 text-xs font-medium text-text-secondary">
+                  {card.tag ?? card.projectName.replace(/^Plataforma Agro - /, "")}
+                </span>
+              )}
             </div>
           )}
         </div>

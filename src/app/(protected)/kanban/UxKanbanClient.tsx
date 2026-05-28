@@ -134,7 +134,7 @@ function CardContent({ issue }: { issue: KanbanIssue }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="text-sm font-bold text-brand-primary underline-offset-2 hover:underline"
+          className="text-sm font-bold text-orange-500 underline-offset-2 hover:underline"
         >
           {issue.key}
         </a>
@@ -154,7 +154,7 @@ function CardContent({ issue }: { issue: KanbanIssue }) {
       {dateStr && (
         <div className="flex items-center gap-1">
           <Flag className="size-3 shrink-0 text-red-500" aria-hidden />
-          <span className="text-xs text-brand-primary">{dateStr}</span>
+          <span className="text-xs text-red-500">{dateStr}</span>
         </div>
       )}
       <div className="flex items-center justify-between gap-2">
@@ -185,7 +185,7 @@ function DraggableCard({ issue, index }: { issue: KanbanIssue; index: number }) 
           style={provided.draggableProps.style}
           className={cn(
             "flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-card p-4",
-            "cursor-grab select-none border-l-[3px] border-l-brand-primary",
+            "cursor-grab select-none border-l-[3px] border-l-orange-500",
             snapshot.isDragging
               ? "shadow-xl rotate-[0.5deg] opacity-90 scale-[1.01]"
               : "shadow-sm transition-shadow hover:shadow-md",
@@ -232,7 +232,7 @@ function TarefaCardContent({ tarefa }: { tarefa: UxTarefa }) {
       {dateStr && (
         <div className="flex items-center gap-1">
           <Flag className="size-3 shrink-0 text-red-500" aria-hidden />
-          <span className="text-xs text-brand-primary">{dateStr}</span>
+          <span className="text-xs text-red-500">{dateStr}</span>
         </div>
       )}
       <div className="flex items-center justify-between gap-2">
