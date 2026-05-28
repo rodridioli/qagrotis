@@ -33,6 +33,9 @@ export default async function DashboardPage({
   const isMgr = role === "Administrador:MGR"
   const perfil = typeof params?.perfil === "string" ? params.perfil : null
 
+  // ── MGR sem perfil → redireciona para visão padrão MGR ─────────────────
+  if (isMgr && !perfil) redirect("/dashboard?perfil=MGR")
+
   // ── UX dashboard — apenas Administrador:MGR ──────────────────────────────
   if (perfil === "UX") {
     if (!isMgr) redirect("/dashboard")

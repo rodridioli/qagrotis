@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd"
-import { AlertCircle, Check, Flag, Loader2, Search, User, X } from "lucide-react"
+import { AlertCircle, Check, ChevronsRight, Flag, Loader2, Search, User, X } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/core/utils"
@@ -40,6 +40,15 @@ function formatDate(dateStr: string | null | undefined): string | null {
   const day = String(d.getUTCDate()).padStart(2, "0")
   const month = String(d.getUTCMonth() + 1).padStart(2, "0")
   return `${day}/${month}/${d.getUTCFullYear()}`
+}
+
+const PRIORITY_LABEL_PT: Record<string, string> = {
+  highest: "Crítica",
+  critical: "Crítica",
+  high: "Alta",
+  medium: "Média",
+  low: "Baixa",
+  lowest: "Mínima",
 }
 
 const PRIORITY_RANK: Record<string, number> = {
@@ -240,6 +249,9 @@ function UserKanbanCardView({
   const jiraUrl = `https://agrotis.atlassian.net/browse/${card.key}`
   const dateStr = formatDate(card.deadline ?? card.dueDate)
   const isTarefa = card.cardType === "ux_tarefa"
+  const priorityLabel = card.priority
+    ? (PRIORITY_LABEL_PT[card.priority.toLowerCase()] ?? card.priority)
+    : null
 
   return (
     <Draggable draggableId={card.key} index={index} isDragDisabled={isCanceled || isDone}>
@@ -252,7 +264,7 @@ function UserKanbanCardView({
           className={cn(
             "flex flex-col gap-2 rounded-xl border border-border-default bg-surface-card p-3.5",
             "select-none border-l-[3px]",
-            isTarefa ? "border-l-emerald-500" : "border-l-brand-primary",
+            isTarefa ? "border-l-emerald-500" : "border-l-secondary-500",
             isCanceled && "opacity-40 grayscale cursor-not-allowed",
             isDone && "opacity-60",
             !isCanceled && !isDone && !snapshot.isDragging && "cursor-grab shadow-sm transition-shadow hover:shadow-md",
@@ -268,20 +280,22 @@ function UserKanbanCardView({
               onClick={(e) => e.stopPropagation()}
               className={cn(
                 "text-sm font-bold underline-offset-2 hover:underline",
-                isTarefa ? "text-emerald-600 dark:text-emerald-400" : "text-brand-primary",
+                isTarefa ? "text-emerald-600 dark:text-emerald-400" : "text-secondary-500",
               )}
             >
               {card.key}
             </a>
-            {card.priorityIconUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={card.priorityIconUrl} alt="" className="size-4 shrink-0" />
+            {priorityLabel && (
+              <span className="flex shrink-0 items-center gap-0.5 text-xs text-text-secondary">
+                {priorityLabel}
+                <ChevronsRight className="size-3.5" aria-hidden />
+              </span>
             )}
           </div>
 
           {/* Summary */}
           <p className={cn(
-            "text-sm leading-snug line-clamp-2",
+            "text-sm leading-snug line-clamp-3",
             isCanceled ? "line-through text-text-disabled" : "text-text-primary",
           )}>
             {card.summary || "—"}
@@ -291,7 +305,7 @@ function UserKanbanCardView({
           {dateStr && !isCanceled && (
             <div className="flex items-center gap-1">
               <Flag className="size-3 shrink-0 text-red-500" aria-hidden />
-              <span className="text-xs text-brand-primary">{dateStr}</span>
+              <span className="text-xs text-red-500">{dateStr}</span>
             </div>
           )}
 

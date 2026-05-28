@@ -1,4 +1,4 @@
-import { AlertCircle, ChevronsRight, MinusCircle } from "lucide-react"
+import { AlertCircle, ChevronsRight, Flag, MinusCircle, User } from "lucide-react"
 import { cn } from "@/core/utils"
 import type { KanbanResult } from "@/features/kanban/actions/kanban"
 import type { KanbanIssue } from "@/features/kanban/kanban-constants"
@@ -46,49 +46,15 @@ function extractProjectLabel(summary: string, projectName: string): string {
   return projectName.replace(/^Plataforma Agro - /, "")
 }
 
-function priorityDotColor(priority: string | null): string {
-  const p = priority?.toLowerCase() ?? ""
-  if (p === "highest") return "text-rose-500"
-  if (p === "high")    return "text-orange-400"
-  if (p === "medium")  return "text-amber-400"
-  if (p === "low")     return "text-blue-400"
-  return "text-slate-400"
+const PRIORITY_LABEL_PT: Record<string, string> = {
+  highest: "Crítica",
+  critical: "Crítica",
+  high: "Alta",
+  medium: "Média",
+  low: "Baixa",
+  lowest: "Mínima",
 }
 
-// ── Avatar ────────────────────────────────────────────────────────────────────
-
-function Avatar({ url, name }: { url: string | null; name: string | null }) {
-  const initials = name
-    ? name.split(" ").filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase()
-    : "?"
-  const palettes = [
-    "bg-violet-500", "bg-blue-500", "bg-emerald-500",
-    "bg-rose-500",   "bg-amber-500", "bg-cyan-600",
-  ]
-  const colorClass = palettes[(initials.charCodeAt(0) ?? 0) % palettes.length]!
-
-  if (url) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt={name ?? ""}
-        className="size-8 shrink-0 rounded-full object-cover"
-      />
-    )
-  }
-  return (
-    <span
-      className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white",
-        colorClass,
-      )}
-      aria-label={name ?? ""}
-    >
-      {initials}
-    </span>
-  )
-}
 
 // ── JiraCard ──────────────────────────────────────────────────────────────────
 
@@ -97,74 +63,67 @@ function JiraCard({ issue }: { issue: KanbanIssue }) {
   const { prefix, title } = parseSummary(issue.summary)
   const projectLabel = extractProjectLabel(issue.summary, issue.projectName)
   const dateStr = formatDate(issue.dueDate)
-  const dotColor = priorityDotColor(issue.priority)
+  const priorityLabel = issue.priority
+    ? (PRIORITY_LABEL_PT[issue.priority.toLowerCase()] ?? issue.priority)
+    : null
   const isPaused = issue.statusCategoryColor === "yellow"
 
   return (
     <div className="flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-card p-4 shadow-sm transition-shadow hover:shadow-md">
+
+      {/* Header: key link (left) + priority label + status icon (right) */}
+      <div className="flex items-center justify-between gap-2">
+        <a
+          href={jiraUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-bold text-brand-primary underline-offset-2 hover:underline"
+        >
+          {issue.key}
+        </a>
+        <div className="flex shrink-0 items-center gap-0.5 text-xs text-text-secondary">
+          {priorityLabel && <span>{priorityLabel}</span>}
+          {isPaused
+            ? <MinusCircle className="size-3.5 shrink-0 text-rose-500" aria-hidden />
+            : <ChevronsRight className="size-3.5 shrink-0" aria-hidden />
+          }
+        </div>
+      </div>
 
       {/* Breadcrumb prefix (e.g. "OUT > PRO >") */}
       {prefix && (
         <p className="truncate text-[11px] leading-none text-text-disabled">{prefix}</p>
       )}
 
-      {/* Title */}
+      {/* Summary / Title */}
       <p className="text-sm font-semibold leading-snug text-text-primary line-clamp-3">
         {title || "—"}
       </p>
 
-      {/* Project label + optional due date */}
-      <div className="flex flex-col gap-0.5">
-        {projectLabel && (
-          <span className="text-xs text-text-secondary">{projectLabel}</span>
-        )}
-        {dateStr && (
-          <span className="text-xs text-text-disabled">{dateStr}</span>
-        )}
-      </div>
-
-      {/* Priority dots + status icon (left) · Avatar (right) */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          {issue.priority && (
-            <span className={cn("text-sm leading-none tracking-tighter", dotColor)}>
-              {"●●●●"}
-            </span>
-          )}
-          {isPaused
-            ? <MinusCircle className="size-[18px] shrink-0 text-rose-500" />
-            : <ChevronsRight className="size-[18px] shrink-0 text-rose-500" />
-          }
+      {/* Date */}
+      {dateStr && (
+        <div className="flex items-center gap-1">
+          <Flag className="size-3 shrink-0 text-red-500" aria-hidden />
+          <span className="text-xs text-red-500">{dateStr}</span>
         </div>
-        <Avatar url={issue.assigneeAvatarUrl} name={issue.assigneeDisplayName} />
-      </div>
+      )}
 
-      {/* Issue key link with checkbox icon */}
-      <a
-        href={jiraUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary hover:text-brand-primary"
-      >
-        <svg
-          className="size-3.5 shrink-0 text-brand-primary"
-          viewBox="0 0 16 16"
-          fill="none"
-          aria-hidden="true"
-        >
-          <rect
-            x="1.5" y="1.5" width="13" height="13" rx="2"
-            stroke="currentColor" strokeWidth="1.5"
-            fill="currentColor" fillOpacity="0.12"
-          />
-          <path
-            d="M4.5 8l2.5 2.5 4.5-4.5"
-            stroke="currentColor" strokeWidth="1.5"
-            strokeLinecap="round" strokeLinejoin="round"
-          />
-        </svg>
-        {issue.key}
-      </a>
+      {/* Assignee */}
+      {issue.assigneeDisplayName && (
+        <div className="flex min-w-0 items-center gap-1 text-xs text-text-secondary">
+          <User className="size-3 shrink-0" aria-hidden />
+          <span className="truncate underline underline-offset-2">{issue.assigneeDisplayName}</span>
+        </div>
+      )}
+
+      {/* Footer: project label badge */}
+      {projectLabel && (
+        <div className="flex items-center">
+          <span className="shrink-0 rounded border border-border-default bg-surface-card px-2 py-0.5 text-xs font-medium text-text-secondary">
+            {projectLabel}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
