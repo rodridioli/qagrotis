@@ -11,10 +11,9 @@ export interface EquipeSidebarNavGroupProps {
   collapsed: boolean
   onNavigate?: (href: string) => void
   canAccessLancamentos?: boolean
-  canAccessPerformance?: boolean
 }
 
-export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamentos = false, canAccessPerformance = false }: EquipeSidebarNavGroupProps) {
+export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamentos = false }: EquipeSidebarNavGroupProps) {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -25,18 +24,16 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
   React.useEffect(() => {
     const tab = searchParams.get("tab")
     const isLancamentosTopLevel = tab === "lancamentos" && !canAccessLancamentos
-    const isPerformanceTopLevel = tab === "performance" && !canAccessPerformance
-    const now = pathname.startsWith("/equipe") && !isLancamentosTopLevel && !isPerformanceTopLevel
+    const now = pathname.startsWith("/equipe") && !isLancamentosTopLevel
     const was = prevPath.current.startsWith("/equipe")
     prevPath.current = pathname
     if (now && !was) setOpen(true)
     if (!now && was) setOpen(false)
-  }, [pathname, searchParams, canAccessLancamentos, canAccessPerformance])
+  }, [pathname, searchParams, canAccessLancamentos])
 
-  const activeTabId = searchParams.get("tab") ?? "performance"
+  const activeTabId = searchParams.get("tab") ?? "chapters"
   const parentActive = pathname.startsWith("/equipe")
     && !(activeTabId === "lancamentos" && !canAccessLancamentos)
-    && !(activeTabId === "performance" && !canAccessPerformance)
 
   function go(href: string) {
     if (onNavigate) onNavigate(href)
@@ -124,7 +121,6 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
           <ul className="flex flex-col gap-0.5">
             {EQUIPE_NAV_ENTRIES.filter((e) => {
               if (e.id === "lancamentos" && !canAccessLancamentos) return false
-              if (e.id === "performance" && !canAccessPerformance) return false
               return true
             }).map(({ id, label, icon: Icon }) => {
               const href = `/equipe?tab=${id}`

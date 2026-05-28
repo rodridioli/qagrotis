@@ -4,10 +4,10 @@ import React, { useState, useEffect, useTransition, useRef, Suspense } from "rea
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
-  LayoutDashboard, FileText, Rocket, Clock, Timer,
+  LayoutDashboard, FileText, Rocket, Clock, Clock4, Timer,
   Settings, LogOut, PanelLeftClose,
   PanelLeftOpen, Menu, Moon, Sun, Sparkles, Users,
-  Network, ClipboardCheck, MessageSquare, User, BarChart3, KanbanSquare, Briefcase,
+  Network, ClipboardCheck, MessageSquare, User, KanbanSquare, Briefcase,
 } from "lucide-react"
 import { buildRole, can, isDisabled, isVisible, type Role, type Capability, type AccessProfile } from "@/core/rbac/policy"
 import {
@@ -55,7 +55,7 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/gestao",                   icon: Briefcase,    label: "Gestão",      alwaysEnabled: true,  capability: "menu.gestao" },
   { href: "/kanban",                  icon: KanbanSquare, label: "Kanban",      alwaysEnabled: true,  capability: "menu.kanban" },
   { href: "/equipe?tab=lancamentos", icon: Timer,       label: "Lançamentos", alwaysEnabled: true,  capability: "equipe.lancamentos" },
-  { href: "/equipe?tab=performance", icon: BarChart3,  label: "Indicadores", alwaysEnabled: true,  capability: "equipe.performance" },
+  { href: "/equipe?tab=clockwork",   icon: Clock4,     label: "Clockwork",   alwaysEnabled: true,  capability: "equipe.clockwork" },
   { href: "/individual/lancamentos", icon: Clock,      label: "Lançamentos", alwaysEnabled: false, capability: "individual.lancamentos" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
   { href: "/mapa-conhecimento",     icon: Network,         label: "Mapa de Conhecimento",   alwaysEnabled: true,  capability: "menu.mapaConhecimento" },
@@ -105,6 +105,7 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
   "Administrador:QA": [
     { capability: "menu.painel" },
     { capability: "equipe.lancamentos", label: "Lançamentos" },
+    { capability: "equipe.clockwork", label: "Clockwork" },
     { capability: "menu.suites" },
     { capability: "menu.cenarios" },
     { capability: "menu.gerador" },
@@ -115,12 +116,14 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
   "Administrador:UX": [
     { capability: "menu.kanban" },
     { capability: "equipe.lancamentos", label: "Lançamentos" },
+    { capability: "equipe.clockwork", label: "Clockwork" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
   ],
   "Administrador:TW": [
     { capability: "equipe.lancamentos", label: "Lançamentos" },
+    { capability: "equipe.clockwork", label: "Clockwork" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
@@ -161,9 +164,9 @@ function getTitle(pathname: string, role?: Role, tab?: string): string {
     if (label) return `Individual — ${label}`
   }
   if (pathname.startsWith("/equipe")) {
+    if (tab === "clockwork") return "Clockwork"
     if (role === "Administrador:MGR") {
       if (tab === "lancamentos") return "Lançamentos"
-      if (tab === "performance") return "Indicadores"
     }
     const entry = EQUIPE_NAV_ENTRIES.find((e) => e.id === tab)
     if (entry) return `Equipe — ${entry.label}`
@@ -188,12 +191,11 @@ interface SidebarProps {
   hasIntegracoes: boolean
   role: Role
   canAccessEquipeLancamentos: boolean
-  canAccessEquipePerformance: boolean
   /** Navegação com transição (mantém overlay de carregamento até a rota resolver). */
   onNavigate?: (href: string) => void
 }
 
-const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, role, canAccessEquipeLancamentos, canAccessEquipePerformance, onNavigate }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, role, canAccessEquipeLancamentos, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const sidebarSearchParams = useSearchParams()
@@ -334,7 +336,6 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                       collapsed={collapsed}
                       onNavigate={onNavigate}
                       canAccessLancamentos={role === "Administrador:MGR" || role === "Administrador:UX" || role === "Administrador:TW" ? false : canAccessEquipeLancamentos}
-                      canAccessPerformance={role === "Administrador:MGR" ? false : canAccessEquipePerformance}
                     />
                   </Suspense>
                 )
@@ -396,8 +397,8 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
               const isAssistente = href === "/assistente"
               const isActive = href === "/equipe?tab=lancamentos"
                 ? pathname === "/equipe" && sidebarSearchParams.get("tab") === "lancamentos"
-                : href === "/equipe?tab=performance"
-                  ? pathname === "/equipe" && sidebarSearchParams.get("tab") === "performance"
+                : href === "/equipe?tab=clockwork"
+                  ? pathname === "/equipe" && sidebarSearchParams.get("tab") === "clockwork"
                   : isAssistente
                     ? assistenteOpen
                     : !disabled && pathname.startsWith(href)
@@ -744,7 +745,6 @@ export default function LayoutClient({
   const { data: session } = useSession()
   const role: Role = buildRole(session?.user?.type, session?.user?.accessProfile)
   const canAccessEquipeLancamentos = can(role, "equipe.lancamentos")
-  const canAccessEquipePerformance = can(role, "equipe.performance")
   const accessProfile: AccessProfile = (session?.user?.accessProfile as AccessProfile) ?? "QA"
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -905,7 +905,6 @@ export default function LayoutClient({
             hasIntegracoes={integracoes.length > 0}
             role={role}
             canAccessEquipeLancamentos={canAccessEquipeLancamentos}
-            canAccessEquipePerformance={canAccessEquipePerformance}
             onNavigate={handleNavigate}
           />
         </Suspense>

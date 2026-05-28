@@ -28,19 +28,19 @@ export default async function EquipePage({
   const userAccessProfile = (session?.user?.accessProfile ?? "QA") as AccessProfile
   const currentUserId = session?.user?.id ?? ""
   const isMgr = isAdmin && userAccessProfile === "MGR"
-  const canFilterByProfile = can(role, "equipe.performance.filterByProfile")
+  const canFilterByProfile = isMgr
   const canAccessEquipeLancamentos = can(role, "equipe.lancamentos")
-  const canAccessEquipePerformance = can(role, "equipe.performance")
+  const canAccessEquipeClockwork = can(role, "equipe.clockwork")
 
   // Protege acesso direto via URL para roles sem permissão
   if (tab === "lancamentos" && !canAccessEquipeLancamentos) {
     redirect("/equipe?tab=chapters")
   }
-  if (tab === "performance" && !canAccessEquipePerformance) {
+  if (tab === "clockwork" && !canAccessEquipeClockwork) {
     redirect("/equipe?tab=chapters")
   }
 
-  const defaultTab: EquipeTabId = canAccessEquipePerformance ? "performance" : "chapters"
+  const defaultTab: EquipeTabId = "chapters"
   const initialTab: EquipeTabId =
     tab && (EQUIPE_TAB_IDS as readonly string[]).includes(tab) ? (tab as EquipeTabId) : defaultTab
 
@@ -50,7 +50,7 @@ export default async function EquipePage({
       userAccessProfile={serializeRscProps(userAccessProfile)}
       canFilterByProfile={serializeRscProps(canFilterByProfile)}
       canAccessEquipeLancamentos={serializeRscProps(canAccessEquipeLancamentos)}
-      canAccessEquipePerformance={serializeRscProps(canAccessEquipePerformance)}
+      canAccessEquipeClockwork={serializeRscProps(canAccessEquipeClockwork)}
       currentUserId={serializeRscProps(currentUserId)}
       isMgr={serializeRscProps(isMgr)}
       initialTab={initialTab}

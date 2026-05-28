@@ -11,9 +11,6 @@ export interface EquipeAniversarioCardProps {
   dataNascimentoLabel: string
 }
 
-/**
- * Card alinhado ao cabeçalho visual do {@link EquipePerformanceCard} (foto, nome, cargo).
- */
 export function EquipeAniversarioCard({
   name,
   classificacao,

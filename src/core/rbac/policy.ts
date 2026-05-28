@@ -46,9 +46,8 @@ export type Capability =
   | "users.create"
   | "users.editProfileFields" // Tipo, Perfil, Cargo, Horários, Formato, Dias
   // Equipe
-  | "equipe.performance"
-  | "equipe.performance.filterByProfile"
   | "equipe.lancamentos"
+  | "equipe.clockwork"
 
 /** Itens visíveis-mas-desabilitados (aparecem cinzas no menu). */
 export type DisabledItem = Capability
@@ -102,6 +101,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.credenciais",
       "config.jira",
       "equipe.lancamentos",
+      "equipe.clockwork",
     ],
     disabled: ["menu.pdi"],
     manageableProfiles: ["QA"],
@@ -133,6 +133,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.usuarios",
       "config.jira",
       "equipe.lancamentos",
+      "equipe.clockwork",
     ],
     disabled: ["menu.documentos", "menu.pdi"],
     manageableProfiles: ["UX"],
@@ -162,6 +163,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.usuarios",
       "config.jira",
       "equipe.lancamentos",
+      "equipe.clockwork",
     ],
     disabled: ["menu.documentos", "menu.pdi"],
     manageableProfiles: ["TW"],
@@ -190,9 +192,8 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.jira",
       "users.create",
       "users.editProfileFields",
-      "equipe.performance",
-      "equipe.performance.filterByProfile",
       "equipe.lancamentos",
+      "equipe.clockwork",
       "individual.viewOthers",
       "config.clockwork",
     ],
