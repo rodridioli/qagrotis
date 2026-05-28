@@ -368,7 +368,7 @@ export default function UsuarioFormTabs({
                     {errors.email && <p className="text-sm text-destructive mt-1">{errors.email}</p>}
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">Tipo</label>
                     <Select
@@ -414,7 +414,7 @@ export default function UsuarioFormTabs({
                     <Input value={dataNascimento} onChange={(e) => setDataNascimento(e.target.value)} type="date" className={inputNativePickerRightClassName()} />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">Horário Entrada</label>
                     <Input value={horarioEntrada} onChange={(e) => setHorarioEntrada(e.target.value)} type="time" className={inputNativePickerRightClassName()} />
@@ -453,7 +453,7 @@ export default function UsuarioFormTabs({
                       <RefreshCw className="size-3.5" /> Gerar senha
                     </Button>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1">
                       <div className="relative">
                         <Input

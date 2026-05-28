@@ -1149,7 +1149,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
       ) : (
         <>
           {/* Avatar strip + year selector */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
               {visibleMembros.length > 0 && (
                 <AvatarStrip

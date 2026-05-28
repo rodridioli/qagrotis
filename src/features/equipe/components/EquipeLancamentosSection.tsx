@@ -117,7 +117,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
   return (
     <div className="flex flex-col gap-4">
       {/* Barra de controles — sempre visível */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Avatar strip — só renderiza quando carregado */}
         <div className="min-w-0 flex-1">
           {!loading && membros.length > 0 && (

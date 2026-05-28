@@ -41,7 +41,7 @@ export function TableToolbar(props: TableToolbarProps) {
     )
 
   return (
-    <div className="flex h-16 items-center justify-between gap-3 border-b border-border-default px-5">
+    <div className="flex h-16 items-center justify-between gap-3 border-b border-border-default px-3 sm:px-5">
       <div className="min-w-0 shrink">{left}</div>
       <div className="flex items-center gap-2">
         {showControls && (
