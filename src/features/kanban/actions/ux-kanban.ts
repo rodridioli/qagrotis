@@ -68,6 +68,7 @@ const UX_TAREFA_STATUS_TO_COLUMN: Record<string, UserKanbanColumn> = {
   "in approval":   "in_approval",  // fallback: projetos com workflow em inglês
   "aprovação":     "in_approval",  // workflow padrão Jira (português)
   "delivered":     "done",
+  "entregue":      "done",     // status "ENTREGUE" no workflow UX (PT-BR)
   "canceled":      "canceled",
   "cancelado":     "canceled",
 }
