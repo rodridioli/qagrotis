@@ -274,15 +274,14 @@ export function IndividualPerformanceEvaluationPageClient({
               <Gauge className="size-5" aria-hidden />
             </span>
           </div>
-          <div className="flex flex-1 flex-col justify-center">
+          <div className="flex flex-1 items-center">
             {displayPercent != null ? (
               <p className={cn("text-2xl font-bold leading-none tabular-nums sm:text-3xl", scorePercentToneClass(displayPercent))}>
-                {displayPercent.toFixed(0).replace(".", ",")}%
+                {displayPercent.toFixed(0).replace(".", ",")}%{scoreLabel ? ` - ${scoreLabel}` : ""}
               </p>
             ) : (
               <p className="text-2xl font-semibold leading-none text-text-secondary sm:text-3xl">—</p>
             )}
-            <p className="mt-1.5 text-xs font-medium text-text-secondary">{scoreLabel}</p>
           </div>
         </div>
 
@@ -293,12 +292,10 @@ export function IndividualPerformanceEvaluationPageClient({
               <Calendar className="size-5" aria-hidden />
             </span>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-4">
-            <div>
-              <p className="text-2xl font-bold tabular-nums text-text-primary sm:text-3xl">
-                {formatDataPt(dataYmd)}
-              </p>
-            </div>
+          <div className="flex min-h-0 flex-1 items-center gap-3">
+            <p className="text-2xl font-bold tabular-nums text-text-primary sm:text-3xl">
+              {formatDataPt(dataYmd)}
+            </p>
             <div className="min-w-0">
               {isViewOnly ? (
                 <p className="text-sm font-medium text-text-primary">{evaluationPeriodLabel(periodo)}</p>
