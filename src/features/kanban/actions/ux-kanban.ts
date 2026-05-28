@@ -134,6 +134,23 @@ export async function getKanbanAssignments(): Promise<KanbanAssignments> {
   )
 }
 
+// ─── Main kanban: fetch column states for all demanda cards ──────────────────
+
+/**
+ * Returns a map of issueKey → UserKanbanColumn for every card that has a
+ * persisted KanbanUserCardState row. Used by the main kanban to visually
+ * indicate whether a card is in "Feito" (done) or "Cancelado" (canceled) in
+ * the assignee's personal kanban.
+ */
+export async function getMainKanbanColumnStates(): Promise<Record<string, UserKanbanColumn>> {
+  const session = await requireSession()
+  const role = buildRole(session.user.type, session.user.accessProfile)
+  if (!can(role, "menu.kanban")) return {}
+
+  const rows = await db.kanbanUserCardState.findMany({ take: 5000 })
+  return Object.fromEntries(rows.map((r) => [r.issueKey, r.column as UserKanbanColumn]))
+}
+
 // ─── Main kanban: assign Demanda to a member ──────────────────────────────────
 
 export async function assignIssueToUser(

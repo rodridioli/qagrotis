@@ -14,7 +14,7 @@ import { JiraNotConfiguredCard } from "@/components/shared/JiraNotConfiguredCard
 import { cn } from "@/core/utils"
 import type { KanbanResult, UxTarefasResult } from "@/features/kanban/actions/kanban"
 import type { EquipeMembroLancamentos } from "@/features/equipe/actions/equipe"
-import type { KanbanAssignments } from "@/features/kanban/actions/ux-kanban"
+import type { KanbanAssignments, UserKanbanColumn } from "@/features/kanban/actions/ux-kanban"
 import {
   assignIssueToUser,
   assignTarefaToMember,
@@ -80,6 +80,26 @@ function sortTarefas(items: UxTarefa[]): UxTarefa[] {
   })
 }
 
+// ─── Jira status → user-kanban column (mirrors server-side mapping) ──────────
+
+const UX_TAREFA_STATUS_MAP: Record<string, UserKanbanColumn> = {
+  "in progress":   "in_progress",
+  "ux writing":    "in_progress",
+  "design system": "in_progress",
+  "paused":        "paused",
+  "waiting":       "waiting",
+  "in approval":   "in_approval",
+  "aprovação":     "in_approval",
+  "delivered":     "done",
+  "entregue":      "done",
+  "canceled":      "canceled",
+  "cancelado":     "canceled",
+}
+
+function tarefaStatusToColumn(status: string): UserKanbanColumn {
+  return UX_TAREFA_STATUS_MAP[status.toLowerCase()] ?? "backlog"
+}
+
 // ─── Card helpers ─────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string | null | undefined): string | null {
@@ -121,7 +141,7 @@ function Avatar({ url, name, size = "md" }: { url: string | null; name: string |
 
 // ─── Demanda card content ─────────────────────────────────────────────────────
 
-function CardContent({ issue }: { issue: KanbanIssue }) {
+function CardContent({ issue, userColumn }: { issue: KanbanIssue; userColumn?: UserKanbanColumn }) {
   const jiraUrl = `https://agrotis.atlassian.net/browse/${issue.key}`
   const dateStr = formatDate(issue.dueDate)
   const shortProject = issue.projectName.replace(/^Plataforma Agro - /, "")
@@ -134,7 +154,12 @@ function CardContent({ issue }: { issue: KanbanIssue }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="text-sm font-bold text-blue-700 dark:text-blue-300 underline-offset-2 hover:underline"
+          className={cn(
+            "text-sm font-bold underline-offset-2 hover:underline",
+            userColumn === "done"
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-blue-700 dark:text-blue-300",
+          )}
         >
           {issue.key}
         </a>
@@ -174,7 +199,9 @@ function CardContent({ issue }: { issue: KanbanIssue }) {
   )
 }
 
-function DraggableCard({ issue, index }: { issue: KanbanIssue; index: number }) {
+function DraggableCard({ issue, index, userColumn }: { issue: KanbanIssue; index: number; userColumn?: UserKanbanColumn }) {
+  const isCanceled = userColumn === "canceled"
+  const isDone = userColumn === "done"
   return (
     <Draggable draggableId={`demanda:${issue.key}`} index={index}>
       {(provided, snapshot) => (
@@ -184,14 +211,21 @@ function DraggableCard({ issue, index }: { issue: KanbanIssue; index: number }) 
           {...provided.dragHandleProps}
           style={provided.draggableProps.style}
           className={cn(
-            "flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-card p-4",
-            "cursor-grab select-none border-l-[3px] border-l-blue-500 dark:border-l-blue-400",
-            snapshot.isDragging
+            "flex flex-col gap-2.5 rounded-xl border border-border-default p-4",
+            "select-none border-l-[3px]",
+            isCanceled
+              ? "border-l-gray-300 bg-surface-card opacity-50 grayscale cursor-not-allowed"
+              : isDone
+              ? "border-l-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/20 cursor-grab"
+              : "border-l-blue-500 dark:border-l-blue-400 bg-surface-card cursor-grab",
+            snapshot.isDragging && !isCanceled
               ? "shadow-xl rotate-[0.5deg] opacity-90 scale-[1.01]"
+              : isCanceled
+              ? ""
               : "shadow-sm transition-shadow hover:shadow-md",
           )}
         >
-          <CardContent issue={issue} />
+          <CardContent issue={issue} userColumn={userColumn} />
         </div>
       )}
     </Draggable>
@@ -252,7 +286,9 @@ function TarefaCardContent({ tarefa }: { tarefa: UxTarefa }) {
   )
 }
 
-function DraggableTarefaCard({ tarefa, index }: { tarefa: UxTarefa; index: number }) {
+function DraggableTarefaCard({ tarefa, index, userColumn }: { tarefa: UxTarefa; index: number; userColumn?: UserKanbanColumn }) {
+  const isCanceled = userColumn === "canceled"
+  const isDone = userColumn === "done"
   return (
     <Draggable draggableId={`tarefa:${tarefa.key}`} index={index}>
       {(provided, snapshot) => (
@@ -262,10 +298,17 @@ function DraggableTarefaCard({ tarefa, index }: { tarefa: UxTarefa; index: numbe
           {...provided.dragHandleProps}
           style={provided.draggableProps.style}
           className={cn(
-            "flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-card p-4",
-            "cursor-grab select-none border-l-[3px] border-l-emerald-500",
-            snapshot.isDragging
+            "flex flex-col gap-2.5 rounded-xl border border-border-default p-4",
+            "select-none border-l-[3px] border-l-emerald-500",
+            isCanceled
+              ? "bg-surface-card opacity-50 grayscale cursor-not-allowed"
+              : isDone
+              ? "bg-emerald-50/70 dark:bg-emerald-950/20 cursor-grab"
+              : "bg-surface-card cursor-grab",
+            snapshot.isDragging && !isCanceled
               ? "shadow-xl rotate-[0.5deg] opacity-90 scale-[1.01]"
+              : isCanceled
+              ? ""
               : "shadow-sm transition-shadow hover:shadow-md",
           )}
         >
@@ -380,6 +423,7 @@ function MemberLane({
   tarefas,
   onOpenUserKanban,
   searchable,
+  columnStateMap,
 }: {
   droppableId: string
   member: EquipeMembroLancamentos
@@ -387,6 +431,7 @@ function MemberLane({
   tarefas: UxTarefa[]
   onOpenUserKanban: () => void
   searchable?: boolean
+  columnStateMap: Record<string, UserKanbanColumn>
 }) {
   const [rawSearch, setRawSearch] = React.useState("")
   const debouncedSearch = useDebounce(rawSearch, 200)
@@ -456,11 +501,21 @@ function MemberLane({
               </p>
             )}
             {displayedIssues.map((issue, index) => (
-              <DraggableCard key={issue.key} issue={issue} index={index} />
+              <DraggableCard
+                key={issue.key}
+                issue={issue}
+                index={index}
+                userColumn={columnStateMap[issue.key]}
+              />
             ))}
             {/* UX Tarefas in member column — draggable back to Tarefas */}
             {tarefas.map((tarefa, index) => (
-              <DraggableTarefaCard key={tarefa.key} tarefa={tarefa} index={displayedIssues.length + index} />
+              <DraggableTarefaCard
+                key={tarefa.key}
+                tarefa={tarefa}
+                index={displayedIssues.length + index}
+                userColumn={tarefaStatusToColumn(tarefa.status)}
+              />
             ))}
             {provided.placeholder}
           </div>
@@ -569,12 +624,13 @@ type Props = {
   members: EquipeMembroLancamentos[]
   initialAssignments: KanbanAssignments
   initialTarefasResult: UxTarefasResult
+  columnStateMap: Record<string, UserKanbanColumn>
 }
 
 // Drag-lock: prevents concurrent Jira API calls from overlapping drags
 let dragLocked = false
 
-export function UxKanbanClient({ initialResult, members, initialAssignments, initialTarefasResult }: Props) {
+export function UxKanbanClient({ initialResult, members, initialAssignments, initialTarefasResult, columnStateMap }: Props) {
   const router = useRouter()
   const [assignments, setAssignments] = React.useState<KanbanAssignments>(initialAssignments)
   const [projectFilter, setProjectFilter] = React.useState<string>("")
@@ -880,6 +936,7 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
                   issues={userIssues[member.userId] ?? []}
                   tarefas={memberTarefas[member.userId] ?? []}
                   onOpenUserKanban={() => router.push(`/kanban/usuario/${member.userId}`)}
+                  columnStateMap={columnStateMap}
                 />
               ))}
 
