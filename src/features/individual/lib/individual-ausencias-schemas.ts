@@ -10,7 +10,7 @@ function horaToMinutes(hora: string): number {
 export const createAusenciaSchema = z
   .object({
     evaluatedUserId: z.string().min(1).max(128),
-    tipo: z.enum(["FALTA", "BANCO_HORAS", "ATESTADO", "OUTRO"]),
+    tipo: z.enum(["FALTA", "BANCO_HORAS", "ATESTADO", "ATRASO", "OUTRO"]),
     dataIso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida."),
     diaInteiro: z.boolean(),
     horaInicio: z
@@ -56,7 +56,7 @@ export const createAusenciaSchema = z
 export const updateAusenciaSchema = z
   .object({
     id: z.string().min(1).max(128),
-    tipo: z.enum(["FALTA", "BANCO_HORAS", "ATESTADO", "OUTRO"]),
+    tipo: z.enum(["FALTA", "BANCO_HORAS", "ATESTADO", "ATRASO", "OUTRO"]),
     dataIso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida."),
     diaInteiro: z.boolean(),
     horaInicio: z

@@ -15,7 +15,7 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type AusenciaTipo = "FALTA" | "BANCO_HORAS" | "ATESTADO" | "OUTRO"
+export type AusenciaTipo = "FALTA" | "BANCO_HORAS" | "ATESTADO" | "ATRASO" | "OUTRO"
 export type AusenciaSituacao = "PENDENTE" | "APROVADA" | "RECUSADA"
 
 export interface IndividualAusenciasRow {
@@ -52,6 +52,7 @@ function tipoLabel(tipo: AusenciaTipo): string {
     FALTA: "Falta",
     BANCO_HORAS: "Banco de horas",
     ATESTADO: "Atestado",
+    ATRASO: "Atraso",
     OUTRO: "Outro",
   }
   return map[tipo]
