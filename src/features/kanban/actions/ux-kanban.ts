@@ -84,7 +84,7 @@ const COLUMN_TO_JIRA_STATUS: Record<UserKanbanColumn, string | null> = {
   waiting:      "Waiting",
   in_approval:  "Aprovação",
   done:         "Entregue",
-  canceled:     "Canceled",
+  canceled:     "Cancelado",  // UX project: "CANCELADO"; Demandas handled separately
 }
 
 // ─── Business-hours helper ────────────────────────────────────────────────────
@@ -368,11 +368,6 @@ export async function moveCardInUserKanban(
   const role = buildRole(session.user.type, session.user.accessProfile)
   if (!can(role, "menu.kanban")) return { ok: false, error: "Acesso negado." }
 
-  // Block Demandas from going to Canceled
-  if (cardType === "demanda" && targetColumn === "canceled") {
-    return { ok: false, error: "Demandas não podem ser canceladas." }
-  }
-
   const creds = await resolveCredentials(session.user.id)
   if (!creds) return { ok: false, error: "Credenciais Jira não configuradas." }
   const { base, credentials } = creds
@@ -380,6 +375,14 @@ export async function moveCardInUserKanban(
   // Find which user this card belongs to (for tracker)
   const assignment = await db.kanbanAssignment.findUnique({ where: { issueKey } })
   const userId = assignment?.userId ?? ""
+
+  // Server-side guard: Demandas already in "canceled" cannot be moved
+  if (cardType === "demanda") {
+    const state = await db.kanbanUserCardState.findUnique({ where: { issueKey } })
+    if (state?.column === "canceled") {
+      return { ok: false, error: "Cards cancelados não podem ser movidos." }
+    }
+  }
 
   // Handle In Approval entry/exit tracking
   if (targetColumn === "in_approval") {
@@ -390,7 +393,9 @@ export async function moveCardInUserKanban(
   }
 
   if (cardType === "ux_tarefa") {
-    // Transition Jira status for UX Tarefas
+    // UX Tarefas: transition Jira status
+    // "canceled" → "Cancelado" (matches to.name="CANCELADO" in UX workflow)
+    // all other columns use COLUMN_TO_JIRA_STATUS
     const jiraTarget = COLUMN_TO_JIRA_STATUS[targetColumn]
     if (jiraTarget) {
       const result = await transitionIssueToStatus(base, credentials, issueKey, jiraTarget)
@@ -399,7 +404,11 @@ export async function moveCardInUserKanban(
     // No DB column state needed for UX Tarefas (derived from Jira status)
     return { ok: true }
   } else {
-    // Demandas: update local column state only (no Jira sync except Done)
+    // Demandas: update local column state
+    // For "canceled", also sync Jira status to "Cancel" (to.name="CANCEL")
+    if (targetColumn === "canceled") {
+      await transitionIssueToStatus(base, credentials, issueKey, "Cancel").catch(() => null)
+    }
     await db.kanbanUserCardState.upsert({
       where: { issueKey },
       create: { issueKey, userId, column: targetColumn },

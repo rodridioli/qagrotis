@@ -664,9 +664,9 @@ export function UserKanbanClient({
     const card = cards.find((c) => c.key === issueKey)
     if (!card) return
 
-    // Demandas cannot go to Canceled
-    if (card.cardType === "demanda" && dstCol === "canceled") {
-      toast.error("Demandas não podem ser canceladas.")
+    // Cards already in Canceled cannot be moved
+    if (srcCol === "canceled") {
+      toast.error("Cards cancelados não podem ser movidos.")
       return
     }
 
