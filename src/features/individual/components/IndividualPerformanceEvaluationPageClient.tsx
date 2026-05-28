@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { BookOpen, Calendar, Check, Gauge, HeartHandshake, Save, Sparkles, User } from "lucide-react"
+import { BookOpen, Calendar, CalendarDays, Check, Gauge, HeartHandshake, Save, Sparkles, User } from "lucide-react"
 import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -241,7 +241,7 @@ export function IndividualPerformanceEvaluationPageClient({
       </div>
 
       <h2 className="sr-only">Dados gerais</h2>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:items-stretch">
         <div className="flex h-full min-h-0 flex-col rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
           <div className="mb-2 flex items-start justify-between gap-2">
             <p className="text-sm text-text-secondary">Colaborador</p>
@@ -287,46 +287,55 @@ export function IndividualPerformanceEvaluationPageClient({
 
         <div className="flex h-full min-h-0 flex-col rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
           <div className="mb-2 flex items-start justify-between gap-2">
-            <span className="text-sm text-text-secondary">Data e período</span>
+            <span className="text-sm text-text-secondary">Data</span>
             <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
               <Calendar className="size-5" aria-hidden />
             </span>
           </div>
-          <div className="flex min-h-0 flex-1 items-center gap-3">
+          <div className="flex min-h-0 flex-1 items-center">
             <p className="text-2xl font-bold tabular-nums text-text-primary sm:text-3xl">
               {formatDataPt(dataYmd)}
             </p>
-            <div className="min-w-0">
-              {isViewOnly ? (
-                <p className="text-sm font-medium text-text-primary">{evaluationPeriodLabel(periodo)}</p>
-              ) : (
-                <>
-                  <label htmlFor="avaliacao-periodo" className="sr-only">
-                    Período
-                  </label>
-                  <Select
-                    value={periodo}
-                    onValueChange={(v) => {
-                      if (v && isEvaluationPeriodSlug(v)) setPeriodo(v)
-                    }}
+          </div>
+        </div>
+
+        <div className="flex h-full min-h-0 flex-col rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
+          <div className="mb-2 flex items-start justify-between gap-2">
+            <span className="text-sm text-text-secondary">Período</span>
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+              <CalendarDays className="size-5" aria-hidden />
+            </span>
+          </div>
+          <div className="flex min-h-0 flex-1 items-center">
+            {isViewOnly ? (
+              <p className="text-sm font-medium text-text-primary">{evaluationPeriodLabel(periodo)}</p>
+            ) : (
+              <>
+                <label htmlFor="avaliacao-periodo" className="sr-only">
+                  Período
+                </label>
+                <Select
+                  value={periodo}
+                  onValueChange={(v) => {
+                    if (v && isEvaluationPeriodSlug(v)) setPeriodo(v)
+                  }}
+                >
+                  <SelectTrigger
+                    id="avaliacao-periodo"
+                    className="h-9 w-full max-w-[11rem] min-w-0 bg-neutral-grey-50 sm:max-w-[13rem]"
                   >
-                    <SelectTrigger
-                      id="avaliacao-periodo"
-                      className="h-9 w-full max-w-[11rem] min-w-0 bg-neutral-grey-50 sm:max-w-[13rem]"
-                    >
-                      <SelectValue>{evaluationPeriodLabel(periodo)}</SelectValue>
-                    </SelectTrigger>
-                    <SelectPopup>
-                      {EVALUATION_PERIOD_SLUGS.map((slug) => (
-                        <SelectItem key={slug} value={slug}>
-                          {evaluationPeriodLabel(slug)}
-                        </SelectItem>
-                      ))}
-                    </SelectPopup>
-                  </Select>
-                </>
-              )}
-            </div>
+                    <SelectValue>{evaluationPeriodLabel(periodo)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectPopup>
+                    {EVALUATION_PERIOD_SLUGS.map((slug) => (
+                      <SelectItem key={slug} value={slug}>
+                        {evaluationPeriodLabel(slug)}
+                      </SelectItem>
+                    ))}
+                  </SelectPopup>
+                </Select>
+              </>
+            )}
           </div>
         </div>
       </div>
