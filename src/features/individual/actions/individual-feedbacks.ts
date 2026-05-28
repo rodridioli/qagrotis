@@ -279,7 +279,7 @@ export async function createAndSaveIndividualFeedback(input: {
           "FEEDBACK",
           "Você recebeu um feedback",
           "Um novo feedback foi registrado para você.",
-          `/individual/feedbacks`,
+          `/individual/meus-feedbacks/${row.id}`,
         )
       } catch (notifErr) {
         if (process.env.NODE_ENV !== "production")

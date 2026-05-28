@@ -340,7 +340,6 @@ export async function redeemChapterPrize(
   prizeId: string,
 ): Promise<{ ok: true; newPoints: number } | { error: string }> {
   const { findPrize } = await import("@/features/equipe/lib/chapter-prizes")
-  const { createNotification } = await import("@/core/actions/notifications")
 
   let session
   try { session = await requireSession() } catch { return { error: "Não autenticado." } }
@@ -363,28 +362,6 @@ export async function redeemChapterPrize(
       costPoints: prize.costPoints,
     },
   })
-
-  // Notifica todos os Administrador:MGR ativos
-  try {
-    const userName = session.user?.name ?? session.user?.email ?? userId
-    const mgrs = await prisma.createdUser.findMany({
-      where: { accessProfile: "MGR" },
-      select: { id: true },
-    })
-    await Promise.all(
-      mgrs.map((mgr) =>
-        createNotification(
-          mgr.id,
-          "ACHIEVEMENT",
-          "Solicitação de prêmio",
-          `${userName} solicitou o prêmio "${prize.label}" (${prize.costPoints} pts).`,
-          "/equipe?tab=chapters",
-        ),
-      ),
-    )
-  } catch (e) {
-    console.error("[redeemChapterPrize] notificação falhou", e)
-  }
 
   revalidatePath("/equipe")
   return { ok: true, newPoints: balance.points - prize.costPoints }

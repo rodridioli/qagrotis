@@ -6,5 +6,8 @@ export function formatNotificationTime(createdAt: string): string {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `há ${hours} h`
   const days = Math.floor(hours / 24)
-  return `há ${days} d`
+  if (days === 1) return "ontem"
+  if (days < 7) return `há ${days} dias`
+  // Exibir data absoluta para notificações mais antigas
+  return new Date(createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
 }

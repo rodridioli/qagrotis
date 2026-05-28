@@ -257,17 +257,6 @@ export async function solicitarDominioAvaliacao(
       },
     })
 
-    await prisma.notification.create({
-      data: {
-        userId: evaluatedUserId,
-        type: "DOMAIN_EVALUATION" as never,
-        title: "Avaliação de Domínio solicitada",
-        message:
-          "Você recebeu uma solicitação de avaliação de domínio de produto. Por favor, acesse o sistema para preenchê-la.",
-        link: "/individual/dominio",
-      },
-    })
-
     return {}
   } catch (e) {
     console.error("[solicitarDominioAvaliacao]", e)

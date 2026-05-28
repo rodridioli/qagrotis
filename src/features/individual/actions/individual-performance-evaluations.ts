@@ -271,9 +271,9 @@ export async function createAndSaveIndividualPerformanceEvaluation(
         await createNotification(
           parsed.data.evaluatedUserId,
           "EVALUATION",
-          "Avaliação de desempenho finalizada",
-          "Sua avaliação de desempenho foi concluída e está disponível para visualização.",
-          `/individual/avaliacoes`,
+          "Você recebeu uma avaliação de desempenho",
+          "Uma nova avaliação foi registrada para você.",
+          `/individual/minhas-avaliacoes/${created.id}`,
         )
       } catch (notifErr) {
         if (process.env.NODE_ENV !== "production")
@@ -352,9 +352,9 @@ export async function updateIndividualPerformanceEvaluation(
         await createNotification(
           existing.evaluatedUserId,
           "EVALUATION",
-          "Avaliação de desempenho finalizada",
-          "Sua avaliação de desempenho foi concluída e está disponível para visualização.",
-          `/individual/avaliacoes`,
+          "Você recebeu uma avaliação de desempenho",
+          "Uma nova avaliação foi registrada para você.",
+          `/individual/minhas-avaliacoes/${parsed.data.id}`,
         )
       } catch (notifErr) {
         if (process.env.NODE_ENV !== "production")

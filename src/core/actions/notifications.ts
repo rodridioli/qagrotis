@@ -5,7 +5,20 @@ import { prisma } from "@/core/prisma"
 import { requireSession } from "@/core/session"
 import { ensureNotificationTables } from "@/core/prisma-schema-ensure"
 
-export type NotificationType = "FEEDBACK" | "EVALUATION" | "PROGRESSION" | "ACHIEVEMENT" | "ABSENCE_REQUEST" | "DOMAIN_EVALUATION"
+export type NotificationType =
+  | "FEEDBACK"
+  | "EVALUATION"
+  | "ACHIEVEMENT"
+  | "BIRTHDAY"
+  | "COMPANY_ANNIVERSARY"
+  | "PROMOTION"
+  | "LONG_ACTIVITY"
+  | "CRITICAL_PROJECT"
+  | "LOW_HOURS"
+  // Legacy — mantidos apenas para dados históricos no DB; não emitir novos
+  | "PROGRESSION"
+  | "ABSENCE_REQUEST"
+  | "DOMAIN_EVALUATION"
 
 export type NotificationData = {
   id: string
@@ -75,7 +88,13 @@ export async function deleteAllNotifications(): Promise<{ error?: string }> {
 
 const createSchema = z.object({
   userId: z.string().min(1).max(128),
-  type: z.enum(["FEEDBACK", "EVALUATION", "PROGRESSION", "ACHIEVEMENT", "ABSENCE_REQUEST", "DOMAIN_EVALUATION"]),
+  type: z.enum([
+    "FEEDBACK", "EVALUATION", "ACHIEVEMENT",
+    "BIRTHDAY", "COMPANY_ANNIVERSARY", "PROMOTION",
+    "LONG_ACTIVITY", "CRITICAL_PROJECT", "LOW_HOURS",
+    // Legacy
+    "PROGRESSION", "ABSENCE_REQUEST", "DOMAIN_EVALUATION",
+  ]),
   title: z.string().min(1).max(255),
   message: z.string().min(1).max(1000),
   link: z.string().startsWith("/").max(500).nullable(),
@@ -120,7 +139,7 @@ export async function checkAndSendBirthdayNotifications(): Promise<void> {
 
     // Dedup global: verifica se já enviamos as notificações de aniversário hoje
     const alreadySent = await prisma.notification.findFirst({
-      where: { title: "🎂 Aniversário hoje!", createdAt: { gte: todayStart } },
+      where: { type: "BIRTHDAY", createdAt: { gte: todayStart } },
       select: { id: true },
     })
     if (alreadySent) return
@@ -141,16 +160,15 @@ export async function checkAndSendBirthdayNotifications(): Promise<void> {
 
     for (const bday of birthdayUsers) {
       // Notificação para os colegas
-      const teamMessage = `${bday.name} está fazendo aniversário hoje! 🥳 Parabenize-o(a)!`
       for (const recipientId of recipientIds) {
         if (recipientId === bday.id) continue
         await prisma.notification.create({
           data: {
             userId: recipientId,
-            type: "ACHIEVEMENT",
-            title: "🎂 Aniversário hoje!",
-            message: teamMessage,
-            link: null,
+            type: "BIRTHDAY",
+            title: `Hoje é aniversário de ${bday.name}`,
+            message: "Não esqueça de dar os parabéns.",
+            link: `/configuracoes/usuarios/${bday.id}/editar`,
           },
         })
       }
@@ -159,10 +177,10 @@ export async function checkAndSendBirthdayNotifications(): Promise<void> {
       await prisma.notification.create({
         data: {
           userId: bday.id,
-          type: "ACHIEVEMENT",
-          title: "🎂 Feliz aniversário!",
-          message: `Parabéns, ${bday.name}! 🥳 Desejamos a você um dia incrível e um ano repleto de conquistas!`,
-          link: null,
+          type: "BIRTHDAY",
+          title: "Feliz aniversário!",
+          message: "Parabéns pelo seu dia! Desejamos muitas conquistas para você.",
+          link: `/configuracoes/usuarios/${bday.id}/editar`,
         },
       })
     }
@@ -187,7 +205,7 @@ export async function checkAndSendCompanyAnniversaryNotifications(): Promise<voi
 
     // Dedup global: verifica se já processamos aniversários de empresa hoje
     const alreadySent = await prisma.notification.findFirst({
-      where: { title: "🎉 Aniversário de empresa!", createdAt: { gte: todayStart } },
+      where: { type: "COMPANY_ANNIVERSARY", createdAt: { gte: todayStart } },
       select: { id: true },
     })
     if (alreadySent) return
@@ -222,10 +240,10 @@ export async function checkAndSendCompanyAnniversaryNotifications(): Promise<voi
       await prisma.notification.create({
         data: {
           userId: a.evaluatedUserId,
-          type: "ACHIEVEMENT",
-          title: "🎉 Aniversário de empresa!",
-          message: `Parabéns, ${name}! Hoje você completa ${years} ${years === 1 ? "ano" : "anos"} de empresa. 🎊 Obrigado por fazer parte dessa jornada!`,
-          link: null,
+          type: "COMPANY_ANNIVERSARY",
+          title: "Parabéns por mais um ano de empresa",
+          message: "Você faz a diferença todos os dias.",
+          link: `/configuracoes/usuarios/${a.evaluatedUserId}/editar`,
         },
       })
     }

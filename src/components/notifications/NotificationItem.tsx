@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MessageSquare, ClipboardCheck, TrendingUp, Trophy, CalendarOff, Target } from "lucide-react"
+import { MessageSquare, ClipboardCheck, TrendingUp, Trophy, CalendarOff, Target, Cake, Building2, Clock, Flame, Timer } from "lucide-react"
 import { cn } from "@/core/utils"
 import { formatNotificationTime } from "@/lib/notification-time"
 import type { NotificationData, NotificationType } from "@/core/actions/notifications"
@@ -10,12 +10,20 @@ const TYPE_CONFIG: Record<NotificationType, {
   icon: React.ComponentType<{ className?: string }>
   bgClass: string
 }> = {
-  FEEDBACK:          { icon: MessageSquare,  bgClass: "bg-[var(--badge-info)]" },
-  EVALUATION:        { icon: ClipboardCheck, bgClass: "bg-brand-primary" },
-  PROGRESSION:       { icon: TrendingUp,     bgClass: "bg-[var(--badge-orange)]" },
-  ACHIEVEMENT:       { icon: Trophy,         bgClass: "bg-[var(--badge-warning)]" },
-  ABSENCE_REQUEST:   { icon: CalendarOff,    bgClass: "bg-[var(--badge-info)]" },
-  DOMAIN_EVALUATION: { icon: Target,         bgClass: "bg-brand-primary" },
+  // Active types
+  FEEDBACK:           { icon: MessageSquare,  bgClass: "bg-[var(--badge-info)]" },
+  EVALUATION:         { icon: ClipboardCheck, bgClass: "bg-brand-primary" },
+  ACHIEVEMENT:        { icon: Trophy,         bgClass: "bg-[var(--badge-warning)]" },
+  BIRTHDAY:           { icon: Cake,           bgClass: "bg-[var(--badge-warning)]" },
+  COMPANY_ANNIVERSARY:{ icon: Building2,      bgClass: "bg-brand-primary" },
+  PROMOTION:          { icon: TrendingUp,     bgClass: "bg-[var(--badge-success)]" },
+  LONG_ACTIVITY:      { icon: Clock,          bgClass: "bg-[var(--badge-orange)]" },
+  CRITICAL_PROJECT:   { icon: Flame,          bgClass: "bg-[var(--destructive)]" },
+  LOW_HOURS:          { icon: Timer,          bgClass: "bg-[var(--badge-orange)]" },
+  // Legacy — histórico apenas
+  PROGRESSION:        { icon: TrendingUp,     bgClass: "bg-[var(--badge-orange)]" },
+  ABSENCE_REQUEST:    { icon: CalendarOff,    bgClass: "bg-[var(--badge-info)]" },
+  DOMAIN_EVALUATION:  { icon: Target,         bgClass: "bg-brand-primary" },
 }
 
 interface NotificationItemProps {

@@ -416,7 +416,11 @@ END $$;
 `)
     // ALTER TYPE ADD VALUE cannot run inside a transaction block on some drivers.
     // Isolate each value so a failure does not abort the table-creation statements below.
-    for (const val of ["ABSENCE_REQUEST", "DOMAIN_EVALUATION"]) {
+    for (const val of [
+      "ABSENCE_REQUEST", "DOMAIN_EVALUATION",
+      "BIRTHDAY", "COMPANY_ANNIVERSARY", "PROMOTION",
+      "LONG_ACTIVITY", "CRITICAL_PROJECT", "LOW_HOURS",
+    ]) {
       try {
         await prisma.$executeRawUnsafe(`ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS '${val}'`)
       } catch (alterErr) {

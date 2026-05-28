@@ -6,7 +6,6 @@ import { prisma } from "@/core/prisma"
 import { ensureIndividualAusenciasTable } from "@/core/prisma-schema-ensure"
 import { requireSession } from "@/core/session"
 import { buildRole, can } from "@/core/rbac/policy"
-import { createNotification } from "@/core/actions/notifications"
 import { getActiveQaUsers } from "@/features/usuarios/actions/usuarios"
 import {
   createAusenciaSchema,
@@ -288,37 +287,6 @@ export async function createIndividualAusencias(
       select: { id: true },
     })) as { id: string }
 
-    // Administrador:MGR já aprova automaticamente — sem notificação necessária
-    if (!isMgr) {
-      try {
-        const mgrUsers = await prisma.createdUser.findMany({
-          where: { type: "Administrador", accessProfile: "MGR" },
-          select: { id: true },
-        })
-        const solicitanteUser = await prisma.createdUser.findUnique({
-          where: { id: session.user.id },
-          select: { name: true },
-        })
-        const nomesSolicitante = solicitanteUser?.name ?? session.user.name ?? "Usuário"
-        const dataFormatada = formatDataPtBr(data.dataIso)
-        const tipoFormatado = tipoLabel(data.tipo)
-
-        await Promise.all(
-          mgrUsers.map((mgr) =>
-            createNotification(
-              mgr.id,
-              "ABSENCE_REQUEST",
-              "Nova solicitação de ausência",
-              `${nomesSolicitante} solicitou ausência do tipo ${tipoFormatado} em ${dataFormatada}.`,
-              null,
-            ),
-          ),
-        )
-      } catch (notifErr) {
-        console.error("[createIndividualAusencias] falha ao notificar MGRs:", notifErr)
-      }
-    }
-
     revalidatePath("/individual/ausencias")
     return { id: row.id }
   } catch (e) {
@@ -405,21 +373,6 @@ export async function refuseIndividualAusencias(
         updatedAt: new Date(),
       },
     })
-
-    // Notify the requesting user
-    try {
-      const dataFormatada = formatDataPtBr(dataToIso(existing.data))
-      const tipoFormatado = tipoLabel(existing.tipo)
-      await createNotification(
-        existing.evaluatedUserId,
-        "ABSENCE_REQUEST",
-        "Solicitação de ausência recusada",
-        `Sua solicitação de ${tipoFormatado} em ${dataFormatada} foi recusada. Motivo: ${motivoRecusa}`,
-        null,
-      )
-    } catch (notifErr) {
-      console.error("[refuseIndividualAusencias] falha ao notificar usuário:", notifErr)
-    }
 
     revalidatePath("/individual/ausencias")
     return {}

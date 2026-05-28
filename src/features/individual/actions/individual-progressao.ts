@@ -131,17 +131,19 @@ export async function createProgressao(
       WHERE "id" = ${evaluatedUserId}
     `
 
-    try {
-      await createNotification(
-        evaluatedUserId,
-        "PROGRESSION",
-        "Nova progressão registrada",
-        "Uma progressão de carreira foi registrada para você.",
-        `/individual/progressao`,
-      )
-    } catch (notifErr) {
-      if (process.env.NODE_ENV !== "production")
-        console.error("[createProgressao] notification trigger:", notifErr)
+    if (tipo === "PROMOCAO") {
+      try {
+        await createNotification(
+          evaluatedUserId,
+          "PROMOTION",
+          "Parabéns pela sua promoção",
+          "Desejamos sucesso nessa nova etapa da sua jornada.",
+          `/configuracoes/usuarios/${evaluatedUserId}/editar`,
+        )
+      } catch (notifErr) {
+        if (process.env.NODE_ENV !== "production")
+          console.error("[createProgressao] notification trigger:", notifErr)
+      }
     }
 
     return {}

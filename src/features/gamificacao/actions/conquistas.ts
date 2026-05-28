@@ -184,8 +184,8 @@ export async function listUserBadges(targetUserId?: string): Promise<ListUserBad
             await createNotification(
               userId,
               "ACHIEVEMENT",
-              `Conquista desbloqueada: ${badge.label}`,
-              `Você desbloqueou a conquista "${badge.label}". Parabéns!`,
+              "Nova conquista desbloqueada",
+              "Parabéns! Você desbloqueou uma nova conquista.",
               `/individual/conquistas`,
             )
           } catch {
