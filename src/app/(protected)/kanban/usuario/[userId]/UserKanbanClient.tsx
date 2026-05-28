@@ -35,7 +35,7 @@ const COLUMNS: { id: UserKanbanColumn; label: string; color: string; chipClass: 
 /** Columns the user can hide. Order preserved from COLUMNS. */
 const HIDEABLE_COLS = new Set<UserKanbanColumn>(["paused", "waiting", "canceled"])
 const LS_KEY = (uid: string) => `kanban-hidden-cols-v1-${uid}`
-const DEFAULT_HIDDEN: UserKanbanColumn[] = ["paused", "waiting", "canceled"]
+const DEFAULT_HIDDEN: UserKanbanColumn[] = ["paused", "waiting"]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
