@@ -19,6 +19,7 @@ const g = globalThis as unknown as {
   __qagrotisEnsuredClienteTable?: boolean
   __qagrotisEnsuredIndividualAusencias?: boolean
   __qagrotisEnsuredDominioTables?: boolean
+  __qagrotisEnsuredUpdatedAtColumns?: boolean
 }
 
 /**
@@ -646,5 +647,39 @@ CREATE TABLE IF NOT EXISTS "DominioAvaliacao" (
     g.__qagrotisEnsuredDominioTables = true
   } catch (e) {
     console.error("[prisma-schema-ensure] Dominio tables", e)
+  }
+}
+
+/**
+ * Garante coluna `updatedAt` em modelos de domínio que não a tinham,
+ * e corrige `Cenario.createdAt` de nullable para NOT NULL.
+ * DDL idempotente — seguro re-executar (ADD COLUMN IF NOT EXISTS).
+ */
+export async function ensureUpdatedAtColumns(): Promise<void> {
+  if (g.__qagrotisEnsuredUpdatedAtColumns) return
+  try {
+    // Fix Cenario.createdAt: backfill NULLs then set NOT NULL
+    await prisma.$executeRawUnsafe(
+      `UPDATE "Cenario" SET "createdAt" = NOW() WHERE "createdAt" IS NULL`,
+    )
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "Cenario" ALTER COLUMN "createdAt" SET NOT NULL`,
+    )
+
+    // Add updatedAt to domain tables (existing rows get NOW() as approximation)
+    for (const table of ["Cliente", "Sistema", "Modulo", "Cenario", "Suite", "Credencial", "Integracao"]) {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE "${table}" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT NOW()`,
+      )
+    }
+
+    // KanbanInApprovalTracker: add userId index for queries that filter by userId
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "kanban_in_approval_trackers_userId_idx" ON "kanban_in_approval_trackers"("userId")`,
+    )
+
+    g.__qagrotisEnsuredUpdatedAtColumns = true
+  } catch (e) {
+    console.error("[prisma-schema-ensure] updatedAt columns / Cenario.createdAt", e)
   }
 }

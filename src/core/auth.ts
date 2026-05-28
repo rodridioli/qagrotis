@@ -17,20 +17,17 @@ async function checkCredentials(email: string, password: string) {
   const prisma = await getPrisma()
   const normalizedEmail = email.trim().toLowerCase()
 
-  const [inactiveRecords, createdUser] = await Promise.all([
-    prisma.inactiveUser.findMany({ select: { userId: true } }),
-    prisma.createdUser.findFirst({
-      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
-      select: { id: true, email: true, password: true },
-    }),
-  ])
-
-  const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
+  const createdUser = await prisma.createdUser.findFirst({
+    where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+    select: { id: true, email: true, password: true },
+  })
 
   if (createdUser) {
     if (!createdUser.password) return null // invite not yet accepted
     if (!verifyPassword(password, createdUser.password)) return null
-    if (inactiveIds.has(createdUser.id)) return null
+    // Only query inactiveUser for this specific user — avoids full-table scan
+    const inactive = await prisma.inactiveUser.findUnique({ where: { userId: createdUser.id } })
+    if (inactive) return null
     return { id: createdUser.id, email: createdUser.email, name: createdUser.email }
   }
 
@@ -72,15 +69,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const prisma = await getPrisma()
         const email = (user.email ?? "").trim().toLowerCase()
 
-        const [existingCreated, inactiveRecords] = await Promise.all([
-          prisma.createdUser.findFirst({
-            where: { email: { equals: email, mode: "insensitive" } },
-            select: { id: true },
-          }),
-          prisma.inactiveUser.findMany({ select: { userId: true } }),
-        ])
+        const existingCreated = await prisma.createdUser.findFirst({
+          where: { email: { equals: email, mode: "insensitive" } },
+          select: { id: true },
+        })
 
-        const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
+        // Only query inactiveUser for the resolved user — avoids full-table scan
+        const inactiveIds = new Set<string>()
+        if (existingCreated) {
+          const inactive = await prisma.inactiveUser.findUnique({ where: { userId: existingCreated.id } })
+          if (inactive) inactiveIds.add(existingCreated.id)
+        }
         const decision = resolveGoogleAccess(email, existingCreated, inactiveIds)
 
         if (!decision.allow) return decision.redirect
@@ -101,15 +100,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Retry logic for DB consistency on first sign-in (give time for commit to be visible)
         let activeCreated = null
         for (let i = 0; i < 3; i++) {
-          const [inactiveRecords, createdUsers] = await Promise.all([
-            prisma.inactiveUser.findMany({ select: { userId: true } }),
-            prisma.createdUser.findMany({
-              where: { email: { equals: email, mode: "insensitive" } },
-              select: { id: true },
-            }),
-          ])
-          const jwtInactiveIds = new Set(inactiveRecords.map((r) => r.userId))
-          activeCreated = createdUsers.find((u) => !jwtInactiveIds.has(u.id))
+          const createdUsers = await prisma.createdUser.findMany({
+            where: { email: { equals: email, mode: "insensitive" } },
+            select: { id: true },
+          })
+          // Check each candidate individually — avoids full-table scan on inactiveUser
+          for (const u of createdUsers) {
+            const inactive = await prisma.inactiveUser.findUnique({ where: { userId: u.id } })
+            if (!inactive) { activeCreated = u; break }
+          }
 
           if (activeCreated) break
           if (i < 2) await new Promise((r) => setTimeout(r, 100 * (i + 1))) // Backoff

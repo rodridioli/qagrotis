@@ -78,16 +78,6 @@ model VerificationToken {
 
 // ── Legacy (kept for schema compatibility) ────────────────────────────────────
 
-model QaUser {
-  id        String   @id
-  name      String
-  email     String   @unique
-  type      String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 // ── QAgrotis domain models ────────────────────────────────────────────────────
 
 model Cliente {
@@ -97,6 +87,7 @@ model Cliente {
   cpfCnpj      String?
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([active])
 }
@@ -107,6 +98,7 @@ model Sistema {
   description String?
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   modulos     Modulo[]
   cenarios    Cenario[]
   suites      Suite[]
@@ -120,6 +112,7 @@ model Modulo {
   sistemaName String
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   sistema     Sistema  @relation(fields: [sistemaId], references: [id])
   cenarios    Cenario[]
   suites      Suite[]
@@ -139,7 +132,8 @@ model Cenario {
   suites            Int       @default(0)
   tipo              String
   active            Boolean   @default(true)
-  createdAt         DateTime? @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
   createdBy         String?
   risco             String?
   regraDeNegocio    String?
@@ -185,6 +179,7 @@ model Suite {
   active    Boolean  @default(true)
   encerrada Boolean  @default(false)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   cenarios  Json     @default("[]")
   historico Json     @default("[]")
 
@@ -399,6 +394,7 @@ model Credencial {
   senha       String
   active      Boolean   @default(true)
   createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   cenarios    Cenario[]
 
   @@index([active])
@@ -414,6 +410,7 @@ model Integracao {
   apiKey    String
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([active])
   @@index([createdAt])
@@ -704,5 +701,6 @@ model KanbanInApprovalTracker {
   enteredAt     DateTime  @default(now())
   lastCommentAt DateTime?
 
+  @@index([userId])
   @@map("kanban_in_approval_trackers")
 }

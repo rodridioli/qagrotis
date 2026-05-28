@@ -103,7 +103,7 @@ export async function getKanbanAssignments(): Promise<KanbanAssignments> {
   const role = buildRole(session.user.type, session.user.accessProfile)
   if (!can(role, "menu.kanban")) return {}
 
-  const rows = await db.kanbanAssignment.findMany()
+  const rows = await db.kanbanAssignment.findMany({ take: 2000 })
   return Object.fromEntries(
     rows.map((r) => [r.issueKey, { userId: r.userId, cardType: (r.cardType as "demanda" | "ux_tarefa") }])
   )

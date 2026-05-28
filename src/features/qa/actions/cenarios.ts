@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { requireSession } from "@/core/session"
-import { nextId } from "@/core/db-utils"
+import { nextId, encryptField, decryptField } from "@/core/db-utils"
 import { prisma } from "@/core/prisma"
 import { aggregateHistoricoExecucoesErrosByCenarioId } from "@/features/qa/lib/suite-historico-stats"
-import { ensureCenarioSuiteRelationColumns } from "@/core/prisma-schema-ensure"
+import { ensureCenarioSuiteRelationColumns, ensureUpdatedAtColumns } from "@/core/prisma-schema-ensure"
 
 export interface CenarioStep {
   acao: string
@@ -112,8 +112,8 @@ function toRecord(row: any): CenarioRecord {
     objetivo:          row.objetivo ?? undefined,
     urlScript:         row.urlScript ?? undefined,
     usuarioTeste:      row.usuarioTeste ?? undefined,
-    senhaTeste:        row.senhaTeste ?? undefined,
-    senhaFalsa:        row.senhaFalsa ?? undefined,
+    senhaTeste:        row.senhaTeste ? decryptField(row.senhaTeste) : undefined,
+    senhaFalsa:        row.senhaFalsa ? decryptField(row.senhaFalsa) : undefined,
     steps:             (row.steps as unknown as CenarioStep[]) ?? [],
     deps:              (row.deps as string[]) ?? [],
     credencialId:      row.credencialId ?? null,
@@ -126,6 +126,7 @@ function toRecord(row: any): CenarioRecord {
 export async function getCenarios(): Promise<CenarioRecord[]> {
   await requireSession()
   await ensureCenarioSuiteRelationColumns()
+  await ensureUpdatedAtColumns()
   const [rows, activeSuites] = await Promise.all([
     prisma.cenario.findMany({ orderBy: { createdAt: "asc" }, take: 2000 }),
     prisma.suite.findMany({
@@ -207,7 +208,8 @@ export async function criarCenario(data: {
 
   let urlAmbiente = parsed.urlAmbiente
   let usuarioTeste = parsed.usuarioTeste
-  let senhaTeste = parsed.senhaTeste
+  // senhaTeste: encrypt unless it already comes pre-encrypted from a Credencial (starts with "enc:v1:")
+  let senhaTeste = parsed.senhaTeste ? encryptField(parsed.senhaTeste) : parsed.senhaTeste
   const credencialId = parsed.credencialId ?? null
   if (credencialId) {
     const cred = await prisma.credencial.findFirst({
@@ -217,7 +219,7 @@ export async function criarCenario(data: {
     if (!cred) throw new Error("Credencial não encontrada ou inativa.")
     urlAmbiente = (cred.urlAmbiente ?? "").trim()
     usuarioTeste = cred.usuario.trim()
-    senhaTeste = cred.senha
+    senhaTeste = cred.senha // already encrypted in Credencial table
   }
 
   const existing = await prisma.cenario.findMany({ select: { id: true } })
@@ -256,7 +258,7 @@ export async function criarCenario(data: {
       urlScript:         parsed.urlScript,
       usuarioTeste,
       senhaTeste,
-      senhaFalsa:        parsed.senhaFalsa,
+      senhaFalsa:        parsed.senhaFalsa ? encryptField(parsed.senhaFalsa) : parsed.senhaFalsa,
       steps:             parsed.steps,
       deps:              parsed.deps,
       credencialId,
@@ -330,7 +332,8 @@ export async function atualizarCenario(id: string, data: {
 
   let urlAmbienteU = parsed.urlAmbiente
   let usuarioTesteU = parsed.usuarioTeste
-  let senhaTesteU = parsed.senhaTeste
+  // senhaTeste: encrypt unless it already comes pre-encrypted from a Credencial
+  let senhaTesteU = parsed.senhaTeste ? encryptField(parsed.senhaTeste) : parsed.senhaTeste
   const credencialIdU = parsed.credencialId ?? null
   if (credencialIdU) {
     const cred = await prisma.credencial.findFirst({
@@ -371,7 +374,7 @@ export async function atualizarCenario(id: string, data: {
       urlScript:         parsed.urlScript,
       usuarioTeste:      usuarioTesteU,
       senhaTeste:        senhaTesteU,
-      senhaFalsa:        parsed.senhaFalsa,
+      senhaFalsa:        parsed.senhaFalsa ? encryptField(parsed.senhaFalsa) : parsed.senhaFalsa,
       steps:             parsed.steps,
       deps:              parsed.deps,
       credencialId:      credencialIdU,
