@@ -34,7 +34,7 @@ const mockEditMap = new Map([
       endHHmm: "17:00",
       comment: "",
       saving: false,
-      saveError: "Horário inválido: fim deve ser após início.",
+      saveError: null,
     },
   ],
 ])
@@ -47,28 +47,28 @@ const mockDay: DayGroupProps["day"] = {
       id: "123456",
       issueKey: "QA-1234",
       summary: "Implementar tela de Clockwork no Equipe",
-      started: "2026-05-28T12:00:00.000Z", // 09:00 SP
-      timeSpentSeconds: 5400, // 1h30m
+      started: "2026-05-28T12:00:00.000Z",
+      timeSpentSeconds: 5400,
       comment: "Desenvolvimento da feature de clockwork",
     },
     {
       id: "123457",
       issueKey: "QA-1235",
       summary: "Revisão de PRs pendentes",
-      started: "2026-05-28T17:00:00.000Z", // 14:00 SP
-      timeSpentSeconds: 7200, // 2h
+      started: "2026-05-28T17:00:00.000Z",
+      timeSpentSeconds: 7200,
       comment: "Code review e ajustes",
     },
     {
       id: "123458",
       issueKey: "QA-1236",
       summary: "Atualização de documentação",
-      started: "2026-05-28T19:30:00.000Z", // 16:30 SP
-      timeSpentSeconds: 1800, // 30m
+      started: "2026-05-28T19:30:00.000Z",
+      timeSpentSeconds: 1800,
       comment: "",
     },
   ],
-  totalSeconds: 5400 + 7200 + 1800, // 4h
+  totalSeconds: 5400 + 7200 + 1800,
 }
 
 // ── Meta ──────────────────────────────────────────────────────────────────────
@@ -85,11 +85,30 @@ type Story = StoryObj<typeof meta>
 
 // ── Stories ───────────────────────────────────────────────────────────────────
 
-export const DiaComLancamentos: Story = {
-  name: "Dia com lançamentos",
+export const Expandido: Story = {
+  name: "Dia expandido",
   args: {
     day: mockDay,
     editMap: mockEditMap,
+    collapsed: false,
+    onToggle: () => {},
+    onFieldChange: () => {},
+    onBlurSave: () => {},
+  },
+  render: (args) => (
+    <div className="max-w-4xl">
+      <DayGroup {...args} />
+    </div>
+  ),
+}
+
+export const Contraido: Story = {
+  name: "Dia contraído",
+  args: {
+    day: mockDay,
+    editMap: mockEditMap,
+    collapsed: true,
+    onToggle: () => {},
     onFieldChange: () => {},
     onBlurSave: () => {},
   },
@@ -116,10 +135,12 @@ export const ComErro: Story = {
           endHHmm: "16:00",
           comment: "",
           saving: false,
-          saveError: "Horário inválido: fim deve ser após início.",
+          saveError: "Horário inválido: fim deve ser após o início.",
         },
       ],
     ]),
+    collapsed: false,
+    onToggle: () => {},
     onFieldChange: () => {},
     onBlurSave: () => {},
   },
@@ -150,6 +171,8 @@ export const Salvando: Story = {
         },
       ],
     ]),
+    collapsed: false,
+    onToggle: () => {},
     onFieldChange: () => {},
     onBlurSave: () => {},
   },

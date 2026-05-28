@@ -11,16 +11,24 @@ const CW_HOST = "https://api.clockwork.report"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function currentMonthRange(): { fromIso: string; toIso: string } {
+type Period = "current" | "previous"
+
+function monthRange(period: Period): { fromIso: string; toIso: string; monthLabel: string } {
   const now = new Date()
   const year = now.getUTCFullYear()
-  const month = now.getUTCMonth()
+  const month = period === "previous" ? now.getUTCMonth() - 1 : now.getUTCMonth()
   const from = new Date(Date.UTC(year, month, 1))
-  const to = new Date(Date.UTC(year, month + 1, 0))
-  const pad = (n: number) => String(n).padStart(2, "0")
+  const to   = new Date(Date.UTC(year, month + 1, 0))
+  const pad  = (n: number) => String(n).padStart(2, "0")
+  const monthLabel = new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Sao_Paulo",
+  }).format(from)
   return {
     fromIso: `${from.getUTCFullYear()}-${pad(from.getUTCMonth() + 1)}-${pad(from.getUTCDate())}`,
     toIso:   `${to.getUTCFullYear()}-${pad(to.getUTCMonth() + 1)}-${pad(to.getUTCDate())}`,
+    monthLabel,
   }
 }
 
@@ -45,6 +53,9 @@ export async function GET(req: NextRequest) {
   if (!requestedUserId) {
     return Response.json({ error: "Parâmetro userId é obrigatório." }, { status: 400 })
   }
+
+  const periodParam = url.searchParams.get("period")
+  const period: Period = periodParam === "previous" ? "previous" : "current"
 
   // Autorização: admin pode ver membros dos seus perfis gerenciáveis
   const canViewOthers = can(role, "individual.viewOthers")
@@ -75,7 +86,7 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: "CLOCKWORK_NOT_CONFIGURED" }, { status: 400 })
   }
 
-  const { fromIso, toIso } = currentMonthRange()
+  const { fromIso, toIso, monthLabel } = monthRange(period)
 
   try {
     const worklogs = await fetchClockworkWorklogsForEmail({
@@ -95,13 +106,6 @@ export async function GET(req: NextRequest) {
       timeSpentSeconds: w.timeSpentSeconds,
       comment: w.comment,
     }))
-
-    const now = new Date()
-    const monthLabel = new Intl.DateTimeFormat("pt-BR", {
-      month: "long",
-      year: "numeric",
-      timeZone: "America/Sao_Paulo",
-    }).format(now)
 
     return Response.json({ worklogs: items, month: monthLabel, fromIso, toIso })
   } catch (e) {

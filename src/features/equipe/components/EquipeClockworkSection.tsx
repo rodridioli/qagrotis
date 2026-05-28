@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { ChevronDown, ChevronUp } from "lucide-react"
 import {
   Select,
   SelectItem,
@@ -27,6 +28,7 @@ import {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type AccessProfileId = "QA" | "UX" | "TW" | "MGR"
+type PeriodId = "current" | "previous"
 
 interface Props {
   userAccessProfile: AccessProfileId
@@ -59,7 +61,7 @@ interface EditState {
 
 interface GroupedDay {
   dateKey: string   // "YYYY-MM-DD" in SP timezone
-  label: string     // e.g. "quinta-feira, 28 de maio de 2026"
+  label: string     // e.g. "Quinta-feira, 28 de maio de 2026"
   worklogs: CwWorklog[]
   totalSeconds: number
 }
@@ -68,6 +70,7 @@ interface GroupedDay {
 
 const SP_OFFSET_MS = -3 * 60 * 60 * 1000 // UTC-3 (Brazil abolished DST 2019)
 const VALID_PROFILES = new Set<string>(["QA", "UX", "TW"])
+const VALID_PERIODS = new Set<string>(["current", "previous"])
 const AVATAR_SIZE = 38
 
 const ALL_PROFILE_OPTIONS: { value: Exclude<AccessProfileId, "MGR">; label: string }[] = [
@@ -76,62 +79,51 @@ const ALL_PROFILE_OPTIONS: { value: Exclude<AccessProfileId, "MGR">; label: stri
   { value: "TW", label: "TW" },
 ]
 
+const PERIOD_OPTIONS: { value: PeriodId; label: string }[] = [
+  { value: "current",  label: "Mês atual" },
+  { value: "previous", label: "Mês anterior" },
+]
+
 // ── Time helpers ──────────────────────────────────────────────────────────────
 
-/** Converts an ISO datetime string to a Date in São Paulo local time offset. */
 function toSPDate(iso: string): Date {
   return new Date(new Date(iso).getTime() + SP_OFFSET_MS)
 }
 
-/** Extracts HH:mm from an ISO datetime string (São Paulo time). */
 function isoToHHmm(iso: string): string {
   const sp = toSPDate(iso)
-  const h = String(sp.getUTCHours()).padStart(2, "0")
-  const m = String(sp.getUTCMinutes()).padStart(2, "0")
-  return `${h}:${m}`
+  return `${String(sp.getUTCHours()).padStart(2, "0")}:${String(sp.getUTCMinutes()).padStart(2, "0")}`
 }
 
-/** Gets the end time from started + timeSpentSeconds. */
 function endTimeHHmm(iso: string, timeSpentSeconds: number): string {
-  const endIso = new Date(new Date(iso).getTime() + timeSpentSeconds * 1000).toISOString()
-  return isoToHHmm(endIso)
+  return isoToHHmm(new Date(new Date(iso).getTime() + timeSpentSeconds * 1000).toISOString())
 }
 
-/** Date key "YYYY-MM-DD" in São Paulo timezone. */
 function spDateKey(iso: string): string {
   const sp = toSPDate(iso)
-  const y = sp.getUTCFullYear()
-  const mo = String(sp.getUTCMonth() + 1).padStart(2, "0")
-  const d = String(sp.getUTCDate()).padStart(2, "0")
-  return `${y}-${mo}-${d}`
+  return `${sp.getUTCFullYear()}-${String(sp.getUTCMonth() + 1).padStart(2, "0")}-${String(sp.getUTCDate()).padStart(2, "0")}`
 }
 
-/** Human-readable date label in Portuguese (weekday, day month year). */
 function spDateLabel(dateKey: string): string {
   const [y, mo, d] = dateKey.split("-").map(Number)
-  const date = new Date(Date.UTC(y!, mo! - 1, d!))
   const label = new Intl.DateTimeFormat("pt-BR", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
     timeZone: "UTC",
-  }).format(date)
+  }).format(new Date(Date.UTC(y!, mo! - 1, d!)))
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
-/** Builds a UTC ISO datetime from a date key (SP) + HH:mm (SP local time). */
 function spToUtcIso(dateKey: string, hhmm: string): string {
   const [y, mo, d] = dateKey.split("-").map(Number)
   const [hStr, mStr] = hhmm.split(":")
   const h = parseInt(hStr ?? "0", 10)
   const m = parseInt(mStr ?? "0", 10)
-  // SP = UTC-3, so UTC = SP + 3h
-  const utcMs = Date.UTC(y!, mo! - 1, d!, h + 3, m, 0, 0)
-  return new Date(utcMs).toISOString()
+  return new Date(Date.UTC(y!, mo! - 1, d!, h + 3, m, 0, 0)).toISOString()
 }
 
-/** Formats total seconds as "Xh Ym" or "Ym". */
 function formatDuration(seconds: number): string {
   if (seconds <= 0) return "—"
   const h = Math.floor(seconds / 3600)
@@ -141,7 +133,6 @@ function formatDuration(seconds: number): string {
   return `${h}h ${m}m`
 }
 
-/** Parses HH:mm into total minutes. Returns -1 if invalid. */
 function parseHHmm(hhmm: string): number {
   const [hStr, mStr] = hhmm.split(":")
   const h = parseInt(hStr ?? "", 10)
@@ -150,17 +141,15 @@ function parseHHmm(hhmm: string): number {
   return h * 60 + m
 }
 
-/** Derives timeSpentSeconds from start and end HH:mm. Returns null if invalid. */
 function deriveSeconds(startHHmm: string, endHHmm: string): number | null {
   const startMin = parseHHmm(startHHmm)
-  const endMin = parseHHmm(endHHmm)
+  const endMin   = parseHHmm(endHHmm)
   if (startMin < 0 || endMin < 0) return null
   const diff = (endMin - startMin) * 60
-  if (diff <= 0) return null
-  return diff
+  return diff > 0 ? diff : null
 }
 
-// ── Group worklogs by SP date ─────────────────────────────────────────────────
+// ── Group by date ─────────────────────────────────────────────────────────────
 
 function groupByDate(worklogs: CwWorklog[]): GroupedDay[] {
   const map = new Map<string, CwWorklog[]>()
@@ -170,7 +159,7 @@ function groupByDate(worklogs: CwWorklog[]): GroupedDay[] {
     map.get(key)!.push(w)
   }
   return [...map.entries()]
-    .sort(([a], [b]) => b.localeCompare(a)) // descending (newest first)
+    .sort(([a], [b]) => b.localeCompare(a))
     .map(([dateKey, wls]) => ({
       dateKey,
       label: spDateLabel(dateKey),
@@ -179,16 +168,14 @@ function groupByDate(worklogs: CwWorklog[]): GroupedDay[] {
     }))
 }
 
-// ── Edit state helpers ────────────────────────────────────────────────────────
-
 function buildInitialEditState(worklogs: CwWorklog[]): Map<string, EditState> {
   const m = new Map<string, EditState>()
   for (const w of worklogs) {
     m.set(w.id, {
       startHHmm: isoToHHmm(w.started),
-      endHHmm: endTimeHHmm(w.started, w.timeSpentSeconds),
-      comment: w.comment,
-      saving: false,
+      endHHmm:   endTimeHHmm(w.started, w.timeSpentSeconds),
+      comment:   w.comment,
+      saving:    false,
       saveError: null,
     })
   }
@@ -198,8 +185,8 @@ function buildInitialEditState(worklogs: CwWorklog[]): Map<string, EditState> {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }: Props) {
-  const router = useRouter()
-  const pathname = usePathname()
+  const router       = useRouter()
+  const pathname     = usePathname()
   const searchParams = useSearchParams()
 
   const defaultProfile: Exclude<AccessProfileId, "MGR"> =
@@ -209,20 +196,25 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
     const v = searchParams.get("cwp")
     return v && VALID_PROFILES.has(v) ? (v as Exclude<AccessProfileId, "MGR">) : defaultProfile
   })
-  const [membros, setMembros] = React.useState<EquipeMembroLancamentos[]>([])
+
+  const [period, setPeriod] = React.useState<PeriodId>(() => {
+    const v = searchParams.get("cwper")
+    return v && VALID_PERIODS.has(v) ? (v as PeriodId) : "current"
+  })
+
+  const [membros, setMembros]             = React.useState<EquipeMembroLancamentos[]>([])
   const [membrosLoading, setMembrosLoading] = React.useState(true)
   const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
-
   const initialMembroRef = React.useRef(searchParams.get("cwm"))
 
-  // Worklog state
-  const [worklogs, setWorklogs] = React.useState<CwWorklog[]>([])
-  const [monthLabel, setMonthLabel] = React.useState<string>("")
+  const [worklogs, setWorklogs]           = React.useState<CwWorklog[]>([])
+  const [monthLabel, setMonthLabel]       = React.useState<string>("")
   const [worklogsLoading, setWorklogsLoading] = React.useState(false)
   const [worklogsError, setWorklogsError] = React.useState<string | null>(null)
+  const [editMap, setEditMap]             = React.useState<Map<string, EditState>>(new Map())
 
-  // Edit state: keyed by worklog id
-  const [editMap, setEditMap] = React.useState<Map<string, EditState>>(new Map())
+  // Set of collapsed dateKeys (all expanded by default)
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set())
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString())
@@ -235,9 +227,23 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
     setParam("cwp", v)
   }
 
+  function handlePeriodChange(v: PeriodId) {
+    setPeriod(v)
+    setParam("cwper", v)
+  }
+
   function handleMemberSelect(userId: string) {
     setSelectedUserId(userId)
     setParam("cwm", userId)
+  }
+
+  function toggleDay(dateKey: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(dateKey)) next.delete(dateKey)
+      else next.add(dateKey)
+      return next
+    })
   }
 
   // Load team members
@@ -260,7 +266,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
     return () => { cancelled = true }
   }, [profileFilter, canFilterByProfile, userAccessProfile])
 
-  // Load worklogs whenever selectedUserId changes
+  // Load worklogs when user or period changes
   React.useEffect(() => {
     if (!selectedUserId) {
       setWorklogs([])
@@ -273,12 +279,12 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
     setWorklogsLoading(true)
     setWorklogsError(null)
 
-    fetch(`/api/clockwork/worklogs?userId=${encodeURIComponent(selectedUserId)}`, {
-      method: "GET",
-      credentials: "same-origin",
-    })
+    fetch(
+      `/api/clockwork/worklogs?userId=${encodeURIComponent(selectedUserId)}&period=${period}`,
+      { method: "GET", credentials: "same-origin" },
+    )
       .then(async (res) => {
-        const json = await res.json() as ApiResponse & { error?: string }
+        const json = (await res.json()) as ApiResponse & { error?: string }
         if (!res.ok) throw new Error(json.error ?? "Erro ao buscar worklogs.")
         return json
       })
@@ -287,17 +293,18 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
           setWorklogs(data.worklogs ?? [])
           setMonthLabel(data.month ?? "")
           setEditMap(buildInitialEditState(data.worklogs ?? []))
+          setCollapsed(new Set()) // reset on fresh load
           setWorklogsLoading(false)
         }
       })
       .catch((e: unknown) => {
         if (!cancelled) {
           const msg = e instanceof Error ? e.message : "Erro ao buscar worklogs."
-          if (msg === "CLOCKWORK_NOT_CONFIGURED") {
-            setWorklogsError("Clockwork não configurado. Adicione o token em Configurações → Clockwork.")
-          } else {
-            setWorklogsError(msg)
-          }
+          setWorklogsError(
+            msg === "CLOCKWORK_NOT_CONFIGURED"
+              ? "Clockwork não configurado. Adicione o token em Configurações → Clockwork."
+              : msg,
+          )
           setWorklogs([])
           setEditMap(new Map())
           setWorklogsLoading(false)
@@ -305,14 +312,14 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
       })
 
     return () => { cancelled = true }
-  }, [selectedUserId])
+  }, [selectedUserId, period])
 
-  // ── Edit handlers ────────────────────────────────────────────────────────────
+  // ── Edit handlers ─────────────────────────────────────────────────────────────
 
   function updateEdit(id: string, patch: Partial<EditState>) {
     setEditMap((prev) => {
       const next = new Map(prev)
-      const cur = next.get(id)
+      const cur  = next.get(id)
       if (!cur) return prev
       next.set(id, { ...cur, ...patch })
       return next
@@ -322,57 +329,35 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
   async function saveWorklog(worklog: CwWorklog, state: EditState) {
     const dateKey = spDateKey(worklog.started)
     const seconds = deriveSeconds(state.startHHmm, state.endHHmm)
-
     if (seconds === null) {
-      updateEdit(worklog.id, {
-        saveError: "Horário inválido: verifique início e fim.",
-        saving: false,
-      })
+      updateEdit(worklog.id, { saveError: "Horário inválido: fim deve ser após o início.", saving: false })
       return
     }
-
     const newStarted = spToUtcIso(dateKey, state.startHHmm)
-
     updateEdit(worklog.id, { saving: true, saveError: null })
-
     try {
       const res = await fetch("/api/clockwork/worklogs", {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          worklogId: worklog.id,
-          started: newStarted,
-          timeSpentSeconds: seconds,
-          comment: state.comment,
-        }),
+        body: JSON.stringify({ worklogId: worklog.id, started: newStarted, timeSpentSeconds: seconds, comment: state.comment }),
       })
-
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string }
         throw new Error(json.error ?? `Erro ${res.status}`)
       }
-
-      // Update local worklog data to reflect saved values
       setWorklogs((prev) =>
-        prev.map((w) =>
-          w.id === worklog.id
-            ? { ...w, started: newStarted, timeSpentSeconds: seconds, comment: state.comment }
-            : w,
-        ),
+        prev.map((w) => w.id === worklog.id ? { ...w, started: newStarted, timeSpentSeconds: seconds, comment: state.comment } : w),
       )
       updateEdit(worklog.id, { saving: false, saveError: null })
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Erro ao salvar."
-      updateEdit(worklog.id, { saving: false, saveError: msg })
+      updateEdit(worklog.id, { saving: false, saveError: e instanceof Error ? e.message : "Erro ao salvar." })
     }
   }
 
-  // ── Derived data ─────────────────────────────────────────────────────────────
-
   const grouped = React.useMemo(() => groupByDate(worklogs), [worklogs])
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col gap-4">
@@ -419,14 +404,14 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
           )}
         </div>
 
-        {/* Profile filter */}
-        {canFilterByProfile && (
-          <div className="flex shrink-0 items-center gap-2">
+        {/* Selects */}
+        <div className="flex shrink-0 items-center gap-2">
+          {canFilterByProfile && (
             <Select
               value={profileFilter}
               onValueChange={(v) => v && handleProfileChange(v as Exclude<AccessProfileId, "MGR">)}
             >
-              <SelectTrigger className="w-36" aria-label="Filtrar por perfil">
+              <SelectTrigger className="w-28" aria-label="Filtrar por perfil">
                 <SelectValue />
               </SelectTrigger>
               <SelectPopup>
@@ -435,8 +420,22 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
                 ))}
               </SelectPopup>
             </Select>
-          </div>
-        )}
+          )}
+
+          <Select
+            value={period}
+            onValueChange={(v) => v && handlePeriodChange(v as PeriodId)}
+          >
+            <SelectTrigger className="w-40" aria-label="Período">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectPopup>
+              {PERIOD_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        </div>
       </div>
 
       {/* Content */}
@@ -447,27 +446,22 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
       ) : worklogsLoading ? (
         <SectionSpinner minHeight="min-h-[20rem]" />
       ) : worklogsError ? (
-        <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
+        <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card px-4">
           <p className="text-center text-sm text-destructive">{worklogsError}</p>
         </div>
       ) : worklogs.length === 0 ? (
         <EmptyState
-          message={
-            monthLabel
-              ? `Nenhum worklog registrado em ${monthLabel}.`
-              : "Nenhum worklog registrado no mês atual."
-          }
+          message={monthLabel ? `Nenhum worklog registrado em ${monthLabel}.` : "Nenhum worklog registrado."}
         />
       ) : (
-        <div className="flex flex-col gap-6">
-          {monthLabel && (
-            <p className="text-sm font-medium text-text-secondary capitalize">{monthLabel}</p>
-          )}
+        <div className="flex flex-col gap-4">
           {grouped.map((day) => (
             <DayGroup
               key={day.dateKey}
               day={day}
               editMap={editMap}
+              collapsed={collapsed.has(day.dateKey)}
+              onToggle={() => toggleDay(day.dateKey)}
               onFieldChange={(id, field, value) => updateEdit(id, { [field]: value, saveError: null })}
               onBlurSave={(worklog, state) => saveWorklog(worklog, state)}
             />
@@ -478,72 +472,84 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
   )
 }
 
-// ── DayGroup component ────────────────────────────────────────────────────────
+// ── DayGroup ─────────────────────────────────────────────────────────────────
 
 export interface DayGroupProps {
   day: GroupedDay
   editMap: Map<string, EditState>
+  collapsed: boolean
+  onToggle: () => void
   onFieldChange: (id: string, field: keyof Pick<EditState, "startHHmm" | "endHHmm" | "comment">, value: string) => void
   onBlurSave: (worklog: CwWorklog, state: EditState) => void
 }
 
-export function DayGroup({ day, editMap, onFieldChange, onBlurSave }: DayGroupProps) {
+export function DayGroup({ day, editMap, collapsed, onToggle, onFieldChange, onBlurSave }: DayGroupProps) {
   return (
-    <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
-      {/* Day header */}
-      <div className="flex items-baseline justify-between border-b border-border-default bg-neutral-grey-50 px-4 py-3">
-        <h3 className="text-sm font-semibold text-text-primary">{day.label}</h3>
-        <span className="ml-4 shrink-0 text-xs font-medium text-text-secondary tabular-nums">
+    <div className="overflow-hidden rounded-xl bg-surface-card shadow-card">
+      {/* Collapsible header */}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={!collapsed}
+        className="flex w-full items-center justify-between border-b border-border-default bg-neutral-grey-50 px-4 py-3 text-left transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary"
+      >
+        <div className="flex items-center gap-3">
+          {collapsed
+            ? <ChevronDown className="size-4 shrink-0 text-text-secondary" aria-hidden />
+            : <ChevronUp   className="size-4 shrink-0 text-text-secondary" aria-hidden />
+          }
+          <span className="text-sm font-semibold text-text-primary">{day.label}</span>
+        </div>
+        <span className="ml-4 shrink-0 text-xs font-medium tabular-nums text-text-secondary">
           {formatDuration(day.totalSeconds)} total
         </span>
-      </div>
+      </button>
 
-      {/* Scrollable table */}
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead>
-            <tr className="border-b border-border-default">
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-text-secondary w-[7rem]">
-                Jira
-              </th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-text-secondary">
-                Descrição
-              </th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-text-secondary w-[6.5rem]">
-                Início
-              </th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-text-secondary w-[6.5rem]">
-                Fim
-              </th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-text-secondary w-[5rem]">
-                Total
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {day.worklogs.map((w) => {
-              const state = editMap.get(w.id)
-              if (!state) return null
-              const seconds = deriveSeconds(state.startHHmm, state.endHHmm)
-              return (
-                <WorklogRow
-                  key={w.id}
-                  worklog={w}
-                  state={state}
-                  totalSeconds={seconds}
-                  onFieldChange={onFieldChange}
-                  onBlurSave={onBlurSave}
-                />
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      {/* Table — hidden when collapsed */}
+      {!collapsed && (
+        <div className="overflow-x-auto">
+          <table className="qagrotis-table-row-hover w-full min-w-[680px] table-fixed text-sm">
+            <colgroup>
+              <col style={{ width: "7rem"  }} />
+              <col />
+              <col style={{ width: "7rem"  }} />
+              <col style={{ width: "7rem"  }} />
+              <col style={{ width: "5.5rem" }} />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-border-default bg-neutral-grey-50">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Jira</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Início</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Fim</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {day.worklogs.map((w) => {
+                const state = editMap.get(w.id)
+                if (!state) return null
+                const seconds = deriveSeconds(state.startHHmm, state.endHHmm)
+                return (
+                  <WorklogRow
+                    key={w.id}
+                    worklog={w}
+                    state={state}
+                    totalSeconds={seconds}
+                    onFieldChange={onFieldChange}
+                    onBlurSave={onBlurSave}
+                  />
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
 
-// ── WorklogRow component ──────────────────────────────────────────────────────
+// ── WorklogRow ────────────────────────────────────────────────────────────────
 
 interface WorklogRowProps {
   worklog: CwWorklog
@@ -554,42 +560,35 @@ interface WorklogRowProps {
 }
 
 function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave }: WorklogRowProps) {
-  // Track if any field is dirty relative to last save
   const lastSavedRef = React.useRef({
     startHHmm: state.startHHmm,
-    endHHmm: state.endHHmm,
-    comment: state.comment,
+    endHHmm:   state.endHHmm,
+    comment:   state.comment,
   })
 
   function handleBlur() {
     const { startHHmm, endHHmm, comment } = state
     const last = lastSavedRef.current
-    const changed =
-      startHHmm !== last.startHHmm ||
-      endHHmm !== last.endHHmm ||
-      comment !== last.comment
-
+    const changed = startHHmm !== last.startHHmm || endHHmm !== last.endHHmm || comment !== last.comment
     if (!changed || state.saving) return
     lastSavedRef.current = { startHHmm, endHHmm, comment }
     onBlurSave(worklog, state)
   }
 
-  const timeInputClass = cn(
-    "w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm tabular-nums text-text-primary",
-    "hover:border-border-default focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary/40",
-    "transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-    state.saving && "opacity-50 pointer-events-none",
+  const editInputClass = cn(
+    "w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-text-primary",
+    "hover:border-border-default focus:border-brand-primary focus:bg-surface-card focus:outline-none focus:ring-1 focus:ring-brand-primary/30",
+    "transition-colors placeholder:text-text-tertiary disabled:cursor-not-allowed disabled:opacity-50",
+    state.saving && "pointer-events-none opacity-50",
   )
 
   return (
     <>
-      <tr className="border-b border-border-default last:border-b-0 transition-colors hover:bg-surface-hover">
-        <td className="px-4 py-2.5">
-          <span className="font-mono text-xs font-medium text-brand-primary">
-            {worklog.issueKey}
-          </span>
+      <tr className="border-b border-border-default last:border-0 transition-colors">
+        <td className="px-4 py-3">
+          <span className="font-mono text-xs font-semibold text-brand-primary">{worklog.issueKey}</span>
         </td>
-        <td className="px-4 py-2.5">
+        <td className="min-w-0 px-4 py-3">
           <input
             type="text"
             value={state.comment}
@@ -597,57 +596,49 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave }:
             aria-label={`Descrição do lançamento ${worklog.issueKey}`}
             onChange={(e) => onFieldChange(worklog.id, "comment", e.target.value)}
             onBlur={handleBlur}
-            className={cn(
-              "w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-text-primary",
-              "hover:border-border-default focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary/40",
-              "transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-              state.saving && "opacity-50 pointer-events-none",
-            )}
+            className={editInputClass}
             placeholder="Sem descrição"
           />
         </td>
-        <td className="px-4 py-2.5">
+        <td className="px-4 py-3">
           <input
             type="time"
             value={state.startHHmm}
             disabled={state.saving}
-            aria-label={`Horário de início do lançamento ${worklog.issueKey}`}
+            aria-label={`Início — ${worklog.issueKey}`}
             onChange={(e) => onFieldChange(worklog.id, "startHHmm", e.target.value)}
             onBlur={handleBlur}
-            className={timeInputClass}
+            className={cn(editInputClass, "tabular-nums")}
           />
         </td>
-        <td className="px-4 py-2.5">
+        <td className="px-4 py-3">
           <input
             type="time"
             value={state.endHHmm}
             disabled={state.saving}
-            aria-label={`Horário de fim do lançamento ${worklog.issueKey}`}
+            aria-label={`Fim — ${worklog.issueKey}`}
             onChange={(e) => onFieldChange(worklog.id, "endHHmm", e.target.value)}
             onBlur={handleBlur}
-            className={timeInputClass}
+            className={cn(editInputClass, "tabular-nums")}
           />
         </td>
-        <td className="px-4 py-2.5">
+        <td className="px-4 py-3">
           {state.saving ? (
-            <span className="text-xs text-text-secondary animate-pulse">Salvando…</span>
+            <span className="animate-pulse text-xs text-text-secondary">Salvando…</span>
           ) : (
-            <span
-              className={cn(
-                "text-xs font-medium tabular-nums",
-                totalSeconds == null || totalSeconds <= 0
-                  ? "text-destructive"
-                  : "text-text-primary",
-              )}
-            >
-              {totalSeconds != null && totalSeconds > 0 ? formatDuration(totalSeconds) : "—"}
+            <span className={cn(
+              "text-sm font-medium tabular-nums",
+              totalSeconds == null ? "text-destructive" : "text-text-primary",
+            )}>
+              {totalSeconds != null ? formatDuration(totalSeconds) : "—"}
             </span>
           )}
         </td>
       </tr>
+
       {state.saveError && (
         <tr>
-          <td colSpan={5} className="px-4 pb-2 pt-0">
+          <td colSpan={5} className="px-4 pb-2.5 pt-0">
             <p className="text-xs text-destructive">{state.saveError}</p>
           </td>
         </tr>
