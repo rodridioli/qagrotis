@@ -742,6 +742,7 @@ function TagPieChart({
                 innerRadius={50}
                 outerRadius={80}
                 paddingAngle={2}
+                stroke="none"
               >
                 {items.map((item, index) => (
                   <Cell

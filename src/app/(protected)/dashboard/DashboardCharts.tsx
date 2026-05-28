@@ -443,6 +443,7 @@ export function DashboardCharts({
                   outerRadius={80}
                   paddingAngle={3}
                   dataKey="value"
+                  stroke="none"
                 >
                   {cenariosPorModulo.map((_, i) => (
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
