@@ -91,9 +91,8 @@ describe("Padrão:QA", () => {
     expect(can(role, "config.jira")).toBe(false)
   })
 
-  it("NÃO tem equipe.performance nem equipe.performance.filterByProfile", () => {
-    expect(can(role, "equipe.performance")).toBe(false)
-    expect(can(role, "equipe.performance.filterByProfile")).toBe(false)
+  it("NÃO tem equipe.clockwork (capability exclusiva de admins)", () => {
+    expect(can(role, "equipe.clockwork")).toBe(false)
   })
 
   it("não gerencia nenhum perfil", () => {
@@ -122,8 +121,8 @@ describe("Administrador:QA", () => {
     expect(can(role, "users.create")).toBe(true)
   })
 
-  it("tem equipe.performance e equipe.lancamentos", () => {
-    expect(can(role, "equipe.performance")).toBe(true)
+  it("tem equipe.clockwork e equipe.lancamentos", () => {
+    expect(can(role, "equipe.clockwork")).toBe(true)
     expect(can(role, "equipe.lancamentos")).toBe(true)
   })
 
@@ -134,7 +133,6 @@ describe("Administrador:QA", () => {
     expect(can(role, "config.modelosIA")).toBe(false)
     expect(can(role, "config.jira")).toBe(false)
     expect(can(role, "users.editProfileFields")).toBe(false)
-    expect(can(role, "equipe.performance.filterByProfile")).toBe(false)
   })
 
   it("gerencia apenas perfil QA", () => {
@@ -176,7 +174,7 @@ describe("Padrão:UX", () => {
     expect(can(role, "config.usuarios")).toBe(false)
     expect(can(role, "users.create")).toBe(false)
     expect(can(role, "individual.lancamentos")).toBe(false)
-    expect(can(role, "equipe.performance")).toBe(false)
+    expect(can(role, "equipe.clockwork")).toBe(false)
   })
 
   it("não gerencia nenhum perfil", () => {
@@ -199,8 +197,8 @@ describe("Administrador:UX", () => {
     expect(isDisabled(role, "menu.documentos")).toBe(true)
   })
 
-  it("tem equipe.performance e equipe.lancamentos", () => {
-    expect(can(role, "equipe.performance")).toBe(true)
+  it("tem equipe.clockwork e equipe.lancamentos", () => {
+    expect(can(role, "equipe.clockwork")).toBe(true)
     expect(can(role, "equipe.lancamentos")).toBe(true)
   })
 
@@ -209,7 +207,6 @@ describe("Administrador:UX", () => {
     expect(can(role, "config.clockwork")).toBe(false)
     expect(can(role, "config.modelosIA")).toBe(false)
     expect(can(role, "users.editProfileFields")).toBe(false)
-    expect(can(role, "equipe.performance.filterByProfile")).toBe(false)
   })
 
   it("gerencia apenas perfil UX", () => {
@@ -265,7 +262,6 @@ describe("Administrador:TW", () => {
     expect(can(role, "individual.lancamentos")).toBe(false)
     expect(can(role, "config.clockwork")).toBe(false)
     expect(can(role, "users.editProfileFields")).toBe(false)
-    expect(can(role, "equipe.performance.filterByProfile")).toBe(false)
   })
 
   it("gerencia apenas perfil TW", () => {
@@ -286,8 +282,7 @@ describe("Padrão:MGR (inválido)", () => {
       "individual.lancamentos", "topbar.sistemaSelector", "config.usuarios",
       "config.sistemas", "config.modulos", "config.clientes", "config.modelosIA",
       "config.jira", "config.clockwork", "config.meuCadastro", "config.credenciais",
-      "users.create", "users.editProfileFields", "equipe.performance",
-      "equipe.performance.filterByProfile", "equipe.lancamentos",
+      "users.create", "users.editProfileFields", "equipe.clockwork", "equipe.lancamentos",
     ]
     allCaps.forEach((cap) => expect(can(role, cap)).toBe(false))
   })
@@ -317,8 +312,9 @@ describe("Administrador:MGR", () => {
     expect(can(role, "users.editProfileFields")).toBe(true)
   })
 
-  it("tem equipe.performance.filterByProfile", () => {
-    expect(can(role, "equipe.performance.filterByProfile")).toBe(true)
+  it("tem equipe.clockwork e equipe.lancamentos", () => {
+    expect(can(role, "equipe.clockwork")).toBe(true)
+    expect(can(role, "equipe.lancamentos")).toBe(true)
   })
 
   it("tem users.create e config.usuarios", () => {
@@ -416,7 +412,6 @@ describe("separação de capabilities exclusivas", () => {
     "config.modelosIA",
     "config.jira",
     "users.editProfileFields",
-    "equipe.performance.filterByProfile",
   ]
 
   it.each(mgrExclusive)("capability '%s' é exclusiva de Administrador:MGR", (cap) => {
