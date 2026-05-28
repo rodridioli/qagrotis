@@ -73,6 +73,8 @@
   --color-badge-orange-text: var(--badge-orange-text);
   --color-badge-purple: var(--badge-purple);
   --color-badge-purple-text: var(--badge-purple-text);
+  --color-dashboard-group-green-bg: var(--dashboard-group-green-bg);
+  --color-dashboard-group-violet-bg: var(--dashboard-group-violet-bg);
 
   /* ── QAgrotis Primary Scale (10 shades) ── */
   --color-primary-50: var(--qagrotis-primary-50);
@@ -146,6 +148,10 @@
   --badge-orange-text:  #c2410c;
   --badge-purple:       #7c3aed;
   --badge-purple-text:  #5b21b6;
+
+  /* Dashboard table column-group backgrounds */
+  --dashboard-group-green-bg:   #EDF5F3;
+  --dashboard-group-violet-bg:  #EEF3F7;
 
   /* Raio base da UI (~8px em fonte 16px); escala com font-size — botões, inputs, cards, ícones, tabs */
   --radius-control: 0.5em;
@@ -254,6 +260,10 @@
   --badge-orange-text:  #fdba74;
   --badge-purple:       #a78bfa;
   --badge-purple-text:  #c4b5fd;
+
+  /* Dashboard table column-group backgrounds (dark) */
+  --dashboard-group-green-bg:   #0e2320;
+  --dashboard-group-violet-bg:  #101e2c;
 
   /* ── Neutral-grey scale remap (all hover/bg/text uses adapt automatically)
      Light shades → very dark surface tints (for hover states)
