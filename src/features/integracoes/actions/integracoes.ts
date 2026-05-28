@@ -7,6 +7,7 @@ import { z } from "zod"
 import { nextId } from "@/core/db-utils"
 import { requireAdmin, requireSession } from "@/core/session"
 import { prisma } from "@/core/prisma"
+import { ensureUpdatedAtColumns } from "@/core/prisma-schema-ensure"
 
 export interface IntegracaoRecord {
   id: string
@@ -35,6 +36,7 @@ const idsArraySchema = z.array(idSchema).max(1000)
 
 export async function getIntegracoes(): Promise<IntegracaoRecord[]> {
   await requireAdmin()
+  await ensureUpdatedAtColumns()
   const rows = await prisma.integracao.findMany({ orderBy: { createdAt: "asc" }, take: 100 })
   return rows.map((r) => ({
     ...r,

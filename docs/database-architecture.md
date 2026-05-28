@@ -35,6 +35,10 @@ export async function ensureXxxColumns(): Promise<void> {
 
 Every time you add a new column or table via a migration **and** you cannot guarantee `prisma migrate deploy` runs before the first request, add a matching guard here and call it from the relevant Server Action.
 
+### Wiring rule
+
+Call the ensure from **both** the primary list action (e.g. `getSistemas`) **and** any write action (create/update) that touches the guarded table. This guarantees the column exists regardless of which path the first request hits. The `globalThis` flag makes all calls after the first one free (O(1) check — no DB round-trip).
+
 ### Long-term exit
 
 Once the team adopts a deploy pipeline that runs `prisma migrate deploy` reliably (e.g. a Vercel build command or a GitHub Actions step), this file can be removed incrementally — one guard at a time as each column is confirmed present in all environments.

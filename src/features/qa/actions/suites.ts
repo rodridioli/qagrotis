@@ -6,6 +6,7 @@ import { requireSession } from "@/core/session"
 import { nextId } from "@/core/db-utils"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/core/prisma"
+import { ensureUpdatedAtColumns } from "@/core/prisma-schema-ensure"
 
 export interface SuiteRecord {
   id: string
@@ -94,6 +95,7 @@ export interface SuiteListRecord extends Omit<SuiteRecord, "historico"> {
 
 export async function getSuites(): Promise<SuiteListRecord[]> {
   await requireSession()
+  await ensureUpdatedAtColumns()
   const rows = await prisma.suite.findMany({
     orderBy: { createdAt: "asc" },
     take: 1000,

@@ -5,7 +5,7 @@ import { z } from "zod"
 import { nextId } from "@/core/db-utils"
 import { requireSession } from "@/core/session"
 import { prisma } from "@/core/prisma"
-import { ensureClienteTable } from "@/core/prisma-schema-ensure"
+import { ensureClienteTable, ensureUpdatedAtColumns } from "@/core/prisma-schema-ensure"
 
 export interface ClienteRecord {
   id: string
@@ -48,6 +48,7 @@ function toRecord(row: { id: string; nomeFantasia: string; razaoSocial: string |
 export async function getClientes(): Promise<ClienteRecord[]> {
   await requireSession()
   await ensureClienteTable()
+  await ensureUpdatedAtColumns()
   const rows = await prisma.cliente.findMany({ orderBy: { createdAt: "asc" }, take: 500 })
   return rows.map(toRecord)
 }

@@ -5,6 +5,7 @@ import { z } from "zod"
 import { nextId, encryptField, decryptField } from "@/core/db-utils"
 import { requireSession } from "@/core/session"
 import { prisma } from "@/core/prisma"
+import { ensureUpdatedAtColumns } from "@/core/prisma-schema-ensure"
 
 export interface CredencialRecord {
   id: string
@@ -37,6 +38,7 @@ function toRecord(row: {
 
 export async function getCredenciais(): Promise<CredencialRecord[]> {
   await requireSession()
+  await ensureUpdatedAtColumns()
   const rows = await prisma.credencial.findMany({
     orderBy: { createdAt: "desc" },
     select: { id: true, nome: true, urlAmbiente: true, usuario: true, active: true, createdAt: true },
