@@ -221,7 +221,7 @@ function FeriasSituacaoBadge({ situacao }: { situacao: FeriasSituacao }) {
 // ── Ausências ────────────────────────────────────────────────────────────────
 
 type AusenciaSituacao = "PENDENTE" | "APROVADA" | "RECUSADA"
-type AusenciaTipo = "FALTA" | "BANCO_HORAS" | "ATESTADO" | "OUTRO"
+type AusenciaTipo = "FALTA" | "BANCO_HORAS" | "ATESTADO" | "ATRASO" | "OUTRO"
 
 function AusenciaSituacaoBadge({
   situacao,
@@ -261,12 +261,14 @@ function AusenciaTipoBadge({ tipo }: { tipo: AusenciaTipo }) {
     FALTA:       "border-destructive/30 bg-destructive/10 text-destructive",
     BANCO_HORAS: "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
     ATESTADO:    "border-badge-warning/30 bg-badge-warning/10 text-badge-warning-text",
+    ATRASO:      "border-orange-400/30 bg-orange-400/10 text-orange-600",
     OUTRO:       "border-border-default bg-neutral-grey-50 text-text-secondary",
   }
   const labels: Record<AusenciaTipo, string> = {
     FALTA:       "Falta",
     BANCO_HORAS: "Banco de horas",
     ATESTADO:    "Atestado",
+    ATRASO:      "Atraso",
     OUTRO:       "Outro",
   }
   return badge(styles[tipo], labels[tipo])
