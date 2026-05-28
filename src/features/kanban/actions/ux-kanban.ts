@@ -329,9 +329,28 @@ export async function getUserKanbanData(userId: string): Promise<UserKanbanData>
     })
   }
 
+  // Jira status values that mean "canceled" for Demandas
+  const DEMANDA_CANCELED_STATUSES = new Set(["canceled", "cancel", "cancelado", "cancelled"])
+
   const demandaCards: UserKanbanCard[] = demandaKeys.flatMap((key) => {
     const detail = demandaDetailsMap.get(key.toUpperCase())
     if (!detail) return []
+
+    // If Jira already shows the issue as canceled, override the local column —
+    // someone may have canceled it directly in Jira without going through the kanban.
+    const jiraStatusLower = detail.jiraStatus.toLowerCase()
+    const canceledByJira = DEMANDA_CANCELED_STATUSES.has(jiraStatusLower)
+    const column: UserKanbanColumn = canceledByJira ? "canceled" : (columnMap[key] ?? "backlog")
+
+    // Sync the local DB state in the background when Jira is ahead
+    if (canceledByJira && columnMap[key] !== "canceled") {
+      void db.kanbanUserCardState.upsert({
+        where: { issueKey: key },
+        create: { issueKey: key, userId, column: "canceled" },
+        update: { column: "canceled" },
+      }).catch(() => null)
+    }
+
     return [{
       key: detail.key,
       cardType: "demanda" as const,
@@ -346,7 +365,7 @@ export async function getUserKanbanData(userId: string): Promise<UserKanbanData>
       solicitanteDisplayName: null,
       tag: null,
       projectName: detail.projectName,
-      column: columnMap[key] ?? "backlog",
+      column,
     }]
   })
 
