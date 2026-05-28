@@ -93,10 +93,9 @@ async function main() {
   await prisma.integracao.deleteMany()
   console.log("✓ Credenciais, módulos, sistemas, clientes e integrações removidos")
 
-  // Usuários criados e legacy
+  // Usuários criados
   await prisma.createdUser.deleteMany()
-  await prisma.qaUser.deleteMany()
-  console.log("✓ CreatedUsers e QaUsers removidos")
+  console.log("✓ CreatedUsers removidos")
 
   // Auth.js (Account e Session têm onDelete: Cascade via User)
   await prisma.session.deleteMany()

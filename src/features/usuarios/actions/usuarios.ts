@@ -382,14 +382,7 @@ export async function ativarQaUser(id: string): Promise<{ error?: string }> {
       }
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.inactiveUser.delete({ where: { userId: id } })
-      // For QaUser records (DB-stored), ensure active flag is set
-      const qaUser = await tx.qaUser.findUnique({ where: { id } })
-      if (qaUser) {
-        await tx.qaUser.update({ where: { id }, data: { active: true } })
-      }
-    })
+    await prisma.inactiveUser.delete({ where: { userId: id } })
 
     revalidatePath("/configuracoes/usuarios")
     return {}

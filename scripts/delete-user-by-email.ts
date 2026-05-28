@@ -80,7 +80,6 @@ async function deleteOneEmail(pool: Pool, rawEmail: string) {
       }
 
       await client.query(`DELETE FROM "CreatedUser" WHERE LOWER(email) = LOWER($1)`, [email])
-      await client.query(`DELETE FROM "QaUser" WHERE LOWER(email) = LOWER($1)`, [email])
       await client.query(
         `UPDATE "Cenario" SET "createdBy" = NULL WHERE "createdBy" IS NOT NULL AND LOWER("createdBy") = LOWER($1)`,
         [email],
