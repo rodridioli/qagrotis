@@ -86,6 +86,29 @@ const COLUMN_TO_JIRA_STATUS: Record<UserKanbanColumn, string | null> = {
   canceled:     "Canceled",
 }
 
+// ─── Business-hours helper ────────────────────────────────────────────────────
+
+/**
+ * Conta quantas horas úteis (Seg–Sex, 08:00–18:00 BRT = UTC-3) existem entre
+ * dois instantes. Itera hora a hora — número máximo de iterações por ciclo é
+ * ~720 (30 dias × 24 h), totalmente aceitável.
+ */
+function businessHoursBetween(from: Date, to: Date): number {
+  const MS_PER_HOUR = 3_600_000
+  const BRT_OFFSET_MS = -3 * MS_PER_HOUR // UTC-3 (Brasília)
+  let count = 0
+  // Começa na próxima hora cheia após `from`
+  let t = new Date(Math.ceil(from.getTime() / MS_PER_HOUR) * MS_PER_HOUR)
+  while (t <= to) {
+    const local = new Date(t.getTime() + BRT_OFFSET_MS)
+    const dow = local.getUTCDay()    // 0=Dom, 1=Seg … 5=Sex, 6=Sáb
+    const h   = local.getUTCHours() // hora local
+    if (dow >= 1 && dow <= 5 && h >= 8 && h < 18) count++
+    t = new Date(t.getTime() + MS_PER_HOUR)
+  }
+  return count
+}
+
 // ─── Credential resolver ──────────────────────────────────────────────────────
 
 async function resolveCredentials(userId: string) {
@@ -469,6 +492,78 @@ export async function searchJiraUsers(
   return { ok: true, users }
 }
 
+// ─── Confirm In Approval (with mandatory approver) ────────────────────────────
+
+/**
+ * Chamada pelo modal de "Em aprovação" quando o usuário confirma o aprovador.
+ * Faz a transição Jira, cria/atualiza o tracker com o aprovador e posta o
+ * comentário padrão mencionando o aprovador selecionado.
+ */
+export async function confirmInApproval(
+  issueKey: string,
+  cardType: "ux_tarefa" | "demanda",
+  approverAccountId: string,
+  approverDisplayName: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const session = await requireSession()
+  const role = buildRole(session.user.type, session.user.accessProfile)
+  if (!can(role, "menu.kanban")) return { ok: false, error: "Acesso negado." }
+
+  const creds = await resolveCredentials(session.user.id)
+  if (!creds) return { ok: false, error: "Credenciais Jira não configuradas." }
+  const { base, credentials } = creds
+
+  const assignment = await db.kanbanAssignment.findUnique({ where: { issueKey } })
+  const userId = assignment?.userId ?? ""
+
+  // Transition Jira status
+  if (cardType === "ux_tarefa") {
+    const jiraTarget = COLUMN_TO_JIRA_STATUS["in_approval"]
+    if (jiraTarget) {
+      const result = await transitionIssueToStatus(base, credentials, issueKey, jiraTarget)
+      if (!result.ok) return result
+    }
+  } else {
+    // Demanda: persiste estado local
+    await db.kanbanUserCardState.upsert({
+      where: { issueKey },
+      create: { issueKey, userId, column: "in_approval" },
+      update: { column: "in_approval" },
+    })
+  }
+
+  // Cria/atualiza tracker com dados do aprovador
+  const now = new Date()
+  await db.kanbanInApprovalTracker.upsert({
+    where: { issueKey },
+    create: {
+      issueKey,
+      userId,
+      cardType,
+      approverAccountId,
+      approverDisplayName,
+      enteredAt: now,
+      lastCommentAt: now,
+    },
+    update: {
+      approverAccountId,
+      approverDisplayName,
+      enteredAt: now,
+      lastCommentAt: now,
+    },
+  })
+
+  // Posta comentário: "@aprovador, a tarefa de UX foi concluída e aguarda a sua aprovação."
+  const body = buildAdfComment(
+    ", a tarefa de UX foi concluída e aguarda a sua aprovação.",
+    { accountId: approverAccountId, displayName: approverDisplayName },
+  )
+  await postJiraComment(base, credentials, issueKey, body).catch(() => null)
+
+  return { ok: true }
+}
+
+
 // ─── In Approval automation (internal) ────────────────────────────────────────
 
 async function _enterInApproval(
@@ -506,23 +601,21 @@ async function _checkAndSendApprovalReminders(
   userId: string,
 ): Promise<void> {
   const now = new Date()
-  const cutoff24h = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-
   const trackers = await db.kanbanInApprovalTracker.findMany({ where: { userId } })
 
   for (const tracker of trackers) {
     const lastCheck = tracker.lastCommentAt ?? tracker.enteredAt
-    if (lastCheck <= cutoff24h) {
-      // More than 24h since last comment → send reminder
-      const detailsMap = await fetchIssueDetailsByKeys(base, credentials, [tracker.issueKey]).catch(() => new Map<string, KanbanIssueDetail>())
-      const detail = detailsMap.get(tracker.issueKey.toUpperCase())
-      const mention = detail?.reporterAccountId && detail.reporterDisplayName
-        ? { accountId: detail.reporterAccountId, displayName: detail.reporterDisplayName }
+    // Verifica 24 horas úteis desde o último comentário
+    if (businessHoursBetween(lastCheck, now) >= 24) {
+      // Usa o aprovador salvo; se não houver (registros antigos), pula a menção
+      const mention = tracker.approverAccountId && tracker.approverDisplayName
+        ? { accountId: tracker.approverAccountId, displayName: tracker.approverDisplayName }
         : undefined
 
-      const hoursInApproval = Math.round((now.getTime() - tracker.enteredAt.getTime()) / 3_600_000)
       const body = buildAdfComment(
-        `Card ${tracker.issueKey} está em aprovação há ${hoursInApproval}h. Aguardando retorno.`,
+        mention
+          ? ", a tarefa de UX foi concluída e aguarda a sua aprovação."
+          : `Card ${tracker.issueKey} está aguardando aprovação.`,
         mention,
       )
       await postJiraComment(base, credentials, tracker.issueKey, body).catch(() => null)

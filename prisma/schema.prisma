@@ -693,13 +693,15 @@ model KanbanUserCardState {
   @@map("kanban_user_card_states")
 }
 
-/// Rastreia cards em "In Approval" para comentários automáticos no Jira a cada 24 h.
+/// Rastreia cards em "In Approval" para comentários automáticos no Jira a cada 24 h úteis.
 model KanbanInApprovalTracker {
-  issueKey      String    @id
-  userId        String
-  cardType      String    // "demanda" | "ux_tarefa"
-  enteredAt     DateTime  @default(now())
-  lastCommentAt DateTime?
+  issueKey            String    @id
+  userId              String
+  cardType            String    // "demanda" | "ux_tarefa"
+  approverAccountId   String?   // Jira accountId do aprovador selecionado
+  approverDisplayName String?   // Nome exibido do aprovador
+  enteredAt           DateTime  @default(now())
+  lastCommentAt       DateTime?
 
   @@index([userId])
   @@map("kanban_in_approval_trackers")

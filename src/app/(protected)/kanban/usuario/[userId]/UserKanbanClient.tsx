@@ -16,6 +16,7 @@ import type { UserKanbanData, UserKanbanCard, UserKanbanColumn } from "@/feature
 import {
   moveCardInUserKanban,
   completeCardDone,
+  confirmInApproval,
   searchJiraUsers,
 } from "@/features/kanban/actions/ux-kanban"
 
@@ -238,6 +239,168 @@ function DoneModal({
   )
 }
 
+// ─── In Approval modal ────────────────────────────────────────────────────────
+
+function InApprovalModal({
+  card,
+  onConfirm,
+  onClose,
+}: {
+  card: UserKanbanCard
+  onConfirm: (approver: MentionUser) => Promise<void>
+  onClose: () => void
+}) {
+  const [query, setQuery] = React.useState("")
+  const [suggestions, setSuggestions] = React.useState<MentionUser[]>([])
+  const [searching, setSearching] = React.useState(false)
+  const [selected, setSelected] = React.useState<MentionUser | null>(null)
+  const [submitting, setSubmitting] = React.useState(false)
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  React.useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!query.trim() || selected) { setSuggestions([]); return }
+
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true)
+      const res = await searchJiraUsers(query).catch(() => ({ ok: false as const, users: [] }))
+      setSuggestions(res.ok ? (res.users ?? []) : [])
+      setSearching(false)
+    }, 300)
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [query, selected])
+
+  const jiraUrl = `https://agrotis.atlassian.net/browse/${card.key}`
+
+  const handleConfirm = async () => {
+    if (!selected) return
+    setSubmitting(true)
+    await onConfirm(selected)
+    setSubmitting(false)
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="w-full max-w-md rounded-2xl bg-surface-card shadow-2xl p-6 space-y-5 mx-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold text-text-primary">Enviar para aprovação</h2>
+            <p className="text-sm text-text-secondary">
+              Selecione o aprovador do card{" "}
+              <a href={jiraUrl} target="_blank" rel="noopener noreferrer"
+                className="font-medium text-brand-primary hover:underline">
+                {card.key}
+              </a>
+              . Um comentário será inserido no Jira notificando o aprovador.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            className="cursor-pointer shrink-0 rounded-lg p-1 text-text-secondary hover:bg-neutral-grey-100"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Aprovador (obrigatório) */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-text-primary">
+            Aprovador <span className="text-destructive">*</span>
+          </label>
+          {selected ? (
+            <div className="flex items-center gap-2 rounded-xl border border-brand-primary bg-brand-primary/5 px-3 py-2">
+              {selected.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={selected.avatarUrl} alt="" className="size-6 rounded-full" />
+              ) : (
+                <span className="flex size-6 items-center justify-center rounded-full bg-brand-primary text-xs font-bold text-white">
+                  {selected.displayName[0]?.toUpperCase() ?? "?"}
+                </span>
+              )}
+              <span className="flex-1 text-sm font-medium text-text-primary">{selected.displayName}</span>
+              <button
+                type="button"
+                onClick={() => { setSelected(null); setQuery("") }}
+                className="cursor-pointer text-text-secondary hover:text-destructive"
+                aria-label="Remover seleção"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="@nome ou e-mail…"
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+                className="w-full rounded-xl border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              />
+              {searching && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 animate-spin text-text-secondary" />
+              )}
+              {suggestions.length > 0 && (
+                <ul className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-lg">
+                  {suggestions.map((u) => (
+                    <li key={u.accountId}>
+                      <button
+                        type="button"
+                        onClick={() => { setSelected(u); setSuggestions([]); setQuery("") }}
+                        className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-neutral-grey-50"
+                      >
+                        {u.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={u.avatarUrl} alt="" className="size-7 rounded-full" />
+                        ) : (
+                          <span className="flex size-7 items-center justify-center rounded-full bg-brand-primary text-xs font-bold text-white">
+                            {u.displayName[0]?.toUpperCase() ?? "?"}
+                          </span>
+                        )}
+                        <span className="text-text-primary">{u.displayName}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          <p className="text-xs text-text-secondary">
+            O aprovador receberá a mensagem: <em>"@aprovador, a tarefa de UX foi concluída e aguarda a sua aprovação."</em>
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="cursor-pointer rounded-xl border border-border-default px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-neutral-grey-50 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!selected || submitting}
+            className="flex cursor-pointer items-center gap-2 rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Card component ───────────────────────────────────────────────────────────
 
 function UserKanbanCardView({
@@ -438,6 +601,7 @@ export function UserKanbanClient({
     data.ok ? data.cards : []
   )
   const [pendingDone, setPendingDone] = React.useState<UserKanbanCard | null>(null)
+  const [pendingInApproval, setPendingInApproval] = React.useState<UserKanbanCard | null>(null)
   const [hiddenColumns, setHiddenColumns] = React.useState<Set<UserKanbanColumn>>(new Set())
 
   // Load hidden columns from localStorage after mount (SSR-safe).
@@ -512,6 +676,12 @@ export function UserKanbanClient({
       return
     }
 
+    // In Approval requires mandatory approver selection
+    if (dstCol === "in_approval") {
+      setPendingInApproval({ ...card, column: dstCol })
+      return
+    }
+
     // Optimistic update
     const prev = cards
     setCards((c) =>
@@ -556,6 +726,34 @@ export function UserKanbanClient({
       toast.error("Erro inesperado. Tente novamente.")
     } finally {
       setPendingDone(null)
+    }
+  }
+
+  async function handleInApprovalConfirm(approver: MentionUser) {
+    if (!pendingInApproval) return
+    const card = pendingInApproval
+    const prev = cards
+
+    // Optimistic update
+    setCards((c) => c.map((x) => x.key === card.key ? { ...x, column: "in_approval" as const } : x))
+    setPendingInApproval(null)
+
+    try {
+      const res = await confirmInApproval(
+        card.key,
+        card.cardType,
+        approver.accountId,
+        approver.displayName,
+      )
+      if (!res.ok) {
+        toast.error(res.error ?? "Erro ao enviar para aprovação.")
+        setCards(prev)
+      } else {
+        toast.success(`Card ${card.key} enviado para aprovação.`)
+      }
+    } catch {
+      toast.error("Erro inesperado. Tente novamente.")
+      setCards(prev)
     }
   }
 
@@ -658,6 +856,15 @@ export function UserKanbanClient({
           card={pendingDone}
           onConfirm={handleDoneConfirm}
           onClose={() => setPendingDone(null)}
+        />
+      )}
+
+      {/* In Approval modal */}
+      {pendingInApproval && (
+        <InApprovalModal
+          card={pendingInApproval}
+          onConfirm={handleInApprovalConfirm}
+          onClose={() => setPendingInApproval(null)}
         />
       )}
     </div>
