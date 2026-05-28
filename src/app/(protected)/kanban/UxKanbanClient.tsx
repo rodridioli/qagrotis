@@ -283,11 +283,13 @@ function TarefasLane({
   tagFilter,
   onTagFilterChange,
   tags,
+  hasUntagged,
 }: {
   tarefas: UxTarefa[]
   tagFilter: string
   onTagFilterChange: (v: string) => void
   tags: string[]
+  hasUntagged: boolean
 }) {
   const [rawSearch, setRawSearch] = React.useState("")
   const debouncedSearch = useDebounce(rawSearch, 200)
@@ -309,7 +311,7 @@ function TarefasLane({
         <span className="shrink-0 rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-xs font-bold tabular-nums text-text-secondary">
           {displayedTarefas.length}
         </span>
-        {tags.length > 0 && (
+        {(tags.length > 0 || hasUntagged) && (
           <div className="relative ml-auto">
             <select
               value={tagFilter}
@@ -318,6 +320,7 @@ function TarefasLane({
               aria-label="Filtrar por tag"
             >
               <option value="">Todos</option>
+              <option value="__no_tag__">Sem tag</option>
               {tags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
             </select>
             <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-text-secondary" />
@@ -624,8 +627,17 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
     return [...set].sort()
   }, [tarefas])
 
+  const hasUntagged = React.useMemo(() => tarefas.some((t) => !t.tag), [tarefas])
+
   const filteredTarefas = React.useMemo(
-    () => sortTarefas(tarefas.filter((t) => !tagFilter || t.tag === tagFilter)),
+    () =>
+      sortTarefas(
+        tarefas.filter((t) => {
+          if (!tagFilter) return true
+          if (tagFilter === "__no_tag__") return !t.tag
+          return t.tag === tagFilter
+        }),
+      ),
     [tarefas, tagFilter],
   )
 
@@ -856,6 +868,7 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
                 tagFilter={tagFilter}
                 onTagFilterChange={setTagFilter}
                 tags={tags}
+                hasUntagged={hasUntagged}
               />
 
               {/* One lane per member */}

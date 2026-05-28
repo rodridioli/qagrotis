@@ -1718,7 +1718,17 @@ export async function fetchApprovalIssuesByTag(
 
 /**
  * Executes a named Jira status transition on an issue.
- * Matches by exact name first (case-insensitive), then by substring.
+ *
+ * Matching order (stops at first hit):
+ *   1. Exact match on transition name (case-insensitive)
+ *   2. Substring match on transition name
+ *   3. Exact match on target status name (to.name) — handles workflows where
+ *      the transition name differs from the target status (e.g., UX project)
+ *   4. Substring match on target status name
+ *
+ * The `to.name` fallbacks are essential for projects (like UX) whose workflow
+ * uses custom transition names (e.g. "Em Aprovação") that do not literally
+ * contain the target status string (e.g. "Aprovação").
  */
 export async function transitionIssueToStatus(
   base: string,
@@ -1726,7 +1736,9 @@ export async function transitionIssueToStatus(
   issueKey: string,
   targetStatusName: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  const transRes = await jiraJson<{ transitions: { id: string; name: string }[] }>(
+  const transRes = await jiraJson<{
+    transitions: { id: string; name: string; to?: { name?: string } }[]
+  }>(
     `${base}/rest/api/3/issue/${encodeURIComponent(issueKey)}/transitions`,
     credentials,
   )
@@ -1736,12 +1748,33 @@ export async function transitionIssueToStatus(
 
   const lower = targetStatusName.trim().toLowerCase()
   const transitions = transRes.data.transitions
-  const exactMatch = transitions.find((t) => t.name.trim().toLowerCase() === lower)
-  const fuzzyMatch = transitions.find((t) => t.name.trim().toLowerCase().includes(lower))
-  const transition = exactMatch ?? fuzzyMatch
+
+  // 1 & 2 — match by transition name (original behaviour)
+  const exactMatch    = transitions.find((t) => t.name.trim().toLowerCase() === lower)
+  const fuzzyMatch    = transitions.find((t) => t.name.trim().toLowerCase().includes(lower))
+  // 3 & 4 — match by target status name (to.name); covers UX and other projects
+  //          whose workflow names the transition differently from the status
+  const byStatusExact = transitions.find((t) => (t.to?.name ?? "").trim().toLowerCase() === lower)
+  const byStatusFuzzy = transitions.find((t) => (t.to?.name ?? "").trim().toLowerCase().includes(lower))
+
+  const transition = exactMatch ?? fuzzyMatch ?? byStatusExact ?? byStatusFuzzy
 
   if (!transition) {
+    const available = transitions
+      .map((t) => `"${t.name}"${t.to?.name ? `→"${t.to.name}"` : ""}`)
+      .join(", ")
+    console.warn(
+      `[jira] transitionIssueToStatus: nenhuma transição encontrada para '${targetStatusName}' em ${issueKey}. ` +
+      `Disponíveis: ${available || "(nenhuma)"}`,
+    )
     return { ok: false, error: `Transição '${targetStatusName}' não encontrada no workflow.` }
+  }
+
+  if (byStatusExact === transition || byStatusFuzzy === transition) {
+    console.info(
+      `[jira] transitionIssueToStatus: '${targetStatusName}' casou pelo status-destino ` +
+      `(transition.name="${transition.name}", to.name="${transition.to?.name}") em ${issueKey}`,
+    )
   }
 
   const res = await jiraJson(

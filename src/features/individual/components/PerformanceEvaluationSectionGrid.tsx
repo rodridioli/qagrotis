@@ -86,7 +86,7 @@ export function PerformanceEvaluationSectionGrid({
             <tr className="border-b border-border-default">
               <th
                 scope="col"
-                className={cn(competencyStickyColClass, "py-2.5 text-xs font-semibold text-text-secondary")}
+                className={cn(competencyStickyColClass, "py-1.5 text-xs font-semibold text-text-secondary")}
               >
                 Competência
               </th>
@@ -109,7 +109,7 @@ export function PerformanceEvaluationSectionGrid({
               <tr key={c.id} className="border-t border-border-default">
                 <th
                   scope="row"
-                  className={cn(competencyStickyColClass, "py-2.5 font-normal text-text-primary")}
+                  className={cn(competencyStickyColClass, "py-1.5 font-normal text-text-primary")}
                 >
                   <span className="text-text-secondary tabular-nums">{idx + 1}.</span>{" "}
                   <span>{c.label}</span>
@@ -120,11 +120,11 @@ export function PerformanceEvaluationSectionGrid({
                   return (
                     <td
                       key={col}
-                      className={cn("p-1 text-center align-middle sm:p-1.5", evaluationColumnBodyCellClass(col))}
+                      className={cn("p-0.5 text-center align-middle sm:p-1", evaluationColumnBodyCellClass(col))}
                     >
                       <label
                         className={cn(
-                          "flex h-10 items-center justify-center rounded-lg border text-xs font-medium transition-colors sm:h-11",
+                          "flex h-8 items-center justify-center rounded-lg border text-xs font-medium transition-colors sm:h-9",
                           disabled ? "cursor-default" : "cursor-pointer",
                           selected
                             ? evaluationColumnSelectedLabelClass(col)

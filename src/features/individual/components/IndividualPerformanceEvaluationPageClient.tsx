@@ -242,8 +242,8 @@ export function IndividualPerformanceEvaluationPageClient({
 
       <h2 className="sr-only">Dados gerais</h2>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
-        <div className="flex h-full min-h-0 flex-col rounded-xl border border-border-default bg-surface-card p-4 shadow-card">
-          <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="flex h-full min-h-0 flex-col rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
+          <div className="mb-2 flex items-start justify-between gap-2">
             <p className="text-sm text-text-secondary">Colaborador</p>
             <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
               <User className="size-5" aria-hidden />
@@ -262,8 +262,8 @@ export function IndividualPerformanceEvaluationPageClient({
           </div>
         </div>
 
-        <div className="flex flex-col rounded-xl border border-border-default bg-surface-card p-4 shadow-card">
-          <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="flex flex-col rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
+          <div className="mb-2 flex items-start justify-between gap-2">
             <span className="text-sm text-text-secondary">Pontuação</span>
             <span
               className={cn(
@@ -276,18 +276,18 @@ export function IndividualPerformanceEvaluationPageClient({
           </div>
           <div className="flex flex-1 flex-col justify-center">
             {displayPercent != null ? (
-              <p className={cn("text-5xl font-bold leading-none tabular-nums sm:text-6xl", scorePercentToneClass(displayPercent))}>
+              <p className={cn("text-2xl font-bold leading-none tabular-nums sm:text-3xl", scorePercentToneClass(displayPercent))}>
                 {displayPercent.toFixed(0).replace(".", ",")}%
               </p>
             ) : (
-              <p className="text-5xl font-semibold leading-none text-text-secondary sm:text-6xl">—</p>
+              <p className="text-2xl font-semibold leading-none text-text-secondary sm:text-3xl">—</p>
             )}
-            <p className="mt-3 text-xs font-medium text-text-secondary">{scoreLabel}</p>
+            <p className="mt-1.5 text-xs font-medium text-text-secondary">{scoreLabel}</p>
           </div>
         </div>
 
-        <div className="flex h-full min-h-0 flex-col rounded-xl border border-border-default bg-surface-card p-4 shadow-card">
-          <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="flex h-full min-h-0 flex-col rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
+          <div className="mb-2 flex items-start justify-between gap-2">
             <span className="text-sm text-text-secondary">Data e período</span>
             <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
               <Calendar className="size-5" aria-hidden />

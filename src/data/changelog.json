@@ -1,5 +1,46 @@
 [
   {
+    "version": "1.6.29",
+    "commit": "deploy-vercel",
+    "date": "2026-05-27",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "fix(kanban): exibir Requester nos cards de Tarefas e destacar link Jira em verde",
+      "feat(kanban): busca nas raias, prioridades em PT-BR e ícone de deadline",
+      "fix(ui): add cursor-pointer to all interactive elements missing hand cursor",
+      "fix(usuarios): bloquear edição de foto em modo somente leitura",
+      "feat(nav): adicionar Lançamentos abaixo de Painel para Administrador:QA",
+      "fix(kanban): exibir card padrão quando Jira não está configurado",
+      "fix(usuarios): desabilitar campos do formulário em modo somente leitura",
+      "feat(nav/rbac): ajustes de menu, permissões e UX por perfil"
+    ]
+  },
+  {
+    "version": "1.6.28",
+    "commit": "deploy-vercel",
+    "date": "2026-05-27",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "fix(kanban): exibir Requester nos cards de Tarefas e destacar link Jira em verde",
+      "feat(kanban): busca nas raias, prioridades em PT-BR e ícone de deadline",
+      "fix(ui): add cursor-pointer to all interactive elements missing hand cursor",
+      "fix(usuarios): bloquear edição de foto em modo somente leitura",
+      "feat(nav): adicionar Lançamentos abaixo de Painel para Administrador:QA",
+      "fix(kanban): exibir card padrão quando Jira não está configurado",
+      "fix(usuarios): desabilitar campos do formulário em modo somente leitura",
+      "feat(nav/rbac): ajustes de menu, permissões e UX por perfil",
+      "fix(kanban): card de Tarefa permanece na coluna do membro após drop",
+      "feat(kanban): arrastar cards de Tarefas para coluna de membros UX (#110)",
+      "feat(nav): ocultar item Painel para Padrão:UX",
+      "feat(nav): grupo Gestão no menu lateral para Administrador:MGR",
+      "feat(kanban): add Tarefas lane with UX project tasks and Tag filter",
+      "fix(kanban): rename project filter default option from \"Projeto\" to \"Todos\"",
+      "feat(kanban): move project filter to lane header as styled button"
+    ]
+  },
+  {
     "version": "1.6.27",
     "commit": "deploy-vercel",
     "date": "2026-05-13",
