@@ -205,7 +205,7 @@ export function KanbanClient({ initialResult }: { initialResult: KanbanResult })
 
       {/* Board */}
       {initialResult.ok && groups.length > 0 && (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scrollbar-thin">
           <div
             className="flex gap-4 pt-2"
             style={{ minWidth: `${totalCols * (288 + 16)}px` }}

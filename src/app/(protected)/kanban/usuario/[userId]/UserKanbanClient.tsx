@@ -540,7 +540,7 @@ export function UserKanbanClient({
       {/* Board */}
       {data.ok && (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto scrollbar-thin">
             <div
               className="flex gap-3 pb-4"
               style={{ minWidth: `${COLUMNS.length * (256 + 12)}px` }}
