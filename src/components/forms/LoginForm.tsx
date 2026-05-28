@@ -73,10 +73,9 @@ function PrimaryButton({ children, loading = false, className, ...props }: React
       type="submit"
       disabled={loading || props.disabled}
       aria-busy={loading}
-      style={{ color: "#ffffff" }}
       className={cn(
         "flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl",
-        "bg-brand-primary text-base font-semibold",
+        "bg-brand-primary text-base font-semibold text-white",
         "transition-opacity hover:opacity-90 active:opacity-80",
         "disabled:cursor-not-allowed disabled:opacity-50",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-2",

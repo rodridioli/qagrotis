@@ -5,6 +5,10 @@ import { sendMail } from "@/lib/mail"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
+// validateOrigin is intentionally omitted: this is a public unauthenticated endpoint
+// (user has no session to protect). CSRF-style abuse is mitigated by IP rate limiting below.
+const BRAND_PRIMARY_HEX = "#008a5d"
+
 // Rate limit: max 5 requests per IP per 15 minutes
 const ipRateMap = new Map<string, { count: number; resetAt: number }>()
 function checkIpRateLimit(ip: string): boolean {
@@ -101,7 +105,7 @@ function buildResetHtml(email: string, resetUrl: string): string {
   <style>
     body { font-family: sans-serif; color: #333; }
     .container { padding: 20px; border: 1px solid #eee; border-radius: 8px; max-width: 600px; }
-    .button { background: #008a5d; color: white !important; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block; font-weight: bold; }
+    .button { background: ${BRAND_PRIMARY_HEX}; color: white !important; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block; font-weight: bold; }
   </style>
 </head>
 <body>

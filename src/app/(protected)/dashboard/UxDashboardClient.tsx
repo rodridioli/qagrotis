@@ -781,7 +781,7 @@ function TagPieChart({
 const uxThBase = "px-3 py-3 text-xs font-semibold text-text-secondary"
 function UxTH({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" | "violet" }) {
   return (
-    <th className={cn(uxThBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60", group === "violet" && "bg-[#EEF3F7]/70 dark:bg-[#101e2c]/60")}>
+    <th className={cn(uxThBase, center ? "text-center" : "text-right", group === "blue" && "bg-dashboard-group-green-bg/80 dark:bg-dashboard-group-green-bg/60", group === "violet" && "bg-dashboard-group-violet-bg/70 dark:bg-dashboard-group-violet-bg/60")}>
       {children}
     </th>
   )
@@ -800,7 +800,7 @@ function YearTable({ monthStats, hideValues, ano, activeMonths, quarterDedupeSta
     hideValues ? <span className="tracking-widest text-text-disabled">••••</span> : formatBRL(v)
 
   const tdCls = (base: string, group?: "blue" | "violet") =>
-    cn(base, group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60", group === "violet" && "bg-[#EEF3F7]/70 dark:bg-[#101e2c]/60")
+    cn(base, group === "blue" && "bg-dashboard-group-green-bg/80 dark:bg-dashboard-group-green-bg/60", group === "violet" && "bg-dashboard-group-violet-bg/70 dark:bg-dashboard-group-violet-bg/60")
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
@@ -851,7 +851,7 @@ function YearTable({ monthStats, hideValues, ano, activeMonths, quarterDedupeSta
                       key={mi}
                       className={cn(
                         "border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50",
-                        mi === currentMonthIndex && "[&_td]:!text-[#CB8275] [&_td]:font-semibold",
+                        mi === currentMonthIndex && "[&_td]:!text-chart-4 [&_td]:font-semibold",
                       )}
                     >
                       <td className="px-4 py-2 pl-8 text-text-secondary">{MONTHS_PT[mi]}</td>

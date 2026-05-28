@@ -675,7 +675,7 @@ function TypeCard({
 const qaThBase = "px-3 py-3 text-xs font-semibold text-text-secondary"
 function QaTH({ children, center, group }: { children: React.ReactNode; center?: boolean; group?: "blue" }) {
   return (
-    <th className={cn(qaThBase, center ? "text-center" : "text-right", group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60")}>
+    <th className={cn(qaThBase, center ? "text-center" : "text-right", group === "blue" && "bg-dashboard-group-green-bg/80 dark:bg-dashboard-group-green-bg/60")}>
       {children}
     </th>
   )
@@ -704,7 +704,7 @@ function QaYearTable({
     hideValues ? <span className="tracking-widest text-text-disabled">••••</span> : formatBRL(v)
 
   const tdCls = (base: string, group?: "blue") =>
-    cn(base, group === "blue" && "bg-[#EDF5F3]/80 dark:bg-[#0e2320]/60")
+    cn(base, group === "blue" && "bg-dashboard-group-green-bg/80 dark:bg-dashboard-group-green-bg/60")
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
@@ -744,7 +744,7 @@ function QaYearTable({
                       key={mi}
                       className={cn(
                         "border-b border-border-default last:border-b-0 transition-colors hover:bg-neutral-grey-50/50",
-                        mi === currentMonthIndex && "[&_td]:!text-[#C9A870] [&_td]:font-semibold",
+                        mi === currentMonthIndex && "[&_td]:!text-chart-3 [&_td]:font-semibold",
                       )}
                     >
                       <td className="px-4 py-2 pl-8 text-text-secondary">{MONTHS_PT[mi]}</td>

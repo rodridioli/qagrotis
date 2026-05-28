@@ -189,7 +189,7 @@ function ProgressaoRegimeBadge({ regime }: { regime: string }) {
     PJ:         "border-badge-orange/35 bg-badge-orange/10 text-badge-orange-text",
     COOPERADO:  "border-secondary-500/30 bg-secondary-500/10 text-secondary-600",
     ESTAGIARIO: "border-badge-info/30 bg-badge-info/10 text-badge-info-text",
-    TRAINEE:    "border-[#8b5cf6]/30 bg-[#8b5cf6]/10 text-[#7c3aed]",
+    TRAINEE:    "border-badge-purple/30 bg-badge-purple/10 text-badge-purple-text",
   }
   const labels: Record<string, string> = {
     CLT:        "CLT",
