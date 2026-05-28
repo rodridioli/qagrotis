@@ -567,7 +567,7 @@ function KanbanColumnView({
 
       <div className="mx-3 h-px bg-border-default" />
 
-      <Droppable droppableId={col.id} isDropDisabled={col.id === "canceled"}>
+      <Droppable droppableId={col.id}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
