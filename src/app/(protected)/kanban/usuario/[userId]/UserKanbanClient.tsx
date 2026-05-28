@@ -422,7 +422,7 @@ function UserKanbanCardView({
     : null
 
   return (
-    <Draggable draggableId={card.key} index={index} isDragDisabled={isCanceled || isDone}>
+    <Draggable draggableId={card.key} index={index} isDragDisabled={isCanceled}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
@@ -435,7 +435,8 @@ function UserKanbanCardView({
             isTarefa ? "border-l-emerald-500" : "border-l-blue-500 dark:border-l-blue-400",
             isCanceled && "opacity-40 grayscale cursor-not-allowed",
             isDone && "opacity-60",
-            !isCanceled && !isDone && !snapshot.isDragging && "cursor-grab shadow-sm transition-shadow hover:shadow-md",
+            !isCanceled && !snapshot.isDragging && "cursor-grab",
+            !isCanceled && !isDone && !snapshot.isDragging && "shadow-sm transition-shadow hover:shadow-md",
             snapshot.isDragging && "shadow-xl rotate-[0.5deg] opacity-90 scale-[1.01] cursor-grabbing",
           )}
         >
@@ -672,6 +673,12 @@ export function UserKanbanClient({
     // Cards already in Canceled cannot be moved
     if (srcCol === "canceled") {
       toast.error("Cards cancelados não podem ser movidos.")
+      return
+    }
+
+    // Done cards can only be moved to Cancelado (e.g. to correct a mistake)
+    if (srcCol === "done" && dstCol !== "canceled") {
+      toast.error("Cards concluídos só podem ser movidos para 'Cancelado'.")
       return
     }
 
