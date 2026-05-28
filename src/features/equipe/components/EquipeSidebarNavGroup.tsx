@@ -25,16 +25,18 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
   React.useEffect(() => {
     const tab = searchParams.get("tab")
     const isLancamentosTopLevel = tab === "lancamentos" && !canAccessLancamentos
-    const now = pathname.startsWith("/equipe") && !isLancamentosTopLevel
+    const isClockworkTopLevel = tab === "clockwork" && hideClockwork
+    const now = pathname.startsWith("/equipe") && !isLancamentosTopLevel && !isClockworkTopLevel
     const was = prevPath.current.startsWith("/equipe")
     prevPath.current = pathname
     if (now && !was) setOpen(true)
     if (!now && was) setOpen(false)
-  }, [pathname, searchParams, canAccessLancamentos])
+  }, [pathname, searchParams, canAccessLancamentos, hideClockwork])
 
   const activeTabId = searchParams.get("tab") ?? "chapters"
   const parentActive = pathname.startsWith("/equipe")
     && !(activeTabId === "lancamentos" && !canAccessLancamentos)
+    && !(activeTabId === "clockwork" && hideClockwork)
 
   function go(href: string) {
     if (onNavigate) onNavigate(href)
