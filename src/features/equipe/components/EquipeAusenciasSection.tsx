@@ -217,6 +217,8 @@ export function EquipeAusenciasSection({ isMgr, currentUserId }: EquipeAusencias
     return [...searched].sort((a, b) => a.dataIso.localeCompare(b.dataIso))
   }, [rows, search, todayIso])
 
+  if (loading) return <SectionSpinner minHeight="min-h-[16rem]" />
+
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="flex justify-end">
@@ -245,9 +247,7 @@ export function EquipeAusenciasSection({ isMgr, currentUserId }: EquipeAusencias
           </div>
         ) : null}
 
-        {loading ? (
-          <SectionSpinner />
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <EmptyState message="Nenhuma ausência aprovada na equipe." />
         ) : (
           <div className="overflow-x-auto">

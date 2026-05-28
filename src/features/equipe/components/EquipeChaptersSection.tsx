@@ -180,6 +180,8 @@ export function EquipeChaptersSection({ isAdmin, currentUserId }: EquipeChapters
     await refetch()
   }
 
+  if (loading) return <SectionSpinner minHeight="min-h-[16rem]" />
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -197,7 +199,6 @@ export function EquipeChaptersSection({ isAdmin, currentUserId }: EquipeChapters
         <Button
           type="button"
           onClick={openCreate}
-          disabled={loading}
           className="w-full shrink-0 sm:w-auto"
         >
           <CalendarPlus className="size-4" />
@@ -205,9 +206,7 @@ export function EquipeChaptersSection({ isAdmin, currentUserId }: EquipeChapters
         </Button>
       </div>
 
-      {loading ? (
-        <SectionSpinner minHeight="min-h-[16rem]" />
-      ) : error ? (
+      {error ? (
         <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
           <p className="text-center text-sm text-destructive">{error}</p>
         </div>

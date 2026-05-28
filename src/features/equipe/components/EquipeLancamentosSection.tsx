@@ -114,13 +114,13 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
     return () => { cancelled = true }
   }, [profileFilter, canFilterByProfile, userAccessProfile])
 
+  if (loading) return <SectionSpinner minHeight="min-h-[20rem]" />
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Barra de controles — sempre visível */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Avatar strip — só renderiza quando carregado */}
         <div className="min-w-0 flex-1">
-          {!loading && membros.length > 0 && (
+          {membros.length > 0 && (
             <TooltipProvider delay={0} closeDelay={0}>
               <div
                 className="flex w-full flex-wrap items-center justify-start gap-y-2 pl-2"
@@ -194,9 +194,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
       </div>
 
       {/* Área de conteúdo */}
-      {loading ? (
-        <SectionSpinner minHeight="min-h-[20rem]" />
-      ) : membros.length === 0 ? (
+      {membros.length === 0 ? (
         <EmptyState message="Nenhum membro encontrado neste perfil." />
       ) : selectedUserId ? (
         <IndividualLancamentosSection
