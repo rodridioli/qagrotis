@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd"
-import { AlertCircle, Check, ChevronsRight, EyeOff, Flag, Loader2, Search, User, X } from "lucide-react"
+import { AlertCircle, Check, EyeOff, Flag, Loader2, Search, User, X } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/core/utils"
@@ -453,11 +453,16 @@ function UserKanbanCardView({
             >
               {card.key}
             </a>
-            {priorityLabel && (
-              <span className="flex shrink-0 items-center gap-0.5 text-xs text-text-secondary">
-                {priorityLabel}
-                <ChevronsRight className="size-3.5" aria-hidden />
-              </span>
+            {(card.priorityIconUrl ?? priorityLabel) && (
+              <div className="flex shrink-0 items-center gap-1">
+                {priorityLabel && (
+                  <span className="text-xs font-medium text-text-secondary">{priorityLabel}</span>
+                )}
+                {card.priorityIconUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={card.priorityIconUrl} alt="" className="size-4 shrink-0" />
+                )}
+              </div>
             )}
           </div>
 
