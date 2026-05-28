@@ -13,7 +13,11 @@ import type { KanbanIssue, UxTarefa } from "@/features/qa/lib/jira-worklogs-fetc
 import { db } from "@/core/db"
 
 /** Jira statuses that map to "Done" or "Canceled" in the user kanban */
-const TERMINAL_JIRA_STATUSES = new Set(["delivered", "canceled", "cancelado", "done"])
+const TERMINAL_JIRA_STATUSES = new Set([
+  "delivered", "entregue",           // done variants (EN + PT-BR)
+  "canceled",  "cancelado", "cancel", "cancelled",  // canceled variants
+  "done",
+])
 
 export type JiraErrorReason = "jira_not_configured" | "access_denied" | "fetch_error"
 

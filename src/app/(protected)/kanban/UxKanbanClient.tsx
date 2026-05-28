@@ -643,12 +643,15 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
     )
   })
   // memberTarefas: UX Tarefas currently in a member's main-kanban column
+  // Terminal-state tarefas (done/canceled) are excluded — they only belong in the user's personal kanban
   const [memberTarefas, setMemberTarefas] = React.useState<Record<string, UxTarefa[]>>(() => {
     if (!initialTarefasResult.ok) return {}
     const map: Record<string, UxTarefa[]> = {}
     for (const tarefa of initialTarefasResult.tarefas) {
       const assignment = initialAssignments[tarefa.key]
       if (assignment?.cardType === "ux_tarefa") {
+        const col = tarefaStatusToColumn(tarefa.status)
+        if (col === "done" || col === "canceled") continue
         const uid = assignment.userId
         if (!map[uid]) map[uid] = []
         map[uid].push(tarefa)
