@@ -712,16 +712,22 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
     [issues, assignments, projectFilter],
   )
 
-  // Per-member demanda issues
+  // Per-member demanda issues (excludes done/canceled — those only appear in the user's own kanban)
   const userIssues = React.useMemo(() => {
     const map: Record<string, KanbanIssue[]> = {}
     for (const m of activeMembers) {
       map[m.userId] = sortByPriority(
-        issues.filter((i) => assignments[i.key]?.userId === m.userId && assignments[i.key]?.cardType !== "ux_tarefa"),
+        issues.filter((i) => {
+          if (assignments[i.key]?.userId !== m.userId) return false
+          if (assignments[i.key]?.cardType === "ux_tarefa") return false
+          const col = columnStateMap[i.key]
+          if (col === "done" || col === "canceled") return false
+          return true
+        }),
       )
     }
     return map
-  }, [issues, assignments, activeMembers])
+  }, [issues, assignments, activeMembers, columnStateMap])
 
   function onDragEnd(result: DropResult) {
     if (dragLocked) return

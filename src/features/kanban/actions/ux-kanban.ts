@@ -386,9 +386,20 @@ export async function getUserKanbanData(userId: string): Promise<UserKanbanData>
     }]
   })
 
+  // Filter done/canceled cards that are older than 15 days
+  const FIFTEEN_DAYS_AGO = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)
+  const stateUpdatedAtMap = Object.fromEntries(columnStates.map((s) => [s.issueKey, s.updatedAt]))
+
+  const allCards = [...tarefaCards, ...demandaCards].filter((card) => {
+    if (card.column !== "done" && card.column !== "canceled") return true
+    const updatedAt = stateUpdatedAtMap[card.key]
+    if (!updatedAt) return true  // No timestamp record → include (can't filter without it)
+    return updatedAt >= FIFTEEN_DAYS_AGO
+  })
+
   return {
     ok: true,
-    cards: [...tarefaCards, ...demandaCards],
+    cards: allCards,
     memberName,
     jiraAccountId,
   }
@@ -438,7 +449,17 @@ export async function moveCardInUserKanban(
       const result = await transitionIssueToStatus(base, credentials, issueKey, jiraTarget)
       if (!result.ok) return result
     }
-    // No DB column state needed for UX Tarefas (derived from Jira status)
+    // For terminal columns, persist a state row so the 15-day filter in getUserKanbanData works
+    if (targetColumn === "done" || targetColumn === "canceled") {
+      await db.kanbanUserCardState.upsert({
+        where: { issueKey },
+        create: { issueKey, userId, column: targetColumn },
+        update: { column: targetColumn },
+      }).catch(() => null)
+    } else {
+      // Leaving a terminal state (edge case) — remove stale record
+      await db.kanbanUserCardState.deleteMany({ where: { issueKey } }).catch(() => null)
+    }
     return { ok: true }
   } else {
     // Demandas: update local column state
@@ -499,6 +520,16 @@ export async function completeCardDone(
         )
       : buildAdfComment("Tarefa concluída junto ao time de UX.")
     await postJiraComment(base, credentials, issueKey, commentBody)
+
+    // Persist terminal state so the 15-day filter in getUserKanbanData works
+    const tarefaAssignment = await db.kanbanAssignment.findUnique({ where: { issueKey } })
+    if (tarefaAssignment) {
+      await db.kanbanUserCardState.upsert({
+        where: { issueKey },
+        create: { issueKey, userId: tarefaAssignment.userId, column: "done" },
+        update: { column: "done" },
+      }).catch(() => null)
+    }
   } else {
     // Demanda Done → transition Jira to "Análise de Produto"
     // transitionIssueToStatus matches by to.name (status name), so "Análise de Produto"
