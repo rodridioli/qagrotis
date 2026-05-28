@@ -11,9 +11,10 @@ export interface EquipeSidebarNavGroupProps {
   collapsed: boolean
   onNavigate?: (href: string) => void
   canAccessLancamentos?: boolean
+  hideClockwork?: boolean
 }
 
-export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamentos = false }: EquipeSidebarNavGroupProps) {
+export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamentos = false, hideClockwork = false }: EquipeSidebarNavGroupProps) {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -121,6 +122,7 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
           <ul className="flex flex-col gap-0.5">
             {EQUIPE_NAV_ENTRIES.filter((e) => {
               if (e.id === "lancamentos" && !canAccessLancamentos) return false
+              if (e.id === "clockwork" && hideClockwork) return false
               return true
             }).map(({ id, label, icon: Icon }) => {
               const href = `/equipe?tab=${id}`

@@ -2,14 +2,14 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { BarChart3, Briefcase, ChevronRight, KanbanSquare, Timer } from "lucide-react"
+import { Briefcase, ChevronRight, Clock4, KanbanSquare, Timer } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/core/utils"
 
 const GESTAO_SUBITEMS = [
   { id: "kanban",      label: "Kanban",      Icon: KanbanSquare, href: "/kanban" },
   { id: "lancamentos", label: "Lançamentos", Icon: Timer,        href: "/equipe?tab=lancamentos" },
-  { id: "performance", label: "Indicadores", Icon: BarChart3,    href: "/equipe?tab=performance" },
+  { id: "clockwork",   label: "Clockwork",   Icon: Clock4,       href: "/equipe?tab=clockwork" },
 ] as const
 
 export interface GestaoSidebarNavGroupProps {
@@ -30,7 +30,7 @@ export function GestaoSidebarNavGroup({ collapsed, onNavigate }: GestaoSidebarNa
       const tab = params.get("tab")
       return (
         path === "/kanban" ||
-        (path.startsWith("/equipe") && (tab === "lancamentos" || tab === "performance"))
+        (path.startsWith("/equipe") && (tab === "lancamentos" || tab === "clockwork"))
       )
     },
     [],
@@ -52,8 +52,8 @@ export function GestaoSidebarNavGroup({ collapsed, onNavigate }: GestaoSidebarNa
       ? "kanban"
       : pathname.startsWith("/equipe") && tab === "lancamentos"
         ? "lancamentos"
-        : pathname.startsWith("/equipe") && tab === "performance"
-          ? "performance"
+        : pathname.startsWith("/equipe") && tab === "clockwork"
+          ? "clockwork"
           : null
 
   function go(href: string) {
