@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { auth } from "@/core/auth"
 import { buildRole, can } from "@/core/rbac/policy"
-import { getKanbanSubtasks, getUxTarefas } from "@/features/kanban/actions/kanban"
+import { getKanbanSubtasks, getUxTarefasForMainKanban } from "@/features/kanban/actions/kanban"
 import { getKanbanAssignments } from "@/features/kanban/actions/ux-kanban"
 import { getEquipeMembrosParaLancamentosComInativos } from "@/features/equipe/actions/equipe"
 import { serializeRscProps } from "@/core/rsc-serialize"
@@ -20,7 +20,7 @@ export default async function KanbanPage() {
     getKanbanSubtasks(),
     getEquipeMembrosParaLancamentosComInativos("UX"),
     getKanbanAssignments(),
-    getUxTarefas(),
+    getUxTarefasForMainKanban(),
   ])
 
   return (
