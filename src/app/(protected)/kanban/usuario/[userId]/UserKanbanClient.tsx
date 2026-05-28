@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd"
-import { AlertCircle, Check, ChevronsRight, Flag, Loader2, Search, User, X } from "lucide-react"
+import { AlertCircle, Check, ChevronsRight, EyeOff, Flag, Loader2, Search, User, X } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/core/utils"
@@ -30,6 +30,10 @@ const COLUMNS: { id: UserKanbanColumn; label: string; color: string }[] = [
   { id: "done",        label: "Done",         color: "border-t-emerald-500" },
   { id: "canceled",    label: "Canceled",     color: "border-t-slate-300" },
 ]
+
+/** Columns the user can hide. Order preserved from COLUMNS. */
+const HIDEABLE_COLS = new Set<UserKanbanColumn>(["paused", "waiting", "canceled"])
+const LS_KEY = (uid: string) => `kanban-hidden-cols-v1-${uid}`
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -264,7 +268,7 @@ function UserKanbanCardView({
           className={cn(
             "flex flex-col gap-2 rounded-xl border border-border-default bg-surface-card p-3.5",
             "select-none border-l-[3px]",
-            isTarefa ? "border-l-emerald-500" : "border-l-orange-500",
+            isTarefa ? "border-l-emerald-500" : "border-l-purple-600 dark:border-l-purple-400",
             isCanceled && "opacity-40 grayscale cursor-not-allowed",
             isDone && "opacity-60",
             !isCanceled && !isDone && !snapshot.isDragging && "cursor-grab shadow-sm transition-shadow hover:shadow-md",
@@ -280,7 +284,7 @@ function UserKanbanCardView({
               onClick={(e) => e.stopPropagation()}
               className={cn(
                 "text-sm font-bold underline-offset-2 hover:underline",
-                isTarefa ? "text-emerald-600 dark:text-emerald-400" : "text-orange-500",
+                isTarefa ? "text-emerald-600 dark:text-emerald-400" : "text-purple-600 dark:text-purple-400",
               )}
             >
               {card.key}
@@ -339,10 +343,12 @@ function KanbanColumnView({
   col,
   cards,
   onDone,
+  onHide,
 }: {
   col: typeof COLUMNS[number]
   cards: UserKanbanCard[]
   onDone: (card: UserKanbanCard) => void
+  onHide?: () => void
 }) {
   const [search, setSearch] = React.useState("")
   const displayed = search.trim()
@@ -361,6 +367,17 @@ function KanbanColumnView({
         <span className="shrink-0 rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-xs font-bold tabular-nums text-text-secondary">
           {cards.length}
         </span>
+        {onHide && (
+          <button
+            type="button"
+            onClick={onHide}
+            title="Ocultar coluna"
+            aria-label="Ocultar coluna"
+            className="ml-auto cursor-pointer rounded p-0.5 text-text-secondary opacity-40 transition-opacity hover:opacity-100 hover:text-text-primary"
+          >
+            <EyeOff className="size-3.5" />
+          </button>
+        )}
       </div>
 
       {cards.length > 4 && (
@@ -420,6 +437,29 @@ export function UserKanbanClient({
     data.ok ? data.cards : []
   )
   const [pendingDone, setPendingDone] = React.useState<UserKanbanCard | null>(null)
+  const [hiddenColumns, setHiddenColumns] = React.useState<Set<UserKanbanColumn>>(new Set())
+
+  // Load hidden columns from localStorage after mount (SSR-safe)
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem(LS_KEY(userId))
+      if (stored) {
+        const parsed = JSON.parse(stored) as string[]
+        const valid = parsed.filter((c): c is UserKanbanColumn => HIDEABLE_COLS.has(c as UserKanbanColumn))
+        if (valid.length > 0) setHiddenColumns(new Set(valid))
+      }
+    } catch {}
+  }, [userId])
+
+  function toggleColumn(colId: UserKanbanColumn) {
+    setHiddenColumns((prev) => {
+      const next = new Set(prev)
+      if (next.has(colId)) next.delete(colId)
+      else next.add(colId)
+      try { localStorage.setItem(LS_KEY(userId), JSON.stringify([...next])) } catch {}
+      return next
+    })
+  }
 
   const memberName = data.ok ? data.memberName : "Usuário"
 
@@ -513,14 +553,36 @@ export function UserKanbanClient({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
-      <PageBreadcrumb
-        backHref="/kanban"
-        items={[
-          { label: "Kanban", href: "/kanban" },
-          { label: memberName },
-        ]}
-      />
+      {/* Header: breadcrumb (left) + hidden-column chips (right) */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <PageBreadcrumb
+          backHref="/kanban"
+          items={[
+            { label: "Kanban", href: "/kanban" },
+            { label: memberName },
+          ]}
+        />
+        {hiddenColumns.size > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {COLUMNS.filter((c) => hiddenColumns.has(c.id)).map((col) => {
+              const count = cardsByColumn[col.id].length
+              return (
+                <button
+                  key={col.id}
+                  type="button"
+                  onClick={() => toggleColumn(col.id)}
+                  title="Exibir coluna novamente"
+                  aria-label={`Exibir coluna ${col.label}`}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border-default bg-surface-card px-2.5 py-1 text-xs font-medium text-text-secondary transition-colors hover:border-brand-primary hover:text-brand-primary"
+                >
+                  <span>{col.label}{count > 0 ? ` (${count})` : ""}</span>
+                  <X className="size-3 shrink-0" />
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Error state */}
       {!data.ok && (
@@ -541,19 +603,25 @@ export function UserKanbanClient({
       {data.ok && (
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="overflow-x-auto scrollbar-thin">
-            <div
-              className="flex gap-3 pb-4"
-              style={{ minWidth: `${COLUMNS.length * (256 + 12)}px` }}
-            >
-              {COLUMNS.map((col) => (
-                <KanbanColumnView
-                  key={col.id}
-                  col={col}
-                  cards={cardsByColumn[col.id]}
-                  onDone={setPendingDone}
-                />
-              ))}
-            </div>
+            {(() => {
+              const visibleCols = COLUMNS.filter((c) => !hiddenColumns.has(c.id))
+              return (
+                <div
+                  className="flex gap-3 pb-4"
+                  style={{ minWidth: `${visibleCols.length * (256 + 12)}px` }}
+                >
+                  {visibleCols.map((col) => (
+                    <KanbanColumnView
+                      key={col.id}
+                      col={col}
+                      cards={cardsByColumn[col.id]}
+                      onDone={setPendingDone}
+                      onHide={HIDEABLE_COLS.has(col.id) ? () => toggleColumn(col.id) : undefined}
+                    />
+                  ))}
+                </div>
+              )
+            })()}
           </div>
         </DragDropContext>
       )}

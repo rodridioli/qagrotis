@@ -134,7 +134,7 @@ function CardContent({ issue }: { issue: KanbanIssue }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="text-sm font-bold text-orange-500 underline-offset-2 hover:underline"
+          className="text-sm font-bold text-purple-600 dark:text-purple-400 underline-offset-2 hover:underline"
         >
           {issue.key}
         </a>
@@ -185,7 +185,7 @@ function DraggableCard({ issue, index }: { issue: KanbanIssue; index: number }) 
           style={provided.draggableProps.style}
           className={cn(
             "flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-card p-4",
-            "cursor-grab select-none border-l-[3px] border-l-orange-500",
+            "cursor-grab select-none border-l-[3px] border-l-purple-600 dark:border-l-purple-400",
             snapshot.isDragging
               ? "shadow-xl rotate-[0.5deg] opacity-90 scale-[1.01]"
               : "shadow-sm transition-shadow hover:shadow-md",
