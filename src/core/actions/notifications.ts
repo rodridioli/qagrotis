@@ -111,10 +111,11 @@ export async function createNotification(
   if (!parsed.success) return
 
   await ensureNotificationTables()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await prisma.notification.create({
     data: {
       userId: parsed.data.userId,
-      type: parsed.data.type,
+      type: parsed.data.type as any,
       title: parsed.data.title,
       message: parsed.data.message,
       link: parsed.data.link,
@@ -138,8 +139,9 @@ export async function checkAndSendBirthdayNotifications(): Promise<void> {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
     // Dedup global: verifica se já enviamos as notificações de aniversário hoje
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const alreadySent = await prisma.notification.findFirst({
-      where: { type: "BIRTHDAY", createdAt: { gte: todayStart } },
+      where: { type: "BIRTHDAY" as any, createdAt: { gte: todayStart } },
       select: { id: true },
     })
     if (alreadySent) return
@@ -162,10 +164,11 @@ export async function checkAndSendBirthdayNotifications(): Promise<void> {
       // Notificação para os colegas
       for (const recipientId of recipientIds) {
         if (recipientId === bday.id) continue
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await prisma.notification.create({
           data: {
             userId: recipientId,
-            type: "BIRTHDAY",
+            type: "BIRTHDAY" as any,
             title: `Hoje é aniversário de ${bday.name}`,
             message: "Não esqueça de dar os parabéns.",
             link: `/configuracoes/usuarios/${bday.id}/editar`,
@@ -174,10 +177,11 @@ export async function checkAndSendBirthdayNotifications(): Promise<void> {
       }
 
       // Parabéns para o próprio aniversariante
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await prisma.notification.create({
         data: {
           userId: bday.id,
-          type: "BIRTHDAY",
+          type: "BIRTHDAY" as any,
           title: "Feliz aniversário!",
           message: "Parabéns pelo seu dia! Desejamos muitas conquistas para você.",
           link: `/configuracoes/usuarios/${bday.id}/editar`,
@@ -204,8 +208,9 @@ export async function checkAndSendCompanyAnniversaryNotifications(): Promise<voi
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
     // Dedup global: verifica se já processamos aniversários de empresa hoje
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const alreadySent = await prisma.notification.findFirst({
-      where: { type: "COMPANY_ANNIVERSARY", createdAt: { gte: todayStart } },
+      where: { type: "COMPANY_ANNIVERSARY" as any, createdAt: { gte: todayStart } },
       select: { id: true },
     })
     if (alreadySent) return
@@ -237,10 +242,11 @@ export async function checkAndSendCompanyAnniversaryNotifications(): Promise<voi
       const name = userMap.get(a.evaluatedUserId)
       if (!name) continue
       const years = now.getFullYear() - new Date(a.data).getFullYear()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await prisma.notification.create({
         data: {
           userId: a.evaluatedUserId,
-          type: "COMPANY_ANNIVERSARY",
+          type: "COMPANY_ANNIVERSARY" as any,
           title: "Parabéns por mais um ano de empresa",
           message: "Você faz a diferença todos os dias.",
           link: `/configuracoes/usuarios/${a.evaluatedUserId}/editar`,
