@@ -319,24 +319,14 @@ function UserKanbanCardView({
             </div>
           )}
 
-          {/* Footer: tag / project + Done button */}
-          <div className="flex items-center justify-between gap-2">
-            {(card.tag ?? card.projectName) && (
+          {/* Footer: tag / project */}
+          {(card.tag ?? card.projectName) && (
+            <div className="flex items-center gap-2">
               <span className="shrink-0 rounded border border-border-default bg-surface-card px-2 py-0.5 text-xs font-medium text-text-secondary">
                 {card.tag ?? card.projectName.replace(/^Plataforma Agro - /, "")}
               </span>
-            )}
-            {!isCanceled && !isDone && card.column !== "backlog" && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onDone(card) }}
-                className="ml-auto flex cursor-pointer items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 transition-colors"
-              >
-                <Check className="size-3" />
-                Entregar
-              </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </Draggable>
