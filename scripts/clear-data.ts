@@ -2,7 +2,6 @@
  * clear-data.ts
  *
  * Remove TODOS os registros de sistemas, módulos, clientes, suítes e cenários.
- * Preserva usuários (QaUser) que estejam ativos.
  * Executa em transação única — em caso de falha, nenhum dado é apagado.
  *
  * Uso:
@@ -33,15 +32,13 @@ const prisma = new PrismaClient({ adapter, log: ["error"] })
 
 async function main() {
   // Contagem antes para exibir resumo
-  const [sistemas, modulos, clientes, suites, cenarios, usersAtivos, usersInativos] =
+  const [sistemas, modulos, clientes, suites, cenarios] =
     await Promise.all([
       prisma.sistema.count(),
       prisma.modulo.count(),
       prisma.cliente.count(),
       prisma.suite.count(),
       prisma.cenario.count(),
-      prisma.qaUser.count({ where: { active: true } }),
-      prisma.qaUser.count({ where: { active: false } }),
     ])
 
   console.log("\n📊 Estado atual do banco:")
@@ -50,10 +47,8 @@ async function main() {
   console.log(`   Clientes:  ${clientes}`)
   console.log(`   Suítes:    ${suites}`)
   console.log(`   Cenários:  ${cenarios}`)
-  console.log(`   Usuários ativos (serão preservados): ${usersAtivos}`)
-  console.log(`   Usuários inativos (serão removidos): ${usersInativos}`)
 
-  const total = sistemas + modulos + clientes + suites + cenarios + usersInativos
+  const total = sistemas + modulos + clientes + suites + cenarios
   if (total === 0) {
     console.log("\n✅ Banco já está limpo. Nada a remover.")
     return
@@ -67,17 +62,14 @@ async function main() {
     prisma.modulo.deleteMany({}),
     prisma.sistema.deleteMany({}),
     prisma.cliente.deleteMany({}),
-    prisma.qaUser.deleteMany({ where: { active: false } }),
   ])
 
   console.log("\n✅ Limpeza concluída com sucesso:")
-  console.log(`   Sistemas removidos:       ${sistemas}`)
-  console.log(`   Módulos removidos:        ${modulos}`)
-  console.log(`   Clientes removidos:       ${clientes}`)
-  console.log(`   Suítes removidas:         ${suites}`)
-  console.log(`   Cenários removidos:       ${cenarios}`)
-  console.log(`   Usuários inativos removidos: ${usersInativos}`)
-  console.log(`   Usuários ativos preservados: ${usersAtivos}`)
+  console.log(`   Sistemas removidos:  ${sistemas}`)
+  console.log(`   Módulos removidos:   ${modulos}`)
+  console.log(`   Clientes removidos:  ${clientes}`)
+  console.log(`   Suítes removidas:    ${suites}`)
+  console.log(`   Cenários removidos:  ${cenarios}`)
 }
 
 main()
