@@ -1802,7 +1802,11 @@ export async function postJiraComment(
   return { ok: true }
 }
 
-/** Builds an ADF paragraph with an optional @mention followed by text. */
+/**
+ * Builds an ADF paragraph with an optional @mention followed by `text`.
+ * The `text` argument is appended directly after the mention node — include
+ * any leading punctuation/space you need (e.g. `", continua…"` or `" continua…"`).
+ */
 export function buildAdfComment(
   text: string,
   mention?: { accountId: string; displayName: string },
@@ -1813,9 +1817,30 @@ export function buildAdfComment(
       type: "mention",
       attrs: { id: mention.accountId, text: `@${mention.displayName}`, accessLevel: "APPLICATION" },
     })
-    content.push({ type: "text", text: " " })
   }
   content.push({ type: "text", text })
+  return { version: 1, type: "doc", content: [{ type: "paragraph", content }] }
+}
+
+/**
+ * Builds an ADF paragraph where the @mention appears **in the middle** of the sentence:
+ * `before` + @mention + `after`.
+ *
+ * Example: `"Tarefa aprovada por "` + @Name + `" e concluída junto ao time de UX."`
+ */
+export function buildAdfCommentInline(
+  before: string,
+  mention: { accountId: string; displayName: string },
+  after: string,
+): object {
+  const content: object[] = [
+    { type: "text", text: before },
+    {
+      type: "mention",
+      attrs: { id: mention.accountId, text: `@${mention.displayName}`, accessLevel: "APPLICATION" },
+    },
+    { type: "text", text: after },
+  ]
   return { version: 1, type: "doc", content: [{ type: "paragraph", content }] }
 }
 

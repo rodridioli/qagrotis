@@ -7,6 +7,7 @@ import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credent
 import {
   jiraJson,
   buildAdfComment,
+  buildAdfCommentInline,
   postJiraComment,
   transitionIssueToStatus,
   searchJiraUsersForMention,
@@ -431,15 +432,26 @@ export async function completeCardDone(
       ? { accountId: mentionedAccountId, displayName: mentionedDisplayName }
       : null
 
+  // Resolve mention: prefer explicitly selected user, fallback to reporter
+  const effectiveMention =
+    mention ??
+    (reporterAccountId && reporterDisplayName
+      ? { accountId: reporterAccountId, displayName: reporterDisplayName }
+      : null)
+
   if (cardType === "ux_tarefa") {
     // UX Tarefa Done → transition to "Entregue" (Jira status name in the UX workflow)
     const transResult = await transitionIssueToStatus(base, credentials, issueKey, "Entregue")
     if (!transResult.ok) return transResult
 
-    const commentBody = buildAdfComment(
-      `Card ${issueKey} entregue. 🎉`,
-      mention ?? (reporterAccountId && reporterDisplayName ? { accountId: reporterAccountId, displayName: reporterDisplayName } : undefined),
-    )
+    // "Tarefa aprovada por @Name e concluída junto ao time de UX."
+    const commentBody = effectiveMention
+      ? buildAdfCommentInline(
+          "Tarefa aprovada por ",
+          effectiveMention,
+          " e concluída junto ao time de UX.",
+        )
+      : buildAdfComment("Tarefa concluída junto ao time de UX.")
     await postJiraComment(base, credentials, issueKey, commentBody)
   } else {
     // Demanda Done → transition Jira to "Análise de Produto"
@@ -451,13 +463,14 @@ export async function completeCardDone(
       await transitionIssueToStatus(base, credentials, issueKey, "Produto").catch(() => null)
     }
 
-    const reporter = reporterAccountId && reporterDisplayName
-      ? { accountId: reporterAccountId, displayName: reporterDisplayName }
-      : null
-    const commentBody = buildAdfComment(
-      `Protótipo do card ${issueKey} entregue. 🎉`,
-      mention ?? reporter ?? undefined,
-    )
+    // "Tarefa aprovada por @Name e concluída junto ao time de UX."
+    const commentBody = effectiveMention
+      ? buildAdfCommentInline(
+          "Tarefa aprovada por ",
+          effectiveMention,
+          " e concluída junto ao time de UX.",
+        )
+      : buildAdfComment("Tarefa concluída junto ao time de UX.")
     await postJiraComment(base, credentials, issueKey, commentBody)
 
     // Update local column state
@@ -590,7 +603,7 @@ async function _enterInApproval(
       : undefined
 
     const body = buildAdfComment(
-      `Card ${issueKey} enviado para aprovação.`,
+      ` Card ${issueKey} enviado para aprovação.`,
       mention,
     )
     await postJiraComment(base, credentials, issueKey, body).catch(() => null)
