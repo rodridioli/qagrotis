@@ -675,6 +675,12 @@ export function UserKanbanClient({
       return
     }
 
+    // UX Tarefas must pass through "Em aprovação" before being marked as done
+    if (dstCol === "done" && card.cardType === "ux_tarefa" && srcCol !== "in_approval") {
+      toast.error("Para concluir uma tarefa, ela precisa passar antes pela coluna 'Em aprovação'.")
+      return
+    }
+
     // Done requires confirmation modal
     if (dstCol === "done") {
       setPendingDone({ ...card, column: dstCol })
