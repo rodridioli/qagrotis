@@ -664,6 +664,13 @@ interface WorklogRowProps {
 }
 
 function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, onDeleteClick }: WorklogRowProps) {
+  // DOM refs — always reflect the live input value regardless of React's render cycle.
+  // This avoids a stale-closure bug where onBlur fires before the onChange state update
+  // has been committed, causing handleBlur to see the old props and skip the save.
+  const startInputRef   = React.useRef<HTMLInputElement>(null)
+  const endInputRef     = React.useRef<HTMLInputElement>(null)
+  const commentInputRef = React.useRef<HTMLInputElement>(null)
+
   const lastSavedRef = React.useRef({
     startHHmm: state.startHHmm,
     endHHmm:   state.endHHmm,
@@ -671,12 +678,16 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
   })
 
   function handleBlur() {
-    const { startHHmm, endHHmm, comment } = state
+    if (state.saving) return
+    // Read live DOM values — not the (potentially stale) React state
+    const startHHmm = startInputRef.current?.value   ?? state.startHHmm
+    const endHHmm   = endInputRef.current?.value     ?? state.endHHmm
+    const comment   = commentInputRef.current?.value ?? state.comment
     const last = lastSavedRef.current
     const changed = startHHmm !== last.startHHmm || endHHmm !== last.endHHmm || comment !== last.comment
-    if (!changed || state.saving) return
+    if (!changed) return
     lastSavedRef.current = { startHHmm, endHHmm, comment }
-    onBlurSave(worklog, state)
+    onBlurSave(worklog, { ...state, startHHmm, endHHmm, comment })
   }
 
   const editInputClass = cn(
@@ -704,6 +715,7 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
         {/* Description (editable) */}
         <td className="min-w-0 px-4 py-3">
           <input
+            ref={commentInputRef}
             type="text"
             value={state.comment}
             disabled={state.saving}
@@ -718,6 +730,7 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
         {/* Start time (editable) */}
         <td className="px-4 py-3">
           <input
+            ref={startInputRef}
             type="time"
             value={state.startHHmm}
             disabled={state.saving}
@@ -731,6 +744,7 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
         {/* End time (editable) */}
         <td className="px-4 py-3">
           <input
+            ref={endInputRef}
             type="time"
             value={state.endHHmm}
             disabled={state.saving}

@@ -296,7 +296,7 @@ export async function PATCH(req: NextRequest) {
       },
       body: JSON.stringify({
         started,
-        time_spent_seconds: timeSpentSeconds,
+        timeSpentSeconds,   // camelCase — matches Clockwork Pro API (same as GET response and POST)
         comment,
       }),
       signal: AbortSignal.timeout(20_000),
@@ -304,11 +304,9 @@ export async function PATCH(req: NextRequest) {
 
     if (!res.ok) {
       const text = await res.text().catch(() => "")
-      if (process.env.NODE_ENV !== "production") {
-        console.error("[api/clockwork/worklogs PATCH]", res.status, text.slice(0, 400))
-      }
+      console.error("[api/clockwork/worklogs PATCH]", { worklogId, cwStatus: res.status, cwBody: text.slice(0, 400) })
       return Response.json(
-        { error: `Clockwork retornou erro ${res.status}.` },
+        { error: `Clockwork retornou erro ${res.status}. Detalhes: ${text.slice(0, 200) || "(sem corpo)"}` },
         { status: res.status >= 400 && res.status < 500 ? 422 : 502 },
       )
     }
