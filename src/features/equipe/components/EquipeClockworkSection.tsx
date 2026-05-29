@@ -674,7 +674,7 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
 
   return (
     <>
-      <tr className="group border-b border-border-default last:border-0 transition-colors">
+      <tr className="border-b border-border-default last:border-0 transition-colors">
         {/* Jira key — link opens in a new tab */}
         <td className="px-4 py-3">
           <a
@@ -752,7 +752,7 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
                 <button
                   type="button"
                   aria-label="Mais ações"
-                  className="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary opacity-0 transition-all hover:bg-neutral-grey-100 hover:text-text-primary group-hover:opacity-100 disabled:pointer-events-none disabled:opacity-30"
+                  className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100 disabled:pointer-events-none disabled:opacity-30"
                   disabled={state.saving}
                 />
               }
