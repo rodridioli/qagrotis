@@ -2098,20 +2098,41 @@ export async function uploadJiraAttachments(
   files: File[],
 ): Promise<{ ok: boolean; error?: string }> {
   for (const file of files) {
+    // Build the file blob from the File object. In some server runtimes (Next.js
+    // App Router / undici) the object is a Blob-like, not a true File. Reading the
+    // bytes explicitly guarantees the binary data is present in the outbound body.
+    let fileData: Blob
+    try {
+      const bytes = await file.arrayBuffer()
+      fileData = new Blob([bytes], { type: file.type || "application/octet-stream" })
+    } catch {
+      return { ok: false, error: `Não foi possível ler o arquivo "${file.name}".` }
+    }
+
     const body = new FormData()
-    body.append("file", file, file.name)
-    const res = await fetch(`${base}/rest/api/3/issue/${issueKey}/attachments`, {
-      method: "POST",
-      headers: {
-        Authorization:       `Basic ${credentials}`,
-        "X-Atlassian-Token": "no-check",
-        Accept:              "application/json",
-      },
-      body,
-      signal: AbortSignal.timeout(60_000),
-    }).catch(() => null)
-    if (!res?.ok) {
-      return { ok: false, error: `Falha ao enviar o anexo "${file.name}".` }
+    body.append("file", fileData, file.name)
+
+    let res: Response | null = null
+    try {
+      res = await fetch(`${base}/rest/api/3/issue/${issueKey}/attachments`, {
+        method: "POST",
+        headers: {
+          Authorization:       `Basic ${credentials}`,
+          "X-Atlassian-Token": "no-check",
+          Accept:              "application/json",
+          // Content-Type must NOT be set — the runtime adds the multipart boundary
+        },
+        body,
+      })
+    } catch (err) {
+      console.error("[jira-upload] fetch error:", err)
+      return { ok: false, error: `Erro de rede ao enviar o anexo "${file.name}".` }
+    }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "")
+      console.error("[jira-upload] Jira rejected attachment:", res.status, text.slice(0, 200))
+      return { ok: false, error: `Jira recusou o anexo "${file.name}" (${res.status}).` }
     }
   }
   return { ok: true }

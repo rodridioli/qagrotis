@@ -824,11 +824,15 @@ export async function createUxTarefa(
   }
 
   // Collect attachment files (indexed as attachment_0, attachment_1, …)
+  // Use duck-typing instead of `instanceof File`: Next.js server actions receive
+  // File objects through the undici runtime, which may not pass `instanceof File`
+  // in all Node.js/edge environments.
   const files: File[] = []
-  for (let i = 0; ; i++) {
-    const file = formData.get(`attachment_${i}`)
-    if (!file || !(file instanceof File)) break
-    files.push(file)
+  for (let i = 0; i < 20; i++) {
+    const entry = formData.get(`attachment_${i}`)
+    if (entry === null || entry === undefined) break   // no more entries
+    if (typeof entry === "string") continue            // skip text fields
+    files.push(entry as File)
   }
 
   if (files.length > 0) {
