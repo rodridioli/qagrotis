@@ -388,7 +388,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
         method: "DELETE",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ worklogId: targetId }),
+        body: JSON.stringify({ worklogId: targetId, issueKey: deleteTarget.issueKey }),
       })
       const json = (await res.json().catch(() => ({}))) as { error?: string }
       if (!res.ok) {

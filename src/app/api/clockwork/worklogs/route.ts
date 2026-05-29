@@ -3,6 +3,10 @@ import { validateOrigin } from "@/core/security"
 import { buildRole, can, manageableProfiles } from "@/core/rbac/policy"
 import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
 import { fetchClockworkWorklogsForEmail } from "@/features/qa/lib/clockwork-worklogs-fetch"
+import {
+  getMgrJiraCredentials,
+  resolveJiraCredentialsForRequest,
+} from "@/features/qa/lib/jira-credentials-db"
 import { getActiveQaUsers, resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
 import { z } from "zod"
 import type { NextRequest } from "next/server"
@@ -122,10 +126,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// ── DELETE — remove um worklog específico no Clockwork ───────────────────────
+// ── DELETE — remove um worklog específico (Jira API primário, Clockwork fallback) ─
 
 const DeleteBodySchema = z.object({
   worklogId: z.string().min(1),
+  /** Chave da issue Jira (ex: "PROJ-123"). Quando presente, tenta Jira API primeiro. */
+  issueKey: z.string().min(1).optional(),
 })
 
 export async function DELETE(req: NextRequest) {
@@ -142,7 +148,7 @@ export async function DELETE(req: NextRequest) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  let body: { worklogId: string }
+  let body: z.infer<typeof DeleteBodySchema>
   try {
     const raw = await req.json()
     body = DeleteBodySchema.parse(raw)
@@ -150,6 +156,57 @@ export async function DELETE(req: NextRequest) {
     return Response.json({ error: "Payload inválido." }, { status: 400 })
   }
 
+  // ── Primary: Jira REST API ─────────────────────────────────────────────────
+  // O Clockwork Pro é uma app Jira — os worklogs são registos Jira.
+  // O endpoint DELETE do Clockwork não está documentado; a remoção canónica
+  // usa a Jira Cloud REST API: DELETE /rest/api/3/issue/{key}/worklog/{id}.
+  if (body.issueKey) {
+    const jiraCreds = await resolveJiraCredentialsForRequest(session.user.id)
+      ?? await getMgrJiraCredentials()
+
+    if (jiraCreds) {
+      const jiraBase  = jiraCreds.jiraUrl.replace(/\/$/, "")
+      const basicCred = Buffer.from(`${jiraCreds.jiraEmail}:${jiraCreds.apiToken}`).toString("base64")
+      const jiraUrl   = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(body.issueKey)}/worklog/${encodeURIComponent(body.worklogId)}`
+
+      try {
+        const jiraRes = await fetch(jiraUrl, {
+          method: "DELETE",
+          headers: { Authorization: `Basic ${basicCred}`, Accept: "application/json" },
+          signal: AbortSignal.timeout(20_000),
+        })
+
+        // 204 No Content = sucesso canónico do Jira para DELETE worklog
+        if (jiraRes.ok || jiraRes.status === 204) {
+          return Response.json({ ok: true })
+        }
+
+        // Erros de autenticação: retorna imediatamente sem tentar Clockwork
+        if (jiraRes.status === 401 || jiraRes.status === 403) {
+          const text = await jiraRes.text().catch(() => "")
+          console.error("[api/clockwork/worklogs DELETE via Jira] auth error", {
+            worklogId: body.worklogId, issueKey: body.issueKey,
+            jiraStatus: jiraRes.status, body: text.slice(0, 300),
+          })
+          return Response.json(
+            { error: `Sem permissão para remover o worklog no Jira (HTTP ${jiraRes.status}).` },
+            { status: 422 },
+          )
+        }
+
+        // Para 404 e outros: regista e cai no fallback Clockwork
+        const text = await jiraRes.text().catch(() => "")
+        console.warn("[api/clockwork/worklogs DELETE via Jira] tentando fallback Clockwork", {
+          worklogId: body.worklogId, issueKey: body.issueKey,
+          jiraStatus: jiraRes.status, jiraBody: text.slice(0, 300),
+        })
+      } catch (e) {
+        console.error("[api/clockwork/worklogs DELETE via Jira] network error, tentando Clockwork", e)
+      }
+    }
+  }
+
+  // ── Fallback: Clockwork API ─────────────────────────────────────────────────
   const token = await getClockworkApiTokenResolved().catch(() => "")
   if (!token) {
     return Response.json({ error: "CLOCKWORK_NOT_CONFIGURED" }, { status: 400 })
@@ -161,19 +218,18 @@ export async function DELETE(req: NextRequest) {
     const res = await fetch(cwUrl, {
       method: "DELETE",
       headers: {
-        Authorization:  `Token ${token.trim()}`,
-        Accept:         "application/json",
+        Authorization: `Token ${token.trim()}`,
+        Accept:        "application/json",
       },
       signal: AbortSignal.timeout(20_000),
     })
 
-    // 204 No Content is a valid success response for DELETE
+    // 204 No Content é resposta válida de sucesso para DELETE
     if (res.ok) {
       return Response.json({ ok: true })
     }
 
     const text = await res.text().catch(() => "")
-    // Always log so Vercel runtime logs capture it in production
     console.error("[api/clockwork/worklogs DELETE]", {
       worklogId: body.worklogId,
       cwUrl,
