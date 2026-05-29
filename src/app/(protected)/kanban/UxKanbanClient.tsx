@@ -525,7 +525,7 @@ function CreateTarefaModal({
                     tag ? "border-border-default text-text-primary" : "border-border-default text-text-disabled",
                   )}
                 >
-                  <option value="">Selecione</option>
+                  <option value="" disabled>Selecione...</option>
                   {tags.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-secondary" />
@@ -565,7 +565,7 @@ function CreateTarefaModal({
                     type ? "border-border-default text-text-primary" : "border-border-default text-text-disabled",
                   )}
                 >
-                  <option value="">Selecione</option>
+                  <option value="" disabled>Selecione...</option>
                   {TAREFA_TYPE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
