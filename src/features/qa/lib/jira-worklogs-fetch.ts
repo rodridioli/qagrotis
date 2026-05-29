@@ -2058,3 +2058,58 @@ export async function fetchUxTarefasForUser(
   }
   return tarefas
 }
+
+// ── Jira issue creation ────────────────────────────────────────────────────────
+
+/**
+ * Creates a new Jira issue and returns its key.
+ * `fields` must follow the Jira REST API v3 create-issue schema.
+ */
+export async function createJiraIssue(
+  base: string,
+  credentials: string,
+  fields: Record<string, unknown>,
+): Promise<{ ok: boolean; key?: string; error?: string }> {
+  const { ok, data, text } = await jiraJson<{ id: string; key: string }>(
+    `${base}/rest/api/3/issue`,
+    credentials,
+    { method: "POST", body: JSON.stringify({ fields }) },
+  )
+  if (!ok || !data?.key) {
+    return { ok: false, error: `Jira recusou a criação: ${text.slice(0, 300)}` }
+  }
+  return { ok: true, key: data.key }
+}
+
+/**
+ * Uploads one or more files as attachments to an existing Jira issue.
+ * Each file is uploaded individually; stops and reports on first failure.
+ *
+ * Note: Content-Type is intentionally omitted so the browser/runtime sets
+ * the multipart boundary automatically. The Jira token header is required.
+ */
+export async function uploadJiraAttachments(
+  base: string,
+  credentials: string,
+  issueKey: string,
+  files: File[],
+): Promise<{ ok: boolean; error?: string }> {
+  for (const file of files) {
+    const body = new FormData()
+    body.append("file", file, file.name)
+    const res = await fetch(`${base}/rest/api/3/issue/${issueKey}/attachments`, {
+      method: "POST",
+      headers: {
+        Authorization:       `Basic ${credentials}`,
+        "X-Atlassian-Token": "no-check",
+        Accept:              "application/json",
+      },
+      body,
+      signal: AbortSignal.timeout(60_000),
+    }).catch(() => null)
+    if (!res?.ok) {
+      return { ok: false, error: `Falha ao enviar o anexo "${file.name}".` }
+    }
+  }
+  return { ok: true }
+}

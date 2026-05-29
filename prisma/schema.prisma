@@ -693,6 +693,24 @@ model KanbanUserCardState {
   @@map("kanban_user_card_states")
 }
 
+/// Sessão de time tracking para um card no kanban individual.
+/// startedAt = null → timer pausado (card não está em "Em andamento").
+/// accumulatedSeconds = soma dos segundos de todas as sessões anteriores finalizadas e postadas ao Clockwork.
+model KanbanTimerSession {
+  issueKey           String    @id
+  userId             String
+  /// Início da sessão atual; null quando o card não está em "Em andamento".
+  startedAt          DateTime?
+  /// Segundos totais de sessões anteriores encerradas.
+  accumulatedSeconds Int       @default(0)
+  summary            String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("kanban_timer_sessions")
+}
+
 /// Rastreia cards em "In Approval" para comentários automáticos no Jira a cada 24 h úteis.
 model KanbanInApprovalTracker {
   issueKey            String    @id

@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd"
-import { AlertCircle, Check, EyeOff, Flag, Loader2, Search, User, X } from "lucide-react"
+import { AlertCircle, Check, Clock, EyeOff, Flag, Loader2, Search, User, X } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/core/utils"
@@ -19,6 +19,12 @@ import {
   confirmInApproval,
   searchJiraUsers,
 } from "@/features/kanban/actions/ux-kanban"
+import {
+  startCardTimer,
+  stopCardTimer,
+  getActiveTimersForCards,
+  type TimerState,
+} from "@/features/kanban/actions/clockwork-timer"
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
@@ -76,6 +82,17 @@ function sortCards(cards: UserKanbanCard[]): UserKanbanCard[] {
     if (bDate) return 1
     return 0
   })
+}
+
+// ─── Timer helpers ────────────────────────────────────────────────────────────
+
+/** Formata segundos totais como HH:MM:SS. */
+function formatElapsed(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  return [h, m, sec].map((v) => String(v).padStart(2, "0")).join(":")
 }
 
 // ─── Done modal ───────────────────────────────────────────────────────────────
@@ -407,10 +424,14 @@ function UserKanbanCardView({
   card,
   index,
   onDone,
+  timerState,
+  nowMs,
 }: {
   card: UserKanbanCard
   index: number
   onDone: (card: UserKanbanCard) => void
+  timerState: TimerState | null
+  nowMs: number
 }) {
   const isCanceled = card.column === "canceled"
   const isDone = card.column === "done"
@@ -419,6 +440,12 @@ function UserKanbanCardView({
   const isTarefa = card.cardType === "ux_tarefa"
   const priorityLabel = card.priority
     ? (PRIORITY_LABEL_PT[card.priority.toLowerCase()] ?? card.priority)
+    : null
+
+  // Timer display — only for in_progress cards with an active session
+  const showTimer = card.column === "in_progress" && timerState?.startedAt != null
+  const timerSeconds = showTimer
+    ? timerState!.accumulatedSeconds + Math.floor((nowMs - timerState!.startedAt!) / 1000)
     : null
 
   return (
@@ -483,6 +510,16 @@ function UserKanbanCardView({
             </div>
           )}
 
+          {/* Timer */}
+          {showTimer && timerSeconds != null && (
+            <div className="flex items-center gap-1 rounded-md border border-blue-300/50 bg-blue-50 px-2 py-0.5 dark:border-blue-700/40 dark:bg-blue-900/20">
+              <Clock className="size-3 shrink-0 animate-pulse text-blue-500" aria-hidden />
+              <span className="font-mono text-xs font-semibold tabular-nums text-blue-600 dark:text-blue-400">
+                {formatElapsed(timerSeconds)}
+              </span>
+            </div>
+          )}
+
           {/* Footer: reporter (left) + badge (right), same line */}
           {!isCanceled && (
             <div className="flex items-center justify-between gap-2">
@@ -514,11 +551,15 @@ function KanbanColumnView({
   cards,
   onDone,
   onHide,
+  timerStates,
+  nowMs,
 }: {
   col: typeof COLUMNS[number]
   cards: UserKanbanCard[]
   onDone: (card: UserKanbanCard) => void
   onHide?: () => void
+  timerStates: Record<string, TimerState>
+  nowMs: number
 }) {
   const [search, setSearch] = React.useState("")
   const displayed = search.trim()
@@ -582,7 +623,14 @@ function KanbanColumnView({
               <p className="py-4 text-center text-xs italic text-text-disabled">Vazio</p>
             )}
             {displayed.map((card, index) => (
-              <UserKanbanCardView key={card.key} card={card} index={index} onDone={onDone} />
+              <UserKanbanCardView
+                key={card.key}
+                card={card}
+                index={index}
+                onDone={onDone}
+                timerState={timerStates[card.key] ?? null}
+                nowMs={nowMs}
+              />
             ))}
             {provided.placeholder}
           </div>
@@ -609,6 +657,34 @@ export function UserKanbanClient({
   const [pendingDone, setPendingDone] = React.useState<UserKanbanCard | null>(null)
   const [pendingInApproval, setPendingInApproval] = React.useState<UserKanbanCard | null>(null)
   const [hiddenColumns, setHiddenColumns] = React.useState<Set<UserKanbanColumn>>(new Set())
+
+  // ── Timer state ──────────────────────────────────────────────────────────────
+  const [timerStates, setTimerStates] = React.useState<Record<string, TimerState>>({})
+  const [nowMs, setNowMs] = React.useState(() => Date.now())
+
+  // Tick a cada segundo para atualizar o display dos timers
+  React.useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Carrega timers existentes para cards em "Em andamento" após o mount
+  React.useEffect(() => {
+    if (!data.ok) return
+    const inProgressKeys = data.cards
+      .filter((c) => c.column === "in_progress")
+      .map((c) => c.key)
+    if (inProgressKeys.length === 0) return
+
+    getActiveTimersForCards(inProgressKeys)
+      .then((states) => {
+        const map: Record<string, TimerState> = {}
+        for (const s of states) map[s.issueKey] = s
+        setTimerStates(map)
+      })
+      .catch(() => null) // não critica se falhar; timer só não aparece
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   // Load hidden columns from localStorage after mount (SSR-safe).
   // Sentinel: if no entry exists for this user, default to hiding Pausado/Aguardando/Cancelado.
@@ -706,12 +782,36 @@ export function UserKanbanClient({
       c.map((x) => x.key === issueKey ? { ...x, column: dstCol } : x)
     )
 
+    // ── Timer: iniciar/parar conforme origem e destino ──────────────────────
+    if (dstCol === "in_progress") {
+      // Entrando em "Em andamento": iniciar timer
+      startCardTimer(issueKey, card.summary)
+        .then((res) => {
+          if (res.ok && res.timer) {
+            setTimerStates((prev) => ({ ...prev, [issueKey]: res.timer! }))
+          }
+        })
+        .catch(() => null)
+    } else if (srcCol === "in_progress") {
+      // Saindo de "Em andamento": parar timer
+      stopCardTimer(issueKey).catch(() => null)
+      setTimerStates((prev) => {
+        const next = { ...prev }
+        delete next[issueKey]
+        return next
+      })
+    }
+
     dragLocked = true
     moveCardInUserKanban(issueKey, card.cardType, dstCol)
       .then((res) => {
         if (!res.ok) {
           toast.error(res.error ?? "Erro ao mover card.")
           setCards(prev)
+          // Reverter timer na UI se o movimento falhou
+          if (dstCol === "in_progress") {
+            setTimerStates((p) => { const n = { ...p }; delete n[issueKey]; return n })
+          }
         }
       })
       .catch(() => setCards(prev))
@@ -724,6 +824,12 @@ export function UserKanbanClient({
   async function handleDoneConfirm(mention: MentionUser | null) {
     if (!pendingDone) return
     const card = pendingDone
+
+    // Para o timer se o card estava em "Em andamento" antes do modal abrir
+    if (timerStates[card.key]) {
+      stopCardTimer(card.key).catch(() => null)
+      setTimerStates((p) => { const n = { ...p }; delete n[card.key]; return n })
+    }
 
     try {
       const res = await completeCardDone(
@@ -751,6 +857,12 @@ export function UserKanbanClient({
     if (!pendingInApproval) return
     const card = pendingInApproval
     const prev = cards
+
+    // Para o timer se o card estava em "Em andamento"
+    if (timerStates[card.key]) {
+      stopCardTimer(card.key).catch(() => null)
+      setTimerStates((p) => { const n = { ...p }; delete n[card.key]; return n })
+    }
 
     // Optimistic update
     setCards((c) => c.map((x) => x.key === card.key ? { ...x, column: "in_approval" as const } : x))
@@ -844,6 +956,8 @@ export function UserKanbanClient({
                       cards={cardsByColumn[col.id]}
                       onDone={setPendingDone}
                       onHide={HIDEABLE_COLS.has(col.id) ? () => toggleColumn(col.id) : undefined}
+                      timerStates={timerStates}
+                      nowMs={nowMs}
                     />
                   ))}
                 </div>

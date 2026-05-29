@@ -112,6 +112,59 @@ export async function fetchClockworkWorklogsForEmail(opts: {
   return out
 }
 
+/**
+ * Cria um worklog no Clockwork Pro via POST /v1/worklogs.
+ * Retorna { ok: true } em caso de sucesso ou { ok: false, error } em caso de falha.
+ * Não lança exceção — use try/catch apenas se quiser inspecionar o erro.
+ *
+ * @param opts.authorEmail  E-mail do autor (atribuição no Clockwork). Opcional.
+ */
+export async function createClockworkWorklog(opts: {
+  token: string
+  issueKey: string
+  /** ISO 8601 UTC — início da sessão de trabalho. */
+  startedAt: string
+  timeSpentSeconds: number
+  comment?: string | null
+  authorEmail?: string | null
+}): Promise<{ ok: boolean; error?: string }> {
+  const { token, issueKey, startedAt, timeSpentSeconds, comment, authorEmail } = opts
+
+  const body: Record<string, unknown> = {
+    issue: { key: issueKey },
+    started: startedAt,
+    timeSpentSeconds: Math.round(timeSpentSeconds),
+  }
+  if (comment?.trim()) body.comment = comment.trim()
+  if (authorEmail?.trim()) body.author = { emailAddress: authorEmail.trim() }
+
+  try {
+    const res = await fetch(`${CW_HOST}/v1/worklogs`, {
+      method: "POST",
+      headers: {
+        Authorization: `Token ${token.trim()}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => "")
+      console.error(
+        `[clockwork] createClockworkWorklog: status ${res.status} para ${issueKey} —`,
+        text.slice(0, 300),
+      )
+      return { ok: false, error: `Clockwork HTTP ${res.status}` }
+    }
+    console.info(`[clockwork] createClockworkWorklog: worklog criado para ${issueKey} (${timeSpentSeconds}s)`)
+    return { ok: true }
+  } catch (err) {
+    console.error("[clockwork] createClockworkWorklog exception:", err, "para", issueKey)
+    return { ok: false, error: String(err) }
+  }
+}
+
 export function mergeJiraAndClockworkWorklogs(
   jira: JiraLancamentoEntry[],
   clockwork: JiraLancamentoEntry[],
