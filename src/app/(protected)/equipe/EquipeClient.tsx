@@ -25,6 +25,7 @@ interface Props {
   canFilterByProfile: boolean
   canAccessEquipeLancamentos: boolean
   canAccessEquipeClockwork: boolean
+  canViewOthersClockwork: boolean
   currentUserId: string
   isMgr: boolean
   initialTab?: TabId
@@ -76,6 +77,7 @@ export default function EquipeClient({
   canFilterByProfile,
   canAccessEquipeLancamentos,
   canAccessEquipeClockwork,
+  canViewOthersClockwork,
   currentUserId,
   isMgr,
   initialTab = "chapters",
@@ -226,6 +228,8 @@ const aniversariantesPorMes = useMemo(() => {
           <EquipeClockworkSection
             userAccessProfile={userAccessProfile}
             canFilterByProfile={canFilterByProfile}
+            canViewOthersClockwork={canViewOthersClockwork}
+            currentUserId={currentUserId}
           />
         </Suspense>
       )}

@@ -31,6 +31,8 @@ export default async function EquipePage({
   const canFilterByProfile = isMgr
   const canAccessEquipeLancamentos = can(role, "equipe.lancamentos")
   const canAccessEquipeClockwork = can(role, "equipe.clockwork")
+  // Apenas Administrador:MGR pode visualizar worklogs de outros membros na aba Clockwork
+  const canViewOthersClockwork = isMgr
 
   // Protege acesso direto via URL para roles sem permissão
   if (tab === "lancamentos" && !canAccessEquipeLancamentos) {
@@ -51,6 +53,7 @@ export default async function EquipePage({
       canFilterByProfile={serializeRscProps(canFilterByProfile)}
       canAccessEquipeLancamentos={serializeRscProps(canAccessEquipeLancamentos)}
       canAccessEquipeClockwork={serializeRscProps(canAccessEquipeClockwork)}
+      canViewOthersClockwork={serializeRscProps(canViewOthersClockwork)}
       currentUserId={serializeRscProps(currentUserId)}
       isMgr={serializeRscProps(isMgr)}
       initialTab={initialTab}

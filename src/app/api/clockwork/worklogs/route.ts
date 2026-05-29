@@ -1,13 +1,13 @@
 import { auth } from "@/core/auth"
 import { validateOrigin } from "@/core/security"
-import { buildRole, can, manageableProfiles } from "@/core/rbac/policy"
+import { buildRole, can } from "@/core/rbac/policy"
 import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
 import { fetchClockworkWorklogsForEmail } from "@/features/qa/lib/clockwork-worklogs-fetch"
 import {
   getMgrJiraCredentials,
   resolveJiraCredentialsForRequest,
 } from "@/features/qa/lib/jira-credentials-db"
-import { getActiveQaUsers, resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
+import { resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
 import { z } from "zod"
 import type { NextRequest } from "next/server"
 
@@ -61,23 +61,9 @@ export async function GET(req: NextRequest) {
   const periodParam = url.searchParams.get("period")
   const period: Period = periodParam === "previous" ? "previous" : "current"
 
-  // Autorização: admin pode ver membros dos seus perfis gerenciáveis
-  const canViewOthers = can(role, "individual.viewOthers")
-  if (requestedUserId !== session.user.id) {
-    if (!canViewOthers && !can(role, "equipe.clockwork")) {
-      return Response.json({ error: "Forbidden" }, { status: 403 })
-    }
-    if (!canViewOthers) {
-      const activeUsers = await getActiveQaUsers()
-      const target = activeUsers.find((u) => u.id === requestedUserId)
-      if (!target) {
-        return Response.json({ error: "Utilizador não encontrado." }, { status: 403 })
-      }
-      const allowed = manageableProfiles(role)
-      if (!target.accessProfile || !allowed.includes(target.accessProfile as "QA" | "UX" | "TW" | "MGR")) {
-        return Response.json({ error: "Forbidden" }, { status: 403 })
-      }
-    }
+  // Apenas Administrador:MGR (individual.viewOthers) pode consultar worklogs de outros utilizadores.
+  if (requestedUserId !== session.user.id && !can(role, "individual.viewOthers")) {
+    return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const targetEmail = await resolveEmailForQaUserId(requestedUserId)
@@ -100,12 +86,6 @@ export async function GET(req: NextRequest) {
       toIso,
       timeZoneId: "America/Sao_Paulo",
     })
-
-    // DEBUG — log raw IDs so we can verify the correct field for DELETE
-    // TODO: remove after confirming correct ID format
-    if (worklogs.length > 0) {
-      console.log("[api/clockwork/worklogs GET] sample worklog id:", worklogs[0].id, "| raw prefix check:", worklogs[0].id.startsWith("cw-") ? "has cw- prefix" : "no cw- prefix")
-    }
 
     // Normalise: strip the "cw-" prefix from IDs so the client has the raw Clockwork ID
     const items = worklogs.map((w) => ({

@@ -41,6 +41,10 @@ type PeriodId = "current" | "previous"
 interface Props {
   userAccessProfile: AccessProfileId
   canFilterByProfile: boolean
+  /** true apenas para Administrador:MGR — pode ver worklogs de qualquer membro. */
+  canViewOthersClockwork: boolean
+  /** ID do utilizador autenticado — usado como único membro quando canViewOthersClockwork=false. */
+  currentUserId: string
 }
 
 interface CwWorklog {
@@ -192,7 +196,7 @@ function buildInitialEditState(worklogs: CwWorklog[]): Map<string, EditState> {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }: Props) {
+export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, canViewOthersClockwork, currentUserId }: Props) {
   const router       = useRouter()
   const pathname     = usePathname()
   const searchParams = useSearchParams()
@@ -267,8 +271,13 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
     })
   }
 
-  // Load team members
+  // Load team members — only MGR can view others; everyone else sees only their own data
   React.useEffect(() => {
+    if (!canViewOthersClockwork) {
+      setMembrosLoading(false)
+      setSelectedUserId(currentUserId)
+      return
+    }
     let cancelled = false
     setMembrosLoading(true)
     setSelectedUserId(null)
@@ -285,7 +294,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
       }
     })
     return () => { cancelled = true }
-  }, [profileFilter, canFilterByProfile, userAccessProfile])
+  }, [profileFilter, canFilterByProfile, userAccessProfile, canViewOthersClockwork, currentUserId])
 
   // Load worklogs when user or period changes
   React.useEffect(() => {
@@ -435,9 +444,9 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
       <div className="flex flex-col gap-4">
         {/* Controls bar */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Avatar strip */}
+          {/* Avatar strip — only visible for MGR who can view others */}
           <div className="min-w-0 flex-1">
-            {!membrosLoading && membros.length > 0 && (
+            {canViewOthersClockwork && !membrosLoading && membros.length > 0 && (
               <TooltipProvider delay={0} closeDelay={0}>
                 <div
                   className="flex w-full flex-wrap items-center justify-start gap-y-2 pl-2"
@@ -538,7 +547,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
         {/* Content */}
         {membrosLoading ? (
           <SectionSpinner minHeight="min-h-[20rem]" />
-        ) : membros.length === 0 ? (
+        ) : canViewOthersClockwork && membros.length === 0 ? (
           <EmptyState message="Nenhum membro encontrado neste perfil." />
         ) : worklogsLoading ? (
           <SectionSpinner minHeight="min-h-[20rem]" />
