@@ -54,46 +54,27 @@ export default async function ConfiguracoesPage() {
   const showClockwork = can(role, "config.clockwork")
   const showMeuCadastro = can(role, "config.meuCadastro") && !!userId
 
-  const hasIntegrations = visibleIntegrations.length > 0 || showJira || showClockwork
-
   return (
-    <div className="flex flex-col gap-8">
-      {/* Main cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {showMeuCadastro && (
-          <Link
-            href={`/configuracoes/usuarios/${userId}/editar`}
-            className="flex flex-col items-center gap-3 rounded-xl bg-surface-card p-8 shadow-card transition-colors hover:bg-neutral-grey-50"
-          >
-            <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
-              <UserCircle className="size-6" />
-            </div>
-            <span className="font-semibold text-text-primary">Meu Cadastro</span>
-          </Link>
-        )}
-        {visibleMain.map((c) => (
-          <CardLink key={c.href} href={c.href} icon={c.icon} label={c.label} />
-        ))}
-      </div>
-
-      {/* Integrações section */}
-      {hasIntegrations && (
-        <>
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border-default" />
-            <span className="text-xs font-medium text-text-secondary">Integrações</span>
-            <div className="h-px flex-1 bg-border-default" />
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {showMeuCadastro && (
+        <Link
+          href={`/configuracoes/usuarios/${userId}/editar`}
+          className="flex flex-col items-center gap-3 rounded-xl bg-surface-card p-8 shadow-card transition-colors hover:bg-neutral-grey-50"
+        >
+          <div className="flex size-12 items-center justify-center rounded-full bg-primary-100 text-brand-primary">
+            <UserCircle className="size-6" />
           </div>
-
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {showJira && <JiraConfigButton defaultEmail={currentEmail} />}
-            {showClockwork && <ClockworkConfigButton />}
-            {visibleIntegrations.map((c) => (
-              <CardLink key={c.href} href={c.href} icon={c.icon} label={c.label} />
-            ))}
-          </div>
-        </>
+          <span className="font-semibold text-text-primary">Meu Cadastro</span>
+        </Link>
       )}
+      {visibleMain.map((c) => (
+        <CardLink key={c.href} href={c.href} icon={c.icon} label={c.label} />
+      ))}
+      {showJira && <JiraConfigButton defaultEmail={currentEmail} />}
+      {showClockwork && <ClockworkConfigButton />}
+      {visibleIntegrations.map((c) => (
+        <CardLink key={c.href} href={c.href} icon={c.icon} label={c.label} />
+      ))}
     </div>
   )
 }
