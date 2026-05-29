@@ -19,6 +19,8 @@ interface ConfirmDialogProps {
   confirmIcon?: React.ReactNode
   /** Variante do botão de confirmação. Padrão: "destructive". */
   buttonVariant?: "default" | "destructive"
+  /** Desabilita o botão de confirmação (ex: enquanto uma operação async está em andamento). */
+  disabled?: boolean
   onConfirm: () => void
 }
 
@@ -30,6 +32,7 @@ export function ConfirmDialog({
   confirmLabel = "Confirmar",
   confirmIcon,
   buttonVariant = "destructive",
+  disabled = false,
   onConfirm,
 }: ConfirmDialogProps) {
   return (
@@ -44,6 +47,7 @@ export function ConfirmDialog({
           <Button
             variant={buttonVariant}
             onClick={onConfirm}
+            disabled={disabled}
             className="gap-1.5"
           >
             {confirmIcon}

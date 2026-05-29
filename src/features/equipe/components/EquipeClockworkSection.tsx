@@ -225,6 +225,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
   // Delete state
   const [deleteTarget, setDeleteTarget] = React.useState<CwWorklog | null>(null)
   const [deleting, setDeleting]         = React.useState(false)
+  const deletingRef                     = React.useRef(false) // guards against concurrent clicks
 
   // Derived
   const selectedMembro = React.useMemo(
@@ -378,29 +379,32 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
   // ── Delete handlers ────────────────────────────────────────────────────────────
 
   async function confirmDelete() {
-    if (!deleteTarget) return
+    if (!deleteTarget || deletingRef.current) return
+    deletingRef.current = true
     setDeleting(true)
+    const targetId = deleteTarget.id
     try {
       const res = await fetch("/api/clockwork/worklogs", {
         method: "DELETE",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ worklogId: deleteTarget.id }),
+        body: JSON.stringify({ worklogId: targetId }),
       })
       const json = (await res.json().catch(() => ({}))) as { error?: string }
       if (!res.ok) {
-        throw new Error(json.error ?? `Erro ${res.status}`)
+        throw new Error(json.error ?? `Erro HTTP ${res.status} ao remover worklog ${targetId}`)
       }
-      const removedId = deleteTarget.id
-      setWorklogs((prev) => prev.filter((w) => w.id !== removedId))
-      setEditMap((prev) => { const next = new Map(prev); next.delete(removedId); return next })
+      setWorklogs((prev) => prev.filter((w) => w.id !== targetId))
+      setEditMap((prev) => { const next = new Map(prev); next.delete(targetId); return next })
       setDeleteTarget(null)
       toast.success("Registro removido com sucesso.")
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erro ao remover."
-      toast.error(msg)
+      console.error("[EquipeClockworkSection] confirmDelete error:", msg)
+      toast.error(msg, { duration: 8000 })
       setDeleteTarget(null) // fecha o modal para que o usuário veja o toast
     } finally {
+      deletingRef.current = false
       setDeleting(false)
     }
   }
@@ -416,11 +420,15 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
       {/* Delete confirmation — reuses the shared ConfirmDialog */}
       <ConfirmDialog
         open={deleteTarget !== null}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        onOpenChange={(open) => { if (!open && !deletingRef.current) setDeleteTarget(null) }}
         title="Excluir registro?"
         description="Esta ação não pode ser desfeita."
-        confirmLabel="Excluir"
-        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
+        confirmLabel={deleting ? "Excluindo…" : "Excluir"}
+        confirmIcon={deleting
+          ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+          : <Trash2 className="size-4 shrink-0" aria-hidden />
+        }
+        disabled={deleting}
         onConfirm={() => void confirmDelete()}
       />
 
