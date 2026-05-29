@@ -777,15 +777,19 @@ export async function createUxTarefa(
   if (!creds) return { ok: false, error: "Credenciais Jira não configuradas." }
   const { base, credentials } = creds
 
-  const summary     = (formData.get("summary")     as string | null)?.trim()
-  const tag         = (formData.get("tag")          as string | null)?.trim()
-  const priority    = (formData.get("priority")     as string | null)?.trim()
-  const type        = (formData.get("type")         as string | null)?.trim()
-  const deadline    = (formData.get("deadline")     as string | null)?.trim()
-  const solicitante = (formData.get("solicitante")  as string | null)?.trim()
-  const description = (formData.get("description")  as string | null)?.trim()
+  const summary              = (formData.get("summary")              as string | null)?.trim()
+  const tag                  = (formData.get("tag")                  as string | null)?.trim()
+  const priority             = (formData.get("priority")             as string | null)?.trim()
+  const type                 = (formData.get("type")                 as string | null)?.trim()
+  const deadline             = (formData.get("deadline")             as string | null)?.trim()
+  const solicitante          = (formData.get("solicitante")          as string | null)?.trim()
+  const solicitanteAccountId = (formData.get("solicitanteAccountId") as string | null)?.trim()
+  const description          = (formData.get("description")          as string | null)?.trim()
 
-  if (!summary) return { ok: false, error: "O título é obrigatório." }
+  if (!summary)  return { ok: false, error: "O título é obrigatório." }
+  if (!tag)      return { ok: false, error: "A Tag é obrigatória." }
+  if (!type)     return { ok: false, error: "O Tipo é obrigatório." }
+  if (!priority) return { ok: false, error: "A Prioridade é obrigatória." }
 
   // Resolve all custom field IDs in parallel (results are cached after first call)
   const [tagFieldId, typeFieldId, solicitanteFieldId, deadlineFieldId] = await Promise.all([
@@ -802,12 +806,18 @@ export async function createUxTarefa(
     summary,
   }
 
-  if (priority)                          fields.priority            = { name: priority }
-  if (description)                       fields.description         = textToAdf(description)
-  if (tag         && tagFieldId)         fields[tagFieldId]         = { value: tag }
-  if (type        && typeFieldId)        fields[typeFieldId]        = { value: type }
-  if (deadline    && deadlineFieldId)    fields[deadlineFieldId]    = deadline
-  if (solicitante && solicitanteFieldId) fields[solicitanteFieldId] = solicitante
+  if (priority)    fields.priority    = { name: priority }
+  if (description) fields.description = textToAdf(description)
+  // Tag field is an array-of-select in Jira (matriz), must be wrapped in an array
+  if (tag      && tagFieldId)         fields[tagFieldId]         = [{ value: tag }]
+  if (type     && typeFieldId)        fields[typeFieldId]        = { value: type }
+  if (deadline && deadlineFieldId)    fields[deadlineFieldId]    = deadline
+  if (solicitante && solicitanteFieldId) {
+    // Prefer accountId for user-picker fields; fall back to display name for text fields
+    fields[solicitanteFieldId] = solicitanteAccountId
+      ? { accountId: solicitanteAccountId }
+      : solicitante
+  }
 
   // Create the Jira issue
   const createRes = await createJiraIssue(base, credentials, fields)

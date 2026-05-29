@@ -20,6 +20,7 @@ import {
   assignTarefaToMember,
   returnTarefaToBacklog,
   createUxTarefa,
+  searchJiraUsers,
 } from "@/features/kanban/actions/ux-kanban"
 import type { KanbanIssue, UxTarefa } from "@/features/kanban/kanban-constants"
 
@@ -340,6 +341,8 @@ const TAREFA_TYPE_OPTIONS = [
 
 // ─── Create Tarefa Modal ──────────────────────────────────────────────────────
 
+type MentionUser = { accountId: string; displayName: string; avatarUrl: string | null }
+
 function CreateTarefaModal({
   tags,
   onClose,
@@ -355,10 +358,58 @@ function CreateTarefaModal({
   const [type,        setType]        = React.useState("")
   const [deadline,    setDeadline]    = React.useState("")
   const [solicitante, setSolicitante] = React.useState("")
+  const [solicitanteAccountId, setSolicitanteAccountId] = React.useState<string | null>(null)
   const [description, setDescription] = React.useState("")
   const [files,       setFiles]       = React.useState<File[]>([])
   const [loading,     setLoading]     = React.useState(false)
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const [mentionUsers,   setMentionUsers]   = React.useState<MentionUser[]>([])
+  const [mentionOpen,    setMentionOpen]    = React.useState(false)
+  const [mentionLoading, setMentionLoading] = React.useState(false)
+  const mentionDebounce = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mentionRef      = React.useRef<HTMLDivElement>(null)
+  const fileInputRef    = React.useRef<HTMLInputElement>(null)
+
+  // Close mention dropdown on outside click
+  React.useEffect(() => {
+    if (!mentionOpen) return
+    function handle(e: MouseEvent) {
+      if (mentionRef.current && !mentionRef.current.contains(e.target as Node)) {
+        setMentionOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handle)
+    return () => document.removeEventListener("mousedown", handle)
+  }, [mentionOpen])
+
+  function handleSolicitanteChange(value: string) {
+    setSolicitante(value)
+    setSolicitanteAccountId(null)
+
+    const atIdx = value.lastIndexOf("@")
+    if (atIdx === -1) { setMentionOpen(false); return }
+
+    const query = value.slice(atIdx + 1).trim()
+    if (mentionDebounce.current) clearTimeout(mentionDebounce.current)
+    mentionDebounce.current = setTimeout(async () => {
+      setMentionLoading(true)
+      const res = await searchJiraUsers(query).catch(() => ({ ok: false as const }))
+      setMentionLoading(false)
+      if (res.ok && res.users && res.users.length > 0) {
+        setMentionUsers(res.users)
+        setMentionOpen(true)
+      } else {
+        setMentionOpen(false)
+      }
+    }, 300)
+  }
+
+  function selectMentionUser(user: MentionUser) {
+    setSolicitante(user.displayName)
+    setSolicitanteAccountId(user.accountId)
+    setMentionOpen(false)
+    setMentionUsers([])
+  }
 
   function addFiles(incoming: FileList | null) {
     if (!incoming) return
@@ -379,15 +430,19 @@ function CreateTarefaModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!summary.trim()) { toast.error("Informe o título da tarefa."); return }
+    if (!tag)            { toast.error("Selecione uma Tag."); return }
+    if (!type)           { toast.error("Selecione o Tipo."); return }
+    if (!priority)       { toast.error("Selecione a Prioridade."); return }
     setLoading(true)
 
     const fd = new FormData()
-    fd.append("summary",     summary.trim())
-    if (tag)         fd.append("tag",         tag)
-    if (priority)    fd.append("priority",    priority)
-    if (type)        fd.append("type",        type)
+    fd.append("summary",  summary.trim())
+    fd.append("tag",      tag)
+    fd.append("priority", priority)
+    fd.append("type",     type)
     if (deadline)    fd.append("deadline",    deadline)
     if (solicitante) fd.append("solicitante", solicitante.trim())
+    if (solicitanteAccountId) fd.append("solicitanteAccountId", solicitanteAccountId)
     if (description) fd.append("description", description.trim())
     files.forEach((f, i) => fd.append(`attachment_${i}`, f, f.name))
 
@@ -399,22 +454,20 @@ function CreateTarefaModal({
       return
     }
 
-    // Partial success: issue created but attachment upload failed
     if (res.error) toast.warning(res.error)
     else           toast.success(`Tarefa ${res.issueKey} criada com sucesso!`)
 
-    // Build a minimal UxTarefa optimistically so it appears in the Tarefas column
     const newTarefa: UxTarefa = {
-      key:                   res.issueKey!,
-      summary:               summary.trim(),
-      status:                "Open",
-      priority:              priority || null,
-      priorityIconUrl:       null,
-      reporterDisplayName:   null,
+      key:                    res.issueKey!,
+      summary:                summary.trim(),
+      status:                 "Open",
+      priority:               priority || null,
+      priorityIconUrl:        null,
+      reporterDisplayName:    null,
       solicitanteDisplayName: solicitante.trim() || null,
-      dueDate:               null,
-      deadline:              deadline || null,
-      tag:                   tag || null,
+      dueDate:                null,
+      deadline:               deadline || null,
+      tag:                    tag || null,
     }
 
     onCreated(newTarefa)
@@ -460,21 +513,28 @@ function CreateTarefaModal({
           {/* Tag + Prioridade */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Tag</label>
+              <label className="text-sm font-medium text-text-primary">
+                Tag <span className="text-destructive">*</span>
+              </label>
               <div className="relative">
                 <select
                   value={tag}
                   onChange={(e) => setTag(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-border-default bg-surface-input px-3 py-2 pr-7 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                  className={cn(
+                    "w-full appearance-none rounded-xl border bg-surface-input px-3 py-2 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20",
+                    tag ? "border-border-default text-text-primary" : "border-border-default text-text-disabled",
+                  )}
                 >
-                  <option value="">— sem tag —</option>
+                  <option value="">— selecione —</option>
                   {tags.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-secondary" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Prioridade</label>
+              <label className="text-sm font-medium text-text-primary">
+                Prioridade <span className="text-destructive">*</span>
+              </label>
               <div className="relative">
                 <select
                   value={priority}
@@ -493,12 +553,17 @@ function CreateTarefaModal({
           {/* Tipo + Deadline */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary">Tipo</label>
+              <label className="text-sm font-medium text-text-primary">
+                Tipo <span className="text-destructive">*</span>
+              </label>
               <div className="relative">
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-border-default bg-surface-input px-3 py-2 pr-7 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                  className={cn(
+                    "w-full appearance-none rounded-xl border bg-surface-input px-3 py-2 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20",
+                    type ? "border-border-default text-text-primary" : "border-border-default text-text-disabled",
+                  )}
                 >
                   <option value="">— selecione —</option>
                   {TAREFA_TYPE_OPTIONS.map((o) => (
@@ -519,16 +584,41 @@ function CreateTarefaModal({
             </div>
           </div>
 
-          {/* Solicitante */}
+          {/* Solicitante — @mention */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">Solicitante</label>
-            <input
-              type="text"
-              value={solicitante}
-              onChange={(e) => setSolicitante(e.target.value)}
-              placeholder="Nome do solicitante…"
-              className="w-full rounded-xl border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-            />
+            <div className="relative" ref={mentionRef}>
+              <input
+                type="text"
+                value={solicitante}
+                onChange={(e) => handleSolicitanteChange(e.target.value)}
+                placeholder="Digite @ para buscar um usuário…"
+                autoComplete="off"
+                className="w-full rounded-xl border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              />
+              {mentionLoading && (
+                <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-text-secondary" />
+              )}
+              {mentionOpen && mentionUsers.length > 0 && (
+                <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-lg">
+                  {mentionUsers.map((u) => (
+                    <li key={u.accountId}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); selectMentionUser(u) }}
+                        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-sm text-text-primary hover:bg-neutral-grey-50"
+                      >
+                        {u.avatarUrl
+                          ? <img src={u.avatarUrl} alt="" className="size-6 shrink-0 rounded-full" />
+                          : <User className="size-6 shrink-0 rounded-full text-text-secondary" />
+                        }
+                        <span className="truncate">{u.displayName}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
 
           {/* Descrição */}
@@ -552,12 +642,13 @@ function CreateTarefaModal({
               className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border-default py-3 text-sm text-text-secondary transition-colors hover:border-brand-primary hover:text-brand-primary"
             >
               <Plus className="size-4" />
-              Adicionar arquivos
+              Adicionar imagens ou PDFs
             </button>
             <input
               ref={fileInputRef}
               type="file"
               multiple
+              accept="image/*,.pdf"
               className="hidden"
               onChange={(e) => { addFiles(e.target.files); e.target.value = "" }}
             />
