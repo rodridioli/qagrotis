@@ -98,6 +98,12 @@ export async function fetchClockworkWorklogsForEmail(opts: {
     }
     if (!Array.isArray(data)) break
 
+    // DEBUG — log first raw row to confirm field names (remove after verifying)
+    if (out.length === 0 && data.length > 0) {
+      console.log("[clockwork-worklogs-fetch] first raw row keys:", Object.keys(data[0] as object))
+      console.log("[clockwork-worklogs-fetch] first raw row:", JSON.stringify(data[0]).slice(0, 500))
+    }
+
     for (const row of data) {
       if (out.length >= MAX_MERGED_FROM_CLOCKWORK) break
       const mapped = mapClockworkRow(row)

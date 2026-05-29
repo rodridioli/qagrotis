@@ -97,6 +97,12 @@ export async function GET(req: NextRequest) {
       timeZoneId: "America/Sao_Paulo",
     })
 
+    // DEBUG — log raw IDs so we can verify the correct field for DELETE
+    // TODO: remove after confirming correct ID format
+    if (worklogs.length > 0) {
+      console.log("[api/clockwork/worklogs GET] sample worklog id:", worklogs[0].id, "| raw prefix check:", worklogs[0].id.startsWith("cw-") ? "has cw- prefix" : "no cw- prefix")
+    }
+
     // Normalise: strip the "cw-" prefix from IDs so the client has the raw Clockwork ID
     const items = worklogs.map((w) => ({
       id: w.id.startsWith("cw-") ? w.id.slice(3) : w.id,
