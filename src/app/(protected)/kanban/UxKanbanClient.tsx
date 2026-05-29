@@ -525,7 +525,7 @@ function CreateTarefaModal({
                     tag ? "border-border-default text-text-primary" : "border-border-default text-text-disabled",
                   )}
                 >
-                  <option value="">— selecione —</option>
+                  <option value="">Selecione</option>
                   {tags.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-secondary" />
@@ -565,7 +565,7 @@ function CreateTarefaModal({
                     type ? "border-border-default text-text-primary" : "border-border-default text-text-disabled",
                   )}
                 >
-                  <option value="">— selecione —</option>
+                  <option value="">Selecione</option>
                   {TAREFA_TYPE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
@@ -635,30 +635,28 @@ function CreateTarefaModal({
 
           {/* Anexos */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-text-primary">Anexos</label>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border-default py-3 text-sm text-text-secondary transition-colors hover:border-brand-primary hover:text-brand-primary"
-            >
-              <Plus className="size-4" />
-              Adicionar imagens ou PDFs
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*,.pdf"
-              className="hidden"
-              onChange={(e) => { addFiles(e.target.files); e.target.value = "" }}
-            />
+            <label className="text-sm font-medium text-text-primary">
+              Anexos
+              {files.length > 0 && (
+                <span className="ml-1.5 text-xs font-normal text-text-secondary">
+                  ({files.length} {files.length === 1 ? "arquivo" : "arquivos"})
+                </span>
+              )}
+            </label>
+
+            {/* Lista de arquivos selecionados */}
             {files.length > 0 && (
               <ul className="space-y-1.5">
                 {files.map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-input px-3 py-1.5">
+                  <li key={`${f.name}-${f.size}`} className="flex items-center gap-2 rounded-xl border border-border-default bg-surface-input px-3 py-2">
+                    <span className="shrink-0 text-xs font-medium text-text-secondary uppercase">
+                      {f.name.split(".").pop()?.slice(0, 4) ?? "?"}
+                    </span>
                     <span className="flex-1 truncate text-xs text-text-primary">{f.name}</span>
                     <span className="shrink-0 text-xs text-text-secondary">
-                      {(f.size / 1024).toFixed(0)} KB
+                      {f.size < 1024 * 1024
+                        ? `${(f.size / 1024).toFixed(0)} KB`
+                        : `${(f.size / 1024 / 1024).toFixed(1)} MB`}
                     </span>
                     <button
                       type="button"
@@ -672,6 +670,24 @@ function CreateTarefaModal({
                 ))}
               </ul>
             )}
+
+            {/* Botão de adicionar */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border-default py-3 text-sm text-text-secondary transition-colors hover:border-brand-primary hover:text-brand-primary"
+            >
+              <Plus className="size-4" />
+              {files.length > 0 ? "Adicionar mais arquivos" : "Adicionar imagens ou PDFs"}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,.pdf"
+              className="hidden"
+              onChange={(e) => { addFiles(e.target.files); e.target.value = "" }}
+            />
           </div>
 
           {/* Footer */}
