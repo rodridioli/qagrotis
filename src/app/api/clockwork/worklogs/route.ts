@@ -149,30 +149,39 @@ export async function DELETE(req: NextRequest) {
     return Response.json({ error: "CLOCKWORK_NOT_CONFIGURED" }, { status: 400 })
   }
 
+  const cwUrl = `${CW_HOST}/v1/worklogs/${encodeURIComponent(body.worklogId)}`
+
   try {
-    const res = await fetch(`${CW_HOST}/v1/worklogs/${body.worklogId}`, {
+    const res = await fetch(cwUrl, {
       method: "DELETE",
-      headers: { Authorization: `Token ${token.trim()}` },
+      headers: {
+        Authorization:  `Token ${token.trim()}`,
+        Accept:         "application/json",
+      },
       signal: AbortSignal.timeout(20_000),
     })
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "")
-      if (process.env.NODE_ENV !== "production") {
-        console.error("[api/clockwork/worklogs DELETE]", res.status, text.slice(0, 400))
-      }
-      return Response.json(
-        { error: `Clockwork retornou erro ${res.status}.` },
-        { status: res.status >= 400 && res.status < 500 ? 422 : 502 },
-      )
+    // 204 No Content is a valid success response for DELETE
+    if (res.ok) {
+      return Response.json({ ok: true })
     }
 
-    return Response.json({ ok: true })
+    const text = await res.text().catch(() => "")
+    // Always log so Vercel runtime logs capture it in production
+    console.error("[api/clockwork/worklogs DELETE]", {
+      worklogId: body.worklogId,
+      cwUrl,
+      cwStatus: res.status,
+      cwBody: text.slice(0, 400),
+    })
+
+    return Response.json(
+      { error: `Clockwork retornou HTTP ${res.status}. Detalhes: ${text.slice(0, 200) || "(sem corpo)"}` },
+      { status: res.status >= 400 && res.status < 500 ? 422 : 502 },
+    )
   } catch (e) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error("[api/clockwork/worklogs DELETE]", e)
-    }
-    return Response.json({ error: "Erro ao remover worklog no Clockwork." }, { status: 500 })
+    console.error("[api/clockwork/worklogs DELETE] network error", e)
+    return Response.json({ error: "Erro de rede ao remover worklog no Clockwork." }, { status: 500 })
   }
 }
 

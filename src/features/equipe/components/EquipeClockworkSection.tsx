@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { toast } from "sonner"
 import { ChevronDown, ChevronUp, Loader2, MoreVertical, Trash2 } from "lucide-react"
 import {
   Select,
@@ -386,16 +387,19 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ worklogId: deleteTarget.id }),
       })
+      const json = (await res.json().catch(() => ({}))) as { error?: string }
       if (!res.ok) {
-        const json = (await res.json().catch(() => ({}))) as { error?: string }
         throw new Error(json.error ?? `Erro ${res.status}`)
       }
       const removedId = deleteTarget.id
       setWorklogs((prev) => prev.filter((w) => w.id !== removedId))
       setEditMap((prev) => { const next = new Map(prev); next.delete(removedId); return next })
       setDeleteTarget(null)
-    } catch {
-      // ConfirmDialog stays open; user can retry or cancel
+      toast.success("Registro removido com sucesso.")
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erro ao remover."
+      toast.error(msg)
+      setDeleteTarget(null) // fecha o modal para que o usuário veja o toast
     } finally {
       setDeleting(false)
     }
