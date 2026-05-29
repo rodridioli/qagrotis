@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { ChevronDown, ChevronUp, Loader2, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronUp, Loader2, MoreVertical, Trash2 } from "lucide-react"
 import {
   Select,
   SelectItem,
@@ -16,6 +16,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -182,84 +189,6 @@ function buildInitialEditState(worklogs: CwWorklog[]): Map<string, EditState> {
   return m
 }
 
-// ── Delete confirmation modal ─────────────────────────────────────────────────
-
-function DeleteConfirmModal({
-  worklog,
-  deleting,
-  deleteError,
-  onCancel,
-  onConfirm,
-}: {
-  worklog: CwWorklog
-  deleting: boolean
-  deleteError: string | null
-  onCancel: () => void
-  onConfirm: () => void
-}) {
-  // Close on Escape
-  React.useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !deleting) onCancel()
-    }
-    document.addEventListener("keydown", onKey)
-    return () => document.removeEventListener("keydown", onKey)
-  }, [deleting, onCancel])
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
-      onClick={(e) => { if (e.target === e.currentTarget && !deleting) onCancel() }}
-    >
-      <div className="w-full max-w-sm rounded-2xl bg-surface-card p-6 shadow-2xl">
-        <div className="flex flex-col gap-5">
-          {/* Icon + text */}
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-              <Trash2 className="size-5 text-destructive" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-text-primary">Remover registro</h3>
-              <p className="mt-1 text-sm text-text-secondary">
-                Tem certeza que deseja remover o lançamento de{" "}
-                <span className="font-medium text-text-primary">{worklog.issueKey}</span>
-                {worklog.comment ? (
-                  <> (<span className="italic">{worklog.comment.slice(0, 60)}{worklog.comment.length > 60 ? "…" : ""}</span>)</>
-                ) : null}
-                ? Esta ação é irreversível no Clockwork.
-              </p>
-              {deleteError && (
-                <p className="mt-2 text-xs text-destructive">{deleteError}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={deleting}
-              className="cursor-pointer rounded-xl border border-border-default bg-surface-card px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-neutral-grey-50 disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={deleting}
-              className="flex cursor-pointer items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-50"
-            >
-              {deleting && <Loader2 className="size-4 animate-spin" />}
-              {deleting ? "Removendo…" : "Remover"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }: Props) {
@@ -295,7 +224,6 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
   // Delete state
   const [deleteTarget, setDeleteTarget] = React.useState<CwWorklog | null>(null)
   const [deleting, setDeleting]         = React.useState(false)
-  const [deleteError, setDeleteError]   = React.useState<string | null>(null)
 
   // Derived
   const selectedMembro = React.useMemo(
@@ -451,7 +379,6 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
   async function confirmDelete() {
     if (!deleteTarget) return
     setDeleting(true)
-    setDeleteError(null)
     try {
       const res = await fetch("/api/clockwork/worklogs", {
         method: "DELETE",
@@ -467,8 +394,8 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
       setWorklogs((prev) => prev.filter((w) => w.id !== removedId))
       setEditMap((prev) => { const next = new Map(prev); next.delete(removedId); return next })
       setDeleteTarget(null)
-    } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : "Erro ao remover.")
+    } catch {
+      // ConfirmDialog stays open; user can retry or cancel
     } finally {
       setDeleting(false)
     }
@@ -482,16 +409,16 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
 
   return (
     <>
-      {/* Delete confirmation modal */}
-      {deleteTarget && (
-        <DeleteConfirmModal
-          worklog={deleteTarget}
-          deleting={deleting}
-          deleteError={deleteError}
-          onCancel={() => { if (!deleting) { setDeleteTarget(null); setDeleteError(null) } }}
-          onConfirm={confirmDelete}
-        />
-      )}
+      {/* Delete confirmation — reuses the shared ConfirmDialog */}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="Excluir registro?"
+        description="Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
+        onConfirm={() => void confirmDelete()}
+      />
 
       <div className="flex flex-col gap-4">
         {/* Controls bar */}
@@ -620,7 +547,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
                 onToggle={() => toggleDay(day.dateKey)}
                 onFieldChange={(id, field, value) => updateEdit(id, { [field]: value, saveError: null })}
                 onBlurSave={(worklog, state) => saveWorklog(worklog, state)}
-                onDeleteClick={(worklog) => { setDeleteTarget(worklog); setDeleteError(null) }}
+                onDeleteClick={(worklog) => setDeleteTarget(worklog)}
               />
             ))}
           </div>
@@ -667,14 +594,14 @@ export function DayGroup({ day, editMap, collapsed, onToggle, onFieldChange, onB
       {/* Table — hidden when collapsed */}
       {!collapsed && (
         <div className="overflow-x-auto">
-          <table className="qagrotis-table-row-hover w-full min-w-[720px] table-fixed text-sm">
+          <table className="qagrotis-table-row-hover w-full min-w-[780px] table-fixed text-sm">
             <colgroup>
-              <col style={{ width: "7rem"   }} />
+              <col style={{ width: "9rem"   }} />
               <col />
-              <col style={{ width: "7rem"   }} />
-              <col style={{ width: "7rem"   }} />
-              <col style={{ width: "5.5rem" }} />
-              <col style={{ width: "2.5rem" }} />
+              <col style={{ width: "8.5rem" }} />
+              <col style={{ width: "8.5rem" }} />
+              <col style={{ width: "6rem"   }} />
+              <col style={{ width: "3rem"   }} />
             </colgroup>
             <thead>
               <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -748,9 +675,16 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
   return (
     <>
       <tr className="group border-b border-border-default last:border-0 transition-colors">
-        {/* Jira key */}
+        {/* Jira key — link opens in a new tab */}
         <td className="px-4 py-3">
-          <span className="text-sm font-medium text-brand-primary">{worklog.issueKey}</span>
+          <a
+            href={`https://agrotis.atlassian.net/browse/${worklog.issueKey}`}
+            target="_blank"
+            rel="noreferrer"
+            className="whitespace-nowrap text-sm font-medium text-brand-primary hover:underline"
+          >
+            {worklog.issueKey}
+          </a>
         </td>
 
         {/* Description (editable) */}
@@ -810,17 +744,28 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
           )}
         </td>
 
-        {/* Delete action */}
+        {/* Row actions — MoreVertical dropdown */}
         <td className="py-3 pr-3 text-right">
-          <button
-            type="button"
-            disabled={state.saving}
-            onClick={() => onDeleteClick(worklog)}
-            aria-label={`Remover lançamento ${worklog.issueKey}`}
-            className="cursor-pointer rounded-md p-1.5 text-text-secondary opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:pointer-events-none disabled:opacity-30"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label="Mais ações"
+                  className="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary opacity-0 transition-all hover:bg-neutral-grey-100 hover:text-text-primary group-hover:opacity-100 disabled:pointer-events-none disabled:opacity-30"
+                  disabled={state.saving}
+                />
+              }
+            >
+              <MoreVertical className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="bottom">
+              <DropdownMenuItem variant="destructive" onClick={() => onDeleteClick(worklog)}>
+                <Trash2 className="size-4" />
+                Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </td>
       </tr>
 
