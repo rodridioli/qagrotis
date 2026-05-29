@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     return new Response("issueKey inválido.", { status: 400 })
   }
 
-  const resolved = await resolveJiraCredentialsForRequest(session.user.id)
+  const resolved = await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
   if (!resolved) {
     return new Response("Campos obrigatórios ausentes. Configure a Integração Jira em Configurações.", { status: 400 })
   }

@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: "Não foi possível resolver o e-mail deste cadastro." }, { status: 400 })
   }
 
-  const resolved = await resolveJiraCredentialsForRequest(session.user.id)
+  const resolved = await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
   if (!resolved) {
     return Response.json(
       { error: "Configure a Integração Jira em Configurações para ver lançamentos." },

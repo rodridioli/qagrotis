@@ -141,7 +141,7 @@ export async function DELETE(req: NextRequest) {
   // O endpoint DELETE do Clockwork não está documentado; a remoção canónica
   // usa a Jira Cloud REST API: DELETE /rest/api/3/issue/{key}/worklog/{id}.
   if (body.issueKey) {
-    const jiraCreds = await resolveJiraCredentialsForRequest(session.user.id)
+    const jiraCreds = await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
       ?? await getMgrJiraCredentials()
 
     if (jiraCreds) {

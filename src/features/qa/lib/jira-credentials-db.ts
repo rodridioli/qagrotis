@@ -115,23 +115,38 @@ export async function getMgrJiraCredentials(): Promise<StoredJiraCredentials | n
  * Resolve credenciais a partir do BD do utilizador (com fallback para cookies legados).
  * NÃO confia no body/form da requisição: dados controlados pelo cliente são ignorados
  * para impedir SSRF lateral via `jiraUrl`.
- * Cada utilizador deve ter configurado as suas próprias credenciais — não há fallback global.
+ *
+ * @param sessionEmail - E-mail do utilizador autenticado (session.user.email). Quando
+ *   fornecido, o fallback para cookies legados só é usado se o e-mail no cookie coincidir,
+ *   impedindo vazamento de credenciais de outro utilizador armazenadas no mesmo browser.
  */
 export async function resolveJiraCredentialsForRequest(
   userId: string,
-  _partial?: { jiraUrl?: string; email?: string; apiToken?: string },
+  sessionEmail?: string,
 ): Promise<StoredJiraCredentials | null> {
-  void _partial
   const [stored, legacy] = await Promise.all([
     getUserJiraCredentials(userId),
     readLegacyJiraCookies(),
   ])
-  const jiraUrl = stored?.jiraUrl || legacy?.jiraUrl || ""
-  const jiraEmail = stored?.jiraEmail || legacy?.jiraEmail || ""
-  const apiToken = stored?.apiToken || legacy?.apiToken || ""
-  if (jiraUrl && jiraEmail && apiToken && isAllowedJiraUrl(jiraUrl)) {
-    return { jiraUrl, jiraEmail, apiToken }
+
+  // Credenciais do BD têm sempre prioridade — são escopadas ao userId.
+  if (stored?.jiraUrl && stored?.jiraEmail && stored?.apiToken && isAllowedJiraUrl(stored.jiraUrl)) {
+    return { jiraUrl: stored.jiraUrl, jiraEmail: stored.jiraEmail, apiToken: stored.apiToken }
   }
+
+  // Fallback de cookies legados (sistema pré-migração): só aceito quando o e-mail do
+  // cookie corresponde ao utilizador da sessão, evitando usar credenciais alheias no
+  // mesmo browser. Quando sessionEmail não é fornecido (callers internos sem sessão),
+  // mantém comportamento anterior para não quebrar fluxos existentes.
+  if (legacy?.jiraUrl && legacy?.jiraEmail && legacy?.apiToken && isAllowedJiraUrl(legacy.jiraUrl)) {
+    const cookieEmailNorm = legacy.jiraEmail.toLowerCase().trim()
+    const sessionEmailNorm = sessionEmail?.toLowerCase().trim() ?? ""
+    const emailMatches = !sessionEmailNorm || cookieEmailNorm === sessionEmailNorm
+    if (emailMatches) {
+      return { jiraUrl: legacy.jiraUrl, jiraEmail: legacy.jiraEmail, apiToken: legacy.apiToken }
+    }
+  }
+
   return null
 }
 

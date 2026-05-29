@@ -693,7 +693,7 @@ export async function getApprovalIssuesByTag(
   if (role !== "Administrador:MGR") return []
 
   try {
-    const creds = await resolveJiraCredentialsForRequest(session.user.id)
+    const creds = await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
     if (!creds) return []
     const base = creds.jiraUrl
     const credentials = Buffer.from(`${creds.jiraEmail}:${creds.apiToken}`).toString("base64")
@@ -722,7 +722,7 @@ export async function getUxMemberJiraIds(
   if (role !== "Administrador:MGR") return {}
 
   try {
-    const creds = await resolveJiraCredentialsForRequest(session.user.id)
+    const creds = await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
     if (!creds) return {}
     const base = creds.jiraUrl
     const credentials = Buffer.from(`${creds.jiraEmail}:${creds.apiToken}`).toString("base64")

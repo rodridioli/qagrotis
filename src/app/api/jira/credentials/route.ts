@@ -36,25 +36,21 @@ async function saveToLegacyCookies(jiraUrl: string, jiraEmail: string, jiraToken
 }
 
 // GET — credenciais do próprio usuário (sem expor o token)
+// Nota de segurança: NÃO usa cookies legados como fallback aqui — cookies de browser
+// não são escopados por userId e podem conter dados de outro utilizador no mesmo device.
+// O campo jiraEmail no formulário usa `defaultEmail` (session.user.email) quando vazio.
 export async function GET() {
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
 
   try {
     const db = await getUserJiraCredentials(session.user.id)
-    const leg = await readLegacyJiraCookies()
-    const jiraUrl = (db?.jiraUrl || leg?.jiraUrl || "").trim()
-    const jiraEmail = (db?.jiraEmail || leg?.jiraEmail || "").trim()
-    const hasToken = !!(db?.apiToken?.trim() || leg?.apiToken?.trim())
-
+    const jiraUrl = db?.jiraUrl?.trim() ?? ""
+    const jiraEmail = db?.jiraEmail?.trim() ?? ""
+    const hasToken = !!(db?.apiToken?.trim())
     const configured = !!(jiraUrl && jiraEmail && hasToken)
 
-    return Response.json({
-      jiraUrl,
-      jiraEmail,
-      hasToken,
-      configured,
-    })
+    return Response.json({ jiraUrl, jiraEmail, hasToken, configured })
   } catch (e) {
     if (process.env.NODE_ENV !== "production") console.error("[jira/credentials] GET:", e)
     return Response.json(
