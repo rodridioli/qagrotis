@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import { ChevronDown, ChevronUp, Loader2, Trash2 } from "lucide-react"
 import {
   Select,
   SelectItem,
@@ -182,6 +182,84 @@ function buildInitialEditState(worklogs: CwWorklog[]): Map<string, EditState> {
   return m
 }
 
+// ── Delete confirmation modal ─────────────────────────────────────────────────
+
+function DeleteConfirmModal({
+  worklog,
+  deleting,
+  deleteError,
+  onCancel,
+  onConfirm,
+}: {
+  worklog: CwWorklog
+  deleting: boolean
+  deleteError: string | null
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  // Close on Escape
+  React.useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !deleting) onCancel()
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [deleting, onCancel])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+      onClick={(e) => { if (e.target === e.currentTarget && !deleting) onCancel() }}
+    >
+      <div className="w-full max-w-sm rounded-2xl bg-surface-card p-6 shadow-2xl">
+        <div className="flex flex-col gap-5">
+          {/* Icon + text */}
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+              <Trash2 className="size-5 text-destructive" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-text-primary">Remover registro</h3>
+              <p className="mt-1 text-sm text-text-secondary">
+                Tem certeza que deseja remover o lançamento de{" "}
+                <span className="font-medium text-text-primary">{worklog.issueKey}</span>
+                {worklog.comment ? (
+                  <> (<span className="italic">{worklog.comment.slice(0, 60)}{worklog.comment.length > 60 ? "…" : ""}</span>)</>
+                ) : null}
+                ? Esta ação é irreversível no Clockwork.
+              </p>
+              {deleteError && (
+                <p className="mt-2 text-xs text-destructive">{deleteError}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={deleting}
+              className="cursor-pointer rounded-xl border border-border-default bg-surface-card px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-neutral-grey-50 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={deleting}
+              className="flex cursor-pointer items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-50"
+            >
+              {deleting && <Loader2 className="size-4 animate-spin" />}
+              {deleting ? "Removendo…" : "Remover"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }: Props) {
@@ -202,19 +280,32 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
     return v && VALID_PERIODS.has(v) ? (v as PeriodId) : "current"
   })
 
-  const [membros, setMembros]             = React.useState<EquipeMembroLancamentos[]>([])
+  const [membros, setMembros]               = React.useState<EquipeMembroLancamentos[]>([])
   const [membrosLoading, setMembrosLoading] = React.useState(true)
   const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
   const initialMembroRef = React.useRef(searchParams.get("cwm"))
 
-  const [worklogs, setWorklogs]           = React.useState<CwWorklog[]>([])
-  const [monthLabel, setMonthLabel]       = React.useState<string>("")
-  const [worklogsLoading, setWorklogsLoading] = React.useState(false)
-  const [worklogsError, setWorklogsError] = React.useState<string | null>(null)
-  const [editMap, setEditMap]             = React.useState<Map<string, EditState>>(new Map())
+  const [worklogs, setWorklogs]                 = React.useState<CwWorklog[]>([])
+  const [monthLabel, setMonthLabel]             = React.useState<string>("")
+  const [worklogsLoading, setWorklogsLoading]   = React.useState(false)
+  const [worklogsError, setWorklogsError]       = React.useState<string | null>(null)
+  const [editMap, setEditMap]                   = React.useState<Map<string, EditState>>(new Map())
+  const [collapsed, setCollapsed]               = React.useState<Set<string>>(new Set())
 
-  // Set of collapsed dateKeys (all expanded by default)
-  const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set())
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = React.useState<CwWorklog | null>(null)
+  const [deleting, setDeleting]         = React.useState(false)
+  const [deleteError, setDeleteError]   = React.useState<string | null>(null)
+
+  // Derived
+  const selectedMembro = React.useMemo(
+    () => membros.find((m) => m.userId === selectedUserId) ?? null,
+    [membros, selectedUserId],
+  )
+  const totalSecondsMonth = React.useMemo(
+    () => worklogs.reduce((s, w) => s + w.timeSpentSeconds, 0),
+    [worklogs],
+  )
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString())
@@ -293,7 +384,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
           setWorklogs(data.worklogs ?? [])
           setMonthLabel(data.month ?? "")
           setEditMap(buildInitialEditState(data.worklogs ?? []))
-          setCollapsed(new Set()) // reset on fresh load
+          setCollapsed(new Set())
           setWorklogsLoading(false)
         }
       })
@@ -355,120 +446,187 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
     }
   }
 
+  // ── Delete handlers ────────────────────────────────────────────────────────────
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      const res = await fetch("/api/clockwork/worklogs", {
+        method: "DELETE",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ worklogId: deleteTarget.id }),
+      })
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(json.error ?? `Erro ${res.status}`)
+      }
+      const removedId = deleteTarget.id
+      setWorklogs((prev) => prev.filter((w) => w.id !== removedId))
+      setEditMap((prev) => { const next = new Map(prev); next.delete(removedId); return next })
+      setDeleteTarget(null)
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Erro ao remover.")
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const grouped = React.useMemo(() => groupByDate(worklogs), [worklogs])
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Controls bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Avatar strip */}
-        <div className="min-w-0 flex-1">
-          {!membrosLoading && membros.length > 0 && (
-            <TooltipProvider delay={0} closeDelay={0}>
-              <div
-                className="flex w-full flex-wrap items-center justify-start gap-y-2 pl-2"
-                role="toolbar"
-                aria-label="Selecionar membro para visualizar worklogs"
-              >
-                {membros.map((m, idx) => {
-                  const selected = m.userId === selectedUserId
-                  return (
-                    <Tooltip key={m.userId}>
-                      <TooltipTrigger
-                        render={
-                          <button
-                            type="button"
-                            aria-current={selected ? "true" : undefined}
-                            aria-label={`${m.name}${selected ? " (selecionado)" : ""}`}
-                            onClick={() => handleMemberSelect(m.userId)}
-                            className={cn(
-                              "relative rounded-full border-[3px] border-surface-card bg-surface-card shadow-sm duration-100 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 motion-reduce:transition-none",
-                              selected
-                                ? "z-20 border-brand-primary ring-2 ring-brand-primary/35"
-                                : "z-10 hover:z-30 hover:ring-1 hover:ring-brand-primary/25",
-                            )}
-                            style={{ marginLeft: idx === 0 ? 0 : -12 }}
-                          />
-                        }
-                      >
-                        <UserAvatar name={m.name} photoPath={m.photoPath ?? null} size={AVATAR_SIZE} />
-                      </TooltipTrigger>
-                      <TooltipContent>{m.name}</TooltipContent>
-                    </Tooltip>
-                  )
-                })}
-              </div>
-            </TooltipProvider>
-          )}
-        </div>
+  const showSummary = !worklogsLoading && !worklogsError && worklogs.length > 0 && selectedMembro
 
-        {/* Selects */}
-        <div className="flex shrink-0 items-center gap-2">
-          {canFilterByProfile && (
+  return (
+    <>
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          worklog={deleteTarget}
+          deleting={deleting}
+          deleteError={deleteError}
+          onCancel={() => { if (!deleting) { setDeleteTarget(null); setDeleteError(null) } }}
+          onConfirm={confirmDelete}
+        />
+      )}
+
+      <div className="flex flex-col gap-4">
+        {/* Controls bar */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Avatar strip */}
+          <div className="min-w-0 flex-1">
+            {!membrosLoading && membros.length > 0 && (
+              <TooltipProvider delay={0} closeDelay={0}>
+                <div
+                  className="flex w-full flex-wrap items-center justify-start gap-y-2 pl-2"
+                  role="toolbar"
+                  aria-label="Selecionar membro para visualizar worklogs"
+                >
+                  {membros.map((m, idx) => {
+                    const selected = m.userId === selectedUserId
+                    return (
+                      <Tooltip key={m.userId}>
+                        <TooltipTrigger
+                          render={
+                            <button
+                              type="button"
+                              aria-current={selected ? "true" : undefined}
+                              aria-label={`${m.name}${selected ? " (selecionado)" : ""}`}
+                              onClick={() => handleMemberSelect(m.userId)}
+                              className={cn(
+                                "relative rounded-full border-[3px] border-surface-card bg-surface-card shadow-sm duration-100 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 motion-reduce:transition-none",
+                                selected
+                                  ? "z-20 border-brand-primary ring-2 ring-brand-primary/35"
+                                  : "z-10 hover:z-30 hover:ring-1 hover:ring-brand-primary/25",
+                              )}
+                              style={{ marginLeft: idx === 0 ? 0 : -12 }}
+                            />
+                          }
+                        >
+                          <UserAvatar name={m.name} photoPath={m.photoPath ?? null} size={AVATAR_SIZE} />
+                        </TooltipTrigger>
+                        <TooltipContent>{m.name}</TooltipContent>
+                      </Tooltip>
+                    )
+                  })}
+                </div>
+              </TooltipProvider>
+            )}
+          </div>
+
+          {/* Selects */}
+          <div className="flex shrink-0 items-center gap-2">
+            {canFilterByProfile && (
+              <Select
+                value={profileFilter}
+                onValueChange={(v) => v && handleProfileChange(v as Exclude<AccessProfileId, "MGR">)}
+              >
+                <SelectTrigger className="w-28" aria-label="Filtrar por perfil">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectPopup>
+                  {ALL_PROFILE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            )}
+
             <Select
-              value={profileFilter}
-              onValueChange={(v) => v && handleProfileChange(v as Exclude<AccessProfileId, "MGR">)}
+              value={period}
+              onValueChange={(v) => v && handlePeriodChange(v as PeriodId)}
             >
-              <SelectTrigger className="w-28" aria-label="Filtrar por perfil">
+              <SelectTrigger className="w-40" aria-label="Período">
                 <SelectValue />
               </SelectTrigger>
               <SelectPopup>
-                {ALL_PROFILE_OPTIONS.map((o) => (
+                {PERIOD_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                 ))}
               </SelectPopup>
             </Select>
-          )}
-
-          <Select
-            value={period}
-            onValueChange={(v) => v && handlePeriodChange(v as PeriodId)}
-          >
-            <SelectTrigger className="w-40" aria-label="Período">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectPopup>
-              {PERIOD_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-            </SelectPopup>
-          </Select>
+          </div>
         </div>
+
+        {/* Summary card — member + total hours */}
+        {showSummary && (
+          <div className="flex items-center justify-between rounded-xl bg-surface-card px-4 py-3 shadow-card">
+            <div className="flex items-center gap-3">
+              <UserAvatar
+                name={selectedMembro.name}
+                photoPath={selectedMembro.photoPath ?? null}
+                size={32}
+              />
+              <div>
+                <p className="text-sm font-semibold text-text-primary">{selectedMembro.name}</p>
+                <p className="text-xs text-text-secondary">{monthLabel}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-text-secondary">Total no mês</p>
+              <p className="text-sm font-semibold tabular-nums text-text-primary">
+                {formatDuration(totalSecondsMonth)}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Content */}
+        {membrosLoading ? (
+          <SectionSpinner minHeight="min-h-[20rem]" />
+        ) : membros.length === 0 ? (
+          <EmptyState message="Nenhum membro encontrado neste perfil." />
+        ) : worklogsLoading ? (
+          <SectionSpinner minHeight="min-h-[20rem]" />
+        ) : worklogsError ? (
+          <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card px-4">
+            <p className="text-center text-sm text-destructive">{worklogsError}</p>
+          </div>
+        ) : worklogs.length === 0 ? (
+          <EmptyState
+            message={monthLabel ? `Nenhum worklog registrado em ${monthLabel}.` : "Nenhum worklog registrado."}
+          />
+        ) : (
+          <div className="flex flex-col gap-4">
+            {grouped.map((day) => (
+              <DayGroup
+                key={day.dateKey}
+                day={day}
+                editMap={editMap}
+                collapsed={collapsed.has(day.dateKey)}
+                onToggle={() => toggleDay(day.dateKey)}
+                onFieldChange={(id, field, value) => updateEdit(id, { [field]: value, saveError: null })}
+                onBlurSave={(worklog, state) => saveWorklog(worklog, state)}
+                onDeleteClick={(worklog) => { setDeleteTarget(worklog); setDeleteError(null) }}
+              />
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Content */}
-      {membrosLoading ? (
-        <SectionSpinner minHeight="min-h-[20rem]" />
-      ) : membros.length === 0 ? (
-        <EmptyState message="Nenhum membro encontrado neste perfil." />
-      ) : worklogsLoading ? (
-        <SectionSpinner minHeight="min-h-[20rem]" />
-      ) : worklogsError ? (
-        <div className="flex items-center justify-center rounded-xl border border-border-default bg-surface-card py-16 shadow-card px-4">
-          <p className="text-center text-sm text-destructive">{worklogsError}</p>
-        </div>
-      ) : worklogs.length === 0 ? (
-        <EmptyState
-          message={monthLabel ? `Nenhum worklog registrado em ${monthLabel}.` : "Nenhum worklog registrado."}
-        />
-      ) : (
-        <div className="flex flex-col gap-4">
-          {grouped.map((day) => (
-            <DayGroup
-              key={day.dateKey}
-              day={day}
-              editMap={editMap}
-              collapsed={collapsed.has(day.dateKey)}
-              onToggle={() => toggleDay(day.dateKey)}
-              onFieldChange={(id, field, value) => updateEdit(id, { [field]: value, saveError: null })}
-              onBlurSave={(worklog, state) => saveWorklog(worklog, state)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+    </>
   )
 }
 
@@ -481,9 +639,10 @@ export interface DayGroupProps {
   onToggle: () => void
   onFieldChange: (id: string, field: keyof Pick<EditState, "startHHmm" | "endHHmm" | "comment">, value: string) => void
   onBlurSave: (worklog: CwWorklog, state: EditState) => void
+  onDeleteClick: (worklog: CwWorklog) => void
 }
 
-export function DayGroup({ day, editMap, collapsed, onToggle, onFieldChange, onBlurSave }: DayGroupProps) {
+export function DayGroup({ day, editMap, collapsed, onToggle, onFieldChange, onBlurSave, onDeleteClick }: DayGroupProps) {
   return (
     <div className="overflow-hidden rounded-xl bg-surface-card shadow-card">
       {/* Collapsible header */}
@@ -508,13 +667,14 @@ export function DayGroup({ day, editMap, collapsed, onToggle, onFieldChange, onB
       {/* Table — hidden when collapsed */}
       {!collapsed && (
         <div className="overflow-x-auto">
-          <table className="qagrotis-table-row-hover w-full min-w-[680px] table-fixed text-sm">
+          <table className="qagrotis-table-row-hover w-full min-w-[720px] table-fixed text-sm">
             <colgroup>
-              <col style={{ width: "7rem"  }} />
+              <col style={{ width: "7rem"   }} />
               <col />
-              <col style={{ width: "7rem"  }} />
-              <col style={{ width: "7rem"  }} />
+              <col style={{ width: "7rem"   }} />
+              <col style={{ width: "7rem"   }} />
               <col style={{ width: "5.5rem" }} />
+              <col style={{ width: "2.5rem" }} />
             </colgroup>
             <thead>
               <tr className="border-b border-border-default bg-neutral-grey-50">
@@ -523,6 +683,7 @@ export function DayGroup({ day, editMap, collapsed, onToggle, onFieldChange, onB
                 <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Início</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Fim</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Total</th>
+                <th className="py-3 pr-3" />
               </tr>
             </thead>
             <tbody>
@@ -538,6 +699,7 @@ export function DayGroup({ day, editMap, collapsed, onToggle, onFieldChange, onB
                     totalSeconds={seconds}
                     onFieldChange={onFieldChange}
                     onBlurSave={onBlurSave}
+                    onDeleteClick={onDeleteClick}
                   />
                 )
               })}
@@ -557,9 +719,10 @@ interface WorklogRowProps {
   totalSeconds: number | null
   onFieldChange: (id: string, field: keyof Pick<EditState, "startHHmm" | "endHHmm" | "comment">, value: string) => void
   onBlurSave: (worklog: CwWorklog, state: EditState) => void
+  onDeleteClick: (worklog: CwWorklog) => void
 }
 
-function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave }: WorklogRowProps) {
+function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, onDeleteClick }: WorklogRowProps) {
   const lastSavedRef = React.useRef({
     startHHmm: state.startHHmm,
     endHHmm:   state.endHHmm,
@@ -584,10 +747,13 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave }:
 
   return (
     <>
-      <tr className="border-b border-border-default last:border-0 transition-colors">
+      <tr className="group border-b border-border-default last:border-0 transition-colors">
+        {/* Jira key */}
         <td className="px-4 py-3">
-          <span className="font-mono text-xs font-semibold text-brand-primary">{worklog.issueKey}</span>
+          <span className="text-sm font-medium text-brand-primary">{worklog.issueKey}</span>
         </td>
+
+        {/* Description (editable) */}
         <td className="min-w-0 px-4 py-3">
           <input
             type="text"
@@ -600,6 +766,8 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave }:
             placeholder="Sem descrição"
           />
         </td>
+
+        {/* Start time (editable) */}
         <td className="px-4 py-3">
           <input
             type="time"
@@ -611,6 +779,8 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave }:
             className={cn(editInputClass, "tabular-nums")}
           />
         </td>
+
+        {/* End time (editable) */}
         <td className="px-4 py-3">
           <input
             type="time"
@@ -622,9 +792,14 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave }:
             className={cn(editInputClass, "tabular-nums")}
           />
         </td>
+
+        {/* Duration */}
         <td className="px-4 py-3">
           {state.saving ? (
-            <span className="animate-pulse text-xs text-text-secondary">Salvando…</span>
+            <span className="flex items-center gap-1.5 text-xs text-text-secondary">
+              <Loader2 className="size-3 animate-spin" />
+              Salvando…
+            </span>
           ) : (
             <span className={cn(
               "text-sm font-medium tabular-nums",
@@ -634,11 +809,24 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave }:
             </span>
           )}
         </td>
+
+        {/* Delete action */}
+        <td className="py-3 pr-3 text-right">
+          <button
+            type="button"
+            disabled={state.saving}
+            onClick={() => onDeleteClick(worklog)}
+            aria-label={`Remover lançamento ${worklog.issueKey}`}
+            className="cursor-pointer rounded-md p-1.5 text-text-secondary opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:pointer-events-none disabled:opacity-30"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </td>
       </tr>
 
       {state.saveError && (
         <tr>
-          <td colSpan={5} className="px-4 pb-2.5 pt-0">
+          <td colSpan={6} className="px-4 pb-2.5 pt-0">
             <p className="text-xs text-destructive">{state.saveError}</p>
           </td>
         </tr>

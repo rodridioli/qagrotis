@@ -94,6 +94,7 @@ export const Expandido: Story = {
     onToggle: () => {},
     onFieldChange: () => {},
     onBlurSave: () => {},
+    onDeleteClick: () => {},
   },
   render: (args) => (
     <div className="max-w-4xl">
@@ -111,6 +112,7 @@ export const Contraido: Story = {
     onToggle: () => {},
     onFieldChange: () => {},
     onBlurSave: () => {},
+    onDeleteClick: () => {},
   },
   render: (args) => (
     <div className="max-w-4xl">
@@ -143,6 +145,7 @@ export const ComErro: Story = {
     onToggle: () => {},
     onFieldChange: () => {},
     onBlurSave: () => {},
+    onDeleteClick: () => {},
   },
   render: (args) => (
     <div className="max-w-4xl">
@@ -175,6 +178,7 @@ export const Salvando: Story = {
     onToggle: () => {},
     onFieldChange: () => {},
     onBlurSave: () => {},
+    onDeleteClick: () => {},
   },
   render: (args) => (
     <div className="max-w-4xl">

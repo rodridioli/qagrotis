@@ -116,6 +116,66 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// ── DELETE — remove um worklog específico no Clockwork ───────────────────────
+
+const DeleteBodySchema = z.object({
+  worklogId: z.string().min(1),
+})
+
+export async function DELETE(req: NextRequest) {
+  const csrfError = validateOrigin(req)
+  if (csrfError) return csrfError
+
+  const session = await auth()
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const role = buildRole(session.user.type, session.user.accessProfile)
+  if (!can(role, "equipe.clockwork")) {
+    return Response.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  let body: { worklogId: string }
+  try {
+    const raw = await req.json()
+    body = DeleteBodySchema.parse(raw)
+  } catch {
+    return Response.json({ error: "Payload inválido." }, { status: 400 })
+  }
+
+  const token = await getClockworkApiTokenResolved().catch(() => "")
+  if (!token) {
+    return Response.json({ error: "CLOCKWORK_NOT_CONFIGURED" }, { status: 400 })
+  }
+
+  try {
+    const res = await fetch(`${CW_HOST}/v1/worklogs/${body.worklogId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Token ${token.trim()}` },
+      signal: AbortSignal.timeout(20_000),
+    })
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "")
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[api/clockwork/worklogs DELETE]", res.status, text.slice(0, 400))
+      }
+      return Response.json(
+        { error: `Clockwork retornou erro ${res.status}.` },
+        { status: res.status >= 400 && res.status < 500 ? 422 : 502 },
+      )
+    }
+
+    return Response.json({ ok: true })
+  } catch (e) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[api/clockwork/worklogs DELETE]", e)
+    }
+    return Response.json({ error: "Erro ao remover worklog no Clockwork." }, { status: 500 })
+  }
+}
+
 // ── PATCH — atualiza um worklog específico no Clockwork ───────────────────────
 
 const PatchBodySchema = z.object({
