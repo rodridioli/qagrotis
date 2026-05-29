@@ -274,13 +274,13 @@ export function EquipeChaptersSection({ isAdmin, currentUserId }: EquipeChapters
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Remover chapter"
+        title="Excluir chapter"
         description={
           deleteRow
-            ? `Tem certeza que deseja remover o chapter "${deleteRow.tema.slice(0, 80)}${deleteRow.tema.length > 80 ? "…" : ""}"? Esta ação não pode ser desfeita.`
+            ? `Tem certeza que deseja excluir o chapter "${deleteRow.tema.slice(0, 80)}${deleteRow.tema.length > 80 ? "…" : ""}"? Esta ação não pode ser desfeita.`
             : ""
         }
-        confirmLabel="Remover"
+        confirmLabel="Excluir"
         onConfirm={() => void confirmDelete()}
       />
     </div>

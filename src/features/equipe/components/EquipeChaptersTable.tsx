@@ -205,7 +205,7 @@ export function EquipeChaptersTable({
                         </DropdownMenuItem>
                         <DropdownMenuItem variant="destructive" onClick={() => onRequestDelete(r)}>
                           <Trash2 className="size-4" />
-                          Remover
+                          Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

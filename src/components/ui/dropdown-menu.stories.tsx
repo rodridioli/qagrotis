@@ -31,7 +31,7 @@ export const Default: Story = {
       <DropdownMenuContent align="end">
         <DropdownMenuItem><Pencil className="size-4" />Editar</DropdownMenuItem>
         <DropdownMenuItem><Copy className="size-4" />Duplicar</DropdownMenuItem>
-        <DropdownMenuItem variant="destructive"><Trash2 className="size-4" />Remover</DropdownMenuItem>
+        <DropdownMenuItem variant="destructive"><Trash2 className="size-4" />Excluir</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   ),

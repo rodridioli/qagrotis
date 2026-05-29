@@ -1073,7 +1073,7 @@ export function SuiteForm({
                                 </TooltipProvider>
                                 <button
                                   type="button"
-                                  aria-label="Remover da suíte"
+                                  aria-label="Excluir da suíte"
                                   onClick={() => handleRemove(c.id)}
                                   className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                                 >
@@ -1104,7 +1104,7 @@ export function SuiteForm({
                                     </DropdownMenuItem>
                                     {!encerrada && (
                                       <DropdownMenuItem variant="destructive" onClick={() => handleRemove(c.id)}>
-                                        Remover
+                                        Excluir
                                       </DropdownMenuItem>
                                     )}
                                   </DropdownMenuContent>
@@ -1134,7 +1134,7 @@ export function SuiteForm({
               onClick={() => setRemoverHistoricoOpen(true)}
             >
               <Trash2 className="size-4" />
-              Remover
+              Excluir
             </Button>
             <Button
               variant="outline"
@@ -1276,7 +1276,7 @@ export function SuiteForm({
                         {!encerrada && (
                           <button
                             type="button"
-                            aria-label="Remover registro"
+                            aria-label="Excluir registro"
                             onClick={() => { void handleRemoverEntrada(h._originalIdx) }}
                             className="flex size-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                           >
@@ -1370,7 +1370,7 @@ export function SuiteForm({
       <Dialog open={removeOpen} onOpenChange={setRemoveOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Remover cenário</DialogTitle>
+            <DialogTitle>Excluir cenário</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-text-secondary">
             O cenário {removeId} será removido da suite. Caso necessário, você poderá adicioná-lo novamente posteriormente.
@@ -1379,7 +1379,7 @@ export function SuiteForm({
             <CancelActionButton onClick={() => setRemoveOpen(false)} />
             <Button variant="destructive" onClick={confirmRemove}>
               <Trash2 className="size-4 shrink-0" />
-              Remover
+              Excluir
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1411,13 +1411,13 @@ export function SuiteForm({
       <ConfirmDialog
         open={removerHistoricoOpen}
         onOpenChange={setRemoverHistoricoOpen}
-        title="Remover do histórico?"
+        title="Excluir do histórico?"
         description={
           selectedHistorico.size === 1
-            ? "1 registro será removido do histórico. Essa ação não pode ser desfeita."
-            : `${selectedHistorico.size} registros serão removidos do histórico. Essa ação não pode ser desfeita.`
+            ? "1 registro será excluído do histórico. Essa ação não pode ser desfeita."
+            : `${selectedHistorico.size} registros serão excluídos do histórico. Essa ação não pode ser desfeita.`
         }
-        confirmLabel="Remover"
+        confirmLabel="Excluir"
         onConfirm={confirmRemoverHistorico}
       />
 

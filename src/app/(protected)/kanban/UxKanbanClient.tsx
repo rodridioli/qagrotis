@@ -661,7 +661,7 @@ function CreateTarefaModal({
                     <button
                       type="button"
                       onClick={() => removeFile(i)}
-                      aria-label={`Remover ${f.name}`}
+                      aria-label={`Excluir ${f.name}`}
                       className="cursor-pointer shrink-0 rounded p-0.5 text-text-secondary hover:text-destructive"
                     >
                       <X className="size-3.5" />

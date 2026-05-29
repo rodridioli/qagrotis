@@ -103,7 +103,7 @@ export function FileUploadButton({
               <button
                 type="button"
                 onClick={() => onChangeFiles(files.filter((_, idx) => idx !== i))}
-                aria-label={`Remover ${f.name}`}
+                aria-label={`Excluir ${f.name}`}
                 className="text-text-secondary transition-colors hover:text-destructive"
               >
                 <X className="size-3" />

@@ -185,7 +185,7 @@ function DoneModal({
                 type="button"
                 onClick={() => { setSelected(null); setQuery("") }}
                 className="cursor-pointer text-text-secondary hover:text-destructive"
-                aria-label="Remover seleção"
+                aria-label="Limpar seleção"
               >
                 <X className="size-3.5" />
               </button>
@@ -345,7 +345,7 @@ function InApprovalModal({
                 type="button"
                 onClick={() => { setSelected(null); setQuery("") }}
                 className="cursor-pointer text-text-secondary hover:text-destructive"
-                aria-label="Remover seleção"
+                aria-label="Limpar seleção"
               >
                 <X className="size-3.5" />
               </button>

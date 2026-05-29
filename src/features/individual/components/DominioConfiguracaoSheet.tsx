@@ -284,7 +284,7 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
                           type="button"
                           onClick={() => removeProduto(produto.id)}
                           className="inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
-                          aria-label="Remover produto"
+                          aria-label="Excluir produto"
                         >
                           <Trash2 className="size-4" />
                         </button>
@@ -340,7 +340,7 @@ export function DominioConfiguracaoSheet({ open, onOpenChange }: Props) {
                                     type="button"
                                     onClick={() => removeModulo(produto.id, modulo.id)}
                                     className="inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
-                                    aria-label="Remover módulo"
+                                    aria-label="Excluir módulo"
                                   >
                                     <Trash2 className="size-3.5" />
                                   </button>

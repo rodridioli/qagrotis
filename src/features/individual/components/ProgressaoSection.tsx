@@ -434,9 +434,9 @@ export const ProgressaoSection = React.forwardRef<ProgressaoSectionHandle, Progr
         <ConfirmDialog
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
-          title="Remover progressão?"
+          title="Excluir progressão?"
           description="Esta ação não pode ser desfeita."
-          confirmLabel="Remover"
+          confirmLabel="Excluir"
           confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
           onConfirm={() => void confirmDelete()}
         />

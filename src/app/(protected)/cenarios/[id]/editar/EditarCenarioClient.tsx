@@ -804,7 +804,7 @@ export default function EditarCenarioClient({
                                 type="button"
                                 onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
                                 className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
-                                aria-label="Remover passo"
+                                aria-label="Excluir passo"
                               >
                                 <Trash2 className="size-4" />
                               </button>
@@ -887,7 +887,7 @@ export default function EditarCenarioClient({
                           <button
                             type="button"
                             onClick={() => setDeps((prev) => prev.filter((x) => x.id !== d.id))}
-                            aria-label={`Remover dependência ${d.id}`}
+                            aria-label={`Excluir dependência ${d.id}`}
                             className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
                           >
                             <Trash2 className="size-4" />

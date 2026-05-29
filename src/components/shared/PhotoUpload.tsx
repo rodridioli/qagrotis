@@ -75,7 +75,7 @@ export function PhotoUpload({ preview, onFileSelect, onRemove, disabled = false 
             <button
               type="button"
               onClick={onRemove}
-              aria-label="Remover foto"
+              aria-label="Excluir foto"
               className="absolute -right-1 -top-1 z-20 flex size-10 cursor-pointer items-center justify-center rounded-full border border-transparent bg-destructive text-white shadow-md transition-[color,background-color,box-shadow,transform] duration-200 ease-out hover:bg-destructive/88 hover:shadow-lg active:translate-y-px active:bg-destructive/95 focus-visible:outline-none focus-visible:border-destructive/70 focus-visible:ring-2 focus-visible:ring-destructive/30 focus-visible:ring-offset-2 [&_svg]:text-white"
             >
               <Trash2 className="size-5 shrink-0 text-white" aria-hidden />

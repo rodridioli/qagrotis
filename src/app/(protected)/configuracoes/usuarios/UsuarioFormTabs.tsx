@@ -590,7 +590,7 @@ export default function UsuarioFormTabs({
                         type="button"
                         onClick={() => setEducation(education.filter((_, i) => i !== idx))}
                         className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Remover formação"
+                        aria-label="Excluir formação"
                       >
                         <Trash2 className="size-4" />
                       </button>
@@ -618,7 +618,7 @@ export default function UsuarioFormTabs({
                         type="button"
                         onClick={() => setCourses(courses.filter((_, i) => i !== idx))}
                         className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Remover curso"
+                        aria-label="Excluir curso"
                       >
                         <Trash2 className="size-4" />
                       </button>
@@ -651,7 +651,7 @@ export default function UsuarioFormTabs({
                         type="button"
                         onClick={() => setLanguages(languages.filter((_, i) => i !== idx))}
                         className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Remover idioma"
+                        aria-label="Excluir idioma"
                       >
                         <Trash2 className="size-4" />
                       </button>
@@ -678,7 +678,7 @@ export default function UsuarioFormTabs({
                         type="button"
                         onClick={() => setCertifications(certifications.filter((_, i) => i !== idx))}
                         className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Remover certificação"
+                        aria-label="Excluir certificação"
                       >
                         <Trash2 className="size-4" />
                       </button>
