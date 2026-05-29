@@ -393,9 +393,17 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                 if (href === "/gerador" || href === "/assistente") {
                   disabled = !hasIntegracoes
                 } else if (href === "/suites") {
-                  disabled = needsSistema && !hasCenario
+                  disabled = needsSistema && (!hasSistemaModulo || !hasCenario || !hasJiraConfigured)
                 } else if (href === "/dashboard" || href === "/cenarios") {
                   disabled = needsSistema && !hasSistemaModulo
+                }
+              }
+              // Lançamentos e Clockwork têm alwaysEnabled:true no NAV_ITEMS, por isso
+              // precisam de bloco separado. Para perfis que dependem de Sistema (QA),
+              // desabilita quando não houver módulo cadastrado.
+              if (!disabled && needsSistema) {
+                if (href === "/equipe?tab=lancamentos" || href === "/equipe?tab=clockwork") {
+                  disabled = !hasSistemaModulo
                 }
               }
 
