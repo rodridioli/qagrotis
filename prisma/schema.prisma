@@ -487,6 +487,7 @@ enum AusenciaTipo {
   FALTA
   BANCO_HORAS
   ATESTADO
+  ATRASO
   OUTRO
 }
 

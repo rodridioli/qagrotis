@@ -63,6 +63,7 @@ const TIPO_OPTIONS: { value: AusenciaTipo; label: string }[] = [
   { value: "FALTA",       label: "Falta" },
   { value: "BANCO_HORAS", label: "Banco de horas" },
   { value: "ATESTADO",    label: "Atestado" },
+  { value: "ATRASO",      label: "Atraso" },
   { value: "OUTRO",       label: "Outro" },
 ]
 

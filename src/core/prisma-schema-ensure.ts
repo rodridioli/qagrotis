@@ -550,11 +550,16 @@ export async function ensureIndividualAusenciasTable(): Promise<void> {
   try {
     await prisma.$executeRawUnsafe(`
 DO $$ BEGIN
-    CREATE TYPE "AusenciaTipo" AS ENUM ('FALTA', 'BANCO_HORAS', 'ATESTADO', 'OUTRO');
+    CREATE TYPE "AusenciaTipo" AS ENUM ('FALTA', 'BANCO_HORAS', 'ATESTADO', 'ATRASO', 'OUTRO');
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 `)
+    // Evolui DBs criados antes da adição de ATRASO ao enum.
+    // ALTER TYPE … ADD VALUE não pode correr dentro de transação no Postgres.
+    await prisma.$executeRawUnsafe(
+      `ALTER TYPE "AusenciaTipo" ADD VALUE IF NOT EXISTS 'ATRASO' BEFORE 'OUTRO'`
+    )
     await prisma.$executeRawUnsafe(`
 DO $$ BEGIN
     CREATE TYPE "AusenciaSituacao" AS ENUM ('PENDENTE', 'APROVADA', 'RECUSADA');
