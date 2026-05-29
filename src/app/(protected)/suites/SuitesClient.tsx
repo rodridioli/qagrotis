@@ -1,12 +1,15 @@
 "use client"
 
 import { useState, useMemo, useEffect, useTransition } from "react"
+import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronDown, ChevronUp, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { JiraNotConfiguredCard } from "@/components/shared/JiraNotConfiguredCard"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
+import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -110,6 +113,18 @@ export default function SuitesClient({ allModulos, suites, isAdmin }: Props) {
   const [pendingFilters, setPendingFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
+
+  const credentialsQuery = useQuery({
+    queryKey: ["jira-credentials"],
+    queryFn: async () => {
+      const res = await fetch("/api/jira/credentials", { credentials: "same-origin" })
+      if (!res.ok) return { configured: false }
+      return res.json() as Promise<{ configured?: boolean }>
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
+  const jiraConfigured = credentialsQuery.data?.configured ?? null
 
   useEffect(() => {
     setCurrentPage(1)
@@ -241,6 +256,9 @@ const showBulkActions = !filters.apenasInativos
     setFilterOpen(false)
     setCurrentPage(1)
   }
+
+  if (credentialsQuery.isLoading) return <SectionSpinner minHeight="min-h-[20rem]" />
+  if (jiraConfigured === false) return <JiraNotConfiguredCard />
 
   return (
     <div className="space-y-4">
