@@ -444,8 +444,17 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
       <div className="flex flex-col gap-4">
         {/* Controls bar */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Avatar strip — only visible for MGR who can view others */}
+          {/* Avatar strip (MGR) / Totalizador compacto (não-MGR) */}
           <div className="min-w-0 flex-1">
+            {!canViewOthersClockwork && !worklogsLoading && !worklogsError && worklogs.length > 0 && (
+              <p className="pl-1 text-sm text-text-secondary" aria-live="polite">
+                Total em {monthLabel}
+                <span className="mx-1.5" aria-hidden>·</span>
+                <span className="font-semibold tabular-nums text-text-primary">
+                  {formatDuration(totalSecondsMonth)}
+                </span>
+              </p>
+            )}
             {canViewOthersClockwork && !membrosLoading && membros.length > 0 && (
               <TooltipProvider delay={0} closeDelay={0}>
                 <div
