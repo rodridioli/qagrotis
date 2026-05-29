@@ -296,7 +296,7 @@ export async function PATCH(req: NextRequest) {
       },
       body: JSON.stringify({
         started,
-        timeSpentSeconds,   // camelCase — matches Clockwork Pro API (same as GET response and POST)
+        time_spent_seconds: timeSpentSeconds,  // Clockwork Pro API uses snake_case for writes
         comment,
       }),
       signal: AbortSignal.timeout(20_000),
