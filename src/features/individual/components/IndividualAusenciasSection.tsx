@@ -58,10 +58,9 @@ function formatCodigo(codigo: number): string {
   return `AUS-${String(codigo).padStart(3, "0")}`
 }
 
-function formatPeriodo(row: IndividualAusenciasRow): string {
-  if (row.diaInteiro) return "Dia todo"
-  if (row.horaInicio && row.horaFim) return `Das ${row.horaInicio} às ${row.horaFim}`
-  return "Dia todo"
+function formatPeriodo(dataInicioIso: string, dataFimIso: string): string {
+  if (dataInicioIso === dataFimIso) return formatIsoToBr(dataInicioIso)
+  return `${formatIsoToBr(dataInicioIso)} – ${formatIsoToBr(dataFimIso)}`
 }
 
 function truncate(str: string, max = 40): string {
@@ -96,19 +95,15 @@ export interface IndividualAusenciasSectionHandle {
 
 interface FormState {
   tipo: AusenciaTipo | ""
-  dataIso: string
-  diaInteiro: boolean
-  horaInicio: string
-  horaFim: string
+  dataInicioIso: string
+  dataFimIso: string
   justificativa: string
 }
 
 const EMPTY_FORM: FormState = {
   tipo: "",
-  dataIso: "",
-  diaInteiro: true,
-  horaInicio: "",
-  horaFim: "",
+  dataInicioIso: "",
+  dataFimIso: "",
   justificativa: "",
 }
 
@@ -116,9 +111,9 @@ const EMPTY_FORM: FormState = {
 
 interface FieldErrors {
   tipo?: boolean
-  dataIso?: boolean
-  horaInicio?: boolean
-  horaFim?: boolean
+  dataInicioIso?: boolean
+  dataFimIso?: boolean
+  dataFimAntes?: boolean
   justificativa?: boolean
 }
 
@@ -204,10 +199,8 @@ export const IndividualAusenciasSection = React.forwardRef<
     setEditingRow(row)
     setForm({
       tipo: row.tipo,
-      dataIso: row.dataIso,
-      diaInteiro: row.diaInteiro,
-      horaInicio: row.horaInicio ?? "",
-      horaFim: row.horaFim ?? "",
+      dataInicioIso: row.dataInicioIso,
+      dataFimIso: row.dataFimIso,
       justificativa: row.justificativa,
     })
     setFieldErrors({})
@@ -217,12 +210,12 @@ export const IndividualAusenciasSection = React.forwardRef<
   async function handleSave() {
     const errs: FieldErrors = {}
     if (!form.tipo) errs.tipo = true
-    if (!form.dataIso) errs.dataIso = true
-    if (!form.justificativa.trim()) errs.justificativa = true
-    if (!form.diaInteiro) {
-      if (!form.horaInicio) errs.horaInicio = true
-      if (!form.horaFim) errs.horaFim = true
+    if (!form.dataInicioIso) errs.dataInicioIso = true
+    if (!form.dataFimIso) errs.dataFimIso = true
+    if (form.dataInicioIso && form.dataFimIso && form.dataFimIso < form.dataInicioIso) {
+      errs.dataFimAntes = true
     }
+    if (!form.justificativa.trim()) errs.justificativa = true
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs)
       toast.error("Preencha todos os campos obrigatórios.")
@@ -232,32 +225,16 @@ export const IndividualAusenciasSection = React.forwardRef<
     const payload = {
       evaluatedUserId,
       tipo: form.tipo as AusenciaTipo,
-      dataIso: form.dataIso,
-      diaInteiro: form.diaInteiro,
-      horaInicio: form.diaInteiro ? null : form.horaInicio || null,
-      horaFim: form.diaInteiro ? null : form.horaFim || null,
+      dataInicioIso: form.dataInicioIso,
+      dataFimIso: form.dataFimIso,
       justificativa: form.justificativa.trim(),
-    }
-
-    // Client-side hora validation
-    if (!form.diaInteiro && form.horaInicio && form.horaFim) {
-      const toMin = (h: string) => {
-        const [hh, mm] = h.split(":").map(Number)
-        return (hh ?? 0) * 60 + (mm ?? 0)
-      }
-      if (toMin(form.horaFim) <= toMin(form.horaInicio)) {
-        setFieldErrors((p) => ({ ...p, horaFim: true }))
-        toast.error("Hora de término deve ser após a hora de início.")
-        return
-      }
     }
 
     setFieldErrors({})
     setSaving(true)
     try {
       if (editingRow) {
-        const schema = updateAusenciaSchema
-        const parsed = schema.safeParse({ ...payload, id: editingRow.id })
+        const parsed = updateAusenciaSchema.safeParse({ ...payload, id: editingRow.id })
         if (!parsed.success) {
           toast.error("Dados inválidos. Verifique os campos.")
           return
@@ -266,8 +243,7 @@ export const IndividualAusenciasSection = React.forwardRef<
         if (res.error) { toast.error(res.error); return }
         toast.success("Ausência atualizada com sucesso.")
       } else {
-        const schema = createAusenciaSchema
-        const parsed = schema.safeParse(payload)
+        const parsed = createAusenciaSchema.safeParse(payload)
         if (!parsed.success) {
           toast.error("Dados inválidos. Verifique os campos.")
           return
@@ -278,7 +254,6 @@ export const IndividualAusenciasSection = React.forwardRef<
       }
       setModalOpen(false)
       if (!editingRow) {
-        // Don't refetch for create — pending items not shown to non-MGR
         if (canWrite) void refetch()
       } else {
         void refetch()
@@ -389,13 +364,12 @@ export const IndividualAusenciasSection = React.forwardRef<
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="qagrotis-table-row-hover-muted w-full min-w-[56rem] border-collapse text-sm">
+            <table className="qagrotis-table-row-hover-muted w-full min-w-[52rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border-default bg-neutral-grey-50">
                   <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Código</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Usuário</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Tipo</th>
-                  <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Data</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Período</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Justificativa</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-text-secondary sm:px-4">Situação</th>
@@ -453,14 +427,9 @@ export const IndividualAusenciasSection = React.forwardRef<
                         <AusenciaTipoBadge tipo={row.tipo} />
                       </td>
 
-                      {/* Data */}
-                      <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary tabular-nums sm:px-4">
-                        {formatIsoToBr(row.dataIso)}
-                      </td>
-
                       {/* Período */}
-                      <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary sm:px-4">
-                        {formatPeriodo(row)}
+                      <td className="whitespace-nowrap px-3 py-3 text-sm text-text-primary tabular-nums sm:px-4">
+                        {formatPeriodo(row.dataInicioIso, row.dataFimIso)}
                       </td>
 
                       {/* Justificativa */}
@@ -590,89 +559,45 @@ export const IndividualAusenciasSection = React.forwardRef<
               </Select>
             </div>
 
-            {/* Data */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-primary" htmlFor="aus-data">
-                Data da ausência <span className="text-destructive" aria-hidden>*</span>
-              </label>
-              <input
-                id="aus-data"
-                type="date"
-                value={form.dataIso}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, dataIso: e.target.value }))
-                  setFieldErrors((p) => ({ ...p, dataIso: false }))
-                }}
-                className={`h-9 w-full rounded-lg border bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${fieldErrors.dataIso ? "border-destructive" : "border-border-default"}`}
-                style={{ colorScheme: "light" }}
-              />
-            </div>
-
-            {/* Período */}
-            <div className="space-y-2">
-              <span className="text-sm font-medium text-text-primary">
-                Período <span className="text-destructive" aria-hidden>*</span>
-              </span>
-              <div role="radiogroup" aria-label="Período" className="flex flex-col gap-2 sm:flex-row sm:gap-6">
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-text-primary">
-                  <input
-                    type="radio"
-                    name="aus-periodo"
-                    checked={form.diaInteiro}
-                    onChange={() => setForm((f) => ({ ...f, diaInteiro: true, horaInicio: "", horaFim: "" }))}
-                    className="accent-brand-primary"
-                  />
-                  Dia todo
+            {/* Data de Início e Data de Término */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary" htmlFor="aus-data-inicio">
+                  Data de Início <span className="text-destructive" aria-hidden>*</span>
                 </label>
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-text-primary">
-                  <input
-                    type="radio"
-                    name="aus-periodo"
-                    checked={!form.diaInteiro}
-                    onChange={() => setForm((f) => ({ ...f, diaInteiro: false }))}
-                    className="accent-brand-primary"
-                  />
-                  Parte do dia
-                </label>
+                <input
+                  id="aus-data-inicio"
+                  type="date"
+                  value={form.dataInicioIso}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, dataInicioIso: e.target.value }))
+                    setFieldErrors((p) => ({ ...p, dataInicioIso: false, dataFimAntes: false }))
+                  }}
+                  className={`h-9 w-full rounded-lg border bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${fieldErrors.dataInicioIso ? "border-destructive" : "border-border-default"}`}
+                  style={{ colorScheme: "light" }}
+                />
               </div>
-
-              {/* Hora início e fim — expand quando Parte do dia */}
-              {!form.diaInteiro && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-text-primary" htmlFor="aus-hora-inicio">
-                      Hora de início <span className="text-destructive" aria-hidden>*</span>
-                    </label>
-                    <input
-                      id="aus-hora-inicio"
-                      type="time"
-                      value={form.horaInicio}
-                      onChange={(e) => {
-                        setForm((f) => ({ ...f, horaInicio: e.target.value }))
-                        setFieldErrors((p) => ({ ...p, horaInicio: false }))
-                      }}
-                      className={`h-9 w-full rounded-lg border bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${fieldErrors.horaInicio ? "border-destructive" : "border-border-default"}`}
-                      style={{ colorScheme: "light" }}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-text-primary" htmlFor="aus-hora-fim">
-                      Hora de término <span className="text-destructive" aria-hidden>*</span>
-                    </label>
-                    <input
-                      id="aus-hora-fim"
-                      type="time"
-                      value={form.horaFim}
-                      onChange={(e) => {
-                        setForm((f) => ({ ...f, horaFim: e.target.value }))
-                        setFieldErrors((p) => ({ ...p, horaFim: false }))
-                      }}
-                      className={`h-9 w-full rounded-lg border bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${fieldErrors.horaFim ? "border-destructive" : "border-border-default"}`}
-                      style={{ colorScheme: "light" }}
-                    />
-                  </div>
-                </div>
-              )}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-primary" htmlFor="aus-data-fim">
+                  Data de Término <span className="text-destructive" aria-hidden>*</span>
+                </label>
+                <input
+                  id="aus-data-fim"
+                  type="date"
+                  value={form.dataFimIso}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, dataFimIso: e.target.value }))
+                    setFieldErrors((p) => ({ ...p, dataFimIso: false, dataFimAntes: false }))
+                  }}
+                  className={`h-9 w-full rounded-lg border bg-surface-input px-3 py-1 text-sm text-text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${fieldErrors.dataFimIso || fieldErrors.dataFimAntes ? "border-destructive" : "border-border-default"}`}
+                  style={{ colorScheme: "light" }}
+                />
+                {fieldErrors.dataFimAntes && (
+                  <p className="text-xs text-destructive">
+                    A data de término deve ser igual ou posterior à data de início.
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Justificativa */}

@@ -574,10 +574,8 @@ CREATE TABLE IF NOT EXISTS "IndividualAusencias" (
     "createdByUserId" TEXT NOT NULL,
     "codigo" INTEGER NOT NULL,
     "tipo" "AusenciaTipo" NOT NULL,
-    "data" TIMESTAMP(3) NOT NULL,
-    "diaInteiro" BOOLEAN NOT NULL,
-    "horaInicio" TEXT,
-    "horaFim" TEXT,
+    "dataInicio" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "dataFim" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "justificativa" TEXT NOT NULL,
     "situacao" "AusenciaSituacao" NOT NULL DEFAULT 'PENDENTE',
     "motivoRecusa" TEXT,
@@ -587,6 +585,29 @@ CREATE TABLE IF NOT EXISTS "IndividualAusencias" (
     CONSTRAINT "IndividualAusencias_pkey" PRIMARY KEY ("id")
 );
 `)
+    // Evolução para DBs existentes: adiciona novas colunas (idempotente via IF NOT EXISTS).
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "IndividualAusencias" ADD COLUMN IF NOT EXISTS "dataInicio" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`
+    )
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "IndividualAusencias" ADD COLUMN IF NOT EXISTS "dataFim" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`
+    )
+    // Migra dados de "data" → "dataInicio"/"dataFim" em DBs que ainda têm a coluna antiga.
+    await prisma.$executeRawUnsafe(`
+DO $$ BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'IndividualAusencias' AND column_name = 'data'
+    ) THEN
+        UPDATE "IndividualAusencias" SET "dataInicio" = "data", "dataFim" = "data";
+    END IF;
+END $$;
+`)
+    // Remove colunas obsoletas (idempotente via IF EXISTS).
+    await prisma.$executeRawUnsafe(`ALTER TABLE "IndividualAusencias" DROP COLUMN IF EXISTS "data"`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "IndividualAusencias" DROP COLUMN IF EXISTS "diaInteiro"`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "IndividualAusencias" DROP COLUMN IF EXISTS "horaInicio"`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "IndividualAusencias" DROP COLUMN IF EXISTS "horaFim"`)
     await prisma.$executeRawUnsafe(
       `CREATE UNIQUE INDEX IF NOT EXISTS "IndividualAusencias_evaluatedUserId_codigo_key" ON "IndividualAusencias"("evaluatedUserId", "codigo")`
     )

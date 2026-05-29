@@ -22,10 +22,8 @@ export interface IndividualAusenciasRow {
   id: string
   codigo: number
   tipo: AusenciaTipo
-  dataIso: string // "YYYY-MM-DD"
-  diaInteiro: boolean
-  horaInicio: string | null
-  horaFim: string | null
+  dataInicioIso: string // "YYYY-MM-DD"
+  dataFimIso: string    // "YYYY-MM-DD"
   justificativa: string
   situacao: AusenciaSituacao
   motivoRecusa: string | null
@@ -122,10 +120,8 @@ export async function listIndividualAusencias(
           id: true,
           codigo: true,
           tipo: true,
-          data: true,
-          diaInteiro: true,
-          horaInicio: true,
-          horaFim: true,
+          dataInicio: true,
+          dataFim: true,
           justificativa: true,
           situacao: true,
           motivoRecusa: true,
@@ -136,10 +132,8 @@ export async function listIndividualAusencias(
         id: string
         codigo: number
         tipo: AusenciaTipo
-        data: Date
-        diaInteiro: boolean
-        horaInicio: string | null
-        horaFim: string | null
+        dataInicio: Date
+        dataFim: Date
         justificativa: string
         situacao: AusenciaSituacao
         motivoRecusa: string | null
@@ -156,10 +150,8 @@ export async function listIndividualAusencias(
       id: row.id,
       codigo: row.codigo,
       tipo: row.tipo,
-      dataIso: dataToIso(row.data),
-      diaInteiro: row.diaInteiro,
-      horaInicio: row.horaInicio,
-      horaFim: row.horaFim,
+      dataInicioIso: dataToIso(row.dataInicio),
+      dataFimIso: dataToIso(row.dataFim),
       justificativa: row.justificativa,
       situacao: row.situacao,
       motivoRecusa: row.motivoRecusa,
@@ -182,16 +174,14 @@ export async function listAllAusenciasAprovadas(): Promise<IndividualAusenciasRo
     const [rows, allUsers] = await Promise.all([
       (prisma.individualAusencias.findMany as (...args: unknown[]) => Promise<unknown>)({
         where: { situacao: "APROVADA" },
-        orderBy: [{ data: "desc" }],
+        orderBy: [{ dataInicio: "desc" }],
         select: {
           id: true,
           codigo: true,
           evaluatedUserId: true,
           tipo: true,
-          data: true,
-          diaInteiro: true,
-          horaInicio: true,
-          horaFim: true,
+          dataInicio: true,
+          dataFim: true,
           justificativa: true,
           createdAt: true,
         },
@@ -200,10 +190,8 @@ export async function listAllAusenciasAprovadas(): Promise<IndividualAusenciasRo
         codigo: number
         evaluatedUserId: string
         tipo: AusenciaTipo
-        data: Date
-        diaInteiro: boolean
-        horaInicio: string | null
-        horaFim: string | null
+        dataInicio: Date
+        dataFim: Date
         justificativa: string
         createdAt: Date
       }[]>,
@@ -217,10 +205,8 @@ export async function listAllAusenciasAprovadas(): Promise<IndividualAusenciasRo
         id: row.id,
         codigo: row.codigo,
         tipo: row.tipo,
-        dataIso: dataToIso(row.data),
-        diaInteiro: row.diaInteiro,
-        horaInicio: row.horaInicio,
-        horaFim: row.horaFim,
+        dataInicioIso: dataToIso(row.dataInicio),
+        dataFimIso: dataToIso(row.dataFim),
         justificativa: row.justificativa,
         situacao: "APROVADA" as AusenciaSituacao,
         motivoRecusa: null,
@@ -257,8 +243,10 @@ export async function createIndividualAusencias(
       return { error: "Não autorizado." }
     }
 
-    const dataDate = new Date(data.dataIso + "T00:00:00Z")
-    if (isNaN(dataDate.getTime())) return { error: "Data inválida." }
+    const dataInicioDate = new Date(data.dataInicioIso + "T00:00:00Z")
+    const dataFimDate = new Date(data.dataFimIso + "T00:00:00Z")
+    if (isNaN(dataInicioDate.getTime())) return { error: "Data de início inválida." }
+    if (isNaN(dataFimDate.getTime())) return { error: "Data de término inválida." }
 
     await ensureIndividualAusenciasTable()
     assertAusenciasModelReady()
@@ -278,10 +266,8 @@ export async function createIndividualAusencias(
         createdByUserId: session.user.id,
         codigo: nextCodigo,
         tipo: data.tipo,
-        data: dataDate,
-        diaInteiro: data.diaInteiro,
-        horaInicio: data.diaInteiro ? null : (data.horaInicio ?? null),
-        horaFim: data.diaInteiro ? null : (data.horaFim ?? null),
+        dataInicio: dataInicioDate,
+        dataFim: dataFimDate,
         justificativa: data.justificativa,
         situacao: isMgr ? "APROVADA" : "PENDENTE",
       },
@@ -354,13 +340,12 @@ export async function refuseIndividualAusencias(
 
     const existing = (await (prisma.individualAusencias.findUnique as (...args: unknown[]) => Promise<unknown>)({
       where: { id },
-      select: { id: true, situacao: true, evaluatedUserId: true, tipo: true, data: true },
+      select: { id: true, situacao: true, evaluatedUserId: true, tipo: true },
     })) as {
       id: string
       situacao: AusenciaSituacao
       evaluatedUserId: string
       tipo: AusenciaTipo
-      data: Date
     } | null
     if (!existing) return { error: "Ausência não encontrada." }
     if (existing.situacao !== "PENDENTE") return { error: "Esta ausência já foi processada." }
@@ -397,8 +382,10 @@ export async function updateIndividualAusencias(
     }
 
     const data = parsed.data
-    const dataDate = new Date(data.dataIso + "T00:00:00Z")
-    if (isNaN(dataDate.getTime())) return { error: "Data inválida." }
+    const dataInicioDate = new Date(data.dataInicioIso + "T00:00:00Z")
+    const dataFimDate = new Date(data.dataFimIso + "T00:00:00Z")
+    if (isNaN(dataInicioDate.getTime())) return { error: "Data de início inválida." }
+    if (isNaN(dataFimDate.getTime())) return { error: "Data de término inválida." }
 
     await ensureIndividualAusenciasTable()
     assertAusenciasModelReady()
@@ -413,10 +400,8 @@ export async function updateIndividualAusencias(
       where: { id: data.id },
       data: {
         tipo: data.tipo,
-        data: dataDate,
-        diaInteiro: data.diaInteiro,
-        horaInicio: data.diaInteiro ? null : (data.horaInicio ?? null),
-        horaFim: data.diaInteiro ? null : (data.horaFim ?? null),
+        dataInicio: dataInicioDate,
+        dataFim: dataFimDate,
         justificativa: data.justificativa,
         updatedAt: new Date(),
       },

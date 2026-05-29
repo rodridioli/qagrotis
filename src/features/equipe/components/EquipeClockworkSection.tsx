@@ -565,9 +565,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
             <p className="text-center text-sm text-destructive">{worklogsError}</p>
           </div>
         ) : worklogs.length === 0 ? (
-          <EmptyState
-            message={monthLabel ? `Nenhum worklog registrado em ${monthLabel}.` : "Nenhum worklog registrado."}
-          />
+          <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <div className="flex flex-col gap-4">
             {grouped.map((day) => (

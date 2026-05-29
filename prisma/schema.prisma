@@ -541,10 +541,8 @@ model IndividualAusencias {
   createdByUserId String
   codigo          Int
   tipo            AusenciaTipo
-  data            DateTime
-  diaInteiro      Boolean
-  horaInicio      String?
-  horaFim         String?
+  dataInicio      DateTime
+  dataFim         DateTime
   justificativa   String
   situacao        AusenciaSituacao @default(PENDENTE)
   motivoRecusa    String?
