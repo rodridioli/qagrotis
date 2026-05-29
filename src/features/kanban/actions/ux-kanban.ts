@@ -808,10 +808,10 @@ export async function createUxTarefa(
 
   if (priority)    fields.priority    = { name: priority }
   if (description) fields.description = textToAdf(description)
-  // Tag  → multi-select ("matrix") field: Jira expects an array of option objects
-  if (tag      && tagFieldId)         fields[tagFieldId]         = [{ value: tag }]
-  // Type → named-object field: Jira expects { name: "..." }
-  if (type     && typeFieldId)        fields[typeFieldId]        = { name: type }
+  // Tag  → labels/matrix field: Jira expects an array of plain strings
+  if (tag      && tagFieldId)         fields[tagFieldId]         = [tag]
+  // Type → select field: Jira expects { value: "option_value" }
+  if (type     && typeFieldId)        fields[typeFieldId]        = { value: type }
   // Deadline → plain date string "YYYY-MM-DD"
   if (deadline && deadlineFieldId)    fields[deadlineFieldId]    = deadline
   // Solicitante → plain-text field: always send display name as string
