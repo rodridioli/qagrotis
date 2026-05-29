@@ -808,16 +808,14 @@ export async function createUxTarefa(
 
   if (priority)    fields.priority    = { name: priority }
   if (description) fields.description = textToAdf(description)
-  // Tag and Type are plain-text fields in this Jira instance (not select/option)
-  if (tag      && tagFieldId)         fields[tagFieldId]      = tag
-  if (type     && typeFieldId)        fields[typeFieldId]     = type
-  if (deadline && deadlineFieldId)    fields[deadlineFieldId] = deadline
-  if (solicitante && solicitanteFieldId) {
-    // Prefer accountId for user-picker fields; fall back to display name for text fields
-    fields[solicitanteFieldId] = solicitanteAccountId
-      ? { accountId: solicitanteAccountId }
-      : solicitante
-  }
+  // Tag  → multi-select ("matrix") field: Jira expects an array of option objects
+  if (tag      && tagFieldId)         fields[tagFieldId]         = [{ value: tag }]
+  // Type → named-object field: Jira expects { name: "..." }
+  if (type     && typeFieldId)        fields[typeFieldId]        = { name: type }
+  // Deadline → plain date string "YYYY-MM-DD"
+  if (deadline && deadlineFieldId)    fields[deadlineFieldId]    = deadline
+  // Solicitante → plain-text field: always send display name as string
+  if (solicitante && solicitanteFieldId) fields[solicitanteFieldId] = solicitante
 
   // Create the Jira issue
   const createRes = await createJiraIssue(base, credentials, fields)
