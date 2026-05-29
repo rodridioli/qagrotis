@@ -189,13 +189,14 @@ interface SidebarProps {
   hasSistemaModulo: boolean
   hasCenario: boolean
   hasIntegracoes: boolean
+  hasJiraConfigured: boolean
   role: Role
   canAccessEquipeLancamentos: boolean
   /** Navegação com transição (mantém overlay de carregamento até a rota resolver). */
   onNavigate?: (href: string) => void
 }
 
-const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, role, canAccessEquipeLancamentos, onNavigate }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobile, isDark, assistenteOpen, onAssistenteOpen, hasSistemaModulo, hasCenario, hasIntegracoes, hasJiraConfigured, role, canAccessEquipeLancamentos, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const sidebarSearchParams = useSearchParams()
@@ -253,6 +254,9 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
               return override.flatMap(({ capability, label }) => {
                 const base = byCapability.get(capability)
                 if (!base || !isVisible(role, capability)) return []
+                // Ocultar completamente o Gerador para perfis QA quando
+                // Jira ou modelos IA não estiverem configurados.
+                if (capability === "menu.gerador" && (!hasIntegracoes || !hasJiraConfigured)) return []
                 return [{ ...base, label: label ?? base.label }]
               })
             })().map(({ href, icon: Icon, label, alwaysEnabled, capability }) => {
@@ -728,6 +732,7 @@ interface Props {
   hasSistemaComModulo?: boolean
   hasCenario?: boolean
   isAdmin?: boolean
+  hasJiraConfigured?: boolean
   pendingDominioAvaliacao?: PendingDominioAvaliacaoDto | null
 }
 
@@ -738,6 +743,7 @@ export default function LayoutClient({
   hasSistemaComModulo: hasSistemaComModuloProp = false,
   hasCenario: hasCenarioProp = false,
   isAdmin: _isAdmin = false,
+  hasJiraConfigured = false,
   pendingDominioAvaliacao = null,
 }: Props) {
   const router = useRouter()
@@ -904,6 +910,7 @@ export default function LayoutClient({
             hasSistemaModulo={hasSistemaModulo}
             hasCenario={hasCenario}
             hasIntegracoes={integracoes.length > 0}
+            hasJiraConfigured={hasJiraConfigured}
             role={role}
             canAccessEquipeLancamentos={canAccessEquipeLancamentos}
             onNavigate={handleNavigate}

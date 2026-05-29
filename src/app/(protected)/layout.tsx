@@ -6,6 +6,8 @@ import { checkIsAdmin } from "@/core/session"
 import { checkAndSendBirthdayNotifications, checkAndSendCompanyAnniversaryNotifications } from "@/core/actions/notifications"
 import { getPendingDominioAvaliacao } from "@/features/individual/actions/individual-dominio"
 import type { PendingDominioAvaliacaoDto } from "@/features/individual/actions/individual-dominio"
+import { auth } from "@/core/auth"
+import { getUserJiraCredentials } from "@/features/qa/lib/jira-credentials-db"
 import LayoutClient from "./LayoutClient"
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -14,12 +16,17 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   let hasSistemaComModulo = false
   let hasCenario = false
   let isAdmin = false
+  let hasJiraConfigured = false
   let pendingDominioAvaliacao: PendingDominioAvaliacaoDto | null = null
   try {
-    const [rData, rAdmin, rDominio] = await Promise.allSettled([
+    const session = await auth()
+    const userId = session?.user?.id ?? ""
+
+    const [rData, rAdmin, rDominio, rJira] = await Promise.allSettled([
       getLayoutMenuData(),
       checkIsAdmin(),
       getPendingDominioAvaliacao(),
+      userId ? getUserJiraCredentials(userId) : Promise.resolve(null),
     ])
     if (rData.status === "fulfilled") {
       const data = rData.value
@@ -33,6 +40,10 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     }
     if (rDominio.status === "fulfilled") {
       pendingDominioAvaliacao = rDominio.value
+    }
+    if (rJira.status === "fulfilled") {
+      const cred = rJira.value
+      hasJiraConfigured = !!(cred?.jiraUrl && cred?.jiraEmail && cred?.apiToken)
     }
   } catch {
     // If DB is temporarily unavailable, render layout without lists
@@ -49,6 +60,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       hasSistemaComModulo={hasSistemaComModulo}
       hasCenario={hasCenario}
       isAdmin={isAdmin}
+      hasJiraConfigured={hasJiraConfigured}
       pendingDominioAvaliacao={pendingDominioAvaliacao}
     >
       {children}
