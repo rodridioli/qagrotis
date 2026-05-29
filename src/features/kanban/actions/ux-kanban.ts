@@ -13,6 +13,12 @@ import {
   searchJiraUsersForMention,
   fetchIssueDetailsByKeys,
   fetchUxTarefasForUser,
+  createJiraIssue,
+  uploadJiraAttachments,
+  resolveTagFieldId,
+  resolveTypeFieldId,
+  resolveSolicitanteFieldId,
+  resolveDeadlineFieldId,
   type KanbanIssueDetail,
   type UxTarefa,
 } from "@/features/qa/lib/jira-worklogs-fetch"
@@ -717,4 +723,113 @@ async function _checkAndSendApprovalReminders(
       }).catch(() => null)
     }
   }
+}
+
+// ─── Text → ADF helper ────────────────────────────────────────────────────────
+
+/**
+ * Converts plain text to Atlassian Document Format (ADF) for use in Jira
+ * description/comment fields.  Line breaks are represented as hardBreak nodes
+ * so they round-trip cleanly through the Jira editor.
+ */
+function textToAdf(text: string): object {
+  const lines = text.split("\n")
+  const content: object[] = []
+  lines.forEach((line, i) => {
+    if (line) content.push({ type: "text", text: line })
+    if (i < lines.length - 1) content.push({ type: "hardBreak" })
+  })
+  return {
+    version: 1,
+    type: "doc",
+    content: [{ type: "paragraph", content: content.length ? content : [] }],
+  }
+}
+
+// ─── Create UX Tarefa ─────────────────────────────────────────────────────────
+
+/**
+ * Creates a new Tarefa in the UX Jira project from FormData submitted by the
+ * kanban "+" modal.
+ *
+ * FormData keys:
+ *   summary        – string (required)
+ *   tag            – string (optional, Jira select value)
+ *   priority       – string (optional, e.g. "High", "Medium")
+ *   type           – string (optional, Jira select value)
+ *   deadline       – string (optional, "YYYY-MM-DD")
+ *   solicitante    – string (optional, plain text)
+ *   description    – string (optional, converted to ADF)
+ *   attachment_N   – File  (optional, indexed from 0)
+ *
+ * Returns { ok: true, issueKey } on full success, or
+ *         { ok: true, issueKey, error } when the issue was created but an
+ *         attachment upload failed (caller shows a warning, not an error).
+ */
+export async function createUxTarefa(
+  formData: FormData,
+): Promise<{ ok: boolean; issueKey?: string; error?: string }> {
+  const session = await requireSession()
+  const role = buildRole(session.user.type, session.user.accessProfile)
+  if (!can(role, "menu.kanban")) return { ok: false, error: "Acesso negado." }
+
+  const creds = await resolveCredentials(session.user.id)
+  if (!creds) return { ok: false, error: "Credenciais Jira não configuradas." }
+  const { base, credentials } = creds
+
+  const summary     = (formData.get("summary")     as string | null)?.trim()
+  const tag         = (formData.get("tag")          as string | null)?.trim()
+  const priority    = (formData.get("priority")     as string | null)?.trim()
+  const type        = (formData.get("type")         as string | null)?.trim()
+  const deadline    = (formData.get("deadline")     as string | null)?.trim()
+  const solicitante = (formData.get("solicitante")  as string | null)?.trim()
+  const description = (formData.get("description")  as string | null)?.trim()
+
+  if (!summary) return { ok: false, error: "O título é obrigatório." }
+
+  // Resolve all custom field IDs in parallel (results are cached after first call)
+  const [tagFieldId, typeFieldId, solicitanteFieldId, deadlineFieldId] = await Promise.all([
+    resolveTagFieldId(base, credentials),
+    resolveTypeFieldId(base, credentials),
+    resolveSolicitanteFieldId(base, credentials),
+    resolveDeadlineFieldId(base, credentials),
+  ])
+
+  // Build the Jira fields payload
+  const fields: Record<string, unknown> = {
+    project:   { key: "UX" },
+    issuetype: { name: "Tarefa" },
+    summary,
+  }
+
+  if (priority)                          fields.priority            = { name: priority }
+  if (description)                       fields.description         = textToAdf(description)
+  if (tag         && tagFieldId)         fields[tagFieldId]         = { value: tag }
+  if (type        && typeFieldId)        fields[typeFieldId]        = { value: type }
+  if (deadline    && deadlineFieldId)    fields[deadlineFieldId]    = deadline
+  if (solicitante && solicitanteFieldId) fields[solicitanteFieldId] = solicitante
+
+  // Create the Jira issue
+  const createRes = await createJiraIssue(base, credentials, fields)
+  if (!createRes.ok || !createRes.key) {
+    return { ok: false, error: createRes.error ?? "Erro ao criar tarefa no Jira." }
+  }
+
+  // Collect attachment files (indexed as attachment_0, attachment_1, …)
+  const files: File[] = []
+  for (let i = 0; ; i++) {
+    const file = formData.get(`attachment_${i}`)
+    if (!file || !(file instanceof File)) break
+    files.push(file)
+  }
+
+  if (files.length > 0) {
+    const uploadRes = await uploadJiraAttachments(base, credentials, createRes.key, files)
+    if (!uploadRes.ok) {
+      // Issue was created successfully — surface the attachment error as a warning
+      return { ok: true, issueKey: createRes.key, error: uploadRes.error }
+    }
+  }
+
+  return { ok: true, issueKey: createRes.key }
 }

@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd"
-import { AlertCircle, ArrowRight, ChevronDown, Flag, Search, User } from "lucide-react"
+import { AlertCircle, ArrowRight, ChevronDown, Flag, Loader2, Plus, Search, User, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { JiraNotConfiguredCard } from "@/components/shared/JiraNotConfiguredCard"
@@ -19,6 +19,7 @@ import {
   assignIssueToUser,
   assignTarefaToMember,
   returnTarefaToBacklog,
+  createUxTarefa,
 } from "@/features/kanban/actions/ux-kanban"
 import type { KanbanIssue, UxTarefa } from "@/features/kanban/kanban-constants"
 
@@ -319,6 +320,294 @@ function DraggableTarefaCard({ tarefa, index, userColumn }: { tarefa: UxTarefa; 
   )
 }
 
+// ─── Create-Tarefa option constants ──────────────────────────────────────────
+
+const TAREFA_PRIORITY_OPTIONS = [
+  { value: "Medium",  label: "Média"   },
+  { value: "High",    label: "Alta"    },
+  { value: "Highest", label: "Crítica" },
+  { value: "Low",     label: "Baixa"   },
+] as const
+
+const TAREFA_TYPE_OPTIONS = [
+  { value: "Improvement",  label: "Melhoria"    },
+  { value: "Adjust/Return", label: "Ajuste"     },
+  { value: "New/Redesign", label: "Novo"        },
+  { value: "Usability",    label: "Usabilidade" },
+  { value: "Research",     label: "Pesquisa"    },
+  { value: "Others",       label: "Outros"      },
+] as const
+
+// ─── Create Tarefa Modal ──────────────────────────────────────────────────────
+
+function CreateTarefaModal({
+  tags,
+  onClose,
+  onCreated,
+}: {
+  tags: string[]
+  onClose: () => void
+  onCreated: (tarefa: UxTarefa) => void
+}) {
+  const [summary,     setSummary]     = React.useState("")
+  const [tag,         setTag]         = React.useState("")
+  const [priority,    setPriority]    = React.useState("Medium")
+  const [type,        setType]        = React.useState("")
+  const [deadline,    setDeadline]    = React.useState("")
+  const [solicitante, setSolicitante] = React.useState("")
+  const [description, setDescription] = React.useState("")
+  const [files,       setFiles]       = React.useState<File[]>([])
+  const [loading,     setLoading]     = React.useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  function addFiles(incoming: FileList | null) {
+    if (!incoming) return
+    setFiles((prev) => {
+      const existing = new Set(prev.map((f) => f.name + f.size))
+      const next = [...prev]
+      for (const f of Array.from(incoming)) {
+        if (!existing.has(f.name + f.size)) next.push(f)
+      }
+      return next
+    })
+  }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!summary.trim()) { toast.error("Informe o título da tarefa."); return }
+    setLoading(true)
+
+    const fd = new FormData()
+    fd.append("summary",     summary.trim())
+    if (tag)         fd.append("tag",         tag)
+    if (priority)    fd.append("priority",    priority)
+    if (type)        fd.append("type",        type)
+    if (deadline)    fd.append("deadline",    deadline)
+    if (solicitante) fd.append("solicitante", solicitante.trim())
+    if (description) fd.append("description", description.trim())
+    files.forEach((f, i) => fd.append(`attachment_${i}`, f, f.name))
+
+    const res = await createUxTarefa(fd).catch(() => ({ ok: false as const, error: "Erro inesperado." }))
+    setLoading(false)
+
+    if (!res.ok) {
+      toast.error(res.error ?? "Erro ao criar tarefa.")
+      return
+    }
+
+    // Partial success: issue created but attachment upload failed
+    if (res.error) toast.warning(res.error)
+    else           toast.success(`Tarefa ${res.issueKey} criada com sucesso!`)
+
+    // Build a minimal UxTarefa optimistically so it appears in the Tarefas column
+    const newTarefa: UxTarefa = {
+      key:                   res.issueKey!,
+      summary:               summary.trim(),
+      status:                "Open",
+      priority:              priority || null,
+      priorityIconUrl:       null,
+      reporterDisplayName:   null,
+      solicitanteDisplayName: solicitante.trim() || null,
+      dueDate:               null,
+      deadline:              deadline || null,
+      tag:                   tag || null,
+    }
+
+    onCreated(newTarefa)
+    onClose()
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 backdrop-blur-sm py-8 px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="w-full max-w-lg rounded-2xl bg-surface-card shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 px-6 pt-6 pb-4 border-b border-border-default">
+          <h2 className="text-base font-semibold text-text-primary">Nova Tarefa</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            className="cursor-pointer shrink-0 rounded-lg p-1 text-text-secondary hover:bg-neutral-grey-100"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          {/* Título */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">
+              Título <span className="text-destructive">*</span>
+            </label>
+            <input
+              type="text"
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              placeholder="Descreva brevemente a tarefa…"
+              className="w-full rounded-xl border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              required
+            />
+          </div>
+
+          {/* Tag + Prioridade */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Tag</label>
+              <div className="relative">
+                <select
+                  value={tag}
+                  onChange={(e) => setTag(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-border-default bg-surface-input px-3 py-2 pr-7 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                >
+                  <option value="">— sem tag —</option>
+                  {tags.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-secondary" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Prioridade</label>
+              <div className="relative">
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-border-default bg-surface-input px-3 py-2 pr-7 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                >
+                  {TAREFA_PRIORITY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-secondary" />
+              </div>
+            </div>
+          </div>
+
+          {/* Tipo + Deadline */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Tipo</label>
+              <div className="relative">
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-border-default bg-surface-input px-3 py-2 pr-7 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                >
+                  <option value="">— selecione —</option>
+                  {TAREFA_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-secondary" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">Deadline</label>
+              <input
+                type="date"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                className="w-full rounded-xl border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              />
+            </div>
+          </div>
+
+          {/* Solicitante */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">Solicitante</label>
+            <input
+              type="text"
+              value={solicitante}
+              onChange={(e) => setSolicitante(e.target.value)}
+              placeholder="Nome do solicitante…"
+              className="w-full rounded-xl border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+            />
+          </div>
+
+          {/* Descrição */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">Descrição</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Descreva os detalhes da tarefa…"
+              rows={4}
+              className="w-full resize-none rounded-xl border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+            />
+          </div>
+
+          {/* Anexos */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-text-primary">Anexos</label>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border-default py-3 text-sm text-text-secondary transition-colors hover:border-brand-primary hover:text-brand-primary"
+            >
+              <Plus className="size-4" />
+              Adicionar arquivos
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => { addFiles(e.target.files); e.target.value = "" }}
+            />
+            {files.length > 0 && (
+              <ul className="space-y-1.5">
+                {files.map((f, i) => (
+                  <li key={i} className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-input px-3 py-1.5">
+                    <span className="flex-1 truncate text-xs text-text-primary">{f.name}</span>
+                    <span className="shrink-0 text-xs text-text-secondary">
+                      {(f.size / 1024).toFixed(0)} KB
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(i)}
+                      aria-label={`Remover ${f.name}`}
+                      className="cursor-pointer shrink-0 rounded p-0.5 text-text-secondary hover:text-destructive"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-2 border-t border-border-default">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="cursor-pointer rounded-xl border border-border-default bg-surface-card px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-neutral-grey-50 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex cursor-pointer items-center gap-2 rounded-xl bg-brand-primary px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-50"
+            >
+              {loading && <Loader2 className="size-4 animate-spin" />}
+              {loading ? "Criando…" : "Criar Tarefa"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Tarefas lane ─────────────────────────────────────────────────────────────
 
 function TarefasLane({
@@ -327,12 +616,14 @@ function TarefasLane({
   onTagFilterChange,
   tags,
   hasUntagged,
+  onCreateClick,
 }: {
   tarefas: UxTarefa[]
   tagFilter: string
   onTagFilterChange: (v: string) => void
   tags: string[]
   hasUntagged: boolean
+  onCreateClick: () => void
 }) {
   const [rawSearch, setRawSearch] = React.useState("")
   const debouncedSearch = useDebounce(rawSearch, 200)
@@ -354,21 +645,32 @@ function TarefasLane({
         <span className="shrink-0 rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-xs font-bold tabular-nums text-text-secondary">
           {displayedTarefas.length}
         </span>
-        {(tags.length > 0 || hasUntagged) && (
-          <div className="relative ml-auto">
-            <select
-              value={tagFilter}
-              onChange={(e) => onTagFilterChange(e.target.value)}
-              className="appearance-none rounded-lg border border-border-default bg-surface-card py-1 pl-3 pr-7 text-xs font-medium text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
-              aria-label="Filtrar por tag"
-            >
-              <option value="">Todos</option>
-              <option value="__no_tag__">Sem tag</option>
-              {tags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-text-secondary" />
-          </div>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {(tags.length > 0 || hasUntagged) && (
+            <div className="relative">
+              <select
+                value={tagFilter}
+                onChange={(e) => onTagFilterChange(e.target.value)}
+                className="appearance-none rounded-lg border border-border-default bg-surface-card py-1 pl-3 pr-7 text-xs font-medium text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                aria-label="Filtrar por tag"
+              >
+                <option value="">Todos</option>
+                <option value="__no_tag__">Sem tag</option>
+                {tags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-text-secondary" />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onCreateClick}
+            title="Nova tarefa"
+            aria-label="Nova tarefa"
+            className="flex cursor-pointer items-center justify-center rounded-lg border border-border-default bg-surface-card p-1.5 text-text-secondary transition-colors hover:border-brand-primary hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
+          >
+            <Plus className="size-3.5" />
+          </button>
+        </div>
       </div>
 
       <div className="mx-4 h-px bg-border-default" />
@@ -635,6 +937,7 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
   const [assignments, setAssignments] = React.useState<KanbanAssignments>(initialAssignments)
   const [projectFilter, setProjectFilter] = React.useState<string>("")
   const [tagFilter, setTagFilter] = React.useState<string>("")
+  const [showCreateModal, setShowCreateModal] = React.useState(false)
   // Split tarefas into: unassigned (shown in Tarefas column) and assigned (shown in member columns)
   const [tarefas, setTarefas] = React.useState<UxTarefa[]>(() => {
     if (!initialTarefasResult.ok) return []
@@ -934,6 +1237,7 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
                 onTagFilterChange={setTagFilter}
                 tags={tags}
                 hasUntagged={hasUntagged}
+                onCreateClick={() => setShowCreateModal(true)}
               />
 
               {/* One lane per member */}
@@ -959,7 +1263,17 @@ export function UxKanbanClient({ initialResult, members, initialAssignments, ini
         </DragDropContext>
       )}
 
-
+      {/* Create Tarefa modal */}
+      {showCreateModal && (
+        <CreateTarefaModal
+          tags={tags}
+          onClose={() => setShowCreateModal(false)}
+          onCreated={(newTarefa) => {
+            setTarefas((prev) => sortTarefas([...prev, newTarefa]))
+            setShowCreateModal(false)
+          }}
+        />
+      )}
     </div>
   )
 }
