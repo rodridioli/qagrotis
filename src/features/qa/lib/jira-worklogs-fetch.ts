@@ -571,10 +571,13 @@ export async function fetchBrokenTestFieldSumByReporter(
   const qtdFieldIds = await resolveQtdCenariosQAFieldIds(base, credentials)
   if (qtdFieldIds.length === 0) return { cenariosQASum: 0, issueCount: 0 }
 
-  // Coleta candidatos de accountId (igual a countReporterIssuesByTypes)
+  // Coleta candidatos de accountId. A busca por nome é fallback exclusivo para
+  // quando o accountId não está disponível (e-mail oculto por privacidade no Jira).
+  // Misturar IDs de outros usuários com nome similar inflaria a contagem.
   const candidateIds = new Set<string>()
-  if (accountId.trim()) candidateIds.add(accountId.trim())
-  if (displayName?.trim()) {
+  if (accountId.trim()) {
+    candidateIds.add(accountId.trim())
+  } else if (displayName?.trim()) {
     try {
       const byName = await findJiraAccountIdsByDisplayName(base, credentials, displayName.trim())
       for (const u of byName) candidateIds.add(u.accountId)
@@ -879,15 +882,15 @@ export async function countReporterIssuesByTypes(
     return capped
   }
 
-  // Collect candidate accountIds: from the email lookup + from a name-based
-  // Jira user search (to recover the right user when emails are hidden).
+  // Collect candidate accountIds. Name-based search is a fallback exclusively for
+  // when accountId is unavailable (email hidden by Jira Cloud privacy settings).
+  // Adding IDs from other users with similar names would inflate the count.
   const accountIdsTried: string[] = []
   const candidateIds = new Set<string>()
   if (accountId.trim()) {
     candidateIds.add(accountId.trim())
     accountIdsTried.push(accountId.trim())
-  }
-  if (displayName?.trim()) {
+  } else if (displayName?.trim()) {
     const byName = await findJiraAccountIdsByDisplayName(base, credentials, displayName.trim())
     for (const u of byName) {
       if (!candidateIds.has(u.accountId)) {
