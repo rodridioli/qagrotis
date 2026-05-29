@@ -808,10 +808,10 @@ export async function createUxTarefa(
 
   if (priority)    fields.priority    = { name: priority }
   if (description) fields.description = textToAdf(description)
-  // Tag field is an array-of-select in Jira (matriz), must be wrapped in an array
-  if (tag      && tagFieldId)         fields[tagFieldId]         = [{ value: tag }]
-  if (type     && typeFieldId)        fields[typeFieldId]        = { value: type }
-  if (deadline && deadlineFieldId)    fields[deadlineFieldId]    = deadline
+  // Tag and Type are plain-text fields in this Jira instance (not select/option)
+  if (tag      && tagFieldId)         fields[tagFieldId]      = tag
+  if (type     && typeFieldId)        fields[typeFieldId]     = type
+  if (deadline && deadlineFieldId)    fields[deadlineFieldId] = deadline
   if (solicitante && solicitanteFieldId) {
     // Prefer accountId for user-picker fields; fall back to display name for text fields
     fields[solicitanteFieldId] = solicitanteAccountId
