@@ -807,7 +807,7 @@ export default function NovoCenarioClient({
 
         {/* ── Dependências tab ── */}
         {(manual || automatizado) && (
-          <div className={activeTab !== "dependencias" ? "hidden" : "pb-5"}>
+          <div className={activeTab !== "dependencias" ? "hidden" : ""}>
             <div className="flex justify-end px-5 pt-5 pb-3">
               <Button variant="outline" size="sm" onClick={() => setAddDepOpen(true)}>
                 <Plus className="size-4" />
@@ -817,10 +817,10 @@ export default function NovoCenarioClient({
             {deps.length === 0 ? (
               <EmptyState message="Nenhuma dependência adicionada." className="mx-5 mb-5 mt-0" />
             ) : (
-              <div className="min-w-0">
+              <div className="overflow-x-auto">
                 <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
                   <colgroup>
-                    <col className="w-24" /><col /><col className="w-24" /><col className="w-28" /><col className="w-28" /><col className="w-10" />
+                    <col className="w-24" /><col /><col className="w-24" /><col className="w-28" /><col className="w-28" /><col className="w-16" />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-border-default bg-neutral-grey-50">
