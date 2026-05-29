@@ -499,7 +499,9 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile }
               onValueChange={(v) => v && handlePeriodChange(v as PeriodId)}
             >
               <SelectTrigger className="w-40" aria-label="Período">
-                <SelectValue />
+                <SelectValue>
+                  {(v: string | null) => PERIOD_OPTIONS.find((o) => o.value === v)?.label ?? v ?? ""}
+                </SelectValue>
               </SelectTrigger>
               <SelectPopup>
                 {PERIOD_OPTIONS.map((o) => (
