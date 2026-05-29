@@ -540,7 +540,7 @@ export function IndividualLancamentosSection({
       {jiraConfigured === false ? (
         <JiraNotConfiguredCard />
       ) : isLoading ? (
-        <SectionSpinner />
+        <SectionSpinner minHeight="min-h-[60vh]" />
       ) : error ? (
         <EmptyState message={`Erro: ${error}`} />
       ) : data ? (

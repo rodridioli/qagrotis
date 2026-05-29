@@ -203,7 +203,7 @@ export function EquipeAusenciasSection({ isMgr, currentUserId }: EquipeAusencias
     return [...searched].sort((a, b) => a.dataInicioIso.localeCompare(b.dataInicioIso))
   }, [rows, search, todayIso])
 
-  if (loading) return <SectionSpinner minHeight="min-h-[16rem]" />
+  if (loading) return <SectionSpinner minHeight="min-h-[60vh]" />
 
   return (
     <div className="flex w-full flex-col gap-4">

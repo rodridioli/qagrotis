@@ -44,7 +44,7 @@ export function MinhasProgressoesSection() {
     return rows.slice(start, start + PAGE_SIZE)
   }, [rows, page])
 
-  if (loading) return <SectionSpinner minHeight="min-h-[16rem]" />
+  if (loading) return <SectionSpinner minHeight="min-h-[60vh]" />
 
   return (
     <div className="flex w-full flex-col gap-4">

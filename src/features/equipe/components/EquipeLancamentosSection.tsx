@@ -132,7 +132,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
 
   // Mostra spinner enquanto membros OU credenciais Jira ainda não resolveram
   if (membrosLoading || credentialsQuery.isLoading) {
-    return <SectionSpinner minHeight="min-h-[20rem]" />
+    return <SectionSpinner minHeight="min-h-[60vh]" />
   }
 
   // Jira não configurado: exibe apenas a mensagem, sem avatar strip nem selects

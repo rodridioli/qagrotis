@@ -180,7 +180,7 @@ export function EquipeChaptersSection({ isAdmin, currentUserId }: EquipeChapters
     await refetch()
   }
 
-  if (loading) return <SectionSpinner minHeight="min-h-[16rem]" />
+  if (loading) return <SectionSpinner minHeight="min-h-[60vh]" />
 
   return (
     <div className="space-y-4">

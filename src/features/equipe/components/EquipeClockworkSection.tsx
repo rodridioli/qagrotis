@@ -422,7 +422,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
-  if (membrosLoading) return <SectionSpinner minHeight="min-h-[24rem]" />
+  if (membrosLoading) return <SectionSpinner minHeight="min-h-[60vh]" />
 
   const showSummary = !worklogsLoading && !worklogsError && worklogs.length > 0 && selectedMembro
 

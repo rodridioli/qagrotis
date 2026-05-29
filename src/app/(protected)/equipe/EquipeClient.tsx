@@ -158,7 +158,7 @@ const aniversariantesPorMes = useMemo(() => {
       {activeTab === "aniversarios" && (
         <div className="space-y-4">
           {cadastroLoading ? (
-            <SectionSpinner minHeight="min-h-[16rem]" />
+            <SectionSpinner minHeight="min-h-[60vh]" />
           ) : cadastroError ? (
             <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
               <p className="text-center text-sm text-destructive">{cadastroError}</p>
@@ -203,7 +203,7 @@ const aniversariantesPorMes = useMemo(() => {
       {activeTab === "horarios" && (
         <div className="space-y-4">
           {cadastroLoading ? (
-            <SectionSpinner minHeight="min-h-[16rem]" />
+            <SectionSpinner minHeight="min-h-[60vh]" />
           ) : cadastroError ? (
             <div className="flex items-center justify-center rounded-custom border border-border-default bg-surface-card py-16 shadow-card px-4">
               <p className="text-center text-sm text-destructive">{cadastroError}</p>
@@ -215,7 +215,7 @@ const aniversariantesPorMes = useMemo(() => {
       )}
 
       {activeTab === "lancamentos" && canAccessEquipeLancamentos && (
-        <Suspense fallback={<SectionSpinner minHeight="min-h-[20rem]" />}>
+        <Suspense fallback={<SectionSpinner minHeight="min-h-[60vh]" />}>
           <EquipeLancamentosSection
             userAccessProfile={userAccessProfile}
             canFilterByProfile={canFilterByProfile}
@@ -224,7 +224,7 @@ const aniversariantesPorMes = useMemo(() => {
       )}
 
       {activeTab === "clockwork" && canAccessEquipeClockwork && (
-        <Suspense fallback={<SectionSpinner minHeight="min-h-[20rem]" />}>
+        <Suspense fallback={<SectionSpinner minHeight="min-h-[60vh]" />}>
           <EquipeClockworkSection
             userAccessProfile={userAccessProfile}
             canFilterByProfile={canFilterByProfile}
