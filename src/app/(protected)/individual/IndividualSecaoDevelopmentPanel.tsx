@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useQuery } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { Plus, Settings, Send } from "lucide-react"
 import { toast } from "sonner"
@@ -59,6 +60,21 @@ export function IndividualSecaoDevelopmentPanel({
   showCompletedToast = false,
 }: Props) {
   const router = useRouter()
+
+  // Verifica credenciais Jira — compartilha cache com IndividualLancamentosSection
+  // (mesma queryKey, staleTime: Infinity → zero chamadas extras de rede)
+  const credentialsQuery = useQuery({
+    queryKey: ["jira-credentials"],
+    queryFn: async () => {
+      const res = await fetch("/api/jira/credentials", { credentials: "same-origin" })
+      if (!res.ok) return { configured: false }
+      return res.json() as Promise<{ configured?: boolean }>
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
+  const jiraConfigured = credentialsQuery.data?.configured ?? null
+
   const progressaoRef = React.useRef<ProgressaoSectionHandle>(null)
   const feriasRef = React.useRef<IndividualFeriasSectionHandle>(null)
   const [lancamentosPreset, setLancamentosPreset] = React.useState<LancamentosPeriodPreset>("week")
@@ -118,7 +134,7 @@ export function IndividualSecaoDevelopmentPanel({
           <div className="min-w-0 flex-1">
             <IndividualActiveUserAvatarStrip secao={secao} users={visibleUsers} selectedUserId={effectiveUserId} />
           </div>
-          {showLancamentos && (
+          {showLancamentos && jiraConfigured === true && (
             <div className="flex shrink-0 items-center" style={{ gap: "calc(var(--spacing) * 2)" }}>
               <Select
                 value={accessProfileFilter}

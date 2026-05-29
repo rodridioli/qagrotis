@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useQuery } from "@tanstack/react-query"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   Select,
@@ -16,6 +17,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { JiraNotConfiguredCard } from "@/components/shared/JiraNotConfiguredCard"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -53,6 +55,20 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
+  // Verifica se Jira está configurado — mesma query key usada por IndividualLancamentosSection
+  // (staleTime: Infinity → cache compartilhado, sem chamadas extras de rede)
+  const credentialsQuery = useQuery({
+    queryKey: ["jira-credentials"],
+    queryFn: async () => {
+      const res = await fetch("/api/jira/credentials", { credentials: "same-origin" })
+      if (!res.ok) return { configured: false }
+      return res.json() as Promise<{ configured?: boolean }>
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
+  const jiraConfigured = credentialsQuery.data?.configured ?? null
+
   // MGR não tem lançamentos próprios — default para QA
   const defaultProfile: Exclude<AccessProfileId, "MGR"> =
     userAccessProfile === "MGR" ? "QA" : userAccessProfile as Exclude<AccessProfileId, "MGR">
@@ -66,7 +82,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
     return v && VALID_PRESETS.has(v) ? (v as LancamentosPeriodPreset) : "anterior"
   })
   const [membros, setMembros] = React.useState<EquipeMembroLancamentos[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const [membrosLoading, setMembrosLoading] = React.useState(true)
   const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
 
   // Captured once so member-load effect doesn't re-run when URL changes
@@ -95,7 +111,7 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
 
   React.useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    setMembrosLoading(true)
     setSelectedUserId(null)
     const profile = canFilterByProfile ? profileFilter : userAccessProfile
     getEquipeMembrosParaLancamentos(profile).then((data) => {
@@ -108,13 +124,21 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
         const match = urlMembro ? visible.find((m) => m.userId === urlMembro) : null
         setSelectedUserId(match ? match.userId : (visible[0]?.userId ?? null))
         initialMembroRef.current = null
-        setLoading(false)
+        setMembrosLoading(false)
       }
     })
     return () => { cancelled = true }
   }, [profileFilter, canFilterByProfile, userAccessProfile])
 
-  if (loading) return <SectionSpinner minHeight="min-h-[20rem]" />
+  // Mostra spinner enquanto membros OU credenciais Jira ainda não resolveram
+  if (membrosLoading || credentialsQuery.isLoading) {
+    return <SectionSpinner minHeight="min-h-[20rem]" />
+  }
+
+  // Jira não configurado: exibe apenas a mensagem, sem avatar strip nem selects
+  if (jiraConfigured === false) {
+    return <JiraNotConfiguredCard />
+  }
 
   return (
     <div className="flex flex-col gap-4">
