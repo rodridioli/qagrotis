@@ -123,6 +123,8 @@ export function IndividualFeedbacksSection({
     void refetch()
   }
 
+  if (loading) return <SectionSpinner minHeight="min-h-[16rem]" />
+
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
@@ -131,8 +133,8 @@ export function IndividualFeedbacksSection({
           onSearchChange={(v) => { setQ(v); setPage(1) }}
           searchPlaceholder="Buscar por data…"
           totalLabel="Total de feedbacks"
-          totalCount={loading ? 0 : filtered.length}
-          baseCount={loading ? 0 : rows.length}
+          totalCount={filtered.length}
+          baseCount={rows.length}
         />
 
         {error ? (
@@ -141,9 +143,7 @@ export function IndividualFeedbacksSection({
           </div>
         ) : null}
 
-        {loading ? (
-          <SectionSpinner />
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <IndividualFeedbacksTable

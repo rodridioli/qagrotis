@@ -44,12 +44,14 @@ export function MinhasProgressoesSection() {
     return rows.slice(start, start + PAGE_SIZE)
   }, [rows, page])
 
+  if (loading) return <SectionSpinner minHeight="min-h-[16rem]" />
+
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
         <div className="flex items-center border-b border-border-default bg-neutral-grey-50/50 px-4 py-3">
           <span className="text-sm text-text-secondary">
-            {loading ? "—" : `${rows.length} ${rows.length === 1 ? "registro" : "registros"}`}
+            {`${rows.length} ${rows.length === 1 ? "registro" : "registros"}`}
           </span>
         </div>
 
@@ -66,9 +68,7 @@ export function MinhasProgressoesSection() {
           </div>
         ) : null}
 
-        {loading ? (
-          <SectionSpinner />
-        ) : rows.length === 0 ? (
+        {rows.length === 0 ? (
           <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <IndividualProgressaoTable

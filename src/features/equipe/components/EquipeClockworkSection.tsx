@@ -422,6 +422,8 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
+  if (membrosLoading) return <SectionSpinner minHeight="min-h-[24rem]" />
+
   const showSummary = !worklogsLoading && !worklogsError && worklogs.length > 0 && selectedMembro
 
   return (
@@ -554,9 +556,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
         )}
 
         {/* Content */}
-        {membrosLoading ? (
-          <SectionSpinner minHeight="min-h-[20rem]" />
-        ) : canViewOthersClockwork && membros.length === 0 ? (
+        {canViewOthersClockwork && membros.length === 0 ? (
           <EmptyState message="Nenhum membro encontrado neste perfil." />
         ) : worklogsLoading ? (
           <SectionSpinner minHeight="min-h-[20rem]" />

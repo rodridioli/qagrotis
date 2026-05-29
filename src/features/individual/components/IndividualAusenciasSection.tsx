@@ -315,6 +315,8 @@ export const IndividualAusenciasSection = React.forwardRef<
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
+  if (loading) return <SectionSpinner minHeight="min-h-[16rem]" />
+
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="flex justify-end">
@@ -352,9 +354,7 @@ export const IndividualAusenciasSection = React.forwardRef<
           </div>
         ) : null}
 
-        {loading ? (
-          <SectionSpinner />
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <EmptyState
             message={
               canWrite

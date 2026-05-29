@@ -231,6 +231,8 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
 
     const activeFilterCount = situacaoFiltro !== defaultSituacaoFiltro ? 1 : 0
 
+    if (loading) return <SectionSpinner minHeight="min-h-[16rem]" />
+
     return (
       <div className="flex w-full flex-col gap-4">
         <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
@@ -254,9 +256,7 @@ export const IndividualFeriasSection = React.forwardRef<IndividualFeriasSectionH
             </div>
           ) : null}
 
-          {loading ? (
-            <SectionSpinner />
-          ) : filtered.length === 0 ? (
+          {filtered.length === 0 ? (
             <EmptyState message="Nenhum registro encontrado." />
           ) : (
             <div className="overflow-x-auto">

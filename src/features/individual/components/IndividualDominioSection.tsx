@@ -141,7 +141,7 @@ export function IndividualDominioSection({
       <span className="text-sm font-medium text-text-primary">
         Total de avaliações:{" "}
         <span className="font-bold">
-          {(loading ? 0 : filtered.length).toLocaleString("pt-BR")}
+          {filtered.length.toLocaleString("pt-BR")}
         </span>
       </span>
       {pendingRow && (
@@ -152,6 +152,8 @@ export function IndividualDominioSection({
       )}
     </div>
   )
+
+  if (loading) return <SectionSpinner minHeight="min-h-[16rem]" />
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -164,7 +166,7 @@ export function IndividualDominioSection({
           }}
           searchPlaceholder="Buscar por data…"
           leadingSummary={toolbarLeading}
-          baseCount={loading ? 0 : rows.length}
+          baseCount={rows.length}
         />
 
         {error ? (
@@ -173,9 +175,7 @@ export function IndividualDominioSection({
           </div>
         ) : null}
 
-        {loading ? (
-          <SectionSpinner />
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <EmptyState message="Nenhum registro encontrado." />
         ) : (
           <IndividualDominioTable

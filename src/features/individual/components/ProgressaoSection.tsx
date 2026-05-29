@@ -382,6 +382,8 @@ export const ProgressaoSection = React.forwardRef<ProgressaoSectionHandle, Progr
       void refetch()
     }
 
+    if (loading) return <SectionSpinner minHeight="min-h-[16rem]" />
+
     return (
       <div className="flex w-full flex-col gap-4">
         <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
@@ -389,7 +391,7 @@ export const ProgressaoSection = React.forwardRef<ProgressaoSectionHandle, Progr
             search=""
             onSearchChange={() => {}}
             totalLabel="Total de progressões"
-            totalCount={loading ? 0 : rows.length}
+            totalCount={rows.length}
             baseCount={0}
           />
 
@@ -399,9 +401,7 @@ export const ProgressaoSection = React.forwardRef<ProgressaoSectionHandle, Progr
             </div>
           ) : null}
 
-          {loading ? (
-            <SectionSpinner />
-          ) : rows.length === 0 ? (
+          {rows.length === 0 ? (
             <EmptyState message="Nenhum registro encontrado." />
           ) : (
             <IndividualProgressaoTable
