@@ -50,7 +50,7 @@ export default async function ConfiguracoesPage() {
   const role = buildRole(session?.user?.type, session?.user?.accessProfile)
 
   const isQA = session?.user?.accessProfile === "QA"
-  const moduloCount = isQA ? await prisma.modulo.count() : 0
+  const moduloCount = isQA ? await prisma.modulo.count({ where: { active: true } }) : 0
 
   const QA_REQUIRES_MODULOS = new Set(["config.clientes", "config.credenciais"])
 
