@@ -545,19 +545,6 @@ export function IndividualLancamentosSection({
         <EmptyState message={`Erro: ${error}`} />
       ) : data ? (
         <>
-          {data.noJiraUser && data.entries.length > 0 ? (
-            <div
-              className="rounded-lg border border-border-default bg-surface-card px-4 py-3 text-sm text-text-secondary"
-              role="status"
-            >
-              <p className="font-medium text-text-primary">Utilizador Jira não encontrado por e-mail</p>
-              <p className="mt-1">
-                A tabela pode mostrar apenas lançamentos vindos da API Clockwork. Associe o mesmo e-mail no Jira
-                para alinhar worklogs nativos.
-              </p>
-            </div>
-          ) : null}
-
           {allEntries.length > 0 && (data.truncatedIssues || data.truncatedWorklogs) ? (
             <p className="text-sm text-text-secondary">
               {data.truncatedIssues

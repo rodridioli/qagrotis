@@ -2,12 +2,13 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Calendar, Check, MessageSquare, Save, User } from "lucide-react"
+import { Check, MessageSquare, Save } from "lucide-react"
 import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectTrigger,
@@ -15,7 +16,8 @@ import {
   SelectPopup,
   SelectItem,
 } from "@/components/ui/select"
-import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
+import { inputNativePickerRightClassName } from "@/lib/input-native-picker-classes"
+import { FeedbackTipoBadge } from "@/components/shared/StatusBadge"
 import type { EvaluatedUserSummary } from "@/features/individual/components/individualEvaluationTypes"
 import {
   createAndSaveIndividualFeedback,
@@ -36,12 +38,6 @@ import {
   evaluationPeriodLabel,
   isEvaluationPeriodSlug,
 } from "@/features/individual/lib/individual-performance-evaluation"
-
-function formatDataPt(ymd: string): string {
-  const [y, m, d] = ymd.split("-")
-  if (!y || !m || !d) return ymd
-  return `${d}/${m}/${y}`
-}
 
 // ── Campo config por tipo ─────────────────────────────────────────────────────
 
@@ -281,78 +277,6 @@ export function IndividualFeedbackPageClient({
         </div>
       </div>
 
-      {/* Info cards: Colaborador + Data */}
-      <h2 className="sr-only">Dados gerais</h2>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
-        {/* Colaborador card */}
-        <div className="flex h-full min-h-0 flex-col rounded-xl border border-border-default bg-surface-card p-4 shadow-card">
-          <div className="mb-3 flex items-start justify-between gap-2">
-            <p className="text-sm text-text-secondary">Colaborador</p>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-              <User className="size-5" aria-hidden />
-            </span>
-          </div>
-          <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex shrink-0 justify-center sm:justify-start">
-              <UserAvatar
-                name={evaluatedUser.name || " "}
-                photoPath={evaluatedUser.photoPath}
-                size={56}
-                className="rounded-xl ring-0"
-              />
-            </div>
-            <div className="min-w-0 flex-1 space-y-1 text-center sm:text-left">
-              <p className="text-base font-semibold text-text-primary">{evaluatedUser.name}</p>
-              {evaluatedUser.email ? (
-                <p className="truncate text-sm text-text-secondary">{evaluatedUser.email}</p>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        {/* Data e Período card */}
-        <div className="flex flex-col rounded-xl border border-border-default bg-surface-card p-4 shadow-card">
-          <div className="mb-3 flex items-start justify-between gap-2">
-            <span className="text-sm text-text-secondary">Data e período</span>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-              <Calendar className="size-5" aria-hidden />
-            </span>
-          </div>
-          <div className="flex flex-1 flex-col justify-center gap-3">
-            <p className="text-2xl font-bold tabular-nums text-text-primary sm:text-3xl">
-              {formatDataPt(dataYmd)}
-            </p>
-            {isViewOnly ? (
-              <p className="text-sm font-medium text-text-primary">
-                {evaluationPeriodLabel(periodo)}
-              </p>
-            ) : (
-              <Select
-                value={periodo}
-                onValueChange={(v) => {
-                  if (v && isEvaluationPeriodSlug(v)) setPeriodo(v)
-                }}
-              >
-                <SelectTrigger
-                  id="feedback-periodo"
-                  className="h-9 w-full max-w-xs bg-surface-input"
-                  disabled={busy != null}
-                >
-                  <SelectValue>{evaluationPeriodLabel(periodo)}</SelectValue>
-                </SelectTrigger>
-                <SelectPopup>
-                  {EVALUATION_PERIOD_SLUGS.map((slug) => (
-                    <SelectItem key={slug} value={slug}>
-                      {evaluationPeriodLabel(slug)}
-                    </SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Feedback form card */}
       <div className="rounded-xl border border-border-default bg-surface-card shadow-card">
         <div className="flex items-center gap-3 border-b border-border-default px-5 py-4">
@@ -363,13 +287,94 @@ export function IndividualFeedbackPageClient({
             {isNew ? "Novo Feedback" : feedbackDisplayCodigo(initialDetail.codigo)}
           </h2>
           {!isNew && (
-            <span className="ml-auto text-sm text-text-secondary">
-              {feedbackTipoLabel(tipo)}
+            <span className="ml-auto">
+              <FeedbackTipoBadge tipo={tipo} label={feedbackTipoLabel(tipo)} />
             </span>
           )}
         </div>
 
         <div className="space-y-6 p-5">
+          {/* Linha 1: Colaborador + E-mail */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="feedback-colaborador" className="block text-sm font-medium text-text-primary">
+                Colaborador <span className="text-destructive" aria-hidden>*</span>
+              </label>
+              <Input
+                id="feedback-colaborador"
+                value={evaluatedUser.name ?? ""}
+                disabled
+                aria-required="true"
+                className="bg-surface-input"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="feedback-email" className="block text-sm font-medium text-text-primary">
+                E-mail <span className="text-destructive" aria-hidden>*</span>
+              </label>
+              <Input
+                id="feedback-email"
+                type="email"
+                value={evaluatedUser.email ?? ""}
+                disabled
+                aria-required="true"
+                className="bg-surface-input"
+              />
+            </div>
+          </div>
+
+          {/* Linha 2: Data + Período */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="feedback-data" className="block text-sm font-medium text-text-primary">
+                Data <span className="text-destructive" aria-hidden>*</span>
+              </label>
+              <Input
+                id="feedback-data"
+                type="date"
+                value={dataYmd}
+                disabled
+                aria-required="true"
+                className={inputNativePickerRightClassName("bg-surface-input")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="feedback-periodo" className="block text-sm font-medium text-text-primary">
+                Período <span className="text-destructive" aria-hidden>*</span>
+              </label>
+              {isViewOnly ? (
+                <Input
+                  id="feedback-periodo"
+                  value={evaluationPeriodLabel(periodo)}
+                  disabled
+                  className="bg-surface-input"
+                />
+              ) : (
+                <Select
+                  value={periodo}
+                  onValueChange={(v) => {
+                    if (v && isEvaluationPeriodSlug(v)) setPeriodo(v)
+                  }}
+                >
+                  <SelectTrigger
+                    id="feedback-periodo"
+                    className="h-9 w-full bg-surface-input"
+                    disabled={busy != null}
+                  >
+                    <SelectValue>{evaluationPeriodLabel(periodo)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectPopup>
+                    {EVALUATION_PERIOD_SLUGS.map((slug) => (
+                      <SelectItem key={slug} value={slug}>
+                        {evaluationPeriodLabel(slug)}
+                      </SelectItem>
+                    ))}
+                  </SelectPopup>
+                </Select>
+              )}
+            </div>
+          </div>
+
           {/* Tipo select — oculto em modo de visualização */}
           {!isViewOnly && <div className="space-y-1.5">
             <label htmlFor="feedback-tipo" className="block text-sm font-medium text-text-primary">

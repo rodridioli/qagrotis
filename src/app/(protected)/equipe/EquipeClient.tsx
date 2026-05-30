@@ -12,6 +12,7 @@ import { EquipeFeriasSection } from "@/features/equipe/components/EquipeFeriasSe
 import { EquipeAusenciasSection } from "@/features/equipe/components/EquipeAusenciasSection"
 import { EquipeLancamentosSection } from "@/features/equipe/components/EquipeLancamentosSection"
 import { EquipeClockworkSection } from "@/features/equipe/components/EquipeClockworkSection"
+import { IntegrationNotConfiguredCard } from "@/components/shared/IntegrationNotConfiguredCard"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 
@@ -29,6 +30,9 @@ interface Props {
   currentUserId: string
   isMgr: boolean
   initialTab?: TabId
+  /** null = não aplicável (não é MGR); true/false = resultado do check de integração */
+  jiraConfigured: boolean | null
+  clockworkConfigured: boolean | null
 }
 
 type TabId =
@@ -81,6 +85,8 @@ export default function EquipeClient({
   currentUserId,
   isMgr,
   initialTab = "chapters",
+  jiraConfigured,
+  clockworkConfigured,
 }: Props) {
   function safeTab(tab: TabId): TabId {
     if (tab === "lancamentos" && !canAccessEquipeLancamentos) return "chapters"
@@ -215,23 +221,31 @@ const aniversariantesPorMes = useMemo(() => {
       )}
 
       {activeTab === "lancamentos" && canAccessEquipeLancamentos && (
-        <Suspense fallback={<SectionSpinner minHeight="min-h-[60vh]" />}>
-          <EquipeLancamentosSection
-            userAccessProfile={userAccessProfile}
-            canFilterByProfile={canFilterByProfile}
-          />
-        </Suspense>
+        jiraConfigured === false ? (
+          <IntegrationNotConfiguredCard type="jira" />
+        ) : (
+          <Suspense fallback={<SectionSpinner minHeight="min-h-[60vh]" />}>
+            <EquipeLancamentosSection
+              userAccessProfile={userAccessProfile}
+              canFilterByProfile={canFilterByProfile}
+            />
+          </Suspense>
+        )
       )}
 
       {activeTab === "clockwork" && canAccessEquipeClockwork && (
-        <Suspense fallback={<SectionSpinner minHeight="min-h-[60vh]" />}>
-          <EquipeClockworkSection
-            userAccessProfile={userAccessProfile}
-            canFilterByProfile={canFilterByProfile}
-            canViewOthersClockwork={canViewOthersClockwork}
-            currentUserId={currentUserId}
-          />
-        </Suspense>
+        clockworkConfigured === false ? (
+          <IntegrationNotConfiguredCard type="clockwork" />
+        ) : (
+          <Suspense fallback={<SectionSpinner minHeight="min-h-[60vh]" />}>
+            <EquipeClockworkSection
+              userAccessProfile={userAccessProfile}
+              canFilterByProfile={canFilterByProfile}
+              canViewOthersClockwork={canViewOthersClockwork}
+              currentUserId={currentUserId}
+            />
+          </Suspense>
+        )
       )}
 
       {activeTab === "chapters" && <EquipeChaptersSection isAdmin={isAdmin} currentUserId={currentUserId} />}

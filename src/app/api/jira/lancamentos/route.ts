@@ -1,6 +1,6 @@
 import { auth } from "@/core/auth"
 import { validateOrigin } from "@/core/security"
-import { buildRole, can, manageableProfiles } from "@/core/rbac/policy"
+import { buildRole, can } from "@/core/rbac/policy"
 import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
 import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credentials-db"
 import {
@@ -25,6 +25,7 @@ import {
   type ReporterCountDiagnostics,
 } from "@/features/qa/lib/jira-worklogs-fetch"
 import { getActiveQaUsers, resolveEmailForQaUserId, resolveNameForQaUserId } from "@/features/usuarios/actions/usuarios"
+import { getTeamMemberIds } from "@/features/equipe/actions/equipes"
 import type { NextRequest } from "next/server"
 
 const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -133,10 +134,11 @@ export async function GET(req: NextRequest) {
       return Response.json({ error: "Utilizador não encontrado ou inativo." }, { status: 403 })
     }
     // MGR (canViewOthers) pode ver qualquer usuário ativo.
-    // Outros admins com equipe.lancamentos só podem ver usuários dos seus perfis gerenciáveis.
+    // Outros admins com equipe.lancamentos só podem ver membros da sua equipe.
     if (!canViewOthers) {
-      const allowed = manageableProfiles(role)
-      if (!target.accessProfile || !allowed.includes(target.accessProfile as "QA" | "UX" | "TW" | "MGR")) {
+      const memberIds = await getTeamMemberIds(session.user.id)
+      const allowed = new Set([session.user.id, ...memberIds])
+      if (!allowed.has(requested)) {
         return Response.json({ error: "Forbidden" }, { status: 403 })
       }
     }

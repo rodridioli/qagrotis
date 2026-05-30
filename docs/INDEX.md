@@ -1,4 +1,4 @@
-<!-- gerado por: reviewer | atualizado: 2026-05-28 -->
+<!-- gerado por: reviewer | atualizado: 2026-05-30 -->
 # QAgrotis — Índice de Documentação
 
 ## Database & Arquitetura
@@ -31,4 +31,5 @@
 | [screens/ausencias.md](./screens/ausencias.md) | Ausências |
 | [screens/gerador.md](./screens/gerador.md) | Gerador de Cenários (IA) |
 | [screens/rbac.md](./screens/rbac.md) | RBAC — Controle de Acesso |
+| [modules/rbac-permissoes-integracao.md](./modules/rbac-permissoes-integracao.md) | RBAC por seção + bloqueio por integração (Jira/Clockwork) — regras detalhadas e fix IDOR |
 | [tw-dashboard-sync.md](./tw-dashboard-sync.md) | TW Dashboard — sincronização de dados |

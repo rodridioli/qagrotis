@@ -13,7 +13,7 @@ import { ConquistasSection } from "@/features/individual/components/ConquistasSe
 import { MinhasProgressoesSection } from "@/features/individual/components/MinhasProgressoesSection"
 import { IndividualFeriasSection } from "@/features/individual/components/IndividualFeriasSection"
 import { IndividualAusenciasSection } from "@/features/individual/components/IndividualAusenciasSection"
-import { individualSectionLabel, isIndividualSectionSlug } from "@/features/individual/lib/individual-sections"
+import { individualSectionLabel, isIndividualSectionSlug, type IndividualSectionSlug } from "@/features/individual/lib/individual-sections"
 import { IndividualDominioSection } from "@/features/individual/components/IndividualDominioSection"
 import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
 import type { AccessProfile } from "@/core/rbac/policy"
@@ -47,7 +47,12 @@ export default async function IndividualSecaoPage({
   const canAccessLancamentos = can(role, "individual.lancamentos")
   const canViewOthers = can(role, "individual.viewOthers")
   const canViewTeam = can(role, "individual.viewTeam")
-  const canSeeOtherUsers = canViewOthers || canViewTeam
+
+  // Apenas "dominio" permite que líderes de equipe (QA/UX/TW admin) vejam outros usuários.
+  // Todas as outras seções são estritamente individuais ou MGR-only.
+  const TEAM_VIEWABLE_SECTIONS: readonly IndividualSectionSlug[] = ["dominio"]
+  const isTeamViewableSection = TEAM_VIEWABLE_SECTIONS.includes(secao as IndividualSectionSlug)
+  const canSeeOtherUsers = canViewOthers || (isTeamViewableSection && canViewTeam)
 
   if (secao === "lancamentos" && !canAccessLancamentos) notFound()
   const { userId: requestedUserId, completed } = await searchParams

@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useQuery } from "@tanstack/react-query"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { ChevronDown, ChevronUp, Loader2, MoreVertical, Trash2 } from "lucide-react"
@@ -26,7 +25,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { JiraNotConfiguredCard } from "@/components/shared/JiraNotConfiguredCard"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
 import { cn } from "@/core/utils"
@@ -202,19 +200,6 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
   const router       = useRouter()
   const pathname     = usePathname()
 
-  // Verifica credenciais Jira — mesma queryKey usada pelos outros componentes
-  // (staleTime: Infinity → cache compartilhado, zero chamadas extras de rede)
-  const credentialsQuery = useQuery({
-    queryKey: ["jira-credentials"],
-    queryFn: async () => {
-      const res = await fetch("/api/jira/credentials", { credentials: "same-origin" })
-      if (!res.ok) return { configured: false }
-      return res.json() as Promise<{ configured?: boolean }>
-    },
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
-  const jiraConfigured = credentialsQuery.data?.configured ?? null
   const searchParams = useSearchParams()
 
   const defaultProfile: Exclude<AccessProfileId, "MGR"> =
@@ -438,8 +423,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
-  if (membrosLoading || credentialsQuery.isLoading) return <SectionSpinner minHeight="min-h-[60vh]" />
-  if (jiraConfigured === false) return <JiraNotConfiguredCard />
+  if (membrosLoading) return <SectionSpinner minHeight="min-h-[60vh]" />
 
   const showSummary = !worklogsLoading && !worklogsError && worklogs.length > 0 && selectedMembro
 
