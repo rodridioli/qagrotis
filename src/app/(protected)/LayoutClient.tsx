@@ -838,6 +838,18 @@ export default function LayoutClient({
     }
   }, [needsSistema, hasActiveSistema, pathname, router])
 
+  // Administrador:QA sem módulos activos → redireciona para Configurações.
+  const isAdminQA = role === "Administrador:QA"
+  useEffect(() => {
+    if (
+      isAdminQA &&
+      !hasSistemaModulo &&
+      !pathname.startsWith("/configuracoes")
+    ) {
+      router.push("/configuracoes")
+    }
+  }, [isAdminQA, hasSistemaModulo, pathname, router])
+
   // Show loading screen only during the brief hydration gap where props arrived
   // but sistemaSelecionado hasn't been initialized yet.
   const isReady =
