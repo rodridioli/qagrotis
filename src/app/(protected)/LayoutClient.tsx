@@ -82,12 +82,14 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
   "Padrão:UX": [
     { capability: "menu.kanban" },
     { capability: "individual.lancamentos" },
+    { capability: "equipe.clockwork", label: "Clockwork" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
   ],
   "Padrão:TW": [
     { capability: "individual.lancamentos" },
+    { capability: "equipe.clockwork", label: "Clockwork" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
