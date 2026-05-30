@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Users, Monitor, Box, Building2, Sparkles, KeyRound, UserCircle, History } from "lucide-react"
 import { auth } from "@/core/auth"
 import { buildRole, can, type Capability } from "@/core/rbac/policy"
+import { prisma } from "@/core/prisma"
 import JiraConfigButton from "./JiraConfigButton"
 import ClockworkConfigButton from "./ClockworkConfigButton"
 
@@ -48,7 +49,16 @@ export default async function ConfiguracoesPage() {
   const userId = session?.user?.id ?? ""
   const role = buildRole(session?.user?.type, session?.user?.accessProfile)
 
-  const visibleMain = MAIN_CARDS.filter((c) => can(role, c.capability))
+  const isQA = session?.user?.accessProfile === "QA"
+  const moduloCount = isQA ? await prisma.modulo.count() : 0
+
+  const QA_REQUIRES_MODULOS = new Set(["config.clientes", "config.credenciais"])
+
+  const visibleMain = MAIN_CARDS.filter((c) => {
+    if (!can(role, c.capability)) return false
+    if (isQA && moduloCount === 0 && QA_REQUIRES_MODULOS.has(c.capability)) return false
+    return true
+  })
   const visibleIntegrations = INTEGRATION_CARDS.filter((c) => can(role, c.capability))
   const showJira = can(role, "config.jira")
   const showClockwork = can(role, "config.clockwork")
