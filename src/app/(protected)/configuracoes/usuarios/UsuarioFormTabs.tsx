@@ -74,6 +74,7 @@ export default function UsuarioFormTabs({
   const [activeTab, setActiveTab] = useState<"cadastro" | "endereco" | "formacao">("cadastro")
 
   const isAdmin = sessionUser?.type === "Administrador"
+  const isAdminMgr = isAdmin && sessionUser?.accessProfile === "MGR"
   const isStandardUser = sessionUser?.type === "Padrão"
   const isSelfEdit = mode === "edit" && !!sessionUser?.id && sessionUser.id === userId
 
@@ -81,7 +82,8 @@ export default function UsuarioFormTabs({
   const [nome, setNome] = useState(initialData?.name ?? "")
   const [email, setEmail] = useState(initialData?.email ?? "")
   const [tipo, setTipo] = useState<string>(initialData?.type ?? "Padrão")
-  const tipoSelectDisabled = isStandardUser
+  // Apenas Administrador:MGR pode alterar o campo Tipo
+  const tipoSelectDisabled = !isAdminMgr
   /** Padrão: sem permissão. Admin QA/UX/TW: só um perfil gerenciável — campo travado nesse valor. */
   const accessProfileSelectDisabled = isStandardUser || manageableProfiles.length <= 1
   const [accessProfile, setAccessProfile] = useState<AccessProfile>(() => {

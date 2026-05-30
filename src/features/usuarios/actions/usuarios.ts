@@ -694,6 +694,7 @@ export async function atualizarQaUser(
     await ensureAllUserProfileColumns()
 
     const isAdmin = await checkIsAdmin()
+    const isAdminMgr = isAdmin && session.user?.accessProfile === "MGR"
 
     const targetProfile = await getQaUserProfile(id)
     if (!targetProfile) return { error: "Usuário não encontrado." }
@@ -705,8 +706,9 @@ export async function atualizarQaUser(
       return { error: "Não autorizado." }
     }
 
-    // Non-admins cannot change user type (prevents privilege escalation)
-    const type = isAdmin ? data.type : targetProfile.type
+    // Apenas Administrador:MGR pode alterar o campo Tipo.
+    // Admins de outros perfis (QA, UX, TW) mantêm o tipo atual do cadastro.
+    const type = isAdminMgr ? data.type : targetProfile.type
 
     // accessProfile: somente admin pode alterar; não-admin mantém o atual
     const validProfiles = ["QA", "UX", "TW", "MGR"] as const
@@ -723,7 +725,6 @@ export async function atualizarQaUser(
 
     const sessionUserId = session.user?.id
     const isSelf = sessionUserId === id
-    const isAdminMgr = isAdmin && session.user?.accessProfile === "MGR"
     const canEditSensitive = isSelf || isAdminMgr
 
     const sensitiveData: Record<string, unknown> = {}
