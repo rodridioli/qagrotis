@@ -735,7 +735,7 @@ export default function NovoCenarioClient({
                               draggable
                               onDragStart={() => { draggedStepId.current = s.id }}
                               onDragEnd={() => { draggedStepId.current = null }}
-                              className="cursor-grab py-1.5 pr-1 active:cursor-grabbing"
+                              className="cursor-grab py-1.5 pl-2 pr-1 active:cursor-grabbing"
                             >
                               <GripVertical className="size-4 text-text-secondary opacity-40 transition-opacity group-hover:opacity-100" />
                             </td>
@@ -755,7 +755,7 @@ export default function NovoCenarioClient({
                                 placeholder="Resultado esperado..."
                               />
                             </td>
-                            <td className="py-1.5 pl-1 text-right">
+                            <td className="py-1.5 pl-1 pr-2 text-right">
                               <button
                                 type="button"
                                 onClick={() => { setHasSaved(false); setSteps((prev) => prev.filter((x) => x.id !== s.id)) }}
@@ -1125,6 +1125,7 @@ export default function NovoCenarioClient({
                     })
                     setCredenciais((prev) => [nova, ...prev])
                     setCredencialId(nova.id)
+                    toast.success("Credencial adicionada com sucesso.")
                     setAddCredencialOpen(false)
                     router.refresh()
                   } catch (e) {
