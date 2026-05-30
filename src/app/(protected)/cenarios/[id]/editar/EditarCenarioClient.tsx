@@ -840,15 +840,17 @@ export default function EditarCenarioClient({
             {fieldErrors.has("resultadoEsperado") && <p className="text-sm text-destructive mt-1">O Resultado Esperado é obrigatório.</p>}
           </div>
 
-          {/* URL do Script — sempre visível, abaixo do Resultado Esperado */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-primary">URL do Script</label>
-            <Input
-              value={urlScript}
-              onChange={(e) => { setUrlScript(e.target.value); setHasSaved(false) }}
-              placeholder="https://github.com/..."
-            />
-          </div>
+          {/* URL do Script — visível apenas quando automatizado, sempre abaixo de Resultado Esperado */}
+          {automatizado && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">URL do Script</label>
+              <Input
+                value={urlScript}
+                onChange={(e) => { setUrlScript(e.target.value); setHasSaved(false) }}
+                placeholder="https://github.com/..."
+              />
+            </div>
+          )}
         </div>
 
         {/* ── Dependências tab ── */}
