@@ -11,6 +11,13 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { AccessProfileBadge } from "@/components/shared/StatusBadge"
 import { Button } from "@/components/ui/button"
 import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "@/components/ui/select"
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -22,7 +29,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { cn } from "@/core/utils"
 import {
   getMembrosDoLider,
   listMembrosDisponiveis,
@@ -35,10 +41,6 @@ import {
 
 const ITEMS_PER_PAGE = 20
 
-interface Props {
-  initialLideres: LiderRow[]
-}
-
 function getInitials(name: string): string {
   return name
     .split(" ")
@@ -46,6 +48,10 @@ function getInitials(name: string): string {
     .map((n) => n[0])
     .join("")
     .toUpperCase()
+}
+
+interface Props {
+  initialLideres: LiderRow[]
 }
 
 export default function EquipesClient({ initialLideres }: Props) {
@@ -154,96 +160,123 @@ export default function EquipesClient({ initialLideres }: Props) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
-      <PageBreadcrumb
-        items={[{ label: "Configurações", href: "/configuracoes" }, { label: "Equipes" }]}
-      />
-
-      <TableToolbar
-        search={search}
-        onSearchChange={(v) => { setSearch(v); setPage(1) }}
-        searchPlaceholder="Buscar por nome, e-mail ou perfil..."
-        baseCount={lideres.length}
-        totalLabel="Líderes"
-        totalCount={filtered.length}
-      />
-
-      {filtered.length === 0 ? (
-        <EmptyState
-          message={
-            search
-              ? "Nenhum administrador corresponde à busca."
-              : "Crie usuários Administradores com perfil QA, UX ou TW para configurar equipes."
-          }
+    <div className="space-y-4">
+      {/* ── Header ── */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <PageBreadcrumb
+          items={[{ label: "Configurações", href: "/configuracoes" }, { label: "Equipes" }]}
         />
-      ) : (
-        <>
-          <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card shadow-card">
-            <table className="w-full text-sm" role="table">
-              <thead>
-                <tr className="border-b border-border-default text-left text-text-secondary">
-                  <th className="px-4 py-3 font-medium" scope="col">Nome</th>
-                  <th className="hidden px-4 py-3 font-medium sm:table-cell" scope="col">E-mail</th>
-                  <th className="px-4 py-3 font-medium" scope="col">Perfil</th>
-                  <th className="px-4 py-3 font-medium text-center" scope="col">Membros</th>
-                  <th className="px-4 py-3" scope="col"><span className="sr-only">Ações</span></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-default">
-                {pageItems.map((lider) => (
-                  <tr key={lider.id} className="transition-colors hover:bg-neutral-grey-50">
-                    <td className="px-4 py-3 font-medium text-text-primary">{lider.name}</td>
-                    <td className="hidden px-4 py-3 text-text-secondary sm:table-cell">{lider.email}</td>
-                    <td className="px-4 py-3">
-                      <AccessProfileBadge perfil={lider.accessProfile} />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span
-                        className={cn(
-                          "inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium",
-                          lider.memberCount > 0
-                            ? "bg-primary-100 text-brand-primary"
-                            : "border border-border-default bg-neutral-grey-50 text-text-secondary",
-                        )}
-                      >
-                        {lider.memberCount}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <button
-                              type="button"
-                              aria-label={`Ações para ${lider.name}`}
-                              className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100"
-                            />
-                          }
-                        >
-                          <MoreVertical className="size-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openSheet(lider)}>
-                            Gerenciar equipe
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      </div>
 
-          <TablePagination
-            currentPage={safePage}
-            totalPages={totalPages}
-            totalItems={filtered.length}
-            itemsPerPage={ITEMS_PER_PAGE}
-            onPageChange={setPage}
+      {/* ── Card: Toolbar + Tabela + Paginação ── */}
+      <div className="rounded-xl bg-surface-card shadow-card overflow-hidden">
+        <TableToolbar
+          search={search}
+          onSearchChange={(v) => { setSearch(v); setPage(1) }}
+          searchPlaceholder="Buscar por nome, e-mail ou perfil..."
+          baseCount={lideres.length}
+          totalLabel="Líderes"
+          totalCount={filtered.length}
+        />
+
+        {pageItems.length === 0 ? (
+          <EmptyState
+            message={
+              search
+                ? "Nenhum administrador corresponde à busca."
+                : "Crie usuários Administradores com perfil QA, UX ou TW para configurar equipes."
+            }
           />
-        </>
-      )}
+        ) : (
+          <>
+            <div className="w-full overflow-x-auto">
+              <table className="qagrotis-table-row-hover w-full min-w-[36rem] table-fixed text-sm">
+                <colgroup>
+                  <col style={{ width: "22%" }} />
+                  <col className="hidden sm:table-column" style={{ width: "28%" }} />
+                  <col style={{ width: "9rem" }} />
+                  <col style={{ width: "7rem" }} />
+                  <col style={{ width: "3.25rem" }} />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border-default bg-neutral-grey-50">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary" scope="col">
+                      Nome
+                    </th>
+                    <th className="hidden px-4 py-3 text-left text-xs font-semibold text-text-secondary sm:table-cell" scope="col">
+                      E-mail
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary" scope="col">
+                      Perfil
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary" scope="col">
+                      Membros
+                    </th>
+                    <th className="py-3 pl-2 pr-4" scope="col">
+                      <span className="sr-only">Ações</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageItems.map((lider) => (
+                    <tr
+                      key={lider.id}
+                      className="border-b border-border-default last:border-0 transition-colors"
+                    >
+                      <td className="px-4 py-3 font-medium text-text-primary">
+                        {lider.name}
+                      </td>
+                      <td className="hidden px-4 py-3 text-text-secondary sm:table-cell">
+                        {lider.email}
+                      </td>
+                      <td className="px-4 py-3">
+                        <AccessProfileBadge perfil={lider.accessProfile} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {lider.memberCount > 0 ? (
+                          <span className="text-sm font-semibold text-brand-primary">
+                            {lider.memberCount}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-text-secondary">0</span>
+                        )}
+                      </td>
+                      <td className="py-3 pl-2 pr-4">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <button
+                                type="button"
+                                aria-label={`Ações para ${lider.name}`}
+                                className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100"
+                              />
+                            }
+                          >
+                            <MoreVertical className="size-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openSheet(lider)}>
+                              Gerenciar equipe
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <TablePagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              onPageChange={setPage}
+            />
+          </>
+        )}
+      </div>
 
       {/* ── Sheet de Gerenciamento ── */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -252,7 +285,7 @@ export default function EquipesClient({ initialLideres }: Props) {
             <>
               <SheetHeader className="border-b border-border-default px-6 py-5">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-brand-primary">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-semibold text-brand-primary">
                     {getInitials(selectedLider.name)}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -269,12 +302,18 @@ export default function EquipesClient({ initialLideres }: Props) {
 
               <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-5">
                 {sheetLoading ? (
-                  <div className="flex min-h-[120px] items-center justify-center">
-                    <div className="size-5 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
+                  /* Skeleton — padrão de loading do projeto */
+                  <div className="flex flex-col gap-3" aria-busy="true" aria-label="Carregando equipe...">
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="h-12 animate-pulse rounded-xl bg-neutral-grey-100"
+                      />
+                    ))}
                   </div>
                 ) : (
                   <>
-                    {/* Membros vinculados */}
+                    {/* ── Membros vinculados ── */}
                     <section>
                       <h3 className="mb-3 text-sm font-semibold text-text-primary">
                         Membros{" "}
@@ -282,7 +321,9 @@ export default function EquipesClient({ initialLideres }: Props) {
                       </h3>
 
                       {membros.length === 0 ? (
-                        <p className="text-sm text-text-secondary">Nenhum membro vinculado ainda.</p>
+                        <p className="text-sm text-text-secondary">
+                          Nenhum membro vinculado ainda.
+                        </p>
                       ) : (
                         <ul className="divide-y divide-border-default overflow-hidden rounded-xl border border-border-default">
                           {membros.map((m) => (
@@ -291,7 +332,9 @@ export default function EquipesClient({ initialLideres }: Props) {
                                 {getInitials(m.name)}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium text-text-primary">{m.name}</p>
+                                <p className="truncate text-sm font-medium text-text-primary">
+                                  {m.name}
+                                </p>
                                 <p className="truncate text-xs text-text-secondary">{m.email}</p>
                               </div>
                               <Button
@@ -309,9 +352,11 @@ export default function EquipesClient({ initialLideres }: Props) {
                       )}
                     </section>
 
-                    {/* Adicionar membro */}
+                    {/* ── Adicionar membro ── */}
                     <section>
-                      <h3 className="mb-3 text-sm font-semibold text-text-primary">Adicionar membro</h3>
+                      <h3 className="mb-3 text-sm font-semibold text-text-primary">
+                        Adicionar membro
+                      </h3>
 
                       {disponiveis.length === 0 ? (
                         <p className="text-sm text-text-secondary">
@@ -319,28 +364,35 @@ export default function EquipesClient({ initialLideres }: Props) {
                         </p>
                       ) : (
                         <div className="flex gap-2">
-                          <select
-                            className="flex-1 rounded-lg border border-border-default bg-surface-card px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary"
-                            value={selectedMembroId}
-                            onChange={(e) => {
-                              setSelectedMembroId(e.target.value)
-                              setDuplicityError(null)
-                            }}
-                            aria-label="Buscar membro para adicionar"
-                          >
-                            <option value="">Selecionar membro...</option>
-                            {disponiveis.map((d) => (
-                              <option key={d.id} value={d.id}>
-                                {d.name} — {d.email}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex-1">
+                            <Select
+                              value={selectedMembroId}
+                              onValueChange={(v) => {
+                                setSelectedMembroId(v ?? "")
+                                setDuplicityError(null)
+                              }}
+                            >
+                              <SelectTrigger aria-label="Selecionar membro para adicionar">
+                                <SelectValue placeholder="Selecionar membro..." />
+                              </SelectTrigger>
+                              <SelectPopup>
+                                {disponiveis.map((d) => (
+                                  <SelectItem key={d.id} value={d.id}>
+                                    {d.name} — {d.email}
+                                  </SelectItem>
+                                ))}
+                              </SelectPopup>
+                            </Select>
+                          </div>
                           <Button
                             onClick={handleAdd}
                             disabled={!selectedMembroId || addPending}
                           >
                             {addPending ? (
-                              <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                              <span
+                                className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+                                aria-hidden
+                              />
                             ) : (
                               <UserPlus className="size-4" />
                             )}
