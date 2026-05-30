@@ -434,42 +434,38 @@ export async function deletarQaUser(id: string): Promise<{ error?: string }> {
     const isInactive = await prisma.inactiveUser.findUnique({ where: { userId: id } })
     if (!isInactive) return { error: "Registro não encontrado ou ainda ativo." }
 
-    type DeleteResult = { count: number }
-    type DeleteFn = (args: { where: unknown }) => Promise<DeleteResult>
-    type UpdateFn = (args: { where: unknown; data: unknown }) => Promise<DeleteResult>
-
     await prisma.$transaction(async (tx) => {
       // ── Clockwork / Kanban ────────────────────────────────────────────────
-      const kanbanTimerSessions    = await (tx.kanbanTimerSession.deleteMany as DeleteFn)({ where: { userId: id } })
-      const kanbanInApprovalTrackers = await (tx.kanbanInApprovalTracker.deleteMany as DeleteFn)({ where: { userId: id } })
-      const kanbanUserCardStates   = await (tx.kanbanUserCardState.deleteMany as DeleteFn)({ where: { userId: id } })
-      const kanbanAssignments      = await (tx.kanbanAssignment.deleteMany as DeleteFn)({ where: { userId: id } })
+      const kanbanTimerSessions    = await tx.kanbanTimerSession.deleteMany({ where: { userId: id } })
+      const kanbanInApprovalTrackers = await tx.kanbanInApprovalTracker.deleteMany({ where: { userId: id } })
+      const kanbanUserCardStates   = await tx.kanbanUserCardState.deleteMany({ where: { userId: id } })
+      const kanbanAssignments      = await tx.kanbanAssignment.deleteMany({ where: { userId: id } })
       const jiraWorklogCaches      = await tx.jiraWorklogCache.deleteMany({ where: { userId: id } })
       const jiraWorklogSyncMarkers = await tx.jiraWorklogSyncMarker.deleteMany({ where: { userId: id } })
       const jiraAccountIdCaches    = await tx.jiraAccountIdCache.deleteMany({ where: { userId: id } })
 
       // ── Equipe / Chapters ─────────────────────────────────────────────────
       const chapterRedemptions = await tx.chapterRedemption.deleteMany({ where: { userId: id } })
-      const chapterRatings     = await (tx.equipeChapterRating.deleteMany as DeleteFn)({ where: { userId: id } })
-      const chapterAuthors     = await (tx.equipeChapterAuthor.deleteMany as DeleteFn)({ where: { userId: id } })
+      const chapterRatings     = await tx.equipeChapterRating.deleteMany({ where: { userId: id } })
+      const chapterAuthors     = await tx.equipeChapterAuthor.deleteMany({ where: { userId: id } })
 
-      // ── Individual — modelos com dois campos de userId (OR obrigatório) ───
-      const ausencias   = await (tx.individualAusencias.deleteMany as DeleteFn)({
+      // ── Individual ────────────────────────────────────────────────────────
+      const ausencias   = await tx.individualAusencias.deleteMany({
         where: { OR: [{ evaluatedUserId: id }, { createdByUserId: id }] },
       })
-      const ferias      = await (tx.individualFerias.deleteMany as DeleteFn)({
+      const ferias      = await tx.individualFerias.deleteMany({
         where: { OR: [{ evaluatedUserId: id }, { createdByUserId: id }] },
       })
-      const progressoes = await (tx.individualProgressao.deleteMany as DeleteFn)({
+      const progressoes = await tx.individualProgressao.deleteMany({
         where: { OR: [{ evaluatedUserId: id }, { createdByUserId: id }] },
       })
-      const feedbacks   = await (tx.individualFeedback.deleteMany as DeleteFn)({
+      const feedbacks   = await tx.individualFeedback.deleteMany({
         where: { OR: [{ evaluatedUserId: id }, { evaluatorUserId: id }] },
       })
-      const avaliacoes  = await (tx.individualPerformanceEvaluation.deleteMany as DeleteFn)({
+      const avaliacoes  = await tx.individualPerformanceEvaluation.deleteMany({
         where: { OR: [{ evaluatedUserId: id }, { evaluatorUserId: id }] },
       })
-      const dominios    = await (tx.dominioAvaliacao.deleteMany as DeleteFn)({
+      const dominios    = await tx.dominioAvaliacao.deleteMany({
         where: { OR: [{ evaluatedUserId: id }, { solicitadaPorId: id }] },
       })
 
@@ -477,7 +473,7 @@ export async function deletarQaUser(id: string): Promise<{ error?: string }> {
       const inviteTokens    = await tx.inviteToken.deleteMany({ where: { userId: id } })
       const jiraCredentials = await tx.userJiraCredentials.deleteMany({ where: { userId: id } })
       // Cenário não é deletado — apenas o autor é desvinculado
-      const cenarios = await (tx.cenario.updateMany as UpdateFn)({
+      const cenarios = await tx.cenario.updateMany({
         where: { createdBy: id },
         data: { createdBy: null },
       })
