@@ -867,7 +867,6 @@ export function SuiteForm({
                 disabled={encerrada}
                 aria-invalid={!!errors.suiteName}
               />
-              {errors.suiteName && <p className="text-sm text-destructive mt-1">{errors.suiteName}</p>}
             </div>
 
             {/* Linha 2: Sistema, Versão, Tipo, Módulo */}
@@ -895,7 +894,6 @@ export function SuiteForm({
                   disabled={encerrada}
                   aria-invalid={!!errors.versao}
                 />
-                {errors.versao && <p className="text-sm text-destructive mt-1">{errors.versao}</p>}
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-primary">Tipo</label>
@@ -922,7 +920,6 @@ export function SuiteForm({
                     {filteredModules.map((m) => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
                   </SelectPopup>
                 </Select>
-                {errors.modulo && <p className="text-sm text-destructive mt-1">{errors.modulo}</p>}
               </div>
             </div>
 

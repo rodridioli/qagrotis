@@ -576,7 +576,6 @@ export default function EditarCenarioClient({
                   ))}
                 </SelectPopup>
               </Select>
-              {fieldErrors.has("modulo") && <p className="text-sm text-destructive mt-1">O Módulo é obrigatório.</p>}
             </div>
           </div>
 
@@ -621,7 +620,6 @@ export default function EditarCenarioClient({
                   ))}
                 </SelectPopup>
               </Select>
-              {fieldErrors.has("risco") && <p className="text-sm text-destructive mt-1">O Risco é obrigatório.</p>}
             </div>
           </div>
 
@@ -636,7 +634,6 @@ export default function EditarCenarioClient({
               placeholder="Nome do cenário de teste"
               className={fieldErrors.has("scenarioName") ? "border-destructive" : ""}
             />
-            {fieldErrors.has("scenarioName") && <p className="text-sm text-destructive mt-1">O Nome do cenário é obrigatório.</p>}
           </div>
 
           {/* Tipo de teste */}
@@ -681,7 +678,6 @@ export default function EditarCenarioClient({
               placeholder="Descrição do cenário de teste..."
               className={`min-h-[100px]${fieldErrors.has("descricao") ? " border-destructive" : ""}`}
             />
-            {fieldErrors.has("descricao") && <p className="text-sm text-destructive mt-1">A Descrição é obrigatória.</p>}
           </div>
 
           {/* Regra de Negócio */}
@@ -718,7 +714,6 @@ export default function EditarCenarioClient({
                 placeholder={`Dado que o usuário está na tela de...\nQuando ele realiza a ação...\nEntão o sistema deve...`}
                 className={`min-h-[100px]${fieldErrors.has("bdd") ? " border-destructive" : ""}`}
               />
-              {fieldErrors.has("bdd") && <p className="text-sm text-destructive mt-1">O BDD é obrigatório para cenários manuais.</p>}
             </div>
           )}
 
@@ -741,7 +736,6 @@ export default function EditarCenarioClient({
                     onAddCredencial={() => setAddCredencialOpen(true)}
                   />
                 </div>
-                {fieldErrors.has("credencial") && <p className="text-sm text-destructive mt-1">A Credencial é obrigatória para cenários automatizados.</p>}
               </div>
 
               <div className="space-y-3">
@@ -837,7 +831,6 @@ export default function EditarCenarioClient({
               placeholder="Descreva o resultado esperado..."
               className={`min-h-[100px]${fieldErrors.has("resultadoEsperado") ? " border-destructive" : ""}`}
             />
-            {fieldErrors.has("resultadoEsperado") && <p className="text-sm text-destructive mt-1">O Resultado Esperado é obrigatório.</p>}
           </div>
 
           {/* URL do Script — visível apenas quando automatizado, sempre abaixo de Resultado Esperado */}

@@ -93,7 +93,7 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
   }
 
   function handleSalvarSistema() {
-    if (!sistemaModalNome.trim()) { setSistemaModalErrors({ nome: "O nome é obrigatório." }); return }
+    if (!sistemaModalNome.trim()) { setSistemaModalErrors({ nome: "O nome é obrigatório." }); toast.error("Preencha todos os campos obrigatórios."); return }
     startSistemaModalTransition(async () => {
       try {
         if (sistemaEditando) {
@@ -518,9 +518,6 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                 disabled={isSistemaModalPending}
                 aria-invalid={!!sistemaModalErrors.nome}
               />
-              {sistemaModalErrors.nome && (
-                <p className="text-sm text-destructive mt-1">{sistemaModalErrors.nome}</p>
-              )}
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Descrição</label>

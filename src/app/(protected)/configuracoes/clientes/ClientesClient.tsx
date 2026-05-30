@@ -93,7 +93,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
     const errs: typeof editErrors = {}
     if (!editNomeFantasia.trim()) errs.nomeFantasia = "O Nome Fantasia é obrigatório."
     if (editCpfCnpj.trim() && !validateCpfCnpj(editCpfCnpj)) errs.cpfCnpj = "CPF ou CNPJ inválido."
-    if (Object.keys(errs).length > 0) { setEditErrors(errs); return }
+    if (Object.keys(errs).length > 0) { setEditErrors(errs); toast.error("Preencha todos os campos obrigatórios."); return }
     startEditTransition(async () => {
       try {
         await atualizarCliente(editingCliente.id, {
@@ -142,12 +142,13 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
     const errs: typeof addErrors = {}
     if (!addNomeFantasia.trim()) errs.nomeFantasia = "O Nome Fantasia é obrigatório."
     if (addCpfCnpj.trim() && !validateCpfCnpj(addCpfCnpj)) errs.cpfCnpj = "CPF ou CNPJ inválido."
-    if (Object.keys(errs).length > 0) { setAddErrors(errs); return }
+    if (Object.keys(errs).length > 0) { setAddErrors(errs); toast.error("Preencha todos os campos obrigatórios."); return }
     const duplicate = items.some(
       (c) => c.active && c.nomeFantasia.trim().toLowerCase() === addNomeFantasia.trim().toLowerCase()
     )
     if (duplicate) {
       setAddErrors({ nomeFantasia: "Já existe um cliente ativo com esse nome." })
+      toast.error("Já existe um cliente ativo com esse nome.")
       return
     }
     startAddTransition(async () => {
@@ -551,7 +552,6 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                 disabled={isEditPending}
                 aria-invalid={!!editErrors.nomeFantasia}
               />
-              {editErrors.nomeFantasia && <p className="text-sm text-destructive mt-1">{editErrors.nomeFantasia}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Razão Social</label>
@@ -571,7 +571,6 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                 disabled={isEditPending}
                 aria-invalid={!!editErrors.cpfCnpj}
               />
-              {editErrors.cpfCnpj && <p className="text-sm text-destructive mt-1">{editErrors.cpfCnpj}</p>}
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
@@ -605,7 +604,6 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                 disabled={isAddPending}
                 aria-invalid={!!addErrors.nomeFantasia}
               />
-              {addErrors.nomeFantasia && <p className="text-sm text-destructive mt-1">{addErrors.nomeFantasia}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Razão Social</label>
@@ -625,7 +623,6 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                 disabled={isAddPending}
                 aria-invalid={!!addErrors.cpfCnpj}
               />
-              {addErrors.cpfCnpj && <p className="text-sm text-destructive mt-1">{addErrors.cpfCnpj}</p>}
             </div>
           </div>
           <DialogFooter showCloseButton={false}>
