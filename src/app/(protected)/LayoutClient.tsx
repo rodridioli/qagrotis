@@ -7,7 +7,7 @@ import {
   LayoutDashboard, FileText, Rocket, Check, Clock4,
   Settings, LogOut, PanelLeftClose,
   PanelLeftOpen, Menu, Moon, Sun, Sparkles, Users,
-  Network, ClipboardCheck, MessageSquare, User, KanbanSquare, Briefcase,
+  Network, ClipboardCheck, MessageSquare, User, KanbanSquare, Briefcase, Layers,
 } from "lucide-react"
 import { buildRole, can, isDisabled, isVisible, type Role, type Capability, type AccessProfile } from "@/core/rbac/policy"
 import {
@@ -30,6 +30,7 @@ import { EquipeSidebarNavGroup } from "@/features/equipe/components/EquipeSideba
 import { EQUIPE_NAV_ENTRIES } from "@/features/equipe/components/equipeNavEntries"
 import { PainelSidebarNavGroup } from "@/features/painel/components/PainelSidebarNavGroup"
 import { GestaoSidebarNavGroup } from "@/features/gestao/components/GestaoSidebarNavGroup"
+import { TrabalhoSidebarNavGroup } from "@/features/trabalho/components/TrabalhoSidebarNavGroup"
 import { QAgrotisLogo } from "@/components/shared/QAgrotisLogo"
 import { QAgrotisIcon } from "@/components/shared/QAgrotisIcon"
 import { signOut, useSession } from "next-auth/react"
@@ -49,6 +50,7 @@ const STORAGE_KEY = "qa_sistema_selecionado"
 const THEME_KEY = "qa_theme"
 
 const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alwaysEnabled: boolean; capability: Capability }> = [
+  { href: "/trabalho",      icon: Layers,          label: "Trabalho",         alwaysEnabled: true,  capability: "menu.trabalho" },
   { href: "/dashboard",     icon: LayoutDashboard, label: "Painel",           alwaysEnabled: false, capability: "menu.painel" },
   { href: "/suites",        icon: Rocket,          label: "Suítes",           alwaysEnabled: false, capability: "menu.suites" },
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
@@ -80,52 +82,37 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
     { capability: "menu.configuracoes" },
   ],
   "Padrão:UX": [
-    { capability: "menu.kanban" },
-    { capability: "individual.lancamentos" },
-    { capability: "equipe.clockwork", label: "Clockwork" },
-    { capability: "menu.equipe" },
-    { capability: "menu.individual" },
-    { capability: "menu.configuracoes" },
-  ],
-  "Padrão:TW": [
-    { capability: "individual.lancamentos" },
-    { capability: "equipe.clockwork", label: "Clockwork" },
-    { capability: "menu.equipe" },
-    { capability: "menu.individual" },
-    { capability: "menu.configuracoes" },
-  ],
-  "Padrão:QA": [
-    { capability: "menu.painel" },
-    { capability: "individual.lancamentos" },
-    { capability: "menu.suites" },
-    { capability: "menu.cenarios" },
-    { capability: "menu.gerador" },
-    { capability: "menu.equipe" },
-    { capability: "menu.individual" },
-    { capability: "menu.configuracoes" },
-  ],
-  "Administrador:QA": [
-    { capability: "menu.painel" },
-    { capability: "equipe.lancamentos", label: "Registros" },
-    { capability: "equipe.clockwork", label: "Clockwork" },
-    { capability: "menu.suites" },
-    { capability: "menu.cenarios" },
-    { capability: "menu.gerador" },
+    { capability: "menu.trabalho" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
   ],
   "Administrador:UX": [
-    { capability: "menu.kanban" },
-    { capability: "equipe.lancamentos", label: "Registros" },
-    { capability: "equipe.clockwork", label: "Clockwork" },
+    { capability: "menu.trabalho" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
+  ],
+  "Padrão:TW": [
+    { capability: "menu.trabalho" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
   ],
   "Administrador:TW": [
-    { capability: "equipe.lancamentos", label: "Registros" },
-    { capability: "equipe.clockwork", label: "Clockwork" },
+    { capability: "menu.trabalho" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
+  ],
+  "Padrão:QA": [
+    { capability: "menu.trabalho" },
+    { capability: "menu.equipe" },
+    { capability: "menu.individual" },
+    { capability: "menu.configuracoes" },
+  ],
+  "Administrador:QA": [
+    { capability: "menu.trabalho" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
@@ -309,6 +296,35 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                 )
               }
 
+              if (href === "/trabalho") {
+                return (
+                  <Suspense
+                    key="trabalho-sidebar-tree"
+                    fallback={
+                      <div
+                        className={cn(
+                          "flex items-center gap-3 rounded px-2.5 py-2 text-sm font-medium text-text-secondary",
+                          collapsed ? "lg:justify-center" : "",
+                        )}
+                      >
+                        <Layers className="size-4.5 shrink-0 text-text-secondary" aria-hidden />
+                        {!collapsed ? <span className="truncate">Trabalho</span> : null}
+                      </div>
+                    }
+                  >
+                    <TrabalhoSidebarNavGroup
+                      role={role}
+                      collapsed={collapsed}
+                      onNavigate={onNavigate}
+                      hasIntegracoes={hasIntegracoes}
+                      hasJiraConfigured={hasJiraConfigured}
+                      hasSistemaModulo={hasSistemaModulo}
+                      hasCenario={hasCenario}
+                    />
+                  </Suspense>
+                )
+              }
+
               if (href === "/equipe") {
                 const equipeDisabled = needsSistema && !hasSistemaModulo
                 if (equipeDisabled) {
@@ -345,6 +361,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                       onNavigate={onNavigate}
                       canAccessLancamentos={role === "Administrador:MGR" || role === "Administrador:QA" || role === "Administrador:UX" || role === "Administrador:TW" ? false : canAccessEquipeLancamentos}
                       hideClockwork={true}
+                      hideOkr={true}
                     />
                   </Suspense>
                 )

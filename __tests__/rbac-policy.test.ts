@@ -64,9 +64,13 @@ describe("Padrão:QA", () => {
     const menus: Capability[] = [
       "menu.painel", "menu.suites", "menu.cenarios", "menu.gerador",
       "menu.documentos", "menu.assistente", "menu.equipe",
-      "menu.individual", "menu.configuracoes", "menu.atualizacoes",
+      "menu.individual", "menu.configuracoes",
     ]
     menus.forEach((cap) => expect(can(role, cap)).toBe(true))
+  })
+
+  it("NÃO tem menu.atualizacoes (exclusivo de Administrador:MGR)", () => {
+    expect(can(role, "menu.atualizacoes")).toBe(false)
   })
 
   it("tem config.clientes, config.credenciais e config.meuCadastro", () => {
@@ -83,12 +87,18 @@ describe("Padrão:QA", () => {
     expect(can(role, "users.editProfileFields")).toBe(false)
   })
 
-  it("NÃO tem capabilities de MGR", () => {
-    expect(can(role, "individual.lancamentos")).toBe(false)
+  // Padrão:QA tem individual.lancamentos (acesso ao próprio painel de lançamentos)
+  // e config.jira (para configurar integração Jira pessoal)
+  it("tem individual.lancamentos e config.jira", () => {
+    expect(can(role, "individual.lancamentos")).toBe(true)
+    expect(can(role, "config.jira")).toBe(true)
+  })
+
+  it("NÃO tem capabilities exclusivas de MGR", () => {
     expect(can(role, "individual.viewOthers")).toBe(false)
     expect(can(role, "config.clockwork")).toBe(false)
     expect(can(role, "config.modelosIA")).toBe(false)
-    expect(can(role, "config.jira")).toBe(false)
+    expect(can(role, "users.editProfileFields")).toBe(false)
   })
 
   it("NÃO tem equipe.clockwork (capability exclusiva de admins)", () => {
@@ -114,11 +124,14 @@ describe("Administrador:QA", () => {
     expect(can(role, "menu.assistente")).toBe(true)
   })
 
-  it("tem config.usuarios, config.sistemas, config.modulos e users.create", () => {
+  it("tem config.usuarios, config.sistemas, config.modulos", () => {
     expect(can(role, "config.usuarios")).toBe(true)
     expect(can(role, "config.sistemas")).toBe(true)
     expect(can(role, "config.modulos")).toBe(true)
-    expect(can(role, "users.create")).toBe(true)
+  })
+
+  it("NÃO tem users.create (exclusivo de Administrador:MGR)", () => {
+    expect(can(role, "users.create")).toBe(false)
   })
 
   it("tem equipe.clockwork e equipe.lancamentos", () => {
@@ -127,12 +140,11 @@ describe("Administrador:QA", () => {
   })
 
   it("NÃO tem capabilities exclusivas de MGR", () => {
-    expect(can(role, "individual.lancamentos")).toBe(false)
     expect(can(role, "individual.viewOthers")).toBe(false)
     expect(can(role, "config.clockwork")).toBe(false)
     expect(can(role, "config.modelosIA")).toBe(false)
-    expect(can(role, "config.jira")).toBe(false)
     expect(can(role, "users.editProfileFields")).toBe(false)
+    expect(can(role, "users.create")).toBe(false)
   })
 
   it("gerencia apenas perfil QA", () => {
@@ -145,13 +157,16 @@ describe("Administrador:QA", () => {
 describe("Padrão:UX", () => {
   const role = buildRole("Padrão", "UX")
 
-  it("tem menu.painel, menu.assistente, menu.equipe, menu.individual, menu.configuracoes, menu.atualizacoes", () => {
+  it("tem menu.painel, menu.assistente, menu.equipe, menu.individual, menu.configuracoes", () => {
     expect(can(role, "menu.painel")).toBe(true)
     expect(can(role, "menu.assistente")).toBe(true)
     expect(can(role, "menu.equipe")).toBe(true)
     expect(can(role, "menu.individual")).toBe(true)
     expect(can(role, "menu.configuracoes")).toBe(true)
-    expect(can(role, "menu.atualizacoes")).toBe(true)
+  })
+
+  it("NÃO tem menu.atualizacoes (exclusivo de Administrador:MGR)", () => {
+    expect(can(role, "menu.atualizacoes")).toBe(false)
   })
 
   it("NÃO tem acesso a menus QA-específicos", () => {
@@ -170,11 +185,18 @@ describe("Padrão:UX", () => {
     expect(can(role, "config.meuCadastro")).toBe(true)
   })
 
-  it("NÃO tem capabilities de admin ou MGR", () => {
+  // Padrão:UX tem individual.lancamentos (acesso aos próprios lançamentos)
+  // e equipe.clockwork (integração Clockwork para lançar tempo)
+  it("tem individual.lancamentos e equipe.clockwork", () => {
+    expect(can(role, "individual.lancamentos")).toBe(true)
+    expect(can(role, "equipe.clockwork")).toBe(true)
+  })
+
+  it("NÃO tem capabilities exclusivas de admin ou MGR", () => {
     expect(can(role, "config.usuarios")).toBe(false)
     expect(can(role, "users.create")).toBe(false)
-    expect(can(role, "individual.lancamentos")).toBe(false)
-    expect(can(role, "equipe.clockwork")).toBe(false)
+    expect(can(role, "individual.viewOthers")).toBe(false)
+    expect(can(role, "config.clockwork")).toBe(false)
   })
 
   it("não gerencia nenhum perfil", () => {
@@ -187,9 +209,12 @@ describe("Padrão:UX", () => {
 describe("Administrador:UX", () => {
   const role = buildRole("Administrador", "UX")
 
-  it("tem config.usuarios e users.create", () => {
+  it("tem config.usuarios", () => {
     expect(can(role, "config.usuarios")).toBe(true)
-    expect(can(role, "users.create")).toBe(true)
+  })
+
+  it("NÃO tem users.create (exclusivo de Administrador:MGR)", () => {
+    expect(can(role, "users.create")).toBe(false)
   })
 
   it("menu.documentos ainda aparece disabled mesmo sendo admin UX", () => {
@@ -248,9 +273,12 @@ describe("Padrão:TW", () => {
 describe("Administrador:TW", () => {
   const role = buildRole("Administrador", "TW")
 
-  it("tem config.usuarios e users.create", () => {
+  it("tem config.usuarios", () => {
     expect(can(role, "config.usuarios")).toBe(true)
-    expect(can(role, "users.create")).toBe(true)
+  })
+
+  it("NÃO tem users.create (exclusivo de Administrador:MGR)", () => {
+    expect(can(role, "users.create")).toBe(false)
   })
 
   it("menu.documentos ainda disabled", () => {
@@ -297,9 +325,14 @@ describe("Padrão:MGR (inválido)", () => {
 describe("Administrador:MGR", () => {
   const role = buildRole("Administrador", "MGR")
 
-  it("tem individual.lancamentos e individual.viewOthers (exclusivos MGR)", () => {
-    expect(can(role, "individual.lancamentos")).toBe(true)
+  // MGR usa individual.viewOthers (ver lançamentos de toda a equipe)
+  // em vez de individual.lancamentos (próprios lançamentos — não se aplica ao gestor)
+  it("tem individual.viewOthers (ver lançamentos da equipe)", () => {
     expect(can(role, "individual.viewOthers")).toBe(true)
+  })
+
+  it("NÃO tem individual.lancamentos (gestor usa viewOthers em vez disso)", () => {
+    expect(can(role, "individual.lancamentos")).toBe(false)
   })
 
   it("tem config.clockwork, config.modelosIA, config.jira (exclusivos MGR)", () => {
@@ -354,7 +387,8 @@ describe("isVisible", () => {
   })
 
   it("item sem can e sem disabled não é visível", () => {
-    expect(isVisible(buildRole("Padrão", "QA"), "individual.lancamentos")).toBe(false)
+    // menu.atualizacoes não está em Padrão:QA nem como capability nem como disabled
+    expect(isVisible(buildRole("Padrão", "QA"), "menu.atualizacoes")).toBe(false)
   })
 })
 
@@ -405,13 +439,18 @@ describe("separação de capabilities exclusivas", () => {
     "Padrão:MGR",
   ]
 
+  // Capabilities que pertencem EXCLUSIVAMENTE a Administrador:MGR
+  // Nota: config.jira e individual.lancamentos NÃO são exclusivos —
+  //   config.jira é dado a QA/UX/TW para configurar integração pessoal
+  //   individual.lancamentos é dado a QA/UX/TW para ver os próprios lançamentos
   const mgrExclusive: Capability[] = [
-    "individual.lancamentos",
     "individual.viewOthers",
     "config.clockwork",
     "config.modelosIA",
-    "config.jira",
     "users.editProfileFields",
+    "menu.atualizacoes",
+    "config.equipes",
+    "records.hardDelete",
   ]
 
   it.each(mgrExclusive)("capability '%s' é exclusiva de Administrador:MGR", (cap) => {

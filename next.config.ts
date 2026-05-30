@@ -1,6 +1,29 @@
 import type { NextConfig } from "next";
 
+// Content-Security-Policy
+// Notes:
+// - 'unsafe-inline' for scripts is required by Next.js App Router (inline hydration scripts).
+//   Upgrade to nonce-based CSP once Next.js nonce support is enabled in middleware.
+// - 'unsafe-inline' for styles is required by Tailwind CSS (generated inline styles).
+// - Stripe JS is loaded client-side for billing; stripe.com frames are needed for 3DS.
+// - lh3.googleusercontent.com and avatars.githubusercontent.com serve user profile photos.
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://avatars.githubusercontent.com https://cdn.discordapp.com",
+  "font-src 'self'",
+  "connect-src 'self' https://api.stripe.com",
+  "frame-src https://js.stripe.com https://hooks.stripe.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "upgrade-insecure-requests",
+].join("; ")
+
 const securityHeaders = [
+  // Content Security Policy — primary XSS defense
+  { key: "Content-Security-Policy", value: csp },
   // Prevents clickjacking
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   // Stops browsers from sniffing MIME types

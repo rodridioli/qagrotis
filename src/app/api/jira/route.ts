@@ -4,6 +4,13 @@ import { resolveJiraCredentialsForRequest, isSameJiraHost } from "@/features/qa/
 import { normalizeJiraIssueKey } from "@/features/qa/lib/jira-issue-key"
 import { validateOrigin } from "@/core/security"
 
+// Timeout helper: aborts fetch after `ms` milliseconds
+function fetchWithTimeout(url: string, opts: RequestInit, ms = 30_000): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ms)
+  return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(timer))
+}
+
 // GET is no longer supported - all Jira calls use POST with action field
 // This handler prevents 404 errors from cached old code
 export async function GET() {
@@ -50,7 +57,7 @@ export async function POST(req: NextRequest) {
 
   // ── action: fetch — get current description ──────────────────────────────
   if (action === "fetch") {
-    const res = await fetch(`${base}/rest/api/3/issue/${issueKey}?fields=description,summary,attachment`, {
+    const res = await fetchWithTimeout(`${base}/rest/api/3/issue/${issueKey}?fields=description,summary,attachment`, {
       headers: { "Authorization": `Basic ${credentials}`, "Accept": "application/json" },
     })
 
@@ -94,7 +101,7 @@ export async function POST(req: NextRequest) {
     for (const att of supported) {
       if (!att.content || !isSameJiraHost(jiraUrl, att.content)) continue
       try {
-        const attRes = await fetch(att.content, { headers: { "Authorization": `Basic ${credentials}` } })
+        const attRes = await fetchWithTimeout(att.content, { headers: { "Authorization": `Basic ${credentials}` } }, 15_000)
         if (attRes.ok) {
           const buf = await attRes.arrayBuffer()
           const base64 = Buffer.from(buf).toString("base64")
@@ -114,17 +121,17 @@ export async function POST(req: NextRequest) {
   if (mode === "replace" && deleteAttachmentIds?.length) {
     for (const id of deleteAttachmentIds) {
       try {
-        await fetch(`${base}/rest/api/3/attachment/${id}`, {
+        await fetchWithTimeout(`${base}/rest/api/3/attachment/${id}`, {
           method: "DELETE",
           headers: { "Authorization": `Basic ${credentials}` },
-        })
+        }, 15_000)
       } catch { /* skip */ }
     }
   }
 
   let adf: object
   if (mode === "append") {
-    const getRes = await fetch(`${base}/rest/api/3/issue/${issueKey}?fields=description`, {
+    const getRes = await fetchWithTimeout(`${base}/rest/api/3/issue/${issueKey}?fields=description`, {
       headers: { "Authorization": `Basic ${credentials}`, "Accept": "application/json" },
     })
     if (getRes.ok) {
@@ -143,7 +150,7 @@ export async function POST(req: NextRequest) {
     adf = markdownToADF(content)
   }
 
-  const res = await fetch(`${base}/rest/api/3/issue/${issueKey}`, {
+  const res = await fetchWithTimeout(`${base}/rest/api/3/issue/${issueKey}`, {
     method: "PUT",
     headers: { "Authorization": `Basic ${credentials}`, "Content-Type": "application/json", "Accept": "application/json" },
     body: JSON.stringify({ fields: { description: adf } }),
@@ -255,4 +262,3 @@ function markdownToADF(markdown: string): object {
   }
   return { version: 1, type: "doc", content }
 }
-// force-deploy-1776426959

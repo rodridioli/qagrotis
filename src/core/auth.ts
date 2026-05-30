@@ -51,11 +51,14 @@ const providers = [
 ]
 
 if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
-  providers.push(
+  // Type cast needed: Google() and Credentials() have different internal provider types
+  // in next-auth v5, but both satisfy the Provider interface expected by NextAuth() at runtime.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(providers as unknown[]).push(
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
-    }) as never
+    })
   )
 }
 

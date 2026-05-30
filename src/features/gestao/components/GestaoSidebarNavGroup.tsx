@@ -2,14 +2,15 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Briefcase, ChevronRight, Clock4, KanbanSquare, Timer } from "lucide-react"
+import { Briefcase, Check, ChevronRight, Clock4, KanbanSquare, Target } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/core/utils"
 
 const GESTAO_SUBITEMS = [
-  { id: "kanban",      label: "Kanban",      Icon: KanbanSquare, href: "/kanban" },
-  { id: "lancamentos", label: "Lançamentos", Icon: Timer,        href: "/equipe?tab=lancamentos" },
-  { id: "clockwork",   label: "Clockwork",   Icon: Clock4,       href: "/equipe?tab=clockwork" },
+  { id: "kanban",      label: "Kanban",    Icon: KanbanSquare, href: "/kanban",                 disabled: false },
+  { id: "lancamentos", label: "Registros", Icon: Check,        href: "/equipe?tab=lancamentos", disabled: false },
+  { id: "clockwork",   label: "Clockwork", Icon: Clock4,       href: "/equipe?tab=clockwork",   disabled: false },
+  { id: "okr",         label: "OKR",       Icon: Target,       href: "/equipe?tab=metas",       disabled: true  },
 ] as const
 
 export interface GestaoSidebarNavGroupProps {
@@ -152,7 +153,20 @@ export function GestaoSidebarNavGroup({ collapsed, onNavigate }: GestaoSidebarNa
           className="ml-2 border-l border-border-default pl-2"
         >
           <ul className="flex flex-col gap-0.5">
-            {GESTAO_SUBITEMS.map(({ id, label, Icon, href }) => {
+            {GESTAO_SUBITEMS.map(({ id, label, Icon, href, disabled }) => {
+              if (disabled) {
+                return (
+                  <li key={id}>
+                    <span
+                      className="flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium opacity-40"
+                      aria-disabled="true"
+                    >
+                      <Icon className="size-4 shrink-0 text-text-secondary" aria-hidden />
+                      <span className="truncate text-text-secondary">{label}</span>
+                    </span>
+                  </li>
+                )
+              }
               const active = activeItemId === id
               return (
                 <li key={id}>

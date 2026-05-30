@@ -4,7 +4,7 @@ import { revalidatePath, updateTag } from "next/cache"
 import { LAYOUT_CACHE_TAG } from "@/core/layout-cache"
 import { normalizeProvider } from "@/lib/ai/provider"
 import { z } from "zod"
-import { nextId } from "@/core/db-utils"
+import { nextId, encryptField, decryptField } from "@/core/db-utils"
 import { requireAdmin, requireSession, requireHardDeleteAccess } from "@/core/session"
 import { prisma } from "@/core/prisma"
 import { ensureUpdatedAtColumns } from "@/core/prisma-schema-ensure"
@@ -41,6 +41,7 @@ export async function getIntegracoes(): Promise<IntegracaoRecord[]> {
   return rows.map((r) => ({
     ...r,
     provider: r.provider,
+    apiKey: decryptField(r.apiKey),
     createdAt: r.createdAt != null ? r.createdAt.getTime() : Date.now(),
   }))
 }
@@ -68,6 +69,7 @@ export async function getIntegracao(id: string): Promise<IntegracaoRecord | null
   return {
     ...row,
     provider: row.provider,
+    apiKey: decryptField(row.apiKey),
     createdAt: row.createdAt != null ? row.createdAt.getTime() : Date.now(),
   }
 }
@@ -82,7 +84,7 @@ export async function criarIntegracao(data: unknown): Promise<void> {
   const existing = await prisma.integracao.findMany({ select: { id: true } })
   const id = nextId(existing.map((i) => i.id), "INT")
 
-  await prisma.integracao.create({ data: { id, ...parsed, provider, active: true } })
+  await prisma.integracao.create({ data: { id, ...parsed, provider, apiKey: encryptField(parsed.apiKey), active: true } })
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath("/gerador")
   updateTag(LAYOUT_CACHE_TAG)
@@ -100,7 +102,7 @@ export async function atualizarIntegracao(id: string, data: unknown): Promise<vo
   const existing = await prisma.integracao.findUnique({ where: { id }, select: { id: true } })
   if (!existing) throw new Error("Integração não encontrada")
 
-  await prisma.integracao.update({ where: { id }, data: { ...parsed, provider } })
+  await prisma.integracao.update({ where: { id }, data: { ...parsed, provider, apiKey: encryptField(parsed.apiKey) } })
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath(`/configuracoes/modelos-de-ia/${id}/editar`)
   revalidatePath("/gerador")

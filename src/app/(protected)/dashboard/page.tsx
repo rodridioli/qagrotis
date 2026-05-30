@@ -36,6 +36,12 @@ export default async function DashboardPage({
   // ── UX (Padrão ou Administrador) → Kanban é a home ─────────────────────
   if (accessProfile === "UX") redirect("/kanban")
 
+  // ── TW (Padrão ou Administrador) → Registros é a home ──────────────────
+  if (accessProfile === "TW") {
+    if (role === "Administrador:TW") redirect("/equipe?tab=lancamentos")
+    redirect("/individual/lancamentos")
+  }
+
   // ── MGR sem perfil → redireciona para visão padrão MGR ─────────────────
   if (isMgr && !perfil) redirect("/dashboard?perfil=MGR")
 

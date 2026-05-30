@@ -70,14 +70,15 @@ export async function POST(request: Request) {
     const token = randomBytes(32).toString("hex")
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 1) // 1 hour
 
-    await prisma.inviteToken.create({
-      data: {
-        token,
-        userId: user.id,
-        email: user.email,
-        expiresAt,
-        used: false,
-      },
+    // Invalidate any unused previous tokens for this user before creating a new one
+    await prisma.$transaction(async (tx) => {
+      await tx.inviteToken.updateMany({
+        where: { userId: user.id, used: false },
+        data: { used: true },
+      })
+      await tx.inviteToken.create({
+        data: { token, userId: user.id, email: user.email, expiresAt, used: false },
+      })
     })
 
     const resetUrl = `${APP_URL}/definir-senha/${token}`

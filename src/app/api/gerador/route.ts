@@ -3,6 +3,8 @@ import { NextRequest } from "next/server"
 import { normalizeProvider } from "@/lib/ai/provider"
 import { prisma } from "@/core/prisma"
 import { validateOrigin } from "@/core/security"
+import { decryptField } from "@/core/db-utils"
+import { z } from "zod"
 
 // Rate limit: max 30 AI generations per user per hour
 const geradorRateMap = new Map<string, { count: number; resetAt: number }>()
@@ -709,16 +711,25 @@ export async function POST(req: NextRequest) {
     return new Response("Unauthorized", { status: 401 })
   }
 
-  let body: {
-    context?: string
-    jira?: string
-    prompt?: string
-    imagens?: { dataUrl: string; name: string }[]
-    integrationId?: string
-  }
+  // ── Zod validation ────────────────────────────────────────────────────────
+  const bodySchema = z.object({
+    context:       z.string().max(20_000).optional(),
+    jira:          z.string().max(20_000).optional(),
+    prompt:        z.string().max(20_000).optional(),
+    integrationId: z.string().regex(/^INT-\d+$/, "ID de integração inválido").optional(),
+    imagens: z.array(z.object({
+      dataUrl: z.string().max(10_000_000),
+      name:    z.string().max(255),
+    })).max(10).optional(),
+  })
+
+  let body: z.infer<typeof bodySchema>
   try {
-    body = await req.json()
-  } catch {
+    body = bodySchema.parse(await req.json())
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      return new Response(e.issues[0]?.message ?? "Corpo da requisição inválido.", { status: 400 })
+    }
     return new Response("Corpo da requisição inválido (JSON esperado).", { status: 400 })
   }
 
@@ -777,7 +788,7 @@ export async function POST(req: NextRequest) {
     id: integracao.id,
     provider: integracao.provider,
     model: integracao.model,
-    apiKey: integracao.apiKey,
+    apiKey: decryptField(integracao.apiKey),
   }
   const primaryResponse = await streamByIntegration(primary, userMessage, imagens)
   if (primaryResponse.status !== 429) {
@@ -802,7 +813,7 @@ export async function POST(req: NextRequest) {
         id: candidate.id,
         provider: candidate.provider,
         model: candidate.model,
-        apiKey: candidate.apiKey,
+        apiKey: decryptField(candidate.apiKey),
       },
       userMessage,
       imagens,
