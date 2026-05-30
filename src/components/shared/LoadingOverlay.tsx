@@ -9,7 +9,10 @@ interface LoadingOverlayProps {
 }
 
 /**
- * Full-screen semi-transparent overlay with a centered spinner.
+ * Overlay de loading que cobre apenas a área de conteúdo (absolute inset-0),
+ * posicionado em relação ao <main className="relative"> do LayoutClient.
+ * Sidebar e topbar permanecem visíveis. Visual idêntico ao SectionSpinner.
+ *
  * Usage: <LoadingOverlay visible={isSaving} label="Salvando..." />
  */
 export function LoadingOverlay({ visible, label = "Processando...", className }: LoadingOverlayProps) {
@@ -21,15 +24,16 @@ export function LoadingOverlay({ visible, label = "Processando...", className }:
       aria-label={label}
       aria-live="polite"
       className={cn(
-        "fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-3",
-        "bg-surface-default/70 backdrop-blur-sm",
+        "absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 py-12",
+        "bg-surface-default",
         className
       )}
     >
-      <div className="flex size-14 items-center justify-center rounded-2xl bg-surface-card shadow-card">
-        <span className="size-6 animate-spin rounded-full border-[3px] border-brand-primary/20 border-t-brand-primary" />
-      </div>
-      <p className="text-sm font-medium text-text-primary">{label}</p>
+      <span
+        className="size-8 animate-spin rounded-full border-4 border-brand-primary/20 border-t-brand-primary"
+        aria-hidden="true"
+      />
+      <p className="text-sm text-text-secondary">{label}</p>
     </div>
   )
 }
