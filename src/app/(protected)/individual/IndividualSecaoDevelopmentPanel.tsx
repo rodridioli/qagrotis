@@ -297,6 +297,7 @@ export function IndividualSecaoDevelopmentPanel({
             title="Solicitar avaliação de domínio?"
             description={`Será enviada uma notificação para o usuário selecionado pedindo que ele preencha a avaliação de domínio. O usuário só poderá fechar o formulário após concluir o preenchimento.`}
             confirmLabel={solicitarLoading ? "Solicitando…" : "Solicitar"}
+            confirmIcon={<Send className="size-4 shrink-0" aria-hidden />}
             buttonVariant="default"
             onConfirm={async () => {
               setSolicitarLoading(true)

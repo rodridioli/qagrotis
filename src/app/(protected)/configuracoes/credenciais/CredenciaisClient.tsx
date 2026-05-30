@@ -531,6 +531,7 @@ export function CredenciaisClient({ initialCredenciais, isAdmin }: Props) {
         title="Deseja inativar?"
         description="Esta credencial será inativada e não poderá ser usada em novos cenários."
         confirmLabel="Inativar"
+        confirmIcon={<Power className="size-4 shrink-0" aria-hidden />}
         onConfirm={handleInativar}
       />
 
@@ -541,6 +542,7 @@ export function CredenciaisClient({ initialCredenciais, isAdmin }: Props) {
         title="Deseja ativar?"
         description="Esta credencial voltará a aparecer na listagem de ativos."
         confirmLabel="Ativar"
+        confirmIcon={<RotateCcw className="size-4 shrink-0" aria-hidden />}
         onConfirm={handleAtivar}
       />
     </div>
