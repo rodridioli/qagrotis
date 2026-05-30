@@ -198,23 +198,26 @@ export async function listAllAusenciasAprovadas(): Promise<IndividualAusenciasRo
       getActiveQaUsers(),
     ])
 
-    return rows.map((row) => {
-      const user = allUsers.find((u) => u.id === row.evaluatedUserId)
-      const evaluatedUser = { name: user?.name ?? "Usuário", photoPath: user?.photoPath ?? null }
-      return {
-        id: row.id,
-        codigo: row.codigo,
-        tipo: row.tipo,
-        dataInicioIso: dataToIso(row.dataInicio),
-        dataFimIso: dataToIso(row.dataFim),
-        justificativa: row.justificativa,
-        situacao: "APROVADA" as AusenciaSituacao,
-        motivoRecusa: null,
-        aprovadoPorId: null,
-        createdAt: row.createdAt.toISOString(),
-        evaluatedUser,
-      }
-    })
+    const activeUserIds = new Set(allUsers.map((u) => u.id))
+    return rows
+      .filter((row) => activeUserIds.has(row.evaluatedUserId))
+      .map((row) => {
+        const user = allUsers.find((u) => u.id === row.evaluatedUserId)!
+        const evaluatedUser = { name: user.name, photoPath: user.photoPath ?? null }
+        return {
+          id: row.id,
+          codigo: row.codigo,
+          tipo: row.tipo,
+          dataInicioIso: dataToIso(row.dataInicio),
+          dataFimIso: dataToIso(row.dataFim),
+          justificativa: row.justificativa,
+          situacao: "APROVADA" as AusenciaSituacao,
+          motivoRecusa: null,
+          aprovadoPorId: null,
+          createdAt: row.createdAt.toISOString(),
+          evaluatedUser,
+        }
+      })
   } catch (e) {
     console.error("[listAllAusenciasAprovadas]", e)
     return []

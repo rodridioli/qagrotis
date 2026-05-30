@@ -434,10 +434,80 @@ export async function deletarQaUser(id: string): Promise<{ error?: string }> {
     const isInactive = await prisma.inactiveUser.findUnique({ where: { userId: id } })
     if (!isInactive) return { error: "Registro não encontrado ou ainda ativo." }
 
+    type DeleteResult = { count: number }
+    type DeleteFn = (args: { where: unknown }) => Promise<DeleteResult>
+    type UpdateFn = (args: { where: unknown; data: unknown }) => Promise<DeleteResult>
+
     await prisma.$transaction(async (tx) => {
+      // ── Clockwork / Kanban ────────────────────────────────────────────────
+      const kanbanTimerSessions    = await (tx.kanbanTimerSession.deleteMany as DeleteFn)({ where: { userId: id } })
+      const kanbanInApprovalTrackers = await (tx.kanbanInApprovalTracker.deleteMany as DeleteFn)({ where: { userId: id } })
+      const kanbanUserCardStates   = await (tx.kanbanUserCardState.deleteMany as DeleteFn)({ where: { userId: id } })
+      const kanbanAssignments      = await (tx.kanbanAssignment.deleteMany as DeleteFn)({ where: { userId: id } })
+      const jiraWorklogCaches      = await tx.jiraWorklogCache.deleteMany({ where: { userId: id } })
+      const jiraWorklogSyncMarkers = await tx.jiraWorklogSyncMarker.deleteMany({ where: { userId: id } })
+      const jiraAccountIdCaches    = await tx.jiraAccountIdCache.deleteMany({ where: { userId: id } })
+
+      // ── Equipe / Chapters ─────────────────────────────────────────────────
+      const chapterRedemptions = await tx.chapterRedemption.deleteMany({ where: { userId: id } })
+      const chapterRatings     = await (tx.equipeChapterRating.deleteMany as DeleteFn)({ where: { userId: id } })
+      const chapterAuthors     = await (tx.equipeChapterAuthor.deleteMany as DeleteFn)({ where: { userId: id } })
+
+      // ── Individual — modelos com dois campos de userId (OR obrigatório) ───
+      const ausencias   = await (tx.individualAusencias.deleteMany as DeleteFn)({
+        where: { OR: [{ evaluatedUserId: id }, { createdByUserId: id }] },
+      })
+      const ferias      = await (tx.individualFerias.deleteMany as DeleteFn)({
+        where: { OR: [{ evaluatedUserId: id }, { createdByUserId: id }] },
+      })
+      const progressoes = await (tx.individualProgressao.deleteMany as DeleteFn)({
+        where: { OR: [{ evaluatedUserId: id }, { createdByUserId: id }] },
+      })
+      const feedbacks   = await (tx.individualFeedback.deleteMany as DeleteFn)({
+        where: { OR: [{ evaluatedUserId: id }, { evaluatorUserId: id }] },
+      })
+      const avaliacoes  = await (tx.individualPerformanceEvaluation.deleteMany as DeleteFn)({
+        where: { OR: [{ evaluatedUserId: id }, { evaluatorUserId: id }] },
+      })
+      const dominios    = await (tx.dominioAvaliacao.deleteMany as DeleteFn)({
+        where: { OR: [{ evaluatedUserId: id }, { solicitadaPorId: id }] },
+      })
+
+      // ── Sistema / Auth ────────────────────────────────────────────────────
+      const inviteTokens    = await tx.inviteToken.deleteMany({ where: { userId: id } })
+      const jiraCredentials = await tx.userJiraCredentials.deleteMany({ where: { userId: id } })
+      // Cenário não é deletado — apenas o autor é desvinculado
+      const cenarios = await (tx.cenario.updateMany as UpdateFn)({
+        where: { createdBy: id },
+        data: { createdBy: null },
+      })
+
+      // ── Core user tables (cascade: Account, Session, Notification, etc.) ─
       await tx.inactiveUser.deleteMany({ where: { userId: id } })
       await tx.userProfile.deleteMany({ where: { userId: id } })
       await tx.createdUser.deleteMany({ where: { id } })
+
+      console.info("[deletarQaUser] userId=%s removido. Contagens:", id, {
+        kanbanTimerSessions: kanbanTimerSessions.count,
+        kanbanInApprovalTrackers: kanbanInApprovalTrackers.count,
+        kanbanUserCardStates: kanbanUserCardStates.count,
+        kanbanAssignments: kanbanAssignments.count,
+        jiraWorklogCaches: jiraWorklogCaches.count,
+        jiraWorklogSyncMarkers: jiraWorklogSyncMarkers.count,
+        jiraAccountIdCaches: jiraAccountIdCaches.count,
+        chapterRedemptions: chapterRedemptions.count,
+        chapterRatings: chapterRatings.count,
+        chapterAuthors: chapterAuthors.count,
+        ausencias: ausencias.count,
+        ferias: ferias.count,
+        progressoes: progressoes.count,
+        feedbacks: feedbacks.count,
+        avaliacoes: avaliacoes.count,
+        dominios: dominios.count,
+        inviteTokens: inviteTokens.count,
+        jiraCredentials: jiraCredentials.count,
+        cenariosDesvinculados: cenarios.count,
+      })
     })
 
     revalidatePath("/configuracoes/usuarios")
