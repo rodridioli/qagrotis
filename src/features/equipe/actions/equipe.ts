@@ -14,6 +14,8 @@ import {
 import { USER_PROFILE_READ_SELECT } from "@/features/usuarios/lib/prisma-user-selects"
 import { unstable_cache } from "next/cache"
 import { requireSession } from "@/core/session"
+import { buildRole, can } from "@/core/rbac/policy"
+import { getTeamMemberIds } from "@/features/equipe/actions/equipes"
 /** Usuário ativo com dados de cadastro (equipe: aniversários / horários). */
 export interface EquipeUsuarioCadastro {
   userId: string
@@ -298,10 +300,18 @@ export async function getEquipeMembrosParaLancamentos(
   accessProfile?: string | null,
 ): Promise<EquipeMembroLancamentos[]> {
   try {
-    await requireSession()
+    const session = await requireSession()
     const all = await _getCachedAllMembrosLancamentos()
-    if (!accessProfile) return all
-    return all.filter((u) => u.accessProfile === accessProfile)
+    const byProfile = accessProfile ? all.filter((u) => u.accessProfile === accessProfile) : all
+
+    const role = buildRole(session.user.type, session.user.accessProfile)
+    if (can(role, "individual.viewTeam")) {
+      const memberIds = await getTeamMemberIds(session.user.id)
+      const allowed = new Set([session.user.id, ...memberIds])
+      return byProfile.filter((u) => allowed.has(u.userId))
+    }
+
+    return byProfile
   } catch (e) {
     console.error("[getEquipeMembrosParaLancamentos]", e)
     return []
@@ -317,10 +327,18 @@ export async function getEquipeMembrosParaLancamentosComInativos(
   accessProfile?: string | null,
 ): Promise<EquipeMembroLancamentos[]> {
   try {
-    await requireSession()
+    const session = await requireSession()
     const all = await _getCachedAllMembrosComInativos()
-    if (!accessProfile) return all
-    return all.filter((u) => u.accessProfile === accessProfile)
+    const byProfile = accessProfile ? all.filter((u) => u.accessProfile === accessProfile) : all
+
+    const role = buildRole(session.user.type, session.user.accessProfile)
+    if (can(role, "individual.viewTeam")) {
+      const memberIds = await getTeamMemberIds(session.user.id)
+      const allowed = new Set([session.user.id, ...memberIds])
+      return byProfile.filter((u) => allowed.has(u.userId))
+    }
+
+    return byProfile
   } catch (e) {
     console.error("[getEquipeMembrosParaLancamentosComInativos]", e)
     return []

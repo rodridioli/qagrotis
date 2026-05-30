@@ -8,6 +8,7 @@ import { ensureIndividualPerformanceEvaluationTable } from "@/core/prisma-schema
 import { requireSession } from "@/core/session"
 import { buildRole, can } from "@/core/rbac/policy"
 import { getActiveQaUsers } from "@/features/usuarios/actions/usuarios"
+import { getTeamMemberIds } from "@/features/equipe/actions/equipes"
 import {
   computePerformanceScorePercent,
   DEFAULT_EVALUATION_PERIOD,
@@ -41,26 +42,35 @@ export interface IndividualPerformanceEvaluationListRow {
   periodo: string
 }
 
-async function requireMgrPerformanceAccess(): Promise<{
+async function requirePerformanceAccess(): Promise<{
   session: NonNullable<Awaited<ReturnType<typeof requireSession>>>
+  canViewAll: boolean
 }> {
   const session = await requireSession()
   const role = buildRole(session.user.type, session.user.accessProfile)
-  if (!can(role, "individual.viewOthers")) {
-    throw new Error("Não autorizado.")
-  }
-  if (session.user.type !== "Administrador") {
-    throw new Error("Não autorizado.")
-  }
-  return { session }
+  const canViewAll = can(role, "individual.viewOthers")
+  const canViewTeam = can(role, "individual.viewTeam")
+  if (!canViewAll && !canViewTeam) throw new Error("Não autorizado.")
+  if (session.user.type !== "Administrador") throw new Error("Não autorizado.")
+  return { session, canViewAll }
 }
 
-async function assertEvaluatedUserInScope(evaluatedUserId: string): Promise<void> {
+async function assertEvaluatedUserInScope(
+  evaluatedUserId: string,
+  callerId: string,
+  canViewAll: boolean,
+): Promise<void> {
   const r = userIdSchema.safeParse(evaluatedUserId)
   if (!r.success) throw new Error("Usuário inválido.")
-  const users = await getActiveQaUsers()
-  const ok = users.some((u) => u.id === evaluatedUserId)
-  if (!ok) throw new Error("Usuário não encontrado ou inativo.")
+
+  if (canViewAll) {
+    const users = await getActiveQaUsers()
+    const ok = users.some((u) => u.id === evaluatedUserId)
+    if (!ok) throw new Error("Usuário não encontrado ou inativo.")
+  } else {
+    const memberIds = await getTeamMemberIds(callerId)
+    if (!memberIds.includes(evaluatedUserId)) throw new Error("Não autorizado.")
+  }
 }
 
 function ymdFromDate(d: Date): string {
@@ -83,8 +93,8 @@ export async function listIndividualPerformanceEvaluations(
   evaluatedUserId: string,
 ): Promise<IndividualPerformanceEvaluationListRow[]> {
   try {
-    await requireMgrPerformanceAccess()
-    await assertEvaluatedUserInScope(evaluatedUserId)
+    const { session, canViewAll } = await requirePerformanceAccess()
+    await assertEvaluatedUserInScope(evaluatedUserId, session.user.id, canViewAll)
     await ensureIndividualPerformanceEvaluationTable()
 
     const rows = (await prisma.individualPerformanceEvaluation.findMany({
@@ -139,7 +149,7 @@ export async function getIndividualPerformanceEvaluation(
   id: string,
 ): Promise<IndividualPerformanceEvaluationDetail | null> {
   try {
-    await requireMgrPerformanceAccess()
+    const { session, canViewAll } = await requirePerformanceAccess()
     const r = idSchema.safeParse(id)
     if (!r.success) return null
     await ensureIndividualPerformanceEvaluationTable()
@@ -148,7 +158,8 @@ export async function getIndividualPerformanceEvaluation(
       where: { id },
     })
     if (!row) return null
-    await assertEvaluatedUserInScope(row.evaluatedUserId)
+    // IDOR: valida que o avaliado pertence ao scope do caller
+    await assertEvaluatedUserInScope(row.evaluatedUserId, session.user.id, canViewAll)
     const p = (row as { periodo?: string | null }).periodo
     return {
       id: row.id,
@@ -174,8 +185,9 @@ export async function createDraftIndividualPerformanceEvaluation(
   evaluatedUserId: string,
 ): Promise<{ id: string } | { error: string }> {
   try {
-    const { session } = await requireMgrPerformanceAccess()
-    await assertEvaluatedUserInScope(evaluatedUserId)
+    const { session, canViewAll } = await requirePerformanceAccess()
+    if (!canViewAll) return { error: "Criação de avaliações restrita a administradores MGR." }
+    await assertEvaluatedUserInScope(evaluatedUserId, session.user.id, canViewAll)
     await ensureIndividualPerformanceEvaluationTable()
 
     const agg = await prisma.individualPerformanceEvaluation.aggregate({
@@ -222,8 +234,9 @@ export async function createAndSaveIndividualPerformanceEvaluation(
   if (!parsed.success) return { error: "Dados inválidos." }
 
   try {
-    const { session } = await requireMgrPerformanceAccess()
-    await assertEvaluatedUserInScope(parsed.data.evaluatedUserId)
+    const { session, canViewAll } = await requirePerformanceAccess()
+    if (!canViewAll) return { error: "Criação de avaliações restrita a administradores MGR." }
+    await assertEvaluatedUserInScope(parsed.data.evaluatedUserId, session.user.id, canViewAll)
     await ensureIndividualPerformanceEvaluationTable()
 
     // Sanitize: only known competency IDs, values 0-4
@@ -302,14 +315,15 @@ export async function updateIndividualPerformanceEvaluation(
   if (!parsed.success) return { error: "Dados inválidos." }
 
   try {
-    await requireMgrPerformanceAccess()
+    const { session, canViewAll } = await requirePerformanceAccess()
+    if (!canViewAll) return { error: "Edição de avaliações restrita a administradores MGR." }
     await ensureIndividualPerformanceEvaluationTable()
 
     const existing = await prisma.individualPerformanceEvaluation.findUnique({
       where: { id: parsed.data.id },
     })
     if (!existing) return { error: "Avaliação não encontrada." }
-    await assertEvaluatedUserInScope(existing.evaluatedUserId)
+    await assertEvaluatedUserInScope(existing.evaluatedUserId, session.user.id, canViewAll)
 
     const selections = { ...parsed.data.selections }
     for (const k of Object.keys(selections)) {
@@ -459,7 +473,8 @@ export async function deleteIndividualPerformanceEvaluation(id: string): Promise
   if (!r.success) return { error: "ID inválido." }
 
   try {
-    await requireMgrPerformanceAccess()
+    const { session, canViewAll } = await requirePerformanceAccess()
+    if (!canViewAll) return { error: "Exclusão de avaliações restrita a administradores MGR." }
     await ensureIndividualPerformanceEvaluationTable()
 
     const existing = await prisma.individualPerformanceEvaluation.findUnique({
@@ -467,7 +482,7 @@ export async function deleteIndividualPerformanceEvaluation(id: string): Promise
       select: { evaluatedUserId: true },
     })
     if (!existing) return { error: "Avaliação não encontrada." }
-    await assertEvaluatedUserInScope(existing.evaluatedUserId)
+    await assertEvaluatedUserInScope(existing.evaluatedUserId, session.user.id, canViewAll)
 
     await prisma.individualPerformanceEvaluation.delete({ where: { id } })
     revalidatePath("/individual/avaliacoes")

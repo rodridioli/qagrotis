@@ -242,6 +242,8 @@ model CreatedUser {
 
   notifications  Notification[]
   userBadges     UserBadge[]
+  teamAsLeader   TeamMembership[] @relation("TeamLeader")
+  teamAsMember   TeamMembership?  @relation("TeamMember")
 }
 
 /// Credenciais Jira por usuário (mesmo userId da sessão: CreatedUser ou fallback OAuth).
@@ -553,6 +555,24 @@ model IndividualAusencias {
   @@unique([evaluatedUserId, codigo])
   @@index([evaluatedUserId])
   @@index([situacao])
+}
+
+// ── Team Memberships ──────────────────────────────────────────────────────────
+
+/// Vínculo líder → membro para o módulo Equipes.
+/// Um membro pertence a no máximo um líder (memberId unique).
+model TeamMembership {
+  id        String   @id @default(cuid())
+  leaderId  String
+  memberId  String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leader CreatedUser @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: Cascade)
+  member CreatedUser @relation("TeamMember", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([leaderId])
+  @@map("team_memberships")
 }
 
 // ── Chapter Prizes / Resgates ──────────────────────────────────────────────────

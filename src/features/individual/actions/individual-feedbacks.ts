@@ -11,6 +11,7 @@ import {
 import { requireSession } from "@/core/session"
 import { buildRole, can } from "@/core/rbac/policy"
 import { getActiveQaUsers } from "@/features/usuarios/actions/usuarios"
+import { getTeamMemberIds } from "@/features/equipe/actions/equipes"
 import {
   isFeedbackTipoSlug,
   FEEDBACK_TIPO_SLUGS,
@@ -91,19 +92,34 @@ function parseCamposForTipo(
 
 // ── Auth helpers (private async) ──────────────────────────────────────────────
 
-async function requireMgrFeedbackAccess() {
+async function requireFeedbackAccess(): Promise<{
+  session: NonNullable<Awaited<ReturnType<typeof requireSession>>>
+  canViewAll: boolean
+}> {
   const session = await requireSession()
   const role = buildRole(session.user.type, session.user.accessProfile)
-  if (!can(role, "individual.viewOthers")) throw new Error("Não autorizado.")
+  const canViewAll = can(role, "individual.viewOthers")
+  const canViewTeam = can(role, "individual.viewTeam")
+  if (!canViewAll && !canViewTeam) throw new Error("Não autorizado.")
   if (session.user.type !== "Administrador") throw new Error("Não autorizado.")
-  return { session }
+  return { session, canViewAll }
 }
 
-async function assertEvaluatedUserInScope(evaluatedUserId: string): Promise<void> {
+async function assertEvaluatedUserInScope(
+  evaluatedUserId: string,
+  callerId: string,
+  canViewAll: boolean,
+): Promise<void> {
   const r = userIdSchema.safeParse(evaluatedUserId)
   if (!r.success) throw new Error("Usuário inválido.")
-  const users = await getActiveQaUsers()
-  if (!users.some((u) => u.id === evaluatedUserId)) throw new Error("Usuário não encontrado ou inativo.")
+
+  if (canViewAll) {
+    const users = await getActiveQaUsers()
+    if (!users.some((u) => u.id === evaluatedUserId)) throw new Error("Usuário não encontrado ou inativo.")
+  } else {
+    const memberIds = await getTeamMemberIds(callerId)
+    if (!memberIds.includes(evaluatedUserId)) throw new Error("Não autorizado.")
+  }
 }
 
 function ymdFromDate(d: Date): string {
@@ -164,8 +180,8 @@ export async function listIndividualFeedbacks(
   evaluatedUserId: string,
 ): Promise<IndividualFeedbackListRow[]> {
   try {
-    await requireMgrFeedbackAccess()
-    await assertEvaluatedUserInScope(evaluatedUserId)
+    const { session, canViewAll } = await requireFeedbackAccess()
+    await assertEvaluatedUserInScope(evaluatedUserId, session.user.id, canViewAll)
     await ensureIndividualFeedbackTable()
     await ensureIndividualFeedbackPeriodoColumn()
     assertFeedbackModelReady()
@@ -194,7 +210,7 @@ export async function getIndividualFeedback(
   id: string,
 ): Promise<IndividualFeedbackDetail | null> {
   try {
-    await requireMgrFeedbackAccess()
+    const { session, canViewAll } = await requireFeedbackAccess()
     const r = idSchema.safeParse(id)
     if (!r.success) return null
     await ensureIndividualFeedbackTable()
@@ -211,6 +227,8 @@ export async function getIndividualFeedback(
       updatedAt: Date
     } | null
     if (!row) return null
+    // IDOR: valida que o avaliado pertence ao scope do caller
+    await assertEvaluatedUserInScope(row.evaluatedUserId, session.user.id, canViewAll)
     return rowToDetail(row)
   } catch (e) {
     console.error("[getIndividualFeedback]", e)
@@ -226,8 +244,9 @@ export async function createAndSaveIndividualFeedback(input: {
   mode: "save" | "complete"
 }): Promise<{ id: string } | { error: string }> {
   try {
-    const { session } = await requireMgrFeedbackAccess()
-    await assertEvaluatedUserInScope(input.evaluatedUserId)
+    const { session, canViewAll } = await requireFeedbackAccess()
+    if (!canViewAll) return { error: "Criação de feedbacks restrita a administradores MGR." }
+    await assertEvaluatedUserInScope(input.evaluatedUserId, session.user.id, canViewAll)
 
     const tipoR = z.enum(FEEDBACK_TIPO_SLUGS).safeParse(input.tipo)
     if (!tipoR.success) return { error: "Tipo de feedback inválido." }
@@ -303,7 +322,8 @@ export async function updateIndividualFeedback(input: {
   mode: "save" | "complete"
 }): Promise<{ error?: string }> {
   try {
-    await requireMgrFeedbackAccess()
+    const { canViewAll } = await requireFeedbackAccess()
+    if (!canViewAll) return { error: "Edição de feedbacks restrita a administradores MGR." }
     const idR = idSchema.safeParse(input.id)
     if (!idR.success) return { error: "ID inválido." }
 
@@ -359,7 +379,8 @@ export async function updateIndividualFeedback(input: {
 
 export async function deleteIndividualFeedback(id: string): Promise<{ error?: string }> {
   try {
-    await requireMgrFeedbackAccess()
+    const { canViewAll } = await requireFeedbackAccess()
+    if (!canViewAll) return { error: "Exclusão de feedbacks restrita a administradores MGR." }
     const idR = idSchema.safeParse(id)
     if (!idR.success) return { error: "ID inválido." }
 

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { auth } from "@/core/auth"
 import { buildRole, can } from "@/core/rbac/policy"
 import { getActiveQaUsers } from "@/features/usuarios/actions/usuarios"
+import { getTeamMemberIds } from "@/features/equipe/actions/equipes"
 
 export default async function IndividualPage({
   searchParams,
@@ -18,24 +19,33 @@ export default async function IndividualPage({
   if (!can(role, "menu.individual")) redirect("/dashboard")
 
   const canViewOthers = can(role, "individual.viewOthers")
+  const canViewTeam = can(role, "individual.viewTeam")
+  const canSeeOtherUsers = canViewOthers || canViewTeam
   const { userId: requestedUserId } = await searchParams
 
-  if (!canViewOthers && requestedUserId) {
+  if (!canSeeOtherUsers && requestedUserId) {
     redirect("/individual/ficha")
   }
 
-  const activeUsers = canViewOthers
-    ? (await getActiveQaUsers()).slice().sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
-    : []
+  let activeUsers: Awaited<ReturnType<typeof getActiveQaUsers>> = []
+  if (canViewOthers) {
+    activeUsers = (await getActiveQaUsers()).slice().sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+  } else if (canViewTeam) {
+    const memberIds = await getTeamMemberIds(session.user.id)
+    const all = await getActiveQaUsers()
+    const allowed = new Set([session.user.id, ...memberIds])
+    activeUsers = all.filter((u) => allowed.has(u.id)).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+  }
 
   let querySuffix = ""
-  if (canViewOthers && activeUsers.length > 0) {
+  if (canSeeOtherUsers && activeUsers.length > 0) {
     const ids = new Set(activeUsers.map((u) => u.id))
     if (!requestedUserId || !ids.has(requestedUserId)) {
-      redirect(`/individual/ficha?userId=${encodeURIComponent(activeUsers[0].id)}`)
+      const defaultId = ids.has(session.user.id) ? session.user.id : activeUsers[0].id
+      redirect(`/individual/ficha?userId=${encodeURIComponent(defaultId)}`)
     }
     querySuffix = `?userId=${encodeURIComponent(requestedUserId)}`
-  } else if (canViewOthers && requestedUserId) {
+  } else if (canSeeOtherUsers && requestedUserId) {
     redirect("/individual/ficha")
   }
 

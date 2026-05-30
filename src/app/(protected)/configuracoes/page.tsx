@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic"
 export const metadata = { title: "Configurações" }
 
 import Link from "next/link"
-import { Users, Monitor, Box, Building2, Sparkles, KeyRound, UserCircle, History } from "lucide-react"
+import { Users, Monitor, Box, Building2, Sparkles, KeyRound, UserCircle, History, UsersRound } from "lucide-react"
 import { auth } from "@/core/auth"
 import { buildRole, can, type Capability } from "@/core/rbac/policy"
 import { prisma } from "@/core/prisma"
@@ -17,12 +17,13 @@ interface ConfigCard {
 }
 
 const MAIN_CARDS: ConfigCard[] = [
-  { href: "/configuracoes/usuarios",  icon: Users,   label: "Usuários",     capability: "config.usuarios" },
-  { href: "/configuracoes/sistemas",  icon: Monitor, label: "Sistemas",     capability: "config.sistemas" },
-  { href: "/configuracoes/modulos",   icon: Box,     label: "Módulos",      capability: "config.modulos" },
-  { href: "/configuracoes/clientes",  icon: Building2, label: "Clientes",   capability: "config.clientes" },
-  { href: "/configuracoes/credenciais", icon: KeyRound, label: "Credenciais", capability: "config.credenciais" },
-  { href: "/atualizacoes",            icon: History, label: "Atualizações", capability: "menu.atualizacoes" },
+  { href: "/configuracoes/usuarios",  icon: Users,       label: "Usuários",     capability: "config.usuarios" },
+  { href: "/configuracoes/equipes",   icon: UsersRound,  label: "Equipes",      capability: "config.equipes" },
+  { href: "/configuracoes/sistemas",  icon: Monitor,     label: "Sistemas",     capability: "config.sistemas" },
+  { href: "/configuracoes/modulos",   icon: Box,         label: "Módulos",      capability: "config.modulos" },
+  { href: "/configuracoes/clientes",  icon: Building2,   label: "Clientes",     capability: "config.clientes" },
+  { href: "/configuracoes/credenciais", icon: KeyRound,  label: "Credenciais",  capability: "config.credenciais" },
+  { href: "/atualizacoes",            icon: History,     label: "Atualizações", capability: "menu.atualizacoes" },
 ]
 
 const INTEGRATION_CARDS: ConfigCard[] = [
