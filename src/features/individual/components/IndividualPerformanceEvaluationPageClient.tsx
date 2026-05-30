@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { BookOpen, Calendar, CalendarDays, Check, Gauge, HeartHandshake, Save, Sparkles, User } from "lucide-react"
+import { BookOpen, Check, HeartHandshake, Save, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -34,8 +34,7 @@ import {
   PERFORMANCE_EVALUATION_SECTIONS,
   performanceScoreQualitativeLabel,
   PERFORMANCE_COMPETENCY_IDS,
-  scorePercentGaugeIconClass,
-  scorePercentToneClass,
+  scorePercentColumnHeaderTextClass,
   type EvaluationPeriodSlug,
 } from "@/features/individual/lib/individual-performance-evaluation"
 import { cn } from "@/core/utils"
@@ -242,18 +241,13 @@ export function IndividualPerformanceEvaluationPageClient({
 
       <h2 className="sr-only">Dados gerais</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:items-stretch">
-        <div className="flex h-full min-h-0 flex-col rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
-          <div className="mb-2 flex items-start justify-between gap-2">
-            <p className="text-sm text-text-secondary">Colaborador</p>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-              <User className="size-5" aria-hidden />
-            </span>
-          </div>
-          <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+        {/* Card Colaborador */}
+        <div className="flex h-full min-h-0 flex-col justify-center rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="flex shrink-0 justify-center sm:justify-start">
               <UserAvatar name={evaluatedUser.name || " "} photoPath={evaluatedUser.photoPath} size={56} className="rounded-xl ring-0" />
             </div>
-            <div className="min-w-0 flex-1 space-y-1 text-center sm:text-left">
+            <div className="min-w-0 space-y-1 text-center sm:text-left">
               <p className="text-base font-semibold text-text-primary">{evaluatedUser.name}</p>
               {evaluatedUser.email ? (
                 <p className="truncate text-sm text-text-secondary">{evaluatedUser.email}</p>
@@ -262,53 +256,28 @@ export function IndividualPerformanceEvaluationPageClient({
           </div>
         </div>
 
-        <div className="flex flex-col rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
-          <div className="mb-2 flex items-start justify-between gap-2">
-            <span className="text-sm text-text-secondary">Pontuação</span>
-            <span
-              className={cn(
-                "flex size-10 shrink-0 items-center justify-center rounded-lg",
-                scorePercentGaugeIconClass(displayPercent ?? null),
-              )}
-            >
-              <Gauge className="size-5" aria-hidden />
-            </span>
-          </div>
-          <div className="flex flex-1 items-center">
-            {displayPercent != null ? (
-              <p className={cn("text-2xl font-bold leading-none tabular-nums sm:text-3xl", scorePercentToneClass(displayPercent))}>
-                {displayPercent.toFixed(0).replace(".", ",")}%{scoreLabel ? ` - ${scoreLabel}` : ""}
-              </p>
-            ) : (
-              <p className="text-2xl font-semibold leading-none text-text-secondary sm:text-3xl">—</p>
-            )}
-          </div>
+        {/* Card Pontuação */}
+        <div className="flex h-full min-h-0 flex-col justify-center rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
+          <p className="text-base font-semibold text-text-primary">Pontuação</p>
+          <p className={cn("mt-1 text-sm tabular-nums", scorePercentColumnHeaderTextClass(displayPercent ?? null))}>
+            {displayPercent != null
+              ? `${displayPercent.toFixed(0)}%${scoreLabel ? ` / ${scoreLabel}` : ""}`
+              : "—"}
+          </p>
         </div>
 
-        <div className="flex h-full min-h-0 flex-col rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
-          <div className="mb-2 flex items-start justify-between gap-2">
-            <span className="text-sm text-text-secondary">Data</span>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-              <Calendar className="size-5" aria-hidden />
-            </span>
-          </div>
-          <div className="flex min-h-0 flex-1 items-center">
-            <p className="text-2xl font-bold tabular-nums text-text-primary sm:text-3xl">
-              {formatDataPt(dataYmd)}
-            </p>
-          </div>
+        {/* Card Data */}
+        <div className="flex h-full min-h-0 flex-col justify-center rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
+          <p className="text-base font-semibold text-text-primary">Data</p>
+          <p className="mt-1 text-sm tabular-nums text-text-secondary">{formatDataPt(dataYmd)}</p>
         </div>
 
-        <div className="flex h-full min-h-0 flex-col rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
-          <div className="mb-2 flex items-start justify-between gap-2">
-            <span className="text-sm text-text-secondary">Período</span>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-              <CalendarDays className="size-5" aria-hidden />
-            </span>
-          </div>
-          <div className="flex min-h-0 flex-1 items-center">
+        {/* Card Período */}
+        <div className="flex h-full min-h-0 flex-col justify-center rounded-xl border border-border-default bg-surface-card p-3 shadow-card">
+          <p className="text-base font-semibold text-text-primary">Período</p>
+          <div className="mt-1">
             {isViewOnly ? (
-              <p className="text-sm font-medium text-text-primary">{evaluationPeriodLabel(periodo)}</p>
+              <p className="text-sm text-text-secondary">{evaluationPeriodLabel(periodo)}</p>
             ) : (
               <>
                 <label htmlFor="avaliacao-periodo" className="sr-only">

@@ -160,6 +160,16 @@ export function scorePercentCardShellClass(percent: number | null): string {
   return "border-emerald-200/90 bg-emerald-50/90 dark:border-emerald-900/50 dark:bg-emerald-950/30"
 }
 
+/** Texto da pontuação — mesma origem de cor que os headers de coluna da tabela. */
+export function scorePercentColumnHeaderTextClass(percent: number | null): string {
+  if (percent == null || Number.isNaN(percent)) return "text-text-secondary"
+  if (percent >= 90) return EVALUATION_COLUMN_HEADER_TEXT[4]!
+  if (percent >= 80) return EVALUATION_COLUMN_HEADER_TEXT[3]!
+  if (percent >= 70) return EVALUATION_COLUMN_HEADER_TEXT[2]!
+  if (percent >= 60) return EVALUATION_COLUMN_HEADER_TEXT[1]!
+  return EVALUATION_COLUMN_HEADER_TEXT[0]!
+}
+
 /** Cápsula do ícone de pontuação no cartão (contraste com o fundo do cartão). */
 export function scorePercentGaugeIconClass(percent: number | null): string {
   if (percent == null || Number.isNaN(percent)) {
