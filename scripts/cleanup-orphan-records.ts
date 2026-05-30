@@ -43,6 +43,20 @@ type CountFn = (args: { where: unknown }) => Promise<number>
 type DeleteFn = (args: { where: unknown }) => Promise<{ count: number }>
 type UpdateFn = (args: { where: unknown; data: unknown }) => Promise<{ count: number }>
 
+/** Executa fn e retorna 0 se a tabela não existir (P2021). */
+async function safeCount(fn: () => Promise<number>): Promise<number> {
+  try { return await fn() } catch (e: unknown) {
+    if (typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "P2021") return 0
+    throw e
+  }
+}
+async function safeDelete(fn: () => Promise<{ count: number }>): Promise<{ count: number }> {
+  try { return await fn() } catch (e: unknown) {
+    if (typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "P2021") return { count: 0 }
+    throw e
+  }
+}
+
 async function main() {
   console.log(`\n🔍 Modo: ${DRY_RUN ? "DRY RUN (nenhum dado será apagado)" : "EXECUÇÃO REAL"}`)
   console.log("   Coletando IDs de usuários válidos…\n")
@@ -81,25 +95,25 @@ async function main() {
     jiraCredentials,
     cenarios,
   ] = await Promise.all([
-    (prisma.kanbanTimerSession.count as CountFn)({ where: { userId: notIn } }),
-    (prisma.kanbanInApprovalTracker.count as CountFn)({ where: { userId: notIn } }),
-    (prisma.kanbanUserCardState.count as CountFn)({ where: { userId: notIn } }),
-    (prisma.kanbanAssignment.count as CountFn)({ where: { userId: notIn } }),
-    prisma.jiraWorklogCache.count({ where: { userId: notIn } }),
-    prisma.jiraWorklogSyncMarker.count({ where: { userId: notIn } }),
-    prisma.jiraAccountIdCache.count({ where: { userId: notIn } }),
-    prisma.chapterRedemption.count({ where: { userId: notIn } }),
-    (prisma.equipeChapterRating.count as CountFn)({ where: { userId: notIn } }),
-    (prisma.equipeChapterAuthor.count as CountFn)({ where: { userId: notIn } }),
-    (prisma.individualAusencias.count as CountFn)({ where: { evaluatedUserId: notIn } }),
-    (prisma.individualFerias.count as CountFn)({ where: { evaluatedUserId: notIn } }),
-    (prisma.individualProgressao.count as CountFn)({ where: { evaluatedUserId: notIn } }),
-    (prisma.individualFeedback.count as CountFn)({ where: { evaluatedUserId: notIn } }),
-    (prisma.individualPerformanceEvaluation.count as CountFn)({ where: { evaluatedUserId: notIn } }),
-    (prisma.dominioAvaliacao.count as CountFn)({ where: { evaluatedUserId: notIn } }),
-    prisma.inviteToken.count({ where: { userId: notIn } }),
-    prisma.userJiraCredentials.count({ where: { userId: notIn } }),
-    prisma.cenario.count({ where: { createdBy: notIn } }),
+    safeCount(() => (prisma.kanbanTimerSession.count as CountFn)({ where: { userId: notIn } })),
+    safeCount(() => (prisma.kanbanInApprovalTracker.count as CountFn)({ where: { userId: notIn } })),
+    safeCount(() => (prisma.kanbanUserCardState.count as CountFn)({ where: { userId: notIn } })),
+    safeCount(() => (prisma.kanbanAssignment.count as CountFn)({ where: { userId: notIn } })),
+    safeCount(() => prisma.jiraWorklogCache.count({ where: { userId: notIn } })),
+    safeCount(() => prisma.jiraWorklogSyncMarker.count({ where: { userId: notIn } })),
+    safeCount(() => prisma.jiraAccountIdCache.count({ where: { userId: notIn } })),
+    safeCount(() => prisma.chapterRedemption.count({ where: { userId: notIn } })),
+    safeCount(() => (prisma.equipeChapterRating.count as CountFn)({ where: { userId: notIn } })),
+    safeCount(() => (prisma.equipeChapterAuthor.count as CountFn)({ where: { userId: notIn } })),
+    safeCount(() => (prisma.individualAusencias.count as CountFn)({ where: { evaluatedUserId: notIn } })),
+    safeCount(() => (prisma.individualFerias.count as CountFn)({ where: { evaluatedUserId: notIn } })),
+    safeCount(() => (prisma.individualProgressao.count as CountFn)({ where: { evaluatedUserId: notIn } })),
+    safeCount(() => (prisma.individualFeedback.count as CountFn)({ where: { evaluatedUserId: notIn } })),
+    safeCount(() => (prisma.individualPerformanceEvaluation.count as CountFn)({ where: { evaluatedUserId: notIn } })),
+    safeCount(() => (prisma.dominioAvaliacao.count as CountFn)({ where: { evaluatedUserId: notIn } })),
+    safeCount(() => prisma.inviteToken.count({ where: { userId: notIn } })),
+    safeCount(() => prisma.userJiraCredentials.count({ where: { userId: notIn } })),
+    safeCount(() => prisma.cenario.count({ where: { createdBy: notIn } })),
   ])
 
   const total =
@@ -146,25 +160,25 @@ async function main() {
   console.log("\n🗑️  Executando limpeza em transação única…")
 
   await prisma.$transaction(async (tx) => {
-    await (tx.kanbanTimerSession.deleteMany as DeleteFn)({ where: { userId: notIn } })
-    await (tx.kanbanInApprovalTracker.deleteMany as DeleteFn)({ where: { userId: notIn } })
-    await (tx.kanbanUserCardState.deleteMany as DeleteFn)({ where: { userId: notIn } })
-    await (tx.kanbanAssignment.deleteMany as DeleteFn)({ where: { userId: notIn } })
-    await tx.jiraWorklogCache.deleteMany({ where: { userId: notIn } })
-    await tx.jiraWorklogSyncMarker.deleteMany({ where: { userId: notIn } })
-    await tx.jiraAccountIdCache.deleteMany({ where: { userId: notIn } })
-    await tx.chapterRedemption.deleteMany({ where: { userId: notIn } })
-    await (tx.equipeChapterRating.deleteMany as DeleteFn)({ where: { userId: notIn } })
-    await (tx.equipeChapterAuthor.deleteMany as DeleteFn)({ where: { userId: notIn } })
-    await (tx.individualAusencias.deleteMany as DeleteFn)({ where: { evaluatedUserId: notIn } })
-    await (tx.individualFerias.deleteMany as DeleteFn)({ where: { evaluatedUserId: notIn } })
-    await (tx.individualProgressao.deleteMany as DeleteFn)({ where: { evaluatedUserId: notIn } })
-    await (tx.individualFeedback.deleteMany as DeleteFn)({ where: { evaluatedUserId: notIn } })
-    await (tx.individualPerformanceEvaluation.deleteMany as DeleteFn)({ where: { evaluatedUserId: notIn } })
-    await (tx.dominioAvaliacao.deleteMany as DeleteFn)({ where: { evaluatedUserId: notIn } })
-    await tx.inviteToken.deleteMany({ where: { userId: notIn } })
-    await tx.userJiraCredentials.deleteMany({ where: { userId: notIn } })
-    await (tx.cenario.updateMany as UpdateFn)({ where: { createdBy: notIn }, data: { createdBy: null } })
+    await safeDelete(() => (tx.kanbanTimerSession.deleteMany as DeleteFn)({ where: { userId: notIn } }))
+    await safeDelete(() => (tx.kanbanInApprovalTracker.deleteMany as DeleteFn)({ where: { userId: notIn } }))
+    await safeDelete(() => (tx.kanbanUserCardState.deleteMany as DeleteFn)({ where: { userId: notIn } }))
+    await safeDelete(() => (tx.kanbanAssignment.deleteMany as DeleteFn)({ where: { userId: notIn } }))
+    await safeDelete(() => tx.jiraWorklogCache.deleteMany({ where: { userId: notIn } }))
+    await safeDelete(() => tx.jiraWorklogSyncMarker.deleteMany({ where: { userId: notIn } }))
+    await safeDelete(() => tx.jiraAccountIdCache.deleteMany({ where: { userId: notIn } }))
+    await safeDelete(() => tx.chapterRedemption.deleteMany({ where: { userId: notIn } }))
+    await safeDelete(() => (tx.equipeChapterRating.deleteMany as DeleteFn)({ where: { userId: notIn } }))
+    await safeDelete(() => (tx.equipeChapterAuthor.deleteMany as DeleteFn)({ where: { userId: notIn } }))
+    await safeDelete(() => (tx.individualAusencias.deleteMany as DeleteFn)({ where: { evaluatedUserId: notIn } }))
+    await safeDelete(() => (tx.individualFerias.deleteMany as DeleteFn)({ where: { evaluatedUserId: notIn } }))
+    await safeDelete(() => (tx.individualProgressao.deleteMany as DeleteFn)({ where: { evaluatedUserId: notIn } }))
+    await safeDelete(() => (tx.individualFeedback.deleteMany as DeleteFn)({ where: { evaluatedUserId: notIn } }))
+    await safeDelete(() => (tx.individualPerformanceEvaluation.deleteMany as DeleteFn)({ where: { evaluatedUserId: notIn } }))
+    await safeDelete(() => (tx.dominioAvaliacao.deleteMany as DeleteFn)({ where: { evaluatedUserId: notIn } }))
+    await safeDelete(() => tx.inviteToken.deleteMany({ where: { userId: notIn } }))
+    await safeDelete(() => tx.userJiraCredentials.deleteMany({ where: { userId: notIn } }))
+    await safeDelete(() => (tx.cenario.updateMany as UpdateFn)({ where: { createdBy: notIn }, data: { createdBy: null } }))
   })
 
   console.log("\n✅ Limpeza concluída com sucesso!")
