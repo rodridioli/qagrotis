@@ -702,9 +702,9 @@ export default function NovoCenarioClient({
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+                  <label className="text-sm font-medium text-text-primary">
                     Passo a passo <span className="text-destructive">*</span>
-                  </h3>
+                  </label>
                   <Button variant="outline" size="sm" onClick={addStepRow}>
                     <Plus className="size-4" />
                     Adicionar passo
