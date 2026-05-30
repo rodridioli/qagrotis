@@ -19,7 +19,7 @@ export default defineConfig({
         test: {
           name: 'unit',
           environment: 'node',
-          include: ['__tests__/**/*.test.ts'],
+          include: ['__tests__/**/*.test.ts', 'src/**/*.test.ts'],
           alias: { '@': path.resolve(dirname, 'src') },
         },
       },

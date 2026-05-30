@@ -156,7 +156,7 @@ export function isAllowedJiraUrl(url: string): boolean {
   try { u = new URL(url) } catch { return false }
   if (u.protocol !== "https:") return false
   const host = u.hostname.toLowerCase()
-  if (host === "localhost" || host === "127.0.0.1" || host === "::1") return false
+  if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]") return false
   if (/^10\./.test(host)) return false
   if (/^192\.168\./.test(host)) return false
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false
