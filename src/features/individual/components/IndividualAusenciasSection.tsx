@@ -456,7 +456,7 @@ export const IndividualAusenciasSection = React.forwardRef<
                             <div className="flex items-center justify-center gap-1.5">
                               <Button
                                 type="button"
-                                variant="outline"
+                                variant="default"
                                 size="sm"
                                 className="gap-1 text-xs border-badge-success bg-badge-success text-white hover:bg-badge-success/88 active:bg-badge-success/95"
                                 aria-label={`Aprovar ausência ${formatCodigo(row.codigo)}`}
@@ -484,7 +484,7 @@ export const IndividualAusenciasSection = React.forwardRef<
                               </Button>
                             </div>
                           ) : (
-                            <div className="flex justify-center">
+                            <div className="flex justify-end">
                               <DropdownMenu>
                                 <DropdownMenuTrigger
                                   render={
