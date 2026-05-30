@@ -33,6 +33,9 @@ export default async function DashboardPage({
   const isMgr = role === "Administrador:MGR"
   const perfil = typeof params?.perfil === "string" ? params.perfil : null
 
+  // ── UX (Padrão ou Administrador) → Kanban é a home ─────────────────────
+  if (accessProfile === "UX") redirect("/kanban")
+
   // ── MGR sem perfil → redireciona para visão padrão MGR ─────────────────
   if (isMgr && !perfil) redirect("/dashboard?perfil=MGR")
 
