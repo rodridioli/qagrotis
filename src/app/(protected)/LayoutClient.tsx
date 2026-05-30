@@ -4,7 +4,7 @@ import React, { useState, useEffect, useTransition, useRef, Suspense } from "rea
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
-  LayoutDashboard, FileText, Rocket, Check, Clock4, Timer,
+  LayoutDashboard, FileText, Rocket, Check, Clock4,
   Settings, LogOut, PanelLeftClose,
   PanelLeftOpen, Menu, Moon, Sun, Sparkles, Users,
   Network, ClipboardCheck, MessageSquare, User, KanbanSquare, Briefcase,
@@ -54,7 +54,7 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/cenarios",      icon: FileText,        label: "Cenários",         alwaysEnabled: false, capability: "menu.cenarios" },
   { href: "/gestao",                   icon: Briefcase,    label: "Gestão",      alwaysEnabled: true,  capability: "menu.gestao" },
   { href: "/kanban",                  icon: KanbanSquare, label: "Kanban",      alwaysEnabled: true,  capability: "menu.kanban" },
-  { href: "/equipe?tab=lancamentos", icon: Timer,       label: "Lançamentos", alwaysEnabled: true,  capability: "equipe.lancamentos" },
+  { href: "/equipe?tab=lancamentos", icon: Check,       label: "Registros",   alwaysEnabled: true,  capability: "equipe.lancamentos" },
   { href: "/equipe?tab=clockwork",   icon: Clock4,     label: "Clockwork",   alwaysEnabled: true,  capability: "equipe.clockwork" },
   { href: "/individual/lancamentos", icon: Check,      label: "Registros",   alwaysEnabled: false, capability: "individual.lancamentos" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
@@ -104,7 +104,7 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
   ],
   "Administrador:QA": [
     { capability: "menu.painel" },
-    { capability: "equipe.lancamentos", label: "Lançamentos" },
+    { capability: "equipe.lancamentos", label: "Registros" },
     { capability: "equipe.clockwork", label: "Clockwork" },
     { capability: "menu.suites" },
     { capability: "menu.cenarios" },
@@ -115,14 +115,14 @@ const MENU_OVERRIDE_BY_ROLE: Partial<Record<Role, Array<{ capability: Capability
   ],
   "Administrador:UX": [
     { capability: "menu.kanban" },
-    { capability: "equipe.lancamentos", label: "Lançamentos" },
+    { capability: "equipe.lancamentos", label: "Registros" },
     { capability: "equipe.clockwork", label: "Clockwork" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
     { capability: "menu.configuracoes" },
   ],
   "Administrador:TW": [
-    { capability: "equipe.lancamentos", label: "Lançamentos" },
+    { capability: "equipe.lancamentos", label: "Registros" },
     { capability: "equipe.clockwork", label: "Clockwork" },
     { capability: "menu.equipe" },
     { capability: "menu.individual" },
@@ -157,7 +157,7 @@ function getTitle(pathname: string, role?: Role, tab?: string): string {
   }
   if (pathname.startsWith("/individual/avaliacoes/nova")) return "Nova avaliação"
   if (/^\/individual\/avaliacoes\/[^/]+$/.test(pathname)) return "Avaliação de desempenho"
-  if (pathname === "/individual/lancamentos") return "Lançamentos"
+  if (pathname === "/individual/lancamentos") return "Registros"
   if (pathname.startsWith("/individual/")) {
     const secao = pathname.split("/")[2] ?? ""
     const label = individualSectionLabel(secao)
@@ -166,7 +166,7 @@ function getTitle(pathname: string, role?: Role, tab?: string): string {
   if (pathname.startsWith("/equipe")) {
     if (tab === "clockwork") return "Clockwork"
     if (role === "Administrador:MGR") {
-      if (tab === "lancamentos") return "Lançamentos"
+      if (tab === "lancamentos") return "Registros"
     }
     const entry = EQUIPE_NAV_ENTRIES.find((e) => e.id === tab)
     if (entry) return `Equipe — ${entry.label}`

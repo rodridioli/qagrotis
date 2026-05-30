@@ -1,5 +1,5 @@
 import type { ElementType } from "react"
-import { Users, Clock, Clock4, Calendar, Target, Timer } from "lucide-react"
+import { Users, Clock, Clock4, Calendar, Target, Check } from "lucide-react"
 
 export type EquipeTabId =
   | "lancamentos"
@@ -29,7 +29,7 @@ export interface EquipeNavEntry {
 }
 
 export const EQUIPE_NAV_ENTRIES: EquipeNavEntry[] = [
-  { id: "lancamentos",  label: "Lançamentos",  icon: Timer     },
+  { id: "lancamentos",  label: "Registros",    icon: Check     },
   { id: "clockwork",    label: "Clockwork",    icon: Clock4    },
   { id: "chapters",     label: "Chapters",     icon: Users     },
   { id: "horarios",     label: "Horários",     icon: Clock     },
