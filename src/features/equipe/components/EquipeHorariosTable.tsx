@@ -45,7 +45,7 @@ export function EquipeHorariosTable({ rows }: EquipeHorariosTableProps) {
   const [search, setSearch] = React.useState("")
 
   if (rows.length === 0) {
-    return <EmptyState message="Nenhum usuário com horário de entrada e saída preenchidos." />
+    return <EmptyState message="Nenhum registro encontrado." />
   }
 
   const filtered = search.trim()

@@ -1163,7 +1163,7 @@ export function SuiteForm({
           </div>
 
           {historico.length === 0 ? (
-            <EmptyState message="Nenhuma execução registrada. O histórico será preenchido após a execução dos cenários." className="mx-5" />
+            <EmptyState message="Nenhum registro encontrado." className="mx-5" />
           ) : (
             <div className="overflow-x-auto">
               <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
