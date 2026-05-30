@@ -40,7 +40,7 @@ import { TablePagination } from "@/components/shared/TablePagination"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { useSistemaSelecionado } from "@/core/modulo-context"
 import type { ModuloRecord } from "@/features/qa/actions/modulos"
-import { inativarSuites, ativarSuite, deletarSuite, type SuiteListRecord } from "@/features/qa/actions/suites"
+import { inativarSuites, ativarSuite, type SuiteListRecord } from "@/features/qa/actions/suites"
 import { cn } from "@/core/utils"
 import { toast } from "sonner"
 
@@ -88,10 +88,9 @@ interface Props {
   allModulos: ModuloRecord[]
   suites: SuiteListRecord[]
   isAdmin: boolean
-  canHardDelete: boolean
 }
 
-export default function SuitesClient({ allModulos, suites, isAdmin, canHardDelete }: Props) {
+export default function SuitesClient({ allModulos, suites, isAdmin }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { sistemaSelecionado } = useSistemaSelecionado()
@@ -110,8 +109,7 @@ export default function SuitesClient({ allModulos, suites, isAdmin, canHardDelet
   const [inativadosIds, setInativadosIds] = useState<Set<string>>(new Set())
   const [ativarId, setAtivarId] = useState<string | null>(null)
   const [ativarOpen, setAtivarOpen] = useState(false)
-  const [deletarId, setDeletarId] = useState<string | null>(null)
-  const [deletarOpen, setDeletarOpen] = useState(false)
+
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [pendingFilters, setPendingFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [isInativando, setIsInativando] = useState(false)
@@ -214,16 +212,6 @@ const showBulkActions = !filters.apenasInativos
     }
   }
 
-  async function handleDeletar() {
-    if (!deletarId) return
-    const res = await deletarSuite(deletarId)
-    if (res.error) { toast.error(res.error); return }
-    setInativadosIds((prev) => { const n = new Set(prev); n.delete(deletarId); return n })
-    toast.success("Registro excluído permanentemente.")
-    setDeletarOpen(false)
-    setDeletarId(null)
-    router.refresh()
-  }
 
   function confirmInativar() {
     const ids = [...inativarIds]
@@ -405,40 +393,14 @@ const showBulkActions = !filters.apenasInativos
                       </td>
                       <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
                         {filters.apenasInativos && isAdmin ? (
-                          canHardDelete ? (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                render={
-                                  <button
-                                    type="button"
-                                    aria-label="Mais ações"
-                                    className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
-                                  />
-                                }
-                              >
-                                <MoreVertical className="size-4" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" side="bottom">
-                                <DropdownMenuItem onClick={() => { setAtivarId(s.id); setAtivarOpen(true) }}>
-                                  <RotateCcw className="size-4" />
-                                  Ativar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem variant="destructive" onClick={() => { setDeletarId(s.id); setDeletarOpen(true) }}>
-                                  <Trash2 className="size-4" />
-                                  Excluir
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          ) : (
-                            <button
-                              type="button"
-                              aria-label="Ativar"
-                              onClick={() => { setAtivarId(s.id); setAtivarOpen(true) }}
-                              className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-                            >
-                              <RotateCcw className="size-4" />
-                            </button>
-                          )
+                          <button
+                            type="button"
+                            aria-label="Ativar"
+                            onClick={() => { setAtivarId(s.id); setAtivarOpen(true) }}
+                            className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                          >
+                            <RotateCcw className="size-4" />
+                          </button>
                         ) : showBulkActions ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger
@@ -580,16 +542,6 @@ const showBulkActions = !filters.apenasInativos
         onConfirm={handleAtivar}
       />
 
-      <ConfirmDialog
-        open={deletarOpen}
-        onOpenChange={setDeletarOpen}
-        title="Excluir registro"
-        description={"Tem certeza que deseja excluir este registro permanentemente?\n\nEsta ação não poderá ser desfeita."}
-        confirmLabel="Excluir"
-        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
-        buttonVariant="destructive"
-        onConfirm={() => void handleDeletar()}
-      />
     </div>
   )
 }

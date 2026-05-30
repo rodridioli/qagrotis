@@ -35,7 +35,7 @@ import { CenarioTipoBadge } from "@/components/shared/StatusBadge"
 import { TableToolbar } from "@/components/shared/TableToolbar"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
-import { criarCenario, atualizarCenario, inativarCenarios, ativarCenario, deletarCenario, type CenarioRecord } from "@/features/qa/actions/cenarios"
+import { criarCenario, atualizarCenario, inativarCenarios, ativarCenario, type CenarioRecord } from "@/features/qa/actions/cenarios"
 import { encontrarOuCriarCredencialPorImportacao } from "@/features/qa/actions/credenciais"
 import { parseMarkdownCenarios, buildImportItems, type ImportItem, COMPARE_FIELDS } from "@/features/qa/lib/parse-cenarios"
 import { cn } from "@/core/utils"
@@ -63,10 +63,9 @@ interface Props {
   allModulos: ModuloRecord[]
   initialClientes: ClienteRecord[]
   isAdmin: boolean
-  canHardDelete: boolean
 }
 
-export default function CenariosClient({ initialCenarios: initialCenariosParam, allModulos, initialClientes, isAdmin, canHardDelete }: Props) {
+export default function CenariosClient({ initialCenarios: initialCenariosParam, allModulos, initialClientes, isAdmin }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -89,8 +88,7 @@ export default function CenariosClient({ initialCenarios: initialCenariosParam, 
   const [inativarIds, setInativarIds] = useState<string[]>([])
   const [ativarId, setAtivarId] = useState<string | null>(null)
   const [ativarOpen, setAtivarOpen] = useState(false)
-  const [deletarId, setDeletarId] = useState<string | null>(null)
-  const [deletarOpen, setDeletarOpen] = useState(false)
+
   // Setup modal
   const [importSetupOpen, setImportSetupOpen] = useState(false)
   const [importSetupModule, setImportSetupModule] = useState("")
@@ -211,15 +209,6 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
     }
   }
 
-  async function handleDeletar() {
-    if (!deletarId) return
-    const res = await deletarCenario(deletarId)
-    if (res.error) { toast.error(res.error); return }
-    toast.success("Registro excluído permanentemente.")
-    setDeletarOpen(false)
-    setDeletarId(null)
-    router.refresh()
-  }
 
   function confirmInativar() {
     const ids = [...inativarIds]
@@ -528,40 +517,14 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
                       </td>
                       <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
                         {filters.apenasInativos && isAdmin ? (
-                          canHardDelete ? (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                render={
-                                  <button
-                                    type="button"
-                                    aria-label="Mais ações"
-                                    className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
-                                  />
-                                }
-                              >
-                                <MoreVertical className="size-4" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" side="bottom">
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setAtivarId(c.id); setAtivarOpen(true) }}>
-                                  <RotateCcw className="size-4" />
-                                  Ativar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem variant="destructive" onClick={(e) => { e.stopPropagation(); setDeletarId(c.id); setDeletarOpen(true) }}>
-                                  <Trash2 className="size-4" />
-                                  Excluir
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          ) : (
-                            <button
-                              type="button"
-                              aria-label="Ativar"
-                              onClick={(e) => { e.stopPropagation(); setAtivarId(c.id); setAtivarOpen(true) }}
-                              className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-                            >
-                              <RotateCcw className="size-4" />
-                            </button>
-                          )
+                          <button
+                            type="button"
+                            aria-label="Ativar"
+                            onClick={(e) => { e.stopPropagation(); setAtivarId(c.id); setAtivarOpen(true) }}
+                            className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                          >
+                            <RotateCcw className="size-4" />
+                          </button>
                         ) : showBulkActions && c.active ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger
@@ -718,17 +681,6 @@ const hasActiveCenarios = initialCenariosParam.some((c) => c.active)
         confirmLabel="Ativar"
         confirmIcon={<RotateCcw className="size-4 shrink-0" aria-hidden />}
         onConfirm={handleAtivar}
-      />
-
-      <ConfirmDialog
-        open={deletarOpen}
-        onOpenChange={setDeletarOpen}
-        title="Excluir registro"
-        description={"Tem certeza que deseja excluir este registro permanentemente?\n\nEsta ação não poderá ser desfeita."}
-        confirmLabel="Excluir"
-        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
-        buttonVariant="destructive"
-        onConfirm={() => void handleDeletar()}
       />
 
       {/* ── Import setup modal ── */}

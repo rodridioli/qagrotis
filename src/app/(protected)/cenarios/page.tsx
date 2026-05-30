@@ -6,16 +6,15 @@ import { getModulos } from "@/features/qa/actions/modulos"
 import { getClientes } from "@/features/qa/actions/clientes"
 import { loadParallelOrFallback } from "@/core/safe-server-data"
 import { serializeRscProps } from "@/core/rsc-serialize"
-import { checkIsAdmin, checkCanHardDelete } from "@/core/session"
+import { checkIsAdmin } from "@/core/session"
 import CenariosClient from "./CenariosClient"
 import type { CenarioRecord } from "@/features/qa/actions/cenarios"
 import type { ModuloRecord } from "@/features/qa/actions/modulos"
 import type { ClienteRecord } from "@/features/qa/actions/clientes"
 
 export default async function CenariosPage() {
-  const [isAdmin, canHardDelete, { cenarios, modulos, clientes }] = await Promise.all([
+  const [isAdmin, { cenarios, modulos, clientes }] = await Promise.all([
     checkIsAdmin(),
-    checkCanHardDelete(),
     loadParallelOrFallback<{
       cenarios: CenarioRecord[]
       modulos: ModuloRecord[]
@@ -36,7 +35,6 @@ export default async function CenariosPage() {
       allModulos={serializeRscProps(modulos.filter((m) => m.active))}
       initialClientes={serializeRscProps(clientes.filter((c) => c.active))}
       isAdmin={isAdmin}
-      canHardDelete={canHardDelete}
     />
   )
 }

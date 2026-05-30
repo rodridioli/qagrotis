@@ -26,7 +26,7 @@ import {
 import { TableToolbar } from "@/components/shared/TableToolbar"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
-import { inativarClientes, ativarCliente, criarCliente, atualizarCliente, deletarCliente, type ClienteRecord } from "@/features/qa/actions/clientes"
+import { inativarClientes, ativarCliente, criarCliente, atualizarCliente, type ClienteRecord } from "@/features/qa/actions/clientes"
 import { type CenarioRecord } from "@/features/qa/actions/cenarios"
 import { cn, formatCpfCnpj, validateCpfCnpj } from "@/core/utils"
 import { StatusBadge } from "@/components/shared/StatusBadge"
@@ -43,10 +43,9 @@ interface Props {
   initialClientes: ClienteRecord[]
   initialCenarios: CenarioRecord[]
   isAdmin: boolean
-  canHardDelete: boolean
 }
 
-export default function ClientesClient({ initialClientes: initialClientesParam, initialCenarios, isAdmin, canHardDelete }: Props) {
+export default function ClientesClient({ initialClientes: initialClientesParam, initialCenarios, isAdmin }: Props) {
   const router = useRouter()
   const [items, setItems] = useState<ClienteRecord[]>(initialClientesParam)
 
@@ -68,8 +67,7 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
   const [inativarIds, setInativarIds] = useState<string[]>([])
   const [ativarId, setAtivarId] = useState<string | null>(null)
   const [ativarOpen, setAtivarOpen] = useState(false)
-  const [deletarId, setDeletarId] = useState<string | null>(null)
-  const [deletarOpen, setDeletarOpen] = useState(false)
+
   const [apenasInativos, setApenasInativos] = useState(false)
   const [pendingInativos, setPendingInativos] = useState(false)
 
@@ -251,16 +249,6 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
     }
   }
 
-  async function handleDeletar() {
-    if (!deletarId) return
-    const res = await deletarCliente(deletarId)
-    if (res.error) { toast.error(res.error); return }
-    setItems((prev) => prev.filter((c) => c.id !== deletarId))
-    toast.success("Registro excluído permanentemente.")
-    setDeletarOpen(false)
-    setDeletarId(null)
-    router.refresh()
-  }
 
   function confirmInativar() {
     const ids = [...inativarIds]
@@ -445,40 +433,14 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
                         </td>
                         <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
                           {apenasInativos ? (
-                            canHardDelete ? (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger
-                                  render={
-                                    <button
-                                      type="button"
-                                      aria-label="Mais ações"
-                                      className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
-                                    />
-                                  }
-                                >
-                                  <MoreVertical className="size-4" />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" side="bottom">
-                                  <DropdownMenuItem onClick={() => { setAtivarId(c.id); setAtivarOpen(true) }}>
-                                    <RotateCcw className="size-4" />
-                                    Ativar
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem variant="destructive" onClick={() => { setDeletarId(c.id); setDeletarOpen(true) }}>
-                                    <Trash2 className="size-4" />
-                                    Excluir
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            ) : (
-                              <button
-                                type="button"
-                                aria-label="Ativar"
-                                onClick={() => { setAtivarId(c.id); setAtivarOpen(true) }}
-                                className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-                              >
-                                <RotateCcw className="size-4" />
-                              </button>
-                            )
+                            <button
+                              type="button"
+                              aria-label="Ativar"
+                              onClick={() => { setAtivarId(c.id); setAtivarOpen(true) }}
+                              className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                            >
+                              <RotateCcw className="size-4" />
+                            </button>
                           ) : showBulkActions && c.active ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger
@@ -574,17 +536,6 @@ export default function ClientesClient({ initialClientes: initialClientesParam, 
         confirmLabel="Ativar"
         confirmIcon={<RotateCcw className="size-4 shrink-0" aria-hidden />}
         onConfirm={handleAtivar}
-      />
-
-      <ConfirmDialog
-        open={deletarOpen}
-        onOpenChange={setDeletarOpen}
-        title="Excluir registro"
-        description={"Tem certeza que deseja excluir este registro permanentemente?\n\nEsta ação não poderá ser desfeita."}
-        confirmLabel="Excluir"
-        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
-        buttonVariant="destructive"
-        onConfirm={() => void handleDeletar()}
       />
 
       {/* -- Editar cliente modal -- */}
