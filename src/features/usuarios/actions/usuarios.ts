@@ -919,6 +919,18 @@ export async function atualizarQaUser(
       }
     }
 
+    // Sync jiraEmail quando o e-mail foi alterado — silencioso para não bloquear o update principal
+    if (parsed.email !== previousEmailNorm) {
+      try {
+        await prisma.userJiraCredentials.updateMany({
+          where: { userId: id },
+          data:  { jiraEmail: parsed.email },
+        })
+      } catch (jiraErr) {
+        console.warn("[atualizarQaUser] sync jiraEmail falhou (não-bloqueante):", jiraErr)
+      }
+    }
+
     revalidatePath("/configuracoes/usuarios")
     revalidatePath(`/configuracoes/usuarios/${id}`)
     revalidatePath(`/configuracoes/usuarios/${id}/editar`)
