@@ -959,7 +959,7 @@ export function SuiteForm({
           </div>
 
           {cenarios.length === 0 ? (
-            <EmptyState message="Nenhum cenário adicionado à suíte." className="mx-5" />
+            <EmptyState message="Nenhum registro encontrado." className="mx-5" />
           ) : (
             <div className="overflow-x-auto">
               <table className="qagrotis-table-row-hover w-full table-fixed text-sm">
