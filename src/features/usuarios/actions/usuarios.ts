@@ -694,13 +694,14 @@ export async function atualizarQaUser(
     await ensureAllUserProfileColumns()
 
     const isAdmin = await checkIsAdmin()
-    const sessionEmail = session.user?.email?.toLowerCase() ?? ""
 
     const targetProfile = await getQaUserProfile(id)
     if (!targetProfile) return { error: "Usuário não encontrado." }
 
-    // Non-admins can only edit their own profile
-    if (!isAdmin && targetProfile.email.toLowerCase() !== sessionEmail) {
+    // Non-admins can only edit their own profile (compare by ID, not email,
+    // to avoid false "Não autorizado" for OAuth users whose JWT email may
+    // diverge from the stored profile email).
+    if (!isAdmin && session.user?.id !== id) {
       return { error: "Não autorizado." }
     }
 

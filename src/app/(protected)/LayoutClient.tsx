@@ -257,6 +257,8 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                 // Ocultar completamente o Gerador para perfis QA quando
                 // Jira ou modelos IA não estiverem configurados.
                 if (capability === "menu.gerador" && (!hasIntegracoes || !hasJiraConfigured)) return []
+                // Ocultar Lançamentos para Padrão:QA sem Jira configurado.
+                if (capability === "individual.lancamentos" && role === "Padrão:QA" && !hasJiraConfigured) return []
                 return [{ ...base, label: label ?? base.label }]
               })
             })().map(({ href, icon: Icon, label, alwaysEnabled, capability }) => {
