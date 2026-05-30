@@ -370,16 +370,12 @@ export function IndividualFeedbackPageClient({
         </div>
 
         <div className="space-y-6 p-5">
-          {/* Tipo select */}
-          <div className="space-y-1.5">
+          {/* Tipo select — oculto em modo de visualização */}
+          {!isViewOnly && <div className="space-y-1.5">
             <label htmlFor="feedback-tipo" className="block text-sm font-medium text-text-primary">
               Tipo <span className="text-destructive" aria-hidden>*</span>
             </label>
-            {isViewOnly ? (
-              <p className="text-sm font-medium text-text-primary">
-                {feedbackTipoLabel(tipo)}
-              </p>
-            ) : (
+            {(
               <Select
                 value={tipo}
                 onValueChange={(v) => {
@@ -402,7 +398,7 @@ export function IndividualFeedbackPageClient({
                 </SelectPopup>
               </Select>
             )}
-          </div>
+          </div>}
 
           {/* Dynamic fields */}
           <div className="space-y-5">
