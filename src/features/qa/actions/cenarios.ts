@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { requireSession, requireHardDeleteAccess } from "@/core/session"
+import { requireSession } from "@/core/session"
 import { nextId, encryptField, decryptField } from "@/core/db-utils"
 import { prisma } from "@/core/prisma"
 import { aggregateHistoricoExecucoesErrosByCenarioId } from "@/features/qa/lib/suite-historico-stats"
@@ -404,17 +404,3 @@ export async function inativarCenarios(ids: string[]): Promise<void> {
   revalidatePath("/cenarios")
 }
 
-export async function deletarCenario(id: string): Promise<{ error?: string }> {
-  try {
-    await requireHardDeleteAccess()
-    idSchema.parse(id)
-    const row = await prisma.cenario.findUnique({ where: { id }, select: { active: true } })
-    if (!row || row.active) return { error: "Registro não encontrado ou ainda ativo." }
-    await prisma.cenario.delete({ where: { id } })
-    revalidatePath("/cenarios")
-    return {}
-  } catch (e) {
-    if (e instanceof Error) return { error: e.message }
-    return { error: "Não foi possível excluir o cenário." }
-  }
-}

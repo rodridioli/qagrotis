@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { requireSession, requireHardDeleteAccess } from "@/core/session"
+import { requireSession } from "@/core/session"
 import { nextId } from "@/core/db-utils"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/core/prisma"
@@ -301,20 +301,6 @@ export async function ativarSuite(id: string): Promise<void> {
   revalidatePath("/suites")
 }
 
-export async function deletarSuite(id: string): Promise<{ error?: string }> {
-  try {
-    await requireHardDeleteAccess()
-    if (!id || typeof id !== "string") return { error: "ID inválido." }
-    const row = await prisma.suite.findUnique({ where: { id }, select: { active: true } })
-    if (!row || row.active) return { error: "Registro não encontrado ou ainda ativo." }
-    await prisma.suite.delete({ where: { id } })
-    revalidatePath("/suites")
-    return {}
-  } catch (e) {
-    if (e instanceof Error) return { error: e.message }
-    return { error: "Não foi possível excluir a suíte." }
-  }
-}
 
 export async function removerHistoricoSuite(suiteId: string, indices: number[]): Promise<void> {
   await requireSession()

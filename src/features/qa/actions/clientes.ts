@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { nextId } from "@/core/db-utils"
-import { requireSession, requireHardDeleteAccess } from "@/core/session"
+import { requireSession } from "@/core/session"
 import { prisma } from "@/core/prisma"
 import { ensureClienteTable, ensureUpdatedAtColumns } from "@/core/prisma-schema-ensure"
 
@@ -165,19 +165,3 @@ export async function inativarClientes(ids: string[]): Promise<void> {
   revalidatePath("/gerador")
 }
 
-export async function deletarCliente(id: string): Promise<{ error?: string }> {
-  try {
-    await requireHardDeleteAccess()
-    idSchema.parse(id)
-    const row = await prisma.cliente.findUnique({ where: { id }, select: { active: true } })
-    if (!row || row.active) return { error: "Registro não encontrado ou ainda ativo." }
-    await prisma.cliente.delete({ where: { id } })
-    revalidatePath("/configuracoes/clientes")
-    revalidatePath("/cenarios")
-    revalidatePath("/cenarios/novo")
-    return {}
-  } catch (e) {
-    if (e instanceof Error) return { error: e.message }
-    return { error: "Não foi possível excluir o cliente." }
-  }
-}

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { nextId } from "@/core/db-utils"
-import { requireAdmin, requireSession, requireHardDeleteAccess } from "@/core/session"
+import { requireAdmin, requireSession } from "@/core/session"
 import { prisma } from "@/core/prisma"
 import { ensureUpdatedAtColumns } from "@/core/prisma-schema-ensure"
 
@@ -158,22 +158,3 @@ export async function ativarModulo(id: string): Promise<void> {
   revalidatePath("/configuracoes/modulos")
 }
 
-export async function deletarModulo(id: string): Promise<{ error?: string }> {
-  try {
-    await requireHardDeleteAccess()
-    idSchema.parse(id)
-    const row = await prisma.modulo.findUnique({ where: { id }, select: { active: true } })
-    if (!row || row.active) return { error: "Registro não encontrado ou ainda ativo." }
-    await prisma.modulo.delete({ where: { id } })
-    revalidatePath("/configuracoes/modulos")
-    revalidatePath("/cenarios")
-    revalidatePath("/cenarios/novo")
-    revalidatePath("/suites")
-    revalidatePath("/suites/nova")
-    revalidatePath("/gerador")
-    return {}
-  } catch (e) {
-    if (e instanceof Error) return { error: e.message }
-    return { error: "Não foi possível excluir o módulo." }
-  }
-}

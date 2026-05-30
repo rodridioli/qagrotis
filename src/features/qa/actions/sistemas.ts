@@ -4,7 +4,7 @@ import { revalidatePath, updateTag } from "next/cache"
 import { LAYOUT_CACHE_TAG } from "@/core/layout-cache"
 import { z } from "zod"
 import { nextId } from "@/core/db-utils"
-import { requireAdmin, requireSession, requireHardDeleteAccess } from "@/core/session"
+import { requireAdmin, requireSession } from "@/core/session"
 import { prisma } from "@/core/prisma"
 import { ensureUpdatedAtColumns } from "@/core/prisma-schema-ensure"
 
@@ -156,30 +156,3 @@ export async function ativarSistema(id: string): Promise<void> {
   updateTag(LAYOUT_CACHE_TAG)
 }
 
-export async function deletarSistema(id: string): Promise<{ error?: string }> {
-  try {
-    await requireHardDeleteAccess()
-    idSchema.parse(id)
-    const row = await prisma.sistema.findUnique({ where: { id }, select: { active: true, name: true } })
-    if (!row || row.active) return { error: "Registro não encontrado ou ainda ativo." }
-    const sistemaName = row.name
-    await prisma.$transaction([
-      prisma.suite.deleteMany({ where: { sistema: sistemaName } }),
-      prisma.cenario.deleteMany({ where: { system: sistemaName } }),
-      prisma.modulo.deleteMany({ where: { sistemaId: id } }),
-      prisma.sistema.delete({ where: { id } }),
-    ])
-    revalidatePath("/configuracoes/sistemas")
-    revalidatePath("/configuracoes/modulos")
-    revalidatePath("/cenarios")
-    revalidatePath("/cenarios/novo")
-    revalidatePath("/suites")
-    revalidatePath("/suites/nova")
-    revalidatePath("/gerador")
-    updateTag(LAYOUT_CACHE_TAG)
-    return {}
-  } catch (e) {
-    if (e instanceof Error) return { error: e.message }
-    return { error: "Não foi possível excluir o sistema." }
-  }
-}
