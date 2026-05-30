@@ -4,7 +4,7 @@ import React, { useState, useEffect, useTransition, useRef, Suspense } from "rea
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
-  LayoutDashboard, FileText, Rocket, Clock, Clock4, Timer,
+  LayoutDashboard, FileText, Rocket, Check, Clock4, Timer,
   Settings, LogOut, PanelLeftClose,
   PanelLeftOpen, Menu, Moon, Sun, Sparkles, Users,
   Network, ClipboardCheck, MessageSquare, User, KanbanSquare, Briefcase,
@@ -56,7 +56,7 @@ const NAV_ITEMS: Array<{ href: string; icon: typeof Rocket; label: string; alway
   { href: "/kanban",                  icon: KanbanSquare, label: "Kanban",      alwaysEnabled: true,  capability: "menu.kanban" },
   { href: "/equipe?tab=lancamentos", icon: Timer,       label: "Lançamentos", alwaysEnabled: true,  capability: "equipe.lancamentos" },
   { href: "/equipe?tab=clockwork",   icon: Clock4,     label: "Clockwork",   alwaysEnabled: true,  capability: "equipe.clockwork" },
-  { href: "/individual/lancamentos", icon: Clock,      label: "Lançamentos", alwaysEnabled: false, capability: "individual.lancamentos" },
+  { href: "/individual/lancamentos", icon: Check,      label: "Registros",   alwaysEnabled: false, capability: "individual.lancamentos" },
   { href: "/gerador",       icon: Sparkles,        label: "Gerador",          alwaysEnabled: false, capability: "menu.gerador" },
   { href: "/mapa-conhecimento",     icon: Network,         label: "Mapa de Conhecimento",   alwaysEnabled: true,  capability: "menu.mapaConhecimento" },
   { href: "/avaliacao-desempenho",  icon: ClipboardCheck,  label: "Avaliação de Desempenho", alwaysEnabled: true,  capability: "menu.avaliacaoDesempenho" },
