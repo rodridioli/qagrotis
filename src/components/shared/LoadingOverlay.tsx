@@ -24,7 +24,7 @@ export function LoadingOverlay({ visible, label = "Processando...", className }:
       aria-label={label}
       aria-live="polite"
       className={cn(
-        "absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 py-12",
+        "absolute inset-0 z-30 flex flex-col items-center justify-center gap-2.5 py-12",
         "bg-surface-default",
         className
       )}

@@ -957,7 +957,7 @@ export default function LayoutClient({
           </Suspense>
           <main className="relative flex-1 overflow-auto bg-surface-default p-4 lg:p-6">
             {isPending && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-default">
+              <div className="absolute inset-0 z-30 flex items-center justify-center bg-surface-default">
                 <SectionSpinner label="Carregando…" minHeight="min-h-0" />
               </div>
             )}
