@@ -773,14 +773,6 @@ export default function NovoCenarioClient({
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-primary">URL do Script</label>
-                <Input
-                  value={urlScript}
-                  onChange={(e) => { setUrlScript(e.target.value); setHasSaved(false) }}
-                  placeholder="https://github.com/..."
-                />
-              </div>
             </>
           )}
 
@@ -802,6 +794,16 @@ export default function NovoCenarioClient({
               className={`min-h-[100px]${fieldErrors.has("resultadoEsperado") ? " border-destructive" : ""}`}
             />
             {fieldErrors.has("resultadoEsperado") && <p className="text-sm text-destructive mt-1">O Resultado Esperado é obrigatório.</p>}
+          </div>
+
+          {/* URL do Script — sempre visível, abaixo do Resultado Esperado */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-primary">URL do Script</label>
+            <Input
+              value={urlScript}
+              onChange={(e) => { setUrlScript(e.target.value); setHasSaved(false) }}
+              placeholder="https://github.com/..."
+            />
           </div>
         </div>
 
