@@ -19,7 +19,7 @@ export const getLayoutMenuData = unstable_cache(
         take: 100,
         select: { id: true, descricao: true, provider: true, model: true, active: true, createdAt: true },
       }),
-      prisma.cenario.count(),
+      prisma.cenario.count({ where: { active: true } }),
     ])
 
     const sistemaNames = sistemas.filter((s) => s.active).map((s) => s.name)
