@@ -557,7 +557,17 @@ export function SuiteForm({
 
   async function handleSave() {
     if (!validateSuiteForm()) {
-      toast.error("Preencha todos os campos obrigatórios.")
+      const onlyCenariosMissing =
+        cenarios.length === 0 &&
+        suiteName.trim() !== "" &&
+        versao.trim() !== "" &&
+        selectedModule.trim() !== "" &&
+        sistemaSelecionado.trim() !== ""
+      toast.error(
+        onlyCenariosMissing
+          ? "É necessário adicionar pelo menos um cenário."
+          : "Preencha todos os campos obrigatórios."
+      )
       return
     }
 
@@ -948,7 +958,6 @@ export function SuiteForm({
             )}
           </div>
 
-          {errors.cenarios && <p className="text-sm text-destructive mx-5 mb-2">{errors.cenarios}</p>}
           {cenarios.length === 0 ? (
             <EmptyState message="Nenhum cenário adicionado à suíte." className="mx-5" />
           ) : (
