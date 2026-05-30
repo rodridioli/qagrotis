@@ -70,6 +70,7 @@ export default async function UsuariosPage() {
       currentUserId={currentUserId}
       isAdmin={isAdmin}
       isMgrAdmin={isMgrAdmin}
+      canHardDelete={isMgrAdmin}
       listProfileFilter={listProfileFilter}
       usersFetchFailed={usersFetchFailed}
       usersFetchErrorMessage={usersFetchErrorMessage}

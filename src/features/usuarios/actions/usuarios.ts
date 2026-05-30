@@ -6,7 +6,7 @@ import { Prisma } from "@prisma/client"
 import { sendInviteEmail } from "@/lib/email"
 import { gerarConvite } from "@/features/usuarios/actions/invite-tokens"
 import { nextId, verifyPassword, hashPassword } from "@/core/db-utils"
-import { requireAdmin, requireSession, checkIsAdmin } from "@/core/session"
+import { requireAdmin, requireSession, checkIsAdmin, requireHardDeleteAccess } from "@/core/session"
 import { prisma } from "@/core/prisma"
 import {
   CREATED_USER_READ_SELECT,
@@ -421,6 +421,31 @@ export async function inativarQaUsers(ids: string[]): Promise<{ error?: string }
   } catch (e) {
     console.error("[inativarQaUsers]", e)
     return { error: "Erro ao inativar usuários." }
+  }
+}
+
+export async function deletarQaUser(id: string): Promise<{ error?: string }> {
+  try {
+    await requireHardDeleteAccess()
+    const idResult = userIdSchema.safeParse(id)
+    if (!idResult.success) return { error: "ID inválido." }
+
+    // Apenas usuários inativos podem ser excluídos definitivamente
+    const isInactive = await prisma.inactiveUser.findUnique({ where: { userId: id } })
+    if (!isInactive) return { error: "Registro não encontrado ou ainda ativo." }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.inactiveUser.deleteMany({ where: { userId: id } })
+      await tx.userProfile.deleteMany({ where: { userId: id } })
+      await tx.createdUser.deleteMany({ where: { id } })
+    })
+
+    revalidatePath("/configuracoes/usuarios")
+    return {}
+  } catch (e) {
+    console.error("[deletarQaUser]", e)
+    if (e instanceof Error) return { error: e.message }
+    return { error: "Erro ao excluir usuário." }
   }
 }
 

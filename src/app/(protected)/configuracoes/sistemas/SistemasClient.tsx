@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, X } from "lucide-react"
+import { ChevronDown, ChevronUp, Check, Filter, MoreVertical, Pencil, Plus, Power, RotateCcw, Trash2, X } from "lucide-react"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -26,7 +26,7 @@ import {
 import { TableToolbar } from "@/components/shared/TableToolbar"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
-import { inativarSistemas, ativarSistema, criarSistema, atualizarSistema, type SistemaRecord } from "@/features/qa/actions/sistemas"
+import { inativarSistemas, ativarSistema, criarSistema, atualizarSistema, deletarSistema, type SistemaRecord } from "@/features/qa/actions/sistemas"
 import { type ModuloRecord } from "@/features/qa/actions/modulos"
 import { cn } from "@/core/utils"
 import { toast } from "sonner"
@@ -46,9 +46,10 @@ interface Props {
   initialSistemas: SistemaRecord[]
   initialModulos: ModuloRecord[]
   isAdmin: boolean
+  canHardDelete: boolean
 }
 
-export default function SistemasClient({ initialSistemas: initialSistemasParam, initialModulos, isAdmin }: Props) {
+export default function SistemasClient({ initialSistemas: initialSistemasParam, initialModulos, isAdmin, canHardDelete }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [localSistemas, setLocalSistemas] = useState(initialSistemasParam)
@@ -64,6 +65,8 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
   const [inativarIds, setInativarIds] = useState<string[]>([])
   const [ativarId, setAtivarId] = useState<string | null>(null)
   const [ativarOpen, setAtivarOpen] = useState(false)
+  const [deletarId, setDeletarId] = useState<string | null>(null)
+  const [deletarOpen, setDeletarOpen] = useState(false)
   const [filters, setFilters] = useState<FilterState>({ apenasInativos: false })
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
   const [modulosModalSistema, setModulosModalSistema] = useState<SistemaRecord | null>(null)
@@ -183,6 +186,17 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
       setAtivarOpen(false)
       setAtivarId(null)
     }
+  }
+
+  async function handleDeletar() {
+    if (!deletarId) return
+    const res = await deletarSistema(deletarId)
+    if (res.error) { toast.error(res.error); return }
+    setLocalSistemas((prev) => prev.filter((s) => s.id !== deletarId))
+    toast.success("Registro excluído permanentemente.")
+    setDeletarOpen(false)
+    setDeletarId(null)
+    router.refresh()
   }
 
   function confirmInativar() {
@@ -369,14 +383,40 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
                         </td>
                         <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
                           {filters.apenasInativos ? (
-                            <button
-                              type="button"
-                              aria-label="Ativar"
-                              onClick={() => { setAtivarId(s.id); setAtivarOpen(true) }}
-                              className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-                            >
-                              <RotateCcw className="size-4" />
-                            </button>
+                            canHardDelete ? (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  render={
+                                    <button
+                                      type="button"
+                                      aria-label="Mais ações"
+                                      className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                    />
+                                  }
+                                >
+                                  <MoreVertical className="size-4" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" side="bottom">
+                                  <DropdownMenuItem onClick={() => { setAtivarId(s.id); setAtivarOpen(true) }}>
+                                    <RotateCcw className="size-4" />
+                                    Ativar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem variant="destructive" onClick={() => { setDeletarId(s.id); setDeletarOpen(true) }}>
+                                    <Trash2 className="size-4" />
+                                    Excluir
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            ) : (
+                              <button
+                                type="button"
+                                aria-label="Ativar"
+                                onClick={() => { setAtivarId(s.id); setAtivarOpen(true) }}
+                                className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                              >
+                                <RotateCcw className="size-4" />
+                              </button>
+                            )
                           ) : showBulkActions && s.active ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger
@@ -478,6 +518,17 @@ export default function SistemasClient({ initialSistemas: initialSistemasParam, 
         confirmLabel="Ativar"
         confirmIcon={<RotateCcw className="size-4 shrink-0" aria-hidden />}
         onConfirm={handleAtivar}
+      />
+
+      <ConfirmDialog
+        open={deletarOpen}
+        onOpenChange={setDeletarOpen}
+        title="Excluir registro"
+        description={"Tem certeza que deseja excluir este registro permanentemente?\n\nEsta ação não poderá ser desfeita."}
+        confirmLabel="Excluir"
+        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
+        buttonVariant="destructive"
+        onConfirm={() => void handleDeletar()}
       />
 
       {/* ── Módulos do sistema ── */}

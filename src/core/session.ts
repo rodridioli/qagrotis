@@ -38,6 +38,25 @@ export async function checkIsAdmin(): Promise<boolean> {
 }
 
 /**
+ * Asserts the current user is Administrador:MGR (has records.hardDelete capability).
+ * Throws if not — use in server actions that perform hard deletes.
+ */
+export async function requireHardDeleteAccess() {
+  const session = await requireSession()
+  const role = buildRole(session.user.type, session.user.accessProfile)
+  if (!can(role, "records.hardDelete")) throw new Error("Não autorizado.")
+  return session
+}
+
+/**
+ * Returns true if the current user has the records.hardDelete capability.
+ * Does not throw — safe to use in server components for UI feature flags.
+ */
+export async function checkCanHardDelete(): Promise<boolean> {
+  return checkCan("records.hardDelete")
+}
+
+/**
  * Returns true if the current session user has the given RBAC capability.
  * Does not throw — safe to use for UI-only feature flags.
  */

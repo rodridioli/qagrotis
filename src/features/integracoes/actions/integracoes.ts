@@ -5,7 +5,7 @@ import { LAYOUT_CACHE_TAG } from "@/core/layout-cache"
 import { normalizeProvider } from "@/lib/ai/provider"
 import { z } from "zod"
 import { nextId } from "@/core/db-utils"
-import { requireAdmin, requireSession } from "@/core/session"
+import { requireAdmin, requireSession, requireHardDeleteAccess } from "@/core/session"
 import { prisma } from "@/core/prisma"
 import { ensureUpdatedAtColumns } from "@/core/prisma-schema-ensure"
 
@@ -125,4 +125,21 @@ export async function ativarIntegracao(id: string): Promise<void> {
   revalidatePath("/configuracoes/modelos-de-ia")
   revalidatePath("/gerador")
   updateTag(LAYOUT_CACHE_TAG)
+}
+
+export async function deletarIntegracao(id: string): Promise<{ error?: string }> {
+  try {
+    await requireHardDeleteAccess()
+    idSchema.parse(id)
+    const row = await prisma.integracao.findUnique({ where: { id }, select: { active: true } })
+    if (!row || row.active) return { error: "Registro não encontrado ou ainda ativo." }
+    await prisma.integracao.delete({ where: { id } })
+    revalidatePath("/configuracoes/modelos-de-ia")
+    revalidatePath("/gerador")
+    updateTag(LAYOUT_CACHE_TAG)
+    return {}
+  } catch (e) {
+    if (e instanceof Error) return { error: e.message }
+    return { error: "Não foi possível excluir a integração." }
+  }
 }

@@ -27,6 +27,7 @@ export type Capability =
   | "menu.individual"
   | "menu.kanban"
   | "menu.gestao"
+  | "menu.trabalho"
   // Individual
   | "individual.viewOthers"
   | "individual.lancamentos"
@@ -48,6 +49,12 @@ export type Capability =
   // Equipe
   | "equipe.lancamentos"
   | "equipe.clockwork"
+  // Configurações — Equipes (apenas MGR)
+  | "config.equipes"
+  // Individual — visibilidade da própria equipe (líderes QA/UX/TW)
+  | "individual.viewTeam"
+  // Registros
+  | "records.hardDelete"
 
 /** Itens visíveis-mas-desabilitados (aparecem cinzas no menu). */
 export type DisabledItem = Capability
@@ -63,6 +70,7 @@ const POLICY: Record<Role, RoleConfig> = {
   // ─────────────────────────────────────────── QA
   "Padrão:QA": {
     capabilities: [
+      "menu.trabalho",
       "menu.painel",
       "menu.suites",
       "menu.cenarios",
@@ -84,6 +92,7 @@ const POLICY: Record<Role, RoleConfig> = {
   },
   "Administrador:QA": {
     capabilities: [
+      "menu.trabalho",
       "menu.painel",
       "menu.suites",
       "menu.cenarios",
@@ -102,6 +111,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.jira",
       "equipe.lancamentos",
       "equipe.clockwork",
+      "individual.viewTeam",
     ],
     disabled: ["menu.pdi"],
     manageableProfiles: ["QA"],
@@ -110,6 +120,7 @@ const POLICY: Record<Role, RoleConfig> = {
   // ─────────────────────────────────────────── UX
   "Padrão:UX": {
     capabilities: [
+      "menu.trabalho",
       "menu.painel",
       "menu.kanban",
       "menu.assistente",
@@ -126,6 +137,7 @@ const POLICY: Record<Role, RoleConfig> = {
   },
   "Administrador:UX": {
     capabilities: [
+      "menu.trabalho",
       "menu.kanban",
       "menu.assistente",
       "menu.equipe",
@@ -135,6 +147,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.jira",
       "equipe.lancamentos",
       "equipe.clockwork",
+      "individual.viewTeam",
     ],
     disabled: ["menu.documentos", "menu.pdi"],
     manageableProfiles: ["UX"],
@@ -143,6 +156,7 @@ const POLICY: Record<Role, RoleConfig> = {
   // ─────────────────────────────────────────── TW
   "Padrão:TW": {
     capabilities: [
+      "menu.trabalho",
       "menu.painel",
       "menu.assistente",
       "menu.equipe",
@@ -158,6 +172,7 @@ const POLICY: Record<Role, RoleConfig> = {
   },
   "Administrador:TW": {
     capabilities: [
+      "menu.trabalho",
       "menu.assistente",
       "menu.equipe",
       "menu.individual",
@@ -166,6 +181,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.jira",
       "equipe.lancamentos",
       "equipe.clockwork",
+      "individual.viewTeam",
     ],
     disabled: ["menu.documentos", "menu.pdi"],
     manageableProfiles: ["TW"],
@@ -198,6 +214,8 @@ const POLICY: Record<Role, RoleConfig> = {
       "equipe.clockwork",
       "individual.viewOthers",
       "config.clockwork",
+      "config.equipes",
+      "records.hardDelete",
     ],
     disabled: ["menu.pdi"],
     manageableProfiles: ["QA", "UX", "TW", "MGR"],

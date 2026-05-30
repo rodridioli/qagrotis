@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useTransition } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, X, Filter, Power, AlertCircle, RefreshCw, Eye } from "lucide-react"
+import { ChevronDown, ChevronUp, Plus, MoreVertical, Pencil, RotateCcw, Trash2, X, Filter, Power, AlertCircle, RefreshCw, Eye } from "lucide-react"
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { PageBreadcrumb } from "@/components/shared/PageBreadcrumb"
@@ -35,7 +35,7 @@ import { UserTipoBadge, AccessProfileBadge } from "@/components/shared/StatusBad
 import { TableToolbar } from "@/components/shared/TableToolbar"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
-import { inativarQaUsers, ativarQaUser, getQaUsers, type QaUserRecord } from "@/features/usuarios/actions/usuarios"
+import { inativarQaUsers, ativarQaUser, deletarQaUser, getQaUsers, type QaUserRecord } from "@/features/usuarios/actions/usuarios"
 import type { AccessProfile } from "@/core/rbac/policy"
 import { cn } from "@/core/utils"
 import { toast } from "sonner"
@@ -75,6 +75,7 @@ interface Props {
   isAdmin: boolean
   /** true apenas para Administrador:MGR — único que pode criar, inativar e editar outros. */
   isMgrAdmin?: boolean
+  canHardDelete?: boolean
   /** Admin QA/UX/TW: reaplica o filtro de perfil após recarregar lista no cliente. */
   listProfileFilter?: AccessProfile | null
   /** true quando getQaUsers() falhou no servidor — lista veio vazia por erro, não porque não há cadastros */
@@ -87,6 +88,7 @@ export default function UsuariosClient({
   currentUserId,
   isAdmin,
   isMgrAdmin = false,
+  canHardDelete = false,
   listProfileFilter = null,
   usersFetchFailed = false,
   usersFetchErrorMessage = null,
@@ -121,6 +123,8 @@ export default function UsuariosClient({
   const [inativarIds, setInativarIds] = useState<string[]>([])
   const [ativarId, setAtivarId] = useState<string | null>(null)
   const [ativarOpen, setAtivarOpen] = useState(false)
+  const [deletarId, setDeletarId] = useState<string | null>(null)
+  const [deletarOpen, setDeletarOpen] = useState(false)
   const [filters, setFilters] = useState<FilterState>({ tipo: "", apenasInativos: false })
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters)
   const [reloadBusy, setReloadBusy] = useState(false)
@@ -219,6 +223,17 @@ export default function UsuariosClient({
       setAtivarOpen(false)
       setAtivarId(null)
     }
+  }
+
+  async function handleDeletar() {
+    if (!deletarId) return
+    const res = await deletarQaUser(deletarId)
+    if (res.error) { toast.error(res.error); return }
+    setUsers((prev) => prev.filter((u) => u.id !== deletarId))
+    toast.success("Registro excluído permanentemente.")
+    setDeletarOpen(false)
+    setDeletarId(null)
+    router.refresh()
   }
 
   function confirmInativar() {
@@ -479,14 +494,40 @@ export default function UsuariosClient({
                         </td>
                         <td className="sticky right-0 z-10 bg-surface-card py-3 pl-2 pr-4">
                           {filters.apenasInativos && !isSelf && isMgrAdmin ? (
-                            <button
-                              type="button"
-                              aria-label="Ativar"
-                              onClick={() => { setAtivarId(u.id); setAtivarOpen(true) }}
-                              className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
-                            >
-                              <RotateCcw className="size-4" />
-                            </button>
+                            canHardDelete ? (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  render={
+                                    <button
+                                      type="button"
+                                      aria-label="Mais ações"
+                                      className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-neutral-grey-100"
+                                    />
+                                  }
+                                >
+                                  <MoreVertical className="size-4" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" side="bottom">
+                                  <DropdownMenuItem onClick={() => { setAtivarId(u.id); setAtivarOpen(true) }}>
+                                    <RotateCcw className="size-4" />
+                                    Ativar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem variant="destructive" onClick={() => { setDeletarId(u.id); setDeletarOpen(true) }}>
+                                    <Trash2 className="size-4" />
+                                    Excluir
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            ) : (
+                              <button
+                                type="button"
+                                aria-label="Ativar"
+                                onClick={() => { setAtivarId(u.id); setAtivarOpen(true) }}
+                                className="flex size-8 cursor-pointer items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-brand-primary"
+                              >
+                                <RotateCcw className="size-4" />
+                              </button>
+                            )
                           ) : isSelf ? (
                             <Link
                               href={`/configuracoes/usuarios/${u.id}/editar`}
@@ -625,6 +666,17 @@ export default function UsuariosClient({
         confirmLabel="Ativar"
         confirmIcon={<RotateCcw className="size-4 shrink-0" aria-hidden />}
         onConfirm={handleAtivar}
+      />
+
+      <ConfirmDialog
+        open={deletarOpen}
+        onOpenChange={setDeletarOpen}
+        title="Excluir registro"
+        description={"Tem certeza que deseja excluir este registro permanentemente?\n\nEsta ação não poderá ser desfeita."}
+        confirmLabel="Excluir"
+        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
+        buttonVariant="destructive"
+        onConfirm={() => void handleDeletar()}
       />
     </div>
   )

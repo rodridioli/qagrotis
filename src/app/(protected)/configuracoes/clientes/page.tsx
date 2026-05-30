@@ -3,7 +3,7 @@ export const metadata = { title: "Clientes" }
 
 import { getClientes } from "@/features/qa/actions/clientes"
 import { getCenarios } from "@/features/qa/actions/cenarios"
-import { checkCan } from "@/core/session"
+import { checkCan, checkCanHardDelete } from "@/core/session"
 import { loadParallelOrFallback } from "@/core/safe-server-data"
 import { serializeRscProps } from "@/core/rsc-serialize"
 import ClientesClient from "./ClientesClient"
@@ -11,8 +11,9 @@ import type { ClienteRecord } from "@/features/qa/actions/clientes"
 import type { CenarioRecord } from "@/features/qa/actions/cenarios"
 
 export default async function ClientesPage() {
-  const [isAdmin, { clientes, cenarios }] = await Promise.all([
+  const [isAdmin, canHardDelete, { clientes, cenarios }] = await Promise.all([
     checkCan("config.clientes"),
+    checkCanHardDelete(),
     loadParallelOrFallback<{
       clientes: ClienteRecord[]
       cenarios: CenarioRecord[]
@@ -30,6 +31,7 @@ export default async function ClientesPage() {
       initialClientes={serializeRscProps(clientes)}
       initialCenarios={serializeRscProps(cenarios)}
       isAdmin={isAdmin}
+      canHardDelete={canHardDelete}
     />
   )
 }
