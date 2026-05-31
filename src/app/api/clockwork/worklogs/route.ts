@@ -280,6 +280,17 @@ export async function PATCH(req: NextRequest) {
       const basicCred = Buffer.from(`${jiraCreds.jiraEmail}:${jiraCreds.apiToken}`).toString("base64")
       const jiraUrl   = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(worklogId)}`
 
+      // Jira Cloud v3: started deve usar offset explícito (+0000), não Z
+      const jiraStarted = started.replace(/Z$/, "+0000")
+      // Jira Cloud v3: comment deve ser ADF, não string plana
+      const jiraComment = comment?.trim()
+        ? {
+            version: 1,
+            type: "doc",
+            content: [{ type: "paragraph", content: [{ type: "text", text: comment.trim() }] }],
+          }
+        : undefined
+
       try {
         const jiraRes = await fetch(jiraUrl, {
           method: "PUT",
@@ -288,7 +299,11 @@ export async function PATCH(req: NextRequest) {
             "Content-Type": "application/json",
             Accept: "application/json",
           },
-          body: JSON.stringify({ started, timeSpentSeconds, comment }),
+          body: JSON.stringify({
+            started: jiraStarted,
+            timeSpentSeconds,
+            ...(jiraComment ? { comment: jiraComment } : {}),
+          }),
           signal: AbortSignal.timeout(20_000),
         })
 
@@ -296,7 +311,7 @@ export async function PATCH(req: NextRequest) {
           return Response.json({ ok: true })
         }
 
-        // Erros de autenticação: retorna imediatamente, sem tentar Clockwork
+        // Erros de autenticação: retorna imediatamente
         if (jiraRes.status === 401 || jiraRes.status === 403) {
           const text = await jiraRes.text().catch(() => "")
           console.error("[api/clockwork/worklogs PATCH via Jira] auth error", {
@@ -308,69 +323,20 @@ export async function PATCH(req: NextRequest) {
           )
         }
 
-        // Outros erros (404, 5xx): loga e cai no fallback Clockwork
         const text = await jiraRes.text().catch(() => "")
-        console.warn("[api/clockwork/worklogs PATCH via Jira] tentando fallback Clockwork", {
+        console.error("[api/clockwork/worklogs PATCH via Jira] falhou", {
           worklogId, issueKey, jiraStatus: jiraRes.status, jiraBody: text.slice(0, 300),
         })
+        return Response.json(
+          { error: `Não foi possível salvar o registro no Jira (HTTP ${jiraRes.status}). Verifique sua conexão e tente novamente.` },
+          { status: 502 },
+        )
       } catch (e) {
-        console.error("[api/clockwork/worklogs PATCH via Jira] network error, tentando Clockwork", e)
+        console.error("[api/clockwork/worklogs PATCH via Jira] network error", e)
+        return Response.json({ error: "Erro de rede ao salvar o registro." }, { status: 502 })
       }
     }
   }
 
-  // ── Fallback: Clockwork delete + recreate ─────────────────────────────────
-  // A Clockwork API não suporta PATCH em worklogs individuais.
-  // Estratégia: apagar o worklog antigo e criar um novo com os dados atualizados.
-  const token = await getClockworkApiTokenResolved().catch(() => "")
-  if (!token) {
-    return Response.json({ error: "CLOCKWORK_NOT_CONFIGURED" }, { status: 400 })
-  }
-
-  if (!issueKey) {
-    return Response.json(
-      { error: "issueKey é necessário para editar o worklog quando a API Jira não está disponível." },
-      { status: 422 },
-    )
-  }
-
-  // 1. Apagar worklog antigo (ignora 404 — pode já ter sido removido)
-  try {
-    const delRes = await fetch(`${CW_HOST}/v1/worklogs/${encodeURIComponent(worklogId)}`, {
-      method: "DELETE",
-      headers: { Authorization: `Token ${token.trim()}`, Accept: "application/json" },
-      signal: AbortSignal.timeout(20_000),
-    })
-    if (!delRes.ok && delRes.status !== 404) {
-      const text = await delRes.text().catch(() => "")
-      console.warn("[api/clockwork/worklogs PATCH fallback] DELETE falhou", {
-        worklogId, cwStatus: delRes.status, cwBody: text.slice(0, 200),
-      })
-    }
-  } catch (e) {
-    console.warn("[api/clockwork/worklogs PATCH fallback] DELETE network error", e)
-    // Continua — tenta criar mesmo assim
-  }
-
-  // 2. Criar novo worklog com os dados atualizados
-  const createResult = await createClockworkWorklog({
-    token,
-    issueKey,
-    startedAt: started,
-    timeSpentSeconds,
-    comment: comment || null,
-    authorEmail: null,
-  })
-
-  if (!createResult.ok) {
-    console.error("[api/clockwork/worklogs PATCH fallback] CREATE falhou", {
-      worklogId, issueKey, error: createResult.error,
-    })
-    return Response.json(
-      { error: createResult.error ?? "Erro ao recriar worklog no Clockwork." },
-      { status: 502 },
-    )
-  }
-
-  return Response.json({ ok: true })
+  return Response.json({ error: "Credenciais Jira não configuradas." }, { status: 400 })
 }
