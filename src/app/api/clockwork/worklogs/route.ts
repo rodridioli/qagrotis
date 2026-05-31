@@ -5,6 +5,7 @@ import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-creden
 import { fetchClockworkWorklogsForEmail } from "@/features/qa/lib/clockwork-worklogs-fetch"
 import {
   getAllMgrJiraCredentialSets,
+  getUserAllJiraCredentials,
   resolveJiraCredentialsForRequest,
   type StoredJiraCredentials,
 } from "@/features/qa/lib/jira-credentials-db"
@@ -43,6 +44,12 @@ function monthRange(period: Period): { fromIso: string; toIso: string; monthLabe
  * Ordem: [ownerCreds, sessionCreds, ...todos os MGRs com instâncias distintas]
  * Permite suporte a múltiplas instâncias Jira (ex: agrotis + agrosem) sem hardcode.
  */
+/**
+ * Monta a lista ordenada de credenciais Jira a tentar, deduplicada por jiraUrl.
+ * Ordem: [todas do dono, todas da sessão, todas as instâncias de todos os MGRs]
+ * Com o schema de chave composta (userId, jiraUrl), um MGR pode ter N instâncias
+ * configuradas — todas são incluídas automaticamente.
+ */
 async function buildJiraCredentialList(opts: {
   ownerUserId?: string
   sessionUserId: string
@@ -50,16 +57,19 @@ async function buildJiraCredentialList(opts: {
 }): Promise<StoredJiraCredentials[]> {
   const { ownerUserId, sessionUserId, sessionEmail } = opts
 
-  const [ownerCreds, sessionCreds, allMgrCreds] = await Promise.all([
-    ownerUserId ? resolveJiraCredentialsForRequest(ownerUserId) : Promise.resolve(null),
-    resolveJiraCredentialsForRequest(sessionUserId, sessionEmail),
+  const [ownerAllCreds, sessionAllCreds, allMgrCreds] = await Promise.all([
+    ownerUserId ? getUserAllJiraCredentials(ownerUserId) : Promise.resolve([] as StoredJiraCredentials[]),
+    getUserAllJiraCredentials(sessionUserId),
     getAllMgrJiraCredentialSets(),
   ])
+
+  // Fallback legacy cookie para a sessão (sistema pré-migração)
+  const legacyCookieCreds = await resolveJiraCredentialsForRequest(sessionUserId, sessionEmail)
 
   const seen = new Set<string>()
   const list: StoredJiraCredentials[] = []
 
-  function push(c: StoredJiraCredentials | null) {
+  function push(c: StoredJiraCredentials | null | undefined) {
     if (!c) return
     const key = c.jiraUrl.trim().toLowerCase()
     if (seen.has(key)) return
@@ -67,8 +77,9 @@ async function buildJiraCredentialList(opts: {
     list.push(c)
   }
 
-  push(ownerCreds)
-  push(sessionCreds)
+  for (const c of ownerAllCreds) push(c)
+  for (const c of sessionAllCreds) push(c)
+  push(legacyCookieCreds) // cookie legacy caso sessionAllCreds esteja vazio
   for (const c of allMgrCreds) push(c)
 
   return list
