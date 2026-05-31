@@ -2,8 +2,7 @@ import { auth } from "@/core/auth"
 import { validateOrigin } from "@/core/security"
 import { buildRole, can } from "@/core/rbac/policy"
 import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
-import { fetchClockworkWorklogsForEmail, createClockworkWorklog } from "@/features/qa/lib/clockwork-worklogs-fetch"
-import { findJiraWorklogIdByStarted } from "@/features/qa/lib/jira-worklogs-fetch"
+import { fetchClockworkWorklogsForEmail } from "@/features/qa/lib/clockwork-worklogs-fetch"
 import {
   getMgrJiraCredentials,
   resolveJiraCredentialsForRequest,
@@ -123,9 +122,6 @@ const DeleteBodySchema = z.object({
   /** userId do dono do worklog. Quando diferente do utilizador da sessão, as credenciais
    *  do dono são tentadas primeiro — necessário quando MGR exclui worklog de outro membro. */
   userId: z.string().min(1).optional(),
-  /** Instante de início (ISO) do worklog — usado para resolver o ID real no Jira,
-   *  já que o ID listado via Clockwork não corresponde ao ID do worklog Jira. */
-  started: z.string().min(1).optional(),
 })
 
 export async function DELETE(req: NextRequest) {
@@ -168,24 +164,14 @@ export async function DELETE(req: NextRequest) {
     if (jiraCreds) {
       const jiraBase  = jiraCreds.jiraUrl.replace(/\/$/, "")
       const basicCred = Buffer.from(`${jiraCreds.jiraEmail}:${jiraCreds.apiToken}`).toString("base64")
-
-      // O ID listado via Clockwork não é o ID do worklog Jira — resolve o real pelo instante.
-      let jiraWorklogId = body.worklogId
-      if (body.started) {
-        const ownerEmail = body.userId
-          ? await resolveEmailForQaUserId(body.userId).catch(() => null)
-          : (session.user.email ?? null)
-        const resolved = await findJiraWorklogIdByStarted(jiraBase, basicCred, body.issueKey, body.started, ownerEmail)
-        if (resolved.worklogId) jiraWorklogId = resolved.worklogId
-      }
-
-      const jiraUrl   = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(body.issueKey)}/worklog/${encodeURIComponent(jiraWorklogId)}`
+      // ?overrideEditableFlag=true permite que admins Jira excluam worklogs de outros membros
+      const jiraUrl   = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(body.issueKey)}/worklog/${encodeURIComponent(body.worklogId)}?overrideEditableFlag=true`
 
       try {
         const jiraRes = await fetch(jiraUrl, {
           method: "DELETE",
           headers: { Authorization: `Basic ${basicCred}`, Accept: "application/json" },
-          signal: AbortSignal.timeout(20_000),
+          signal: AbortSignal.timeout(15_000),
         })
 
         // 204 No Content = sucesso canónico do Jira para DELETE worklog
@@ -259,25 +245,29 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
-// ── PATCH — atualiza um worklog específico ────────────────────────────────────
+// ── PATCH — atualiza um worklog específico via Jira REST API ─────────────────
 //
-// Estratégia:
-//   1. Primário  — Jira REST API PUT (quando issueKey disponível)
-//   2. Fallback  — Clockwork delete + recreate
-//      (A Clockwork API não expõe PATCH /v1/worklogs/{id} — retorna 404 HTML)
+// A API Clockwork Pro (api.clockwork.report) é somente leitura — POST /v1/worklogs
+// retorna 404. A única forma de editar é via Jira PUT /issue/{key}/worklog/{id}.
+//
+// O worklogId vindo do Clockwork já é o ID numérico do Jira — não há necessidade
+// de resolução extra. O que falhava antes era o uso de credenciais sem permissão.
+//
+// Credencial usada em ordem de prioridade:
+//   1. Credencial do dono do worklog (pode editar o próprio)
+//   2. Credencial do utilizador da sessão (MGR com acesso ao projeto)
+//   3. Primeira credencial de MGR no BD
+//   4. Adicionado ?overrideEditableFlag=true para que admins Jira editem qualquer worklog
 
 const PatchBodySchema = z.object({
   worklogId: z.string().min(1),
-  /** Chave da issue Jira (ex: "UX-967"). Quando presente, usa Jira API como primário. */
+  /** Chave da issue Jira (ex: "UX-967"). Obrigatório para editar via Jira API. */
   issueKey: z.string().min(1).optional(),
   started: z.string().min(1),           // ISO datetime (ex: "2026-05-28T09:00:00.000Z")
   timeSpentSeconds: z.number().int().positive(),
   comment: z.string().max(2000),
   /** userId do dono do worklog. Necessário quando MGR edita worklog de outro membro. */
   userId: z.string().min(1).optional(),
-  /** Instante de início ORIGINAL (ISO) do worklog, antes da edição — usado para
-   *  resolver o ID real no Jira (o ID listado via Clockwork não é o ID do Jira). */
-  originalStarted: z.string().min(1).optional(),
 })
 
 export type ClockworkPatchBody = z.infer<typeof PatchBodySchema>
@@ -306,154 +296,104 @@ export async function PATCH(req: NextRequest) {
 
   const { worklogId, issueKey, started, timeSpentSeconds, comment } = body
 
-  // ── Primário: Jira REST API ───────────────────────────────────────────────
-  // Tenta credenciais do dono do worklog primeiro (quando MGR edita worklog de outro membro,
-  // a conta Jira do MGR pode não ter acesso ao projeto e o Jira retorna 404 silencioso).
-  if (issueKey) {
-    const ownerCreds =
-      body.userId && body.userId !== session.user.id
-        ? await resolveJiraCredentialsForRequest(body.userId)
-        : null
-    const jiraCreds = ownerCreds
-      ?? await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
-      ?? await getMgrJiraCredentials()
-
-    if (jiraCreds) {
-      const jiraBase  = jiraCreds.jiraUrl.replace(/\/$/, "")
-      const basicCred = Buffer.from(`${jiraCreds.jiraEmail}:${jiraCreds.apiToken}`).toString("base64")
-
-      // O ID listado via Clockwork não é o ID do worklog Jira — resolve o real pelo
-      // instante de início ORIGINAL antes de editar. Sem isto, o PUT sempre dá 404.
-      let jiraWorklogId = worklogId
-      if (body.originalStarted) {
-        const ownerEmail = body.userId
-          ? await resolveEmailForQaUserId(body.userId).catch(() => null)
-          : (session.user.email ?? null)
-        const resolved = await findJiraWorklogIdByStarted(jiraBase, basicCred, issueKey, body.originalStarted, ownerEmail)
-        if (resolved.worklogId) jiraWorklogId = resolved.worklogId
-      }
-
-      const jiraUrl   = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(jiraWorklogId)}`
-
-      // Jira Cloud v3: started deve usar offset explícito (+0000), não Z
-      const jiraStarted = started.replace(/Z$/, "+0000")
-      // Jira Cloud v3: comment deve ser ADF, não string plana
-      const jiraComment = comment?.trim()
-        ? {
-            version: 1,
-            type: "doc",
-            content: [{ type: "paragraph", content: [{ type: "text", text: comment.trim() }] }],
-          }
-        : undefined
-
-      try {
-        const jiraRes = await fetch(jiraUrl, {
-          method: "PUT",
-          headers: {
-            Authorization: `Basic ${basicCred}`,
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({
-            started: jiraStarted,
-            timeSpentSeconds,
-            ...(jiraComment ? { comment: jiraComment } : {}),
-          }),
-          signal: AbortSignal.timeout(20_000),
-        })
-
-        if (jiraRes.ok) {
-          return Response.json({ ok: true })
-        }
-
-        // Erros de autenticação: retorna imediatamente
-        if (jiraRes.status === 401 || jiraRes.status === 403) {
-          const text = await jiraRes.text().catch(() => "")
-          console.error("[api/clockwork/worklogs PATCH via Jira] auth error", {
-            worklogId, issueKey, jiraStatus: jiraRes.status, body: text.slice(0, 300),
-          })
-          return Response.json(
-            { error: `Sem permissão para editar o worklog no Jira (HTTP ${jiraRes.status}).` },
-            { status: 422 },
-          )
-        }
-
-        const text = await jiraRes.text().catch(() => "")
-        console.warn("[api/clockwork/worklogs PATCH via Jira] falhou, tentando fallback Clockwork", {
-          worklogId, issueKey, jiraStatus: jiraRes.status, jiraBody: text.slice(0, 300),
-        })
-        // fall through to Clockwork fallback
-      } catch (e) {
-        console.error("[api/clockwork/worklogs PATCH via Jira] network error, tentando Clockwork", e)
-        // fall through to Clockwork fallback
-      }
-    }
-  }
-
-  // ── Fallback: Clockwork delete + recreate ─────────────────────────────────────
-  // A Clockwork API não expõe PATCH — a estratégia é DELETE + POST.
-  // Usado quando: Jira retorna 400/404/5xx (ex: issue de outro projeto Jira)
-  // ou quando credenciais Jira não estão configuradas.
   if (!issueKey) {
-    return Response.json({ error: "Credenciais Jira não configuradas e issueKey ausente." }, { status: 400 })
+    return Response.json({ error: "issueKey é obrigatório para editar worklogs do Clockwork." }, { status: 400 })
   }
 
-  const cwToken = await getClockworkApiTokenResolved().catch(() => "")
-  if (!cwToken) {
-    return Response.json({ error: "Credenciais Jira não configuradas e Clockwork não disponível." }, { status: 400 })
-  }
+  // ── Jira REST API PUT ─────────────────────────────────────────────────────
+  // O worklogId do Clockwork já é o ID numérico do Jira (os IDs são os mesmos).
+  // Tenta credenciais em ordem: dono → sessão → MGR global.
+  // Adiciona ?overrideEditableFlag=true para que admins Jira possam editar
+  // worklogs de outros membros sem precisar de permissão explícita por worklog.
 
-  // Estratégia segura: POST primeiro, DELETE só após sucesso.
-  // Ordem inversa à anterior (delete→create) que causava perda de dados permanente
-  // quando o POST falhava (ex: issue de projeto Jira não conectado ao Clockwork).
+  const ownerCreds =
+    body.userId && body.userId !== session.user.id
+      ? await resolveJiraCredentialsForRequest(body.userId)
+      : null
+  const jiraCreds = ownerCreds
+    ?? await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
+    ?? await getMgrJiraCredentials()
 
-  // 1. Recria o worklog com os valores atualizados (ANTES de remover o antigo)
-  // Usa o userId do body (quando MGR edita worklog de outro membro) ou o da sessão.
-  const targetUserId = body.userId ?? session.user.id
-  const targetEmail = await resolveEmailForQaUserId(targetUserId).catch(() => null)
-  const createResult = await createClockworkWorklog({
-    token: cwToken,
-    issueKey,
-    startedAt: started,
-    timeSpentSeconds,
-    comment: comment || null,
-    authorEmail: targetEmail ?? session.user.email ?? null,
-  })
-
-  if (!createResult.ok) {
-    console.error("[api/clockwork/worklogs PATCH fallback CREATE] falhou — worklog original preservado", {
-      worklogId, issueKey, error: createResult.error, clockworkDetail: createResult.clockworkDetail,
-    })
+  if (!jiraCreds) {
     return Response.json(
-      {
-        error: `Não foi possível salvar o registro no Clockwork.`,
-        detail: createResult.clockworkDetail ?? createResult.error ?? "Erro desconhecido.",
-      },
-      { status: 502 },
+      { error: "Credenciais Jira não configuradas. Configure seu token Jira em Configurações para editar worklogs." },
+      { status: 422 },
     )
   }
 
-  // 2. Remove o worklog antigo somente após criação bem-sucedida
-  const cwDeleteUrl = `${CW_HOST}/v1/worklogs/${encodeURIComponent(worklogId)}`
+  const jiraBase  = jiraCreds.jiraUrl.replace(/\/$/, "")
+  const basicCred = Buffer.from(`${jiraCreds.jiraEmail}:${jiraCreds.apiToken}`).toString("base64")
+
+  // ?overrideEditableFlag=true: permite que admins Jira editem worklogs de outros
+  const jiraUrl = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(worklogId)}?overrideEditableFlag=true&notifyUsers=false`
+
+  // Jira Cloud v3: started usa offset +0000, não Z
+  const jiraStarted = started.replace(/Z$/, "+0000")
+  // Jira Cloud v3: comment em ADF
+  const jiraComment = comment?.trim()
+    ? {
+        version: 1,
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: comment.trim() }] }],
+      }
+    : undefined
+
   try {
-    const cwDelRes = await fetch(cwDeleteUrl, {
-      method: "DELETE",
-      headers: { Authorization: `Token ${cwToken.trim()}`, Accept: "application/json" },
+    const jiraRes = await fetch(jiraUrl, {
+      method: "PUT",
+      headers: {
+        Authorization: `Basic ${basicCred}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        started: jiraStarted,
+        timeSpentSeconds,
+        ...(jiraComment ? { comment: jiraComment } : {}),
+      }),
       signal: AbortSignal.timeout(15_000),
     })
-    // 204/200 = sucesso; 404 = já foi removido — ambos aceitáveis
-    if (!cwDelRes.ok && cwDelRes.status !== 404) {
-      const errText = await cwDelRes.text().catch(() => "")
-      // Worklog novo já foi criado; falha ao remover o antigo gera duplicata temporária.
-      console.error("[api/clockwork/worklogs PATCH fallback DELETE] duplicata temporária — remover manualmente", {
-        worklogId, cwStatus: cwDelRes.status, cwBody: errText.slice(0, 200),
-      })
-      // Retorna sucesso ao cliente (o dado novo foi salvo); a duplicata será resolvida manualmente.
-    }
-  } catch (e) {
-    console.error("[api/clockwork/worklogs PATCH fallback DELETE] network error — duplicata temporária", e)
-    // Mesmo com falha no DELETE, o novo worklog foi criado — retorna sucesso.
-  }
 
-  return Response.json({ ok: true })
+    if (jiraRes.ok) {
+      return Response.json({ ok: true })
+    }
+
+    const text = await jiraRes.text().catch(() => "")
+
+    // 403/401 — credenciais insuficientes
+    if (jiraRes.status === 401 || jiraRes.status === 403) {
+      console.error("[api/clockwork/worklogs PATCH] Jira auth error", {
+        worklogId, issueKey, status: jiraRes.status, body: text.slice(0, 200),
+        credEmail: jiraCreds.jiraEmail,
+      })
+      return Response.json(
+        { error: `Sem permissão para editar este worklog no Jira (HTTP ${jiraRes.status}). Verifique se as credenciais têm acesso de escrita ao projeto ${issueKey.split("-")[0]}.` },
+        { status: 422 },
+      )
+    }
+
+    // 404 — worklog não encontrado com o ID do Clockwork
+    if (jiraRes.status === 404) {
+      console.error("[api/clockwork/worklogs PATCH] Jira 404 — worklog ID do Clockwork pode diferir do Jira", {
+        worklogId, issueKey, body: text.slice(0, 200),
+      })
+      return Response.json(
+        { error: `Worklog não encontrado no Jira (ID: ${worklogId}). O registro pode ter sido excluído ou o ID do Clockwork não corresponde ao Jira.` },
+        { status: 422 },
+      )
+    }
+
+    // Outros erros Jira
+    console.error("[api/clockwork/worklogs PATCH] Jira error", {
+      worklogId, issueKey, status: jiraRes.status, body: text.slice(0, 200),
+    })
+    return Response.json(
+      { error: `Erro ao editar worklog no Jira (HTTP ${jiraRes.status}).`, detail: text.slice(0, 200) },
+      { status: 502 },
+    )
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error("[api/clockwork/worklogs PATCH] network error", { worklogId, issueKey, error: msg })
+    return Response.json({ error: "Erro de rede ao contactar o Jira.", detail: msg }, { status: 502 })
+  }
 }
