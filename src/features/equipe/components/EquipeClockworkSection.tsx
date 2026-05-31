@@ -3,7 +3,7 @@
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
-import { Loader2, MoreVertical, Trash2 } from "lucide-react"
+import { CalendarDays, Loader2, MoreVertical, Trash2 } from "lucide-react"
 import {
   Select,
   SelectItem,
@@ -583,7 +583,10 @@ export function DayGroup({ day, editMap, onFieldChange, onBlurSave, onDeleteClic
     <div className="overflow-hidden rounded-xl bg-surface-card shadow-card">
       {/* Day header — não-interativo, apenas destaque visual */}
       <div className="flex w-full items-center justify-between border-b border-border-default bg-neutral-grey-50 px-4 py-3">
-        <span className="text-sm font-semibold text-text-primary">{day.label}</span>
+        <span className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+          <CalendarDays className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
+          {day.label}
+        </span>
         <span className="ml-4 shrink-0 text-xs font-medium tabular-nums text-text-secondary">
           {formatDuration(day.totalSeconds)} total
         </span>

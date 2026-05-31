@@ -2,7 +2,7 @@ import { auth } from "@/core/auth"
 import { validateOrigin } from "@/core/security"
 import { buildRole, can } from "@/core/rbac/policy"
 import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
-import { fetchClockworkWorklogsForEmail } from "@/features/qa/lib/clockwork-worklogs-fetch"
+import { fetchClockworkWorklogsForEmail, createClockworkWorklog } from "@/features/qa/lib/clockwork-worklogs-fetch"
 import {
   getMgrJiraCredentials,
   resolveJiraCredentialsForRequest,
@@ -24,11 +24,12 @@ function monthRange(period: Period): { fromIso: string; toIso: string; monthLabe
   const from = new Date(Date.UTC(year, month, 1))
   const to   = new Date(Date.UTC(year, month + 1, 0))
   const pad  = (n: number) => String(n).padStart(2, "0")
-  const monthLabel = new Intl.DateTimeFormat("pt-BR", {
+  const raw = new Intl.DateTimeFormat("pt-BR", {
     month: "long",
     year: "numeric",
     timeZone: "America/Sao_Paulo",
   }).format(from)
+  const monthLabel = raw.charAt(0).toUpperCase() + raw.slice(1)
   return {
     fromIso: `${from.getUTCFullYear()}-${pad(from.getUTCMonth() + 1)}-${pad(from.getUTCDate())}`,
     toIso:   `${to.getUTCFullYear()}-${pad(to.getUTCMonth() + 1)}-${pad(to.getUTCDate())}`,
@@ -227,10 +228,17 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
-// ── PATCH — atualiza um worklog específico no Clockwork ───────────────────────
+// ── PATCH — atualiza um worklog específico ────────────────────────────────────
+//
+// Estratégia:
+//   1. Primário  — Jira REST API PUT (quando issueKey disponível)
+//   2. Fallback  — Clockwork delete + recreate
+//      (A Clockwork API não expõe PATCH /v1/worklogs/{id} — retorna 404 HTML)
 
 const PatchBodySchema = z.object({
   worklogId: z.string().min(1),
+  /** Chave da issue Jira (ex: "UX-967"). Quando presente, usa Jira API como primário. */
+  issueKey: z.string().min(1).optional(),
   started: z.string().min(1),           // ISO datetime (ex: "2026-05-28T09:00:00.000Z")
   timeSpentSeconds: z.number().int().positive(),
   comment: z.string().max(2000),
@@ -260,42 +268,109 @@ export async function PATCH(req: NextRequest) {
     return Response.json({ error: "Payload inválido." }, { status: 400 })
   }
 
+  const { worklogId, issueKey, started, timeSpentSeconds, comment } = body
+
+  // ── Primário: Jira REST API ───────────────────────────────────────────────
+  if (issueKey) {
+    const jiraCreds = await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
+      ?? await getMgrJiraCredentials()
+
+    if (jiraCreds) {
+      const jiraBase  = jiraCreds.jiraUrl.replace(/\/$/, "")
+      const basicCred = Buffer.from(`${jiraCreds.jiraEmail}:${jiraCreds.apiToken}`).toString("base64")
+      const jiraUrl   = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(worklogId)}`
+
+      try {
+        const jiraRes = await fetch(jiraUrl, {
+          method: "PUT",
+          headers: {
+            Authorization: `Basic ${basicCred}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ started, timeSpentSeconds, comment }),
+          signal: AbortSignal.timeout(20_000),
+        })
+
+        if (jiraRes.ok) {
+          return Response.json({ ok: true })
+        }
+
+        // Erros de autenticação: retorna imediatamente, sem tentar Clockwork
+        if (jiraRes.status === 401 || jiraRes.status === 403) {
+          const text = await jiraRes.text().catch(() => "")
+          console.error("[api/clockwork/worklogs PATCH via Jira] auth error", {
+            worklogId, issueKey, jiraStatus: jiraRes.status, body: text.slice(0, 300),
+          })
+          return Response.json(
+            { error: `Sem permissão para editar o worklog no Jira (HTTP ${jiraRes.status}).` },
+            { status: 422 },
+          )
+        }
+
+        // Outros erros (404, 5xx): loga e cai no fallback Clockwork
+        const text = await jiraRes.text().catch(() => "")
+        console.warn("[api/clockwork/worklogs PATCH via Jira] tentando fallback Clockwork", {
+          worklogId, issueKey, jiraStatus: jiraRes.status, jiraBody: text.slice(0, 300),
+        })
+      } catch (e) {
+        console.error("[api/clockwork/worklogs PATCH via Jira] network error, tentando Clockwork", e)
+      }
+    }
+  }
+
+  // ── Fallback: Clockwork delete + recreate ─────────────────────────────────
+  // A Clockwork API não suporta PATCH em worklogs individuais.
+  // Estratégia: apagar o worklog antigo e criar um novo com os dados atualizados.
   const token = await getClockworkApiTokenResolved().catch(() => "")
   if (!token) {
     return Response.json({ error: "CLOCKWORK_NOT_CONFIGURED" }, { status: 400 })
   }
 
-  const { worklogId, started, timeSpentSeconds, comment } = body
+  if (!issueKey) {
+    return Response.json(
+      { error: "issueKey é necessário para editar o worklog quando a API Jira não está disponível." },
+      { status: 422 },
+    )
+  }
 
+  // 1. Apagar worklog antigo (ignora 404 — pode já ter sido removido)
   try {
-    const res = await fetch(`${CW_HOST}/v1/worklogs/${worklogId}`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Token ${token.trim()}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        started,
-        time_spent_seconds: timeSpentSeconds,  // Clockwork Pro API uses snake_case for writes
-        comment,
-      }),
+    const delRes = await fetch(`${CW_HOST}/v1/worklogs/${encodeURIComponent(worklogId)}`, {
+      method: "DELETE",
+      headers: { Authorization: `Token ${token.trim()}`, Accept: "application/json" },
       signal: AbortSignal.timeout(20_000),
     })
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "")
-      console.error("[api/clockwork/worklogs PATCH]", { worklogId, cwStatus: res.status, cwBody: text.slice(0, 400) })
-      return Response.json(
-        { error: `Clockwork retornou erro ${res.status}. Detalhes: ${text.slice(0, 200) || "(sem corpo)"}` },
-        { status: res.status >= 400 && res.status < 500 ? 422 : 502 },
-      )
+    if (!delRes.ok && delRes.status !== 404) {
+      const text = await delRes.text().catch(() => "")
+      console.warn("[api/clockwork/worklogs PATCH fallback] DELETE falhou", {
+        worklogId, cwStatus: delRes.status, cwBody: text.slice(0, 200),
+      })
     }
-
-    return Response.json({ ok: true })
   } catch (e) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error("[api/clockwork/worklogs PATCH]", e)
-    }
-    return Response.json({ error: "Erro ao atualizar worklog no Clockwork." }, { status: 500 })
+    console.warn("[api/clockwork/worklogs PATCH fallback] DELETE network error", e)
+    // Continua — tenta criar mesmo assim
   }
+
+  // 2. Criar novo worklog com os dados atualizados
+  const createResult = await createClockworkWorklog({
+    token,
+    issueKey,
+    startedAt: started,
+    timeSpentSeconds,
+    comment: comment || null,
+    authorEmail: null,
+  })
+
+  if (!createResult.ok) {
+    console.error("[api/clockwork/worklogs PATCH fallback] CREATE falhou", {
+      worklogId, issueKey, error: createResult.error,
+    })
+    return Response.json(
+      { error: createResult.error ?? "Erro ao recriar worklog no Clockwork." },
+      { status: 502 },
+    )
+  }
+
+  return Response.json({ ok: true })
 }
