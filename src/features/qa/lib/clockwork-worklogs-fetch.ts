@@ -208,6 +208,55 @@ export async function fetchClockworkTotalForIssue(opts: {
   }
 }
 
+/**
+ * Versão batch de `fetchClockworkTotalForIssue`.
+ * Envia todos os issueKeys em uma única requisição HTTP ao Clockwork
+ * usando múltiplos parâmetros `issue_query[]`, eliminando N round-trips.
+ * Retorna mapa issueKey → totalSeconds (0 quando sem worklog ou erro).
+ */
+export async function fetchClockworkTotalsForIssues(opts: {
+  token: string
+  issueKeys: string[]
+}): Promise<Record<string, number>> {
+  const { token, issueKeys } = opts
+  // Inicializa todos os keys com 0 (garante entrada mesmo sem worklog)
+  const map: Record<string, number> = {}
+  for (const key of issueKeys) map[key] = 0
+  if (issueKeys.length === 0) return map
+
+  try {
+    const url = new URL(`${CW_HOST}/v1/worklogs`)
+    for (const key of issueKeys) {
+      url.searchParams.append("issue_query[]", key)
+    }
+    url.searchParams.set("expand", "issues,worklogs")
+
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Token ${token.trim()}` },
+      signal: AbortSignal.timeout(20_000),
+      cache: "no-store",
+    })
+    if (!res.ok) return map
+
+    let data: unknown
+    try { data = await res.json() } catch { return map }
+    if (!Array.isArray(data)) return map
+
+    for (const row of data) {
+      if (!row || typeof row !== "object") continue
+      const r = row as CwRow
+      const ts = r.timeSpentSeconds
+      if (typeof ts !== "number" || !Number.isFinite(ts)) continue
+      const key = typeof r.issue?.key === "string" ? r.issue.key.trim() : null
+      if (key && key in map) map[key] += ts
+    }
+
+    return map
+  } catch {
+    return map
+  }
+}
+
 export function mergeJiraAndClockworkWorklogs(
   jira: JiraLancamentoEntry[],
   clockwork: JiraLancamentoEntry[],

@@ -17,7 +17,7 @@ import { buildRole, can } from "@/core/rbac/policy"
 import { db } from "@/core/db"
 import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credentials-db"
 import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
-import { createClockworkWorklog, fetchClockworkTotalForIssue } from "@/features/qa/lib/clockwork-worklogs-fetch"
+import { createClockworkWorklog, fetchClockworkTotalsForIssues } from "@/features/qa/lib/clockwork-worklogs-fetch"
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -230,23 +230,8 @@ export async function getClockworkTotalsForCards(
     return {}
   }
 
-  const results = await Promise.allSettled(
-    issueKeys.map((key) =>
-      fetchClockworkTotalForIssue({ token, issueKey: key }).then((total) => ({
-        key,
-        total,
-      })),
-    ),
-  )
-
-  const map: Record<string, number> = {}
-  for (const key of issueKeys) map[key] = 0
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      map[result.value.key] = result.value.total
-    }
-  }
-  return map
+  // Batch: todos os issueKeys em uma única requisição HTTP ao Clockwork
+  return fetchClockworkTotalsForIssues({ token, issueKeys })
 }
 
 // ─── Internal: post worklog to Clockwork ──────────────────────────────────────
