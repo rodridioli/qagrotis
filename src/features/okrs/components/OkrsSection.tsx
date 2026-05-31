@@ -176,7 +176,7 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Resultados-chave</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Situação</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Atualizado em</th>
-                  <th className="w-12 px-3 py-3 text-center text-xs font-semibold text-text-secondary">
+                  <th className="w-12 px-2 py-3 text-center text-xs font-semibold text-text-secondary sm:px-3">
                     <span className="sr-only">Ações</span>
                   </th>
                 </tr>
@@ -228,14 +228,14 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
                     <td className="px-4 py-3 tabular-nums text-text-secondary whitespace-nowrap">
                       {formatDate(okr.updatedAt)}
                     </td>
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-2 py-3 text-center sm:px-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={
                             <button
                               type="button"
                               aria-label="Mais ações"
-                              className="inline-flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-muted hover:text-text-primary"
+                              className="inline-flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
                             />
                           }
                         >
