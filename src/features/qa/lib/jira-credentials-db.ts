@@ -22,20 +22,12 @@ export async function readLegacyJiraCookies(): Promise<StoredJiraCredentials | n
   }
 }
 
-/**
- * Retorna a primeira credencial Jira do utilizador (ordem de criação).
- * Mantida para compatibilidade com callers que só precisam de uma instância
- * (Kanban, attachments, lancamentos, etc.).
- */
 export async function getUserJiraCredentials(userId: string): Promise<StoredJiraCredentials | null> {
   try {
-    const rows = await prisma.userJiraCredentials.findMany({
+    const row = await prisma.userJiraCredentials.findUnique({
       where: { userId },
       select: { jiraUrl: true, jiraEmail: true, apiToken: true },
-      orderBy: { createdAt: "asc" },
-      take: 1,
     })
-    const row = rows[0]
     if (!row) return null
     return {
       jiraUrl:   row.jiraUrl,
@@ -49,33 +41,7 @@ export async function getUserJiraCredentials(userId: string): Promise<StoredJira
 }
 
 /**
- * Retorna TODAS as credenciais Jira de um utilizador (uma por instância).
- * Usado em buildJiraCredentialList para suportar edição de worklogs de
- * múltiplos projetos Jira a partir de um único utilizador (ex: MGR).
- */
-export async function getUserAllJiraCredentials(userId: string): Promise<StoredJiraCredentials[]> {
-  try {
-    const rows = await prisma.userJiraCredentials.findMany({
-      where: { userId },
-      select: { jiraUrl: true, jiraEmail: true, apiToken: true },
-      orderBy: { createdAt: "asc" },
-    })
-    return rows
-      .filter((r) => r.jiraUrl && r.jiraEmail && r.apiToken && isAllowedJiraUrl(r.jiraUrl))
-      .map((r) => ({
-        jiraUrl:   r.jiraUrl,
-        jiraEmail: r.jiraEmail,
-        apiToken:  decryptField(r.apiToken),
-      }))
-  } catch (e) {
-    if (process.env.NODE_ENV !== "production") console.error("[jira-credentials-db] getUserAllJiraCredentials:", e)
-    return []
-  }
-}
-
-/**
- * Cria ou actualiza credenciais Jira para um par (userId, jiraUrl).
- * Token só é alterado quando `apiToken` vier não vazio.
+ * Salva URL/e-mail; token só é alterado quando `apiToken` vier não vazio.
  * Falha se a tabela não existir — o caller pode fazer fallback para cookies.
  */
 export async function upsertUserJiraCredentials(
@@ -86,7 +52,7 @@ export async function upsertUserJiraCredentials(
   const jiraEmail = data.jiraEmail.trim()
   const incomingToken = data.apiToken?.trim() ?? ""
   const existing = await prisma.userJiraCredentials.findUnique({
-    where: { userId_jiraUrl: { userId, jiraUrl } },
+    where: { userId },
     select: { apiToken: true },
   })
   if (!incomingToken && !existing?.apiToken) {
@@ -95,21 +61,19 @@ export async function upsertUserJiraCredentials(
   const apiToken = incomingToken || existing!.apiToken
 
   await prisma.userJiraCredentials.upsert({
-    where: { userId_jiraUrl: { userId, jiraUrl } },
+    where: { userId },
     create: { userId, jiraUrl, jiraEmail, apiToken: encryptField(apiToken) },
     update: {
+      jiraUrl,
       jiraEmail,
       ...(incomingToken ? { apiToken: encryptField(incomingToken) } : {}),
     },
   })
 }
 
-/** Remove uma instância específica (userId + jiraUrl) ou todas as instâncias do userId. */
-export async function deleteUserJiraCredentials(userId: string, jiraUrl?: string): Promise<void> {
+export async function deleteUserJiraCredentials(userId: string): Promise<void> {
   try {
-    await prisma.userJiraCredentials.deleteMany({
-      where: jiraUrl ? { userId, jiraUrl } : { userId },
-    })
+    await prisma.userJiraCredentials.deleteMany({ where: { userId } })
   } catch (e) {
     if (process.env.NODE_ENV !== "production") console.error("[jira-credentials-db] deleteUserJiraCredentials:", e)
   }

@@ -206,19 +206,14 @@ model CreatedUser {
   teamAsMember        TeamMembership?  @relation("TeamMember")
 }
 
-/// Credenciais Jira por usuário × instância. Chave composta (userId, jiraUrl) permite
-/// que um mesmo utilizador (ex: MGR) configure múltiplas instâncias Atlassian
-/// (ex: agrotis.atlassian.net e agrosem.atlassian.net) para editar worklogs de
-/// qualquer projecto sem depender das credenciais individuais de cada membro.
+/// Credenciais Jira por usuário (mesmo userId da sessão: CreatedUser ou fallback OAuth).
 model UserJiraCredentials {
-  userId    String
+  userId    String   @id
   jiraUrl   String
   jiraEmail String
   apiToken  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@id([userId, jiraUrl])
 }
 
 /// Token API Clockwork Pro (registo único por instância). Campo apiToken cifrado como em UserJiraCredentials.

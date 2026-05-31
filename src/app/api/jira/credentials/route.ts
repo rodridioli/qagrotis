@@ -3,7 +3,6 @@ import { NextRequest } from "next/server"
 import { cookies } from "next/headers"
 import {
   deleteUserJiraCredentials,
-  getUserAllJiraCredentials,
   getUserJiraCredentials,
   readLegacyJiraCookies,
   upsertUserJiraCredentials,
@@ -36,9 +35,11 @@ async function saveToLegacyCookies(jiraUrl: string, jiraEmail: string, jiraToken
   cookieStore.set("jira_token", jiraToken, COOKIE_OPTS)
 }
 
-// GET — retorna todas as instâncias Jira configuradas pelo utilizador
-// Formato: { instances: [{ jiraUrl, jiraEmail, hasToken }], accountEmail }
-// Mantém compat: também retorna campos planos da 1ª instância (jiraUrl, jiraEmail, hasToken, configured)
+// GET — credenciais do próprio usuário (sem expor o token)
+// Nota de segurança: NÃO usa cookies legados como fallback aqui — cookies de browser
+// não são escopados por userId e podem conter dados de outro utilizador no mesmo device.
+// Inclui `accountEmail` (e-mail da sessão) para que o formulário possa alertar quando
+// o jiraEmail armazenado difere do e-mail de acesso do utilizador.
 export async function GET() {
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
@@ -46,32 +47,23 @@ export async function GET() {
   const accountEmail = session.user.email?.trim() ?? ""
 
   try {
-    const allCreds = await getUserAllJiraCredentials(session.user.id)
-
-    const instances = allCreds.map((c) => ({
-      jiraUrl:   c.jiraUrl,
-      jiraEmail: c.jiraEmail,
-      hasToken:  !!(c.apiToken?.trim()),
-    }))
-
-    // Retrocompat: campos planos da 1ª instância
-    const first = allCreds[0]
-    const jiraUrl   = first?.jiraUrl?.trim()  ?? ""
-    const jiraEmail = first?.jiraEmail?.trim() ?? ""
-    const hasToken  = !!(first?.apiToken?.trim())
+    const db = await getUserJiraCredentials(session.user.id)
+    const jiraUrl = db?.jiraUrl?.trim() ?? ""
+    const jiraEmail = db?.jiraEmail?.trim() ?? ""
+    const hasToken = !!(db?.apiToken?.trim())
     const configured = !!(jiraUrl && jiraEmail && hasToken)
 
-    return Response.json({ instances, jiraUrl, jiraEmail, hasToken, configured, accountEmail })
+    return Response.json({ jiraUrl, jiraEmail, hasToken, configured, accountEmail })
   } catch (e) {
     if (process.env.NODE_ENV !== "production") console.error("[jira/credentials] GET:", e)
     return Response.json(
-      { instances: [], jiraUrl: "", jiraEmail: "", hasToken: false, configured: false, accountEmail },
+      { jiraUrl: "", jiraEmail: "", hasToken: false, configured: false, accountEmail },
       { status: 200 },
     )
   }
 }
 
-// POST — cria ou actualiza credenciais Jira para uma instância específica (userId + jiraUrl)
+// POST — grava integração Jira (apenas Administrador:MGR)
 export async function POST(req: NextRequest) {
   const csrfError = validateOrigin(req)
   if (csrfError) return csrfError
@@ -93,7 +85,6 @@ export async function POST(req: NextRequest) {
   }
 
   if (!jiraToken?.trim()) {
-    // Verifica se já existe token para esta instância específica
     const existing = await getUserJiraCredentials(session.user.id)
     const leg = await readLegacyJiraCookies()
     const hasStored = !!(existing?.apiToken?.trim() || leg?.apiToken?.trim())
@@ -136,7 +127,7 @@ export async function POST(req: NextRequest) {
   return Response.json({ success: true })
 }
 
-// DELETE — remove uma instância específica (jiraUrl no body) ou todas (sem body)
+// DELETE — remove integração Jira (apenas Administrador:MGR)
 export async function DELETE(req: NextRequest) {
   const csrfError = validateOrigin(req)
   if (csrfError) return csrfError
@@ -145,15 +136,7 @@ export async function DELETE(req: NextRequest) {
   const role = buildRole(session.user.type, session.user.accessProfile)
   if (!can(role, "config.jira")) return new Response("Forbidden", { status: 403 })
 
-  let jiraUrl: string | undefined
-  try {
-    const body = await req.json().catch(() => ({})) as { jiraUrl?: string }
-    jiraUrl = body.jiraUrl?.trim() || undefined
-  } catch {
-    // sem body → remove tudo
-  }
-
-  await deleteUserJiraCredentials(session.user.id, jiraUrl)
+  await deleteUserJiraCredentials(session.user.id)
   await clearLegacyCookiesOnce()
 
   return Response.json({ success: true })
