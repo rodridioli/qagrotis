@@ -23,9 +23,6 @@ export function GestaoSidebarNavGroup({ collapsed, onNavigate }: GestaoSidebarNa
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const [open, setOpen] = React.useState(false)
-  const prevPath = React.useRef("")
-
   const isGestaoActive = React.useCallback(
     (path: string, params: ReturnType<typeof useSearchParams>) => {
       const tab = params.get("tab")
@@ -37,10 +34,13 @@ export function GestaoSidebarNavGroup({ collapsed, onNavigate }: GestaoSidebarNa
     [],
   )
 
+  const [open, setOpen] = React.useState(() => isGestaoActive(pathname, searchParams))
+  const prevGestaoActive = React.useRef(isGestaoActive(pathname, searchParams))
+
   React.useEffect(() => {
     const now = isGestaoActive(pathname, searchParams)
-    const was = isGestaoActive(prevPath.current, searchParams)
-    prevPath.current = pathname
+    const was = prevGestaoActive.current
+    prevGestaoActive.current = now
     if (now && !was) setOpen(true)
     if (!now && was) setOpen(false)
   }, [pathname, searchParams, isGestaoActive])

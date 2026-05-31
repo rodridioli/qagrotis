@@ -20,20 +20,24 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const [open, setOpen] = React.useState(false)
-  const prevPath = React.useRef("")
-
-  React.useEffect(() => {
-    const tab = searchParams.get("tab")
+  function isEquipeGroupActive(path: string, params: ReturnType<typeof useSearchParams>): boolean {
+    const tab = params.get("tab")
     const isLancamentosTopLevel = tab === "lancamentos" && !canAccessLancamentos
     const isClockworkTopLevel = tab === "clockwork" && hideClockwork
-    // "metas" (OKR) nunca pertence ao grupo Equipe — pertence a Gestão (MGR) ou Trabalho (outros)
     const isOkrTopLevel = tab === "metas"
-    const now = pathname.startsWith("/equipe") && !isLancamentosTopLevel && !isClockworkTopLevel && !isOkrTopLevel
-    const was = prevPath.current.startsWith("/equipe")
-    prevPath.current = pathname
+    return path.startsWith("/equipe") && !isLancamentosTopLevel && !isClockworkTopLevel && !isOkrTopLevel
+  }
+
+  const [open, setOpen] = React.useState(() => isEquipeGroupActive(pathname, searchParams))
+  const prevEquipeActive = React.useRef(isEquipeGroupActive(pathname, searchParams))
+
+  React.useEffect(() => {
+    const now = isEquipeGroupActive(pathname, searchParams)
+    const was = prevEquipeActive.current
+    prevEquipeActive.current = now
     if (now && !was) setOpen(true)
     if (!now && was) setOpen(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams, canAccessLancamentos, hideClockwork])
 
   const activeTabId = searchParams.get("tab") ?? "chapters"

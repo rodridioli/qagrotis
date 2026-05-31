@@ -363,7 +363,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                       onNavigate={onNavigate}
                       canAccessLancamentos={role === "Administrador:MGR" || role === "Administrador:QA" || role === "Administrador:UX" || role === "Administrador:TW" ? false : canAccessEquipeLancamentos}
                       hideClockwork={true}
-                      hideOkr={role === "Administrador:MGR"}
+                      hideOkr={true}
                     />
                   </Suspense>
                 )
