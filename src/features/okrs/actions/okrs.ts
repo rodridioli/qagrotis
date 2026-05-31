@@ -987,9 +987,14 @@ export async function getMembrosByEquipes(
     }
     const profiles = equipes.map((e) => profileMap[e]).filter(Boolean) as string[]
 
+    // Exclui usuários inactivos (sem relação declarada no schema, filtro manual)
+    const inactiveRows = await prisma.inactiveUser.findMany({ select: { userId: true } })
+    const inactiveIds = inactiveRows.map((r) => r.userId)
+
     const users = await prisma.createdUser.findMany({
       where: {
         accessProfile: { in: profiles as ("QA" | "UX" | "TW" | "MGR")[] },
+        ...(inactiveIds.length > 0 ? { NOT: { id: { in: inactiveIds } } } : {}),
       },
       select: { id: true, name: true, photoPath: true, accessProfile: true },
       orderBy: { name: "asc" },

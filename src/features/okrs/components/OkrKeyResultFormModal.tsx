@@ -5,7 +5,6 @@ import { Check, Loader2, X } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectTrigger,
@@ -103,18 +102,18 @@ export function OkrKeyResultFormModal({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Editar Key Result" : "Novo Key Result"}</DialogTitle>
+          <DialogTitle>{isEditing ? "Editar Resultado-chave" : "Novo Resultado-chave"}</DialogTitle>
         </DialogHeader>
         <form id="kr-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">
               Descrição <span className="text-destructive">*</span>
             </label>
-            <Textarea
+            <Input
+              type="text"
               placeholder="Ex.: Automatizar 20 cenários de regressão."
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
-              rows={2}
               disabled={loading}
             />
             {errors.descricao && <p className="text-xs text-destructive">{errors.descricao}</p>}
@@ -127,7 +126,9 @@ export function OkrKeyResultFormModal({
               </label>
               <Select value={unidade} onValueChange={(v) => setUnidade(v as OkrUnidadeDto)}>
                 <SelectTrigger disabled={loading}>
-                  <SelectValue />
+                  <SelectValue>
+                    {(v: string | null) => UNIDADE_LABELS[v as OkrUnidadeDto] ?? v ?? ""}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectPopup>
                   {OKR_UNIDADES.map((u) => (
@@ -215,7 +216,7 @@ export function OkrKeyResultFormModal({
             ) : isEditing ? (
               <><Check className="size-4 shrink-0" aria-hidden />Salvar</>
             ) : (
-              <><Check className="size-4 shrink-0" aria-hidden />Criar Key Result</>
+              <><Check className="size-4 shrink-0" aria-hidden />Criar Resultado-chave</>
             )}
           </Button>
         </DialogFooter>
