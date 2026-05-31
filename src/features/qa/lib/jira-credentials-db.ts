@@ -112,6 +112,55 @@ export async function getMgrJiraCredentials(): Promise<StoredJiraCredentials | n
 }
 
 /**
+ * Retorna TODAS as credenciais únicas (por jiraUrl) de todos os utilizadores MGR.
+ * Usado para suportar múltiplas instâncias Jira ao editar/excluir worklogs:
+ * permite tentar PUT/DELETE em agrotis.atlassian.net E agrosem.atlassian.net
+ * numa única chamada, sem hardcode de instâncias.
+ * Deduplicadas por jiraUrl (case-insensitive) para evitar tentativas redundantes.
+ */
+export async function getAllMgrJiraCredentialSets(): Promise<StoredJiraCredentials[]> {
+  try {
+    const [profileOverrides, baseUsers] = await Promise.all([
+      prisma.userProfile.findMany({
+        where: { type: "Administrador", accessProfile: "MGR" },
+        select: { userId: true },
+      }),
+      prisma.createdUser.findMany({
+        where: { type: "Administrador", accessProfile: "MGR" },
+        select: { id: true },
+      }),
+    ])
+    const mgrIds = Array.from(
+      new Set([...profileOverrides.map((p) => p.userId), ...baseUsers.map((u) => u.id)]),
+    )
+    if (mgrIds.length === 0) return []
+
+    const rows = await prisma.userJiraCredentials.findMany({
+      where: { userId: { in: mgrIds } },
+      select: { jiraUrl: true, jiraEmail: true, apiToken: true },
+    })
+
+    // Deduplica por jiraUrl (case-insensitive) — mantém a primeira ocorrência por instância
+    const seen = new Set<string>()
+    const result: StoredJiraCredentials[] = []
+    for (const row of rows) {
+      const urlKey = row.jiraUrl.trim().toLowerCase()
+      if (seen.has(urlKey) || !isAllowedJiraUrl(row.jiraUrl)) continue
+      seen.add(urlKey)
+      result.push({
+        jiraUrl:   row.jiraUrl,
+        jiraEmail: row.jiraEmail,
+        apiToken:  decryptField(row.apiToken),
+      })
+    }
+    return result
+  } catch (e) {
+    if (process.env.NODE_ENV !== "production") console.error("[jira-credentials-db] getAllMgrJiraCredentialSets:", e)
+    return []
+  }
+}
+
+/**
  * Resolve credenciais a partir do BD do utilizador (com fallback para cookies legados).
  * NÃO confia no body/form da requisição: dados controlados pelo cliente são ignorados
  * para impedir SSRF lateral via `jiraUrl`.

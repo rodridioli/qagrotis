@@ -4,8 +4,9 @@ import { buildRole, can } from "@/core/rbac/policy"
 import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
 import { fetchClockworkWorklogsForEmail } from "@/features/qa/lib/clockwork-worklogs-fetch"
 import {
-  getMgrJiraCredentials,
+  getAllMgrJiraCredentialSets,
   resolveJiraCredentialsForRequest,
+  type StoredJiraCredentials,
 } from "@/features/qa/lib/jira-credentials-db"
 import { resolveEmailForQaUserId } from "@/features/usuarios/actions/usuarios"
 import { z } from "zod"
@@ -35,6 +36,42 @@ function monthRange(period: Period): { fromIso: string; toIso: string; monthLabe
     toIso:   `${to.getUTCFullYear()}-${pad(to.getUTCMonth() + 1)}-${pad(to.getUTCDate())}`,
     monthLabel,
   }
+}
+
+/**
+ * Monta a lista ordenada de credenciais Jira a tentar, deduplicada por jiraUrl.
+ * Ordem: [ownerCreds, sessionCreds, ...todos os MGRs com instâncias distintas]
+ * Permite suporte a múltiplas instâncias Jira (ex: agrotis + agrosem) sem hardcode.
+ */
+async function buildJiraCredentialList(opts: {
+  ownerUserId?: string
+  sessionUserId: string
+  sessionEmail: string
+}): Promise<StoredJiraCredentials[]> {
+  const { ownerUserId, sessionUserId, sessionEmail } = opts
+
+  const [ownerCreds, sessionCreds, allMgrCreds] = await Promise.all([
+    ownerUserId ? resolveJiraCredentialsForRequest(ownerUserId) : Promise.resolve(null),
+    resolveJiraCredentialsForRequest(sessionUserId, sessionEmail),
+    getAllMgrJiraCredentialSets(),
+  ])
+
+  const seen = new Set<string>()
+  const list: StoredJiraCredentials[] = []
+
+  function push(c: StoredJiraCredentials | null) {
+    if (!c) return
+    const key = c.jiraUrl.trim().toLowerCase()
+    if (seen.has(key)) return
+    seen.add(key)
+    list.push(c)
+  }
+
+  push(ownerCreds)
+  push(sessionCreds)
+  for (const c of allMgrCreds) push(c)
+
+  return list
 }
 
 // ── GET — lista worklogs do mês corrente para um userId ───────────────────────
@@ -113,14 +150,13 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// ── DELETE — remove um worklog específico (Jira API primário, Clockwork fallback) ─
+// ── DELETE — remove worklog (itera todas as instâncias Jira, fallback Clockwork) ─
 
 const DeleteBodySchema = z.object({
   worklogId: z.string().min(1),
   /** Chave da issue Jira (ex: "PROJ-123"). Quando presente, tenta Jira API primeiro. */
   issueKey: z.string().min(1).optional(),
-  /** userId do dono do worklog. Quando diferente do utilizador da sessão, as credenciais
-   *  do dono são tentadas primeiro — necessário quando MGR exclui worklog de outro membro. */
+  /** userId do dono do worklog. Credenciais do dono são tentadas primeiro. */
   userId: z.string().min(1).optional(),
 })
 
@@ -146,61 +182,71 @@ export async function DELETE(req: NextRequest) {
     return Response.json({ error: "Payload inválido." }, { status: 400 })
   }
 
-  // ── Primary: Jira REST API ─────────────────────────────────────────────────
-  // O Clockwork Pro é uma app Jira — os worklogs são registos Jira.
-  // O endpoint DELETE do Clockwork não está documentado; a remoção canónica
-  // usa a Jira Cloud REST API: DELETE /rest/api/3/issue/{key}/worklog/{id}.
+  // ── Primary: itera todas as instâncias Jira conhecidas ───────────────────────
   if (body.issueKey) {
-    // Tenta credenciais do dono do worklog primeiro (quando MGR exclui worklog de outro membro,
-    // a conta Jira do MGR pode não ter acesso ao projeto e o Jira retorna 404 silencioso).
-    const ownerCreds =
-      body.userId && body.userId !== session.user.id
-        ? await resolveJiraCredentialsForRequest(body.userId)
-        : null
-    const jiraCreds = ownerCreds
-      ?? await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
-      ?? await getMgrJiraCredentials()
+    const credList = await buildJiraCredentialList({
+      ownerUserId: body.userId && body.userId !== session.user.id ? body.userId : undefined,
+      sessionUserId: session.user.id,
+      sessionEmail: session.user.email ?? "",
+    })
 
-    if (jiraCreds) {
-      const jiraBase  = jiraCreds.jiraUrl.replace(/\/$/, "")
-      const basicCred = Buffer.from(`${jiraCreds.jiraEmail}:${jiraCreds.apiToken}`).toString("base64")
-      // ?overrideEditableFlag=true permite que admins Jira excluam worklogs de outros membros
-      const jiraUrl   = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(body.issueKey)}/worklog/${encodeURIComponent(body.worklogId)}?overrideEditableFlag=true`
+    const jiraPath = `/rest/api/3/issue/${encodeURIComponent(body.issueKey)}/worklog/${encodeURIComponent(body.worklogId)}?overrideEditableFlag=true`
+    const attempts: { jiraUrl: string; status: number }[] = []
+
+    for (const creds of credList) {
+      const jiraBase  = creds.jiraUrl.replace(/\/$/, "")
+      const basicCred = Buffer.from(`${creds.jiraEmail}:${creds.apiToken}`).toString("base64")
+      const fullUrl   = `${jiraBase}${jiraPath}`
 
       try {
-        const jiraRes = await fetch(jiraUrl, {
+        const jiraRes = await fetch(fullUrl, {
           method: "DELETE",
           headers: { Authorization: `Basic ${basicCred}`, Accept: "application/json" },
           signal: AbortSignal.timeout(15_000),
         })
 
-        // 204 No Content = sucesso canónico do Jira para DELETE worklog
+        // 204 / 200 = sucesso canónico do Jira para DELETE worklog
         if (jiraRes.ok || jiraRes.status === 204) {
           return Response.json({ ok: true })
         }
 
-        // Erros de autenticação: retorna imediatamente sem tentar Clockwork
+        const text = await jiraRes.text().catch(() => "")
+        attempts.push({ jiraUrl: jiraBase, status: jiraRes.status })
+
         if (jiraRes.status === 401 || jiraRes.status === 403) {
-          const text = await jiraRes.text().catch(() => "")
-          console.error("[api/clockwork/worklogs DELETE via Jira] auth error", {
-            worklogId: body.worklogId, issueKey: body.issueKey,
-            jiraStatus: jiraRes.status, body: text.slice(0, 300),
+          console.warn("[api/clockwork/worklogs DELETE] auth error, tentando próxima instância", {
+            jiraBase, worklogId: body.worklogId, issueKey: body.issueKey, status: jiraRes.status,
           })
-          return Response.json(
-            { error: `Sem permissão para remover o worklog no Jira (HTTP ${jiraRes.status}).` },
-            { status: 422 },
-          )
+          continue
         }
 
-        // Para 404 e outros: regista e cai no fallback Clockwork
-        const text = await jiraRes.text().catch(() => "")
-        console.warn("[api/clockwork/worklogs DELETE via Jira] tentando fallback Clockwork", {
-          worklogId: body.worklogId, issueKey: body.issueKey,
-          jiraStatus: jiraRes.status, jiraBody: text.slice(0, 300),
+        if (jiraRes.status === 404) {
+          console.warn("[api/clockwork/worklogs DELETE] 404 na instância, tentando próxima", {
+            jiraBase, worklogId: body.worklogId, issueKey: body.issueKey,
+          })
+          continue
+        }
+
+        console.error("[api/clockwork/worklogs DELETE] erro Jira", {
+          jiraBase, worklogId: body.worklogId, issueKey: body.issueKey,
+          status: jiraRes.status, body: text.slice(0, 200),
         })
+        continue
       } catch (e) {
-        console.error("[api/clockwork/worklogs DELETE via Jira] network error, tentando Clockwork", e)
+        console.error("[api/clockwork/worklogs DELETE] network error", {
+          jiraBase, worklogId: body.worklogId, error: e,
+        })
+        attempts.push({ jiraUrl: jiraBase, status: 0 })
+        continue
       }
+    }
+
+    // Todas as instâncias Jira falharam — log e cai no fallback Clockwork
+    if (attempts.length > 0) {
+      console.warn("[api/clockwork/worklogs DELETE] todas as instâncias Jira falharam, tentando Clockwork", {
+        worklogId: body.worklogId, issueKey: body.issueKey,
+        attempts: attempts.map((a) => `${a.jiraUrl} → ${a.status}`),
+      })
     }
   }
 
@@ -222,17 +268,13 @@ export async function DELETE(req: NextRequest) {
       signal: AbortSignal.timeout(20_000),
     })
 
-    // 204 No Content é resposta válida de sucesso para DELETE
     if (res.ok) {
       return Response.json({ ok: true })
     }
 
     const text = await res.text().catch(() => "")
-    console.error("[api/clockwork/worklogs DELETE]", {
-      worklogId: body.worklogId,
-      cwUrl,
-      cwStatus: res.status,
-      cwBody: text.slice(0, 400),
+    console.error("[api/clockwork/worklogs DELETE] Clockwork fallback error", {
+      worklogId: body.worklogId, cwUrl, cwStatus: res.status, cwBody: text.slice(0, 400),
     })
 
     return Response.json(
@@ -240,24 +282,17 @@ export async function DELETE(req: NextRequest) {
       { status: res.status >= 400 && res.status < 500 ? 422 : 502 },
     )
   } catch (e) {
-    console.error("[api/clockwork/worklogs DELETE] network error", e)
+    console.error("[api/clockwork/worklogs DELETE] Clockwork network error", e)
     return Response.json({ error: "Erro de rede ao remover worklog no Clockwork." }, { status: 500 })
   }
 }
 
-// ── PATCH — atualiza um worklog específico via Jira REST API ─────────────────
+// ── PATCH — atualiza worklog (itera todas as instâncias Jira conhecidas) ──────
 //
-// A API Clockwork Pro (api.clockwork.report) é somente leitura — POST /v1/worklogs
-// retorna 404. A única forma de editar é via Jira PUT /issue/{key}/worklog/{id}.
-//
-// O worklogId vindo do Clockwork já é o ID numérico do Jira — não há necessidade
-// de resolução extra. O que falhava antes era o uso de credenciais sem permissão.
-//
-// Credencial usada em ordem de prioridade:
-//   1. Credencial do dono do worklog (pode editar o próprio)
-//   2. Credencial do utilizador da sessão (MGR com acesso ao projeto)
-//   3. Primeira credencial de MGR no BD
-//   4. Adicionado ?overrideEditableFlag=true para que admins Jira editem qualquer worklog
+// Estratégia: monta lista ordenada de credenciais [dono → sessão → todos MGRs],
+// deduplicada por jiraUrl. Para cada instância, tenta PUT. Retorna ok no primeiro
+// 200. Se 401/403/404 → descarta e tenta a próxima. Após esgotar todas → 422
+// com lista de instâncias tentadas para debug.
 
 const PatchBodySchema = z.object({
   worklogId: z.string().min(1),
@@ -300,36 +335,22 @@ export async function PATCH(req: NextRequest) {
     return Response.json({ error: "issueKey é obrigatório para editar worklogs do Clockwork." }, { status: 400 })
   }
 
-  // ── Jira REST API PUT ─────────────────────────────────────────────────────
-  // O worklogId do Clockwork já é o ID numérico do Jira (os IDs são os mesmos).
-  // Tenta credenciais em ordem: dono → sessão → MGR global.
-  // Adiciona ?overrideEditableFlag=true para que admins Jira possam editar
-  // worklogs de outros membros sem precisar de permissão explícita por worklog.
+  // ── Monta lista de credenciais deduplicada por instância Jira ────────────────
+  const credList = await buildJiraCredentialList({
+    ownerUserId: body.userId && body.userId !== session.user.id ? body.userId : undefined,
+    sessionUserId: session.user.id,
+    sessionEmail: session.user.email ?? "",
+  })
 
-  const ownerCreds =
-    body.userId && body.userId !== session.user.id
-      ? await resolveJiraCredentialsForRequest(body.userId)
-      : null
-  const jiraCreds = ownerCreds
-    ?? await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
-    ?? await getMgrJiraCredentials()
-
-  if (!jiraCreds) {
+  if (credList.length === 0) {
     return Response.json(
       { error: "Credenciais Jira não configuradas. Configure seu token Jira em Configurações para editar worklogs." },
       { status: 422 },
     )
   }
 
-  const jiraBase  = jiraCreds.jiraUrl.replace(/\/$/, "")
-  const basicCred = Buffer.from(`${jiraCreds.jiraEmail}:${jiraCreds.apiToken}`).toString("base64")
-
-  // ?overrideEditableFlag=true: permite que admins Jira editem worklogs de outros
-  const jiraUrl = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(worklogId)}?overrideEditableFlag=true&notifyUsers=false`
-
-  // Jira Cloud v3: started usa offset +0000, não Z
+  // Jira Cloud v3: started usa offset +0000 (não Z); comment em ADF
   const jiraStarted = started.replace(/Z$/, "+0000")
-  // Jira Cloud v3: comment em ADF
   const jiraComment = comment?.trim()
     ? {
         version: 1,
@@ -338,62 +359,81 @@ export async function PATCH(req: NextRequest) {
       }
     : undefined
 
-  try {
-    const jiraRes = await fetch(jiraUrl, {
-      method: "PUT",
-      headers: {
-        Authorization: `Basic ${basicCred}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        started: jiraStarted,
-        timeSpentSeconds,
-        ...(jiraComment ? { comment: jiraComment } : {}),
-      }),
-      signal: AbortSignal.timeout(15_000),
-    })
+  const jiraPath = `/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(worklogId)}?overrideEditableFlag=true&notifyUsers=false`
+  const attempts: { jiraUrl: string; status: number }[] = []
 
-    if (jiraRes.ok) {
-      return Response.json({ ok: true })
-    }
+  // ── Itera sobre todas as instâncias Jira ─────────────────────────────────────
+  for (const creds of credList) {
+    const jiraBase  = creds.jiraUrl.replace(/\/$/, "")
+    const basicCred = Buffer.from(`${creds.jiraEmail}:${creds.apiToken}`).toString("base64")
+    const fullUrl   = `${jiraBase}${jiraPath}`
 
-    const text = await jiraRes.text().catch(() => "")
-
-    // 403/401 — credenciais insuficientes
-    if (jiraRes.status === 401 || jiraRes.status === 403) {
-      console.error("[api/clockwork/worklogs PATCH] Jira auth error", {
-        worklogId, issueKey, status: jiraRes.status, body: text.slice(0, 200),
-        credEmail: jiraCreds.jiraEmail,
+    try {
+      const jiraRes = await fetch(fullUrl, {
+        method: "PUT",
+        headers: {
+          Authorization: `Basic ${basicCred}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          started: jiraStarted,
+          timeSpentSeconds,
+          ...(jiraComment ? { comment: jiraComment } : {}),
+        }),
+        signal: AbortSignal.timeout(15_000),
       })
-      return Response.json(
-        { error: `Sem permissão para editar este worklog no Jira (HTTP ${jiraRes.status}). Verifique se as credenciais têm acesso de escrita ao projeto ${issueKey.split("-")[0]}.` },
-        { status: 422 },
-      )
-    }
 
-    // 404 — worklog não encontrado com o ID do Clockwork
-    if (jiraRes.status === 404) {
-      console.error("[api/clockwork/worklogs PATCH] Jira 404 — worklog ID do Clockwork pode diferir do Jira", {
-        worklogId, issueKey, body: text.slice(0, 200),
+      if (jiraRes.ok) {
+        return Response.json({ ok: true })
+      }
+
+      const text = await jiraRes.text().catch(() => "")
+      attempts.push({ jiraUrl: jiraBase, status: jiraRes.status })
+
+      // 401/403 — sem permissão nesta instância → tenta a próxima
+      if (jiraRes.status === 401 || jiraRes.status === 403) {
+        console.warn("[api/clockwork/worklogs PATCH] auth error, tentando próxima instância", {
+          jiraBase, worklogId, issueKey, status: jiraRes.status,
+        })
+        continue
+      }
+
+      // 404 — projeto não existe nesta instância → tenta a próxima
+      if (jiraRes.status === 404) {
+        console.warn("[api/clockwork/worklogs PATCH] 404 na instância, tentando próxima", {
+          jiraBase, worklogId, issueKey,
+        })
+        continue
+      }
+
+      // Outros erros (400, 5xx) — loga e tenta a próxima
+      console.error("[api/clockwork/worklogs PATCH] erro Jira", {
+        jiraBase, worklogId, issueKey, status: jiraRes.status, body: text.slice(0, 200),
       })
-      return Response.json(
-        { error: `Worklog não encontrado no Jira (ID: ${worklogId}). O registro pode ter sido excluído ou o ID do Clockwork não corresponde ao Jira.` },
-        { status: 422 },
-      )
+      continue
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error("[api/clockwork/worklogs PATCH] network error", { jiraBase, worklogId, issueKey, error: msg })
+      attempts.push({ jiraUrl: jiraBase, status: 0 })
+      continue
     }
-
-    // Outros erros Jira
-    console.error("[api/clockwork/worklogs PATCH] Jira error", {
-      worklogId, issueKey, status: jiraRes.status, body: text.slice(0, 200),
-    })
-    return Response.json(
-      { error: `Erro ao editar worklog no Jira (HTTP ${jiraRes.status}).`, detail: text.slice(0, 200) },
-      { status: 502 },
-    )
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    console.error("[api/clockwork/worklogs PATCH] network error", { worklogId, issueKey, error: msg })
-    return Response.json({ error: "Erro de rede ao contactar o Jira.", detail: msg }, { status: 502 })
   }
+
+  // ── Todas as instâncias falharam ─────────────────────────────────────────────
+  const detail = attempts
+    .map((a) => `${a.jiraUrl} → HTTP ${a.status || "network error"}`)
+    .join("; ")
+
+  console.error("[api/clockwork/worklogs PATCH] todas as instâncias falharam", {
+    worklogId, issueKey, attempts,
+  })
+
+  return Response.json(
+    {
+      error: `Nenhuma instância Jira conseguiu editar o worklog (${issueKey}). Verifique as credenciais configuradas.`,
+      detail,
+    },
+    { status: 422 },
+  )
 }

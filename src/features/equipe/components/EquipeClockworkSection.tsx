@@ -376,8 +376,11 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
         prev.map((w) => w.id === worklog.id ? { ...w, started: newStarted, timeSpentSeconds: seconds, comment: state.comment } : w),
       )
       updateEdit(worklog.id, { saving: false, saveError: null })
+      toast.success("Registro atualizado com sucesso.")
     } catch (e) {
-      updateEdit(worklog.id, { saving: false, saveError: e instanceof Error ? e.message : "Erro ao salvar." })
+      const errorMessage = e instanceof Error ? e.message : "Erro ao salvar."
+      updateEdit(worklog.id, { saving: false, saveError: errorMessage })
+      toast.error(errorMessage, { duration: 8000 })
     }
   }
 
@@ -686,9 +689,10 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
   }
 
   const editInputClass = cn(
-    "w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-text-primary",
+    "w-full rounded-md border bg-transparent px-2 py-1 text-sm text-text-primary",
     "hover:border-border-default focus:border-brand-primary focus:bg-surface-card focus:outline-none focus:ring-1 focus:ring-brand-primary/30",
     "transition-colors placeholder:text-text-tertiary disabled:cursor-not-allowed disabled:opacity-50",
+    state.saveError ? "border-destructive ring-1 ring-destructive/30" : "border-transparent",
     state.saving && "pointer-events-none opacity-50",
   )
 
@@ -792,13 +796,6 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
         </td>
       </tr>
 
-      {state.saveError && (
-        <tr>
-          <td colSpan={6} className="px-4 pb-2.5 pt-0">
-            <p className="text-xs text-destructive">{state.saveError}</p>
-          </td>
-        </tr>
-      )}
     </>
   )
 }
