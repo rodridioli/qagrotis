@@ -130,12 +130,12 @@ export function IndividualSecaoDevelopmentPanel({
   return (
     <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-stretch gap-8">
       {users.length > 0 ? (
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div className="min-w-0 flex-1">
             <IndividualActiveUserAvatarStrip secao={secao} users={visibleUsers} selectedUserId={effectiveUserId} />
           </div>
           {showLancamentos && jiraConfigured === true && (
-            <div className="flex shrink-0 items-center" style={{ gap: "calc(var(--spacing) * 2)" }}>
+            <div className="flex shrink-0 flex-wrap items-center" style={{ gap: "calc(var(--spacing) * 2)" }}>
               <Select
                 value={accessProfileFilter}
                 onValueChange={(v) => handleAccessProfileChange(v as AccessProfileFilter)}

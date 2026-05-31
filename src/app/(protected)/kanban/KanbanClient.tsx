@@ -135,7 +135,7 @@ function KanbanColumn({ projectName, issues }: { projectName: string; issues: Ka
   const displayName = projectName.replace(/^Plataforma Agro - /, "Agro ")
 
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border-default bg-surface-overlay">
+    <div className="flex w-72 shrink-0 snap-start flex-col rounded-xl border border-border-default bg-surface-overlay">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3">
         <span
@@ -205,7 +205,7 @@ export function KanbanClient({ initialResult }: { initialResult: KanbanResult })
 
       {/* Board */}
       {initialResult.ok && groups.length > 0 && (
-        <div className="overflow-x-auto scrollbar-thin">
+        <div className="overflow-x-auto scrollbar-thin snap-x snap-mandatory">
           <div
             className="flex gap-4 pt-2"
             style={{ minWidth: `${totalCols * (288 + 16)}px` }}
