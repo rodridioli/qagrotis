@@ -194,14 +194,18 @@ export function EquipeAusenciasSection({ isMgr, currentUserId }: EquipeAusencias
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
   }, [])
 
+  const currentRows = React.useMemo<IndividualAusenciasRow[]>(
+    () => rows.filter((r) => r.dataFimIso >= todayIso),
+    [rows, todayIso],
+  )
+
   const filtered = React.useMemo<IndividualAusenciasRow[]>(() => {
-    const base = rows.filter((r) => r.dataFimIso >= todayIso)
     const q = search.trim().toLowerCase()
     const searched = q
-      ? base.filter((r) => (r.evaluatedUser?.name ?? "").toLowerCase().includes(q))
-      : base
+      ? currentRows.filter((r) => (r.evaluatedUser?.name ?? "").toLowerCase().includes(q))
+      : currentRows
     return [...searched].sort((a, b) => a.dataInicioIso.localeCompare(b.dataInicioIso))
-  }, [rows, search, todayIso])
+  }, [currentRows, search])
 
   if (loading) return <SectionSpinner minHeight="min-h-[60vh]" />
 
@@ -220,8 +224,8 @@ export function EquipeAusenciasSection({ isMgr, currentUserId }: EquipeAusencias
           onSearchChange={setSearch}
           searchPlaceholder="Buscar por usuário…"
           totalLabel="Total de ausências"
-          totalCount={rows.length}
-          baseCount={rows.length}
+          totalCount={currentRows.length}
+          baseCount={currentRows.length}
         />
 
         {error ? (
