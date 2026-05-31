@@ -26,8 +26,6 @@ export function OkrDashboardCards({ okr }: OkrDashboardCardsProps) {
   const krsEmRisco = krsAtivos.filter((kr) => kr.risco === "EM_RISCO" || kr.risco === "CRITICO")
   const krsCancelados = allKrs.filter((kr) => kr.situacao === "CANCELADO")
 
-  const allIniciativas = allKrs.flatMap((kr) => kr.iniciativas)
-
   const progressoTotal =
     krsAtivos.length > 0
       ? krsAtivos.reduce((acc, kr) => acc + kr.progressoPercent, 0) / krsAtivos.length
@@ -37,10 +35,9 @@ export function OkrDashboardCards({ okr }: OkrDashboardCardsProps) {
   const pctCancelados = allKrs.length > 0 ? (krsCancelados.length / allKrs.length) * 100 : 0
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {stat(allObjetivos.length, "Objetivos")}
-      {stat(allKrs.length, "Key Results")}
-      {stat(allIniciativas.length, "Iniciativas")}
+      {stat(allKrs.length, "Resultados-chave")}
       {stat(`${progressoTotal.toFixed(0)}%`, "% Conclusão")}
       {stat(`${pctEmRisco.toFixed(0)}%`, "% Em Risco")}
       {stat(`${pctCancelados.toFixed(0)}%`, "% Cancelados")}
