@@ -283,8 +283,15 @@ export async function PATCH(req: NextRequest) {
   const { worklogId, issueKey, started, timeSpentSeconds, comment } = body
 
   // ── Primário: Jira REST API ───────────────────────────────────────────────
+  // Tenta credenciais do dono do worklog primeiro (quando MGR edita worklog de outro membro,
+  // a conta Jira do MGR pode não ter acesso ao projeto e o Jira retorna 404 silencioso).
   if (issueKey) {
-    const jiraCreds = await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
+    const ownerCreds =
+      body.userId && body.userId !== session.user.id
+        ? await resolveJiraCredentialsForRequest(body.userId)
+        : null
+    const jiraCreds = ownerCreds
+      ?? await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
       ?? await getMgrJiraCredentials()
 
     if (jiraCreds) {
@@ -360,31 +367,11 @@ export async function PATCH(req: NextRequest) {
     return Response.json({ error: "Credenciais Jira não configuradas e Clockwork não disponível." }, { status: 400 })
   }
 
-  // 1. Remove o worklog antigo do Clockwork
-  const cwDeleteUrl = `${CW_HOST}/v1/worklogs/${encodeURIComponent(worklogId)}`
-  try {
-    const cwDelRes = await fetch(cwDeleteUrl, {
-      method: "DELETE",
-      headers: { Authorization: `Token ${cwToken.trim()}`, Accept: "application/json" },
-      signal: AbortSignal.timeout(15_000),
-    })
-    // 204/200 = sucesso; 404 = já foi removido — ambos aceitáveis
-    if (!cwDelRes.ok && cwDelRes.status !== 404) {
-      const errText = await cwDelRes.text().catch(() => "")
-      console.error("[api/clockwork/worklogs PATCH fallback DELETE]", {
-        worklogId, cwStatus: cwDelRes.status, cwBody: errText.slice(0, 200),
-      })
-      return Response.json(
-        { error: `Clockwork retornou HTTP ${cwDelRes.status} ao remover worklog.` },
-        { status: 502 },
-      )
-    }
-  } catch (e) {
-    console.error("[api/clockwork/worklogs PATCH fallback DELETE] network error", e)
-    return Response.json({ error: "Erro de rede ao remover worklog no Clockwork." }, { status: 502 })
-  }
+  // Estratégia segura: POST primeiro, DELETE só após sucesso.
+  // Ordem inversa à anterior (delete→create) que causava perda de dados permanente
+  // quando o POST falhava (ex: issue de projeto Jira não conectado ao Clockwork).
 
-  // 2. Recria o worklog com os valores atualizados
+  // 1. Recria o worklog com os valores atualizados (ANTES de remover o antigo)
   // Usa o userId do body (quando MGR edita worklog de outro membro) ou o da sessão.
   const targetUserId = body.userId ?? session.user.id
   const targetEmail = await resolveEmailForQaUserId(targetUserId).catch(() => null)
@@ -397,13 +384,37 @@ export async function PATCH(req: NextRequest) {
     authorEmail: targetEmail ?? session.user.email ?? null,
   })
 
-  if (createResult.ok) return Response.json({ ok: true })
+  if (!createResult.ok) {
+    console.error("[api/clockwork/worklogs PATCH fallback CREATE] falhou — worklog original preservado", {
+      worklogId, issueKey, error: createResult.error,
+    })
+    return Response.json(
+      { error: `Não foi possível salvar o registro (${createResult.error ?? "erro no Clockwork"}).` },
+      { status: 502 },
+    )
+  }
 
-  console.error("[api/clockwork/worklogs PATCH fallback CREATE] falhou", {
-    worklogId, issueKey, error: createResult.error,
-  })
-  return Response.json(
-    { error: `Não foi possível salvar o registro (${createResult.error ?? "erro no Clockwork"}).` },
-    { status: 502 },
-  )
+  // 2. Remove o worklog antigo somente após criação bem-sucedida
+  const cwDeleteUrl = `${CW_HOST}/v1/worklogs/${encodeURIComponent(worklogId)}`
+  try {
+    const cwDelRes = await fetch(cwDeleteUrl, {
+      method: "DELETE",
+      headers: { Authorization: `Token ${cwToken.trim()}`, Accept: "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    })
+    // 204/200 = sucesso; 404 = já foi removido — ambos aceitáveis
+    if (!cwDelRes.ok && cwDelRes.status !== 404) {
+      const errText = await cwDelRes.text().catch(() => "")
+      // Worklog novo já foi criado; falha ao remover o antigo gera duplicata temporária.
+      console.error("[api/clockwork/worklogs PATCH fallback DELETE] duplicata temporária — remover manualmente", {
+        worklogId, cwStatus: cwDelRes.status, cwBody: errText.slice(0, 200),
+      })
+      // Retorna sucesso ao cliente (o dado novo foi salvo); a duplicata será resolvida manualmente.
+    }
+  } catch (e) {
+    console.error("[api/clockwork/worklogs PATCH fallback DELETE] network error — duplicata temporária", e)
+    // Mesmo com falha no DELETE, o novo worklog foi criado — retorna sucesso.
+  }
+
+  return Response.json({ ok: true })
 }
