@@ -214,7 +214,7 @@ export const EQUIPE_LABELS: Record<OkrEquipeDto, string> = {
   QA: "QA",
   UX: "UX",
   TW: "TW",
-  GESTAO: "Gestão",
+  GESTAO: "MGR",
 }
 
 // ── Cálculos de risco ─────────────────────────────────────────────────────────
