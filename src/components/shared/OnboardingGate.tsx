@@ -142,7 +142,7 @@ function JiraStep({ defaultEmail, onConfigured }: JiraStepProps) {
             Configure sua integração com o Jira
           </h2>
           <p className="mt-1 text-sm text-text-secondary">
-            Vincule sua conta Jira para sincronizar seus registros de trabalho.
+            Sincronize seus dados e registros de trabalho.
           </p>
         </div>
       </div>
