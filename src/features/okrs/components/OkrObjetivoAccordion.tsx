@@ -185,7 +185,7 @@ export function OkrObjetivoAccordion({
                   onClick={() => setCancelOpen(true)}
                 >
                   <X className="size-4" />
-                  Cancelar objetivo
+                  Cancelar
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
