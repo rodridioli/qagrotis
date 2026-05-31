@@ -157,6 +157,7 @@ function getTitle(pathname: string, role?: Role, tab?: string): string {
     if (tab === "clockwork") return "Clockwork"
     if (role === "Administrador:MGR") {
       if (tab === "lancamentos") return "Registros"
+      if (tab === "metas") return "Gestão — OKR"
     }
     const entry = EQUIPE_NAV_ENTRIES.find((e) => e.id === tab)
     if (entry) return `Equipe — ${entry.label}`
