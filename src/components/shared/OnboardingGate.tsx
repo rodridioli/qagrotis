@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { AlertTriangle, Check, Loader2, PlugZap, Timer } from "lucide-react"
+import { AlertTriangle, Check, Loader2, LogOut, PlugZap, Timer } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { signOut } from "next-auth/react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
@@ -141,7 +142,7 @@ function JiraStep({ defaultEmail, onConfigured }: JiraStepProps) {
             Configure sua integração com o Jira
           </h2>
           <p className="mt-1 text-sm text-text-secondary">
-            Antes de continuar, vincule sua conta Jira para sincronizar seus registros de trabalho.
+            Vincule sua conta Jira para sincronizar seus registros de trabalho.
           </p>
         </div>
       </div>
@@ -220,6 +221,15 @@ function JiraStep({ defaultEmail, onConfigured }: JiraStepProps) {
           <><Check className="size-4 shrink-0" aria-hidden />Validar e continuar</>
         )}
       </Button>
+
+      <button
+        type="button"
+        onClick={() => signOut({ callbackUrl: "/login" })}
+        className="flex w-full items-center justify-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-destructive"
+      >
+        <LogOut className="size-4 shrink-0" aria-hidden />
+        Sair do sistema
+      </button>
     </div>
   )
 }
