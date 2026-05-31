@@ -359,7 +359,7 @@ export async function PATCH(req: NextRequest) {
       }
     : undefined
 
-  const jiraPath = `/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(worklogId)}?overrideEditableFlag=true&notifyUsers=false`
+  const jiraPath = `/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(worklogId)}?notifyUsers=false`
   const attempts: { jiraUrl: string; status: number }[] = []
 
   // ── Itera sobre todas as instâncias Jira ─────────────────────────────────────
