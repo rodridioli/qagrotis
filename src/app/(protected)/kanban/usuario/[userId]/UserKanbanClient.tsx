@@ -852,7 +852,12 @@ export function UserKanbanClient({
 
     // ── Timer: iniciar/parar conforme origem e destino ──────────────────────
     if (dstCol === "in_progress") {
-      // Entrando em "Em andamento": iniciar timer
+      // Optimistic: mostra o timer imediatamente sem esperar a server action
+      setTimerStates((prev) => ({
+        ...prev,
+        [issueKey]: { issueKey, startedAt: Date.now(), accumulatedSeconds: 0 },
+      }))
+      // Reconcilia com os valores confirmados pelo servidor (ex: sessão anterior pausada)
       startCardTimer(issueKey, card.summary)
         .then((res) => {
           if (res.ok && res.timer) {
