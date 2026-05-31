@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd"
-import { AlertCircle, ArrowRight, ChevronDown, Flag, Loader2, Plus, Search, User, X } from "lucide-react"
+import { AlertCircle, ArrowRight, ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, Equal, Flag, Loader2, Plus, Search, User, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { JiraNotConfiguredCard } from "@/components/shared/JiraNotConfiguredCard"
@@ -52,6 +52,22 @@ const PRIORITY_PT: Record<string, string> = {
 function translatePriority(priority: string | null): string | null {
   if (!priority) return null
   return PRIORITY_PT[priority.toLowerCase()] ?? priority
+}
+
+const PRIORITY_ICON_MAP: Record<string, { Icon: React.ElementType; className: string }> = {
+  highest:  { Icon: ChevronsUp,   className: "text-red-500" },
+  critical: { Icon: ChevronsUp,   className: "text-red-500" },
+  high:     { Icon: ChevronUp,    className: "text-orange-500" },
+  medium:   { Icon: Equal,        className: "text-yellow-500" },
+  low:      { Icon: ChevronDown,  className: "text-blue-400" },
+  lowest:   { Icon: ChevronsDown, className: "text-text-secondary" },
+}
+
+function PriorityIcon({ priority }: { priority: string }) {
+  const config = PRIORITY_ICON_MAP[priority.toLowerCase()]
+  if (!config) return null
+  const { Icon, className } = config
+  return <Icon className={cn("size-4 shrink-0", className)} aria-hidden />
 }
 
 function priorityRank(p: string | null): number {
@@ -165,15 +181,10 @@ function CardContent({ issue, userColumn }: { issue: KanbanIssue; userColumn?: U
         >
           {issue.key}
         </a>
-        {(issue.priorityIconUrl ?? issue.priority) && (
+        {issue.priority && (
           <div className="flex shrink-0 items-center gap-1">
-            {issue.priority && (
-              <span className="text-xs font-medium text-text-secondary">{translatePriority(issue.priority)}</span>
-            )}
-            {issue.priorityIconUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={issue.priorityIconUrl} alt="" className="size-4 shrink-0" />
-            )}
+            <PriorityIcon priority={issue.priority} />
+            <span className="text-xs font-medium text-text-secondary">{translatePriority(issue.priority)}</span>
           </div>
         )}
       </div>
@@ -252,15 +263,10 @@ function TarefaCardContent({ tarefa }: { tarefa: UxTarefa }) {
         >
           {tarefa.key}
         </a>
-        {(tarefa.priorityIconUrl ?? tarefa.priority) && (
+        {tarefa.priority && (
           <div className="flex shrink-0 items-center gap-1">
-            {tarefa.priority && (
-              <span className="text-xs font-medium text-text-secondary">{translatePriority(tarefa.priority)}</span>
-            )}
-            {tarefa.priorityIconUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={tarefa.priorityIconUrl} alt="" className="size-4 shrink-0" />
-            )}
+            <PriorityIcon priority={tarefa.priority} />
+            <span className="text-xs font-medium text-text-secondary">{translatePriority(tarefa.priority)}</span>
           </div>
         )}
       </div>
