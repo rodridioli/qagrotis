@@ -153,12 +153,16 @@ function getTitle(pathname: string, role?: Role, tab?: string): string {
     const label = individualSectionLabel(secao)
     if (label) return `Individual — ${label}`
   }
+  if (role === "Administrador:MGR" && pathname.startsWith("/kanban")) {
+    return "Gestão — Kanban"
+  }
   if (pathname.startsWith("/equipe")) {
-    if (tab === "clockwork") return "Clockwork"
     if (role === "Administrador:MGR") {
-      if (tab === "lancamentos") return "Registros"
-      if (tab === "metas") return "Gestão — OKR"
+      if (tab === "clockwork")    return "Gestão — Clockwork"
+      if (tab === "lancamentos")  return "Gestão — Registros"
+      if (tab === "metas")        return "Gestão — OKR"
     }
+    if (tab === "clockwork") return "Clockwork"
     const entry = EQUIPE_NAV_ENTRIES.find((e) => e.id === tab)
     if (entry) return `Equipe — ${entry.label}`
     return "Equipe"
