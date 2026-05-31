@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.6.31",
+    "commit": "deploy-vercel",
+    "date": "2026-05-31",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "fix(okr): mover botao Adicionar OKR para fora do card/TableToolbar",
+      "fix(sidebar+okr): corrigir selecao dupla no menu e badge fora do padrao",
+      "fix(okr): padronizar modais e corrigir label do periodo",
+      "fix(onboarding): atualizar subtítulo do modal Jira",
+      "feat(okr): desabilitar item OKR no menu para perfis nao-MGR",
+      "fix(okr): adicionar migration SQL para tabelas OKR no banco de producao",
+      "refactor(ausencias): extrair currentRows como memo e alinhar contadores ao filtro ativo",
+      "fix(okr): corrigir TypeScript e adicionar componentes UI completos",
+      "feat(okr): estrutura inicial — schema, RBAC e navegacao",
+      "fix(clockwork): corrigir PATCH worklog — formato Jira v3 e remover fallback Clockwork inativo",
+      "fix(onboarding): ajustar texto e adicionar botão de sair no modal Jira",
+      "fix(clockwork): enviar issueKey no PATCH e corrigir double-save no WorklogRow",
+      "fix(clockwork): capitalizar mês e adicionar ícone de calendário nos cabeçalhos de dia",
+      "chore(changelog): adicionar entrada v1.6.30",
+      "dark mode tokens, table hover e responsividade mobile 360px"
+    ]
+  },
+  {
     "version": "1.6.30",
     "commit": "deploy-vercel",
     "date": "2026-05-30",

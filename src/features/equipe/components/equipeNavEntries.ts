@@ -1,5 +1,5 @@
 import type { ElementType } from "react"
-import { Users, Clock, Clock4, Calendar, Target, Check } from "lucide-react"
+import { Users, Clock, Clock4, Calendar, Check } from "lucide-react"
 
 export type EquipeTabId =
   | "lancamentos"
@@ -8,7 +8,6 @@ export type EquipeTabId =
   | "horarios"
   | "ferias"
   | "ausencias"
-  | "metas"
   | "aniversarios"
 
 export const EQUIPE_TAB_IDS: EquipeTabId[] = [
@@ -18,7 +17,6 @@ export const EQUIPE_TAB_IDS: EquipeTabId[] = [
   "horarios",
   "ferias",
   "ausencias",
-  "metas",
   "aniversarios",
 ]
 
@@ -35,6 +33,5 @@ export const EQUIPE_NAV_ENTRIES: EquipeNavEntry[] = [
   { id: "horarios",     label: "Horários",     icon: Clock     },
   { id: "ferias",       label: "Férias",       icon: Calendar  },
   { id: "ausencias",    label: "Ausências",    icon: Calendar  },
-  { id: "metas",        label: "OKRs",         icon: Target    },
   { id: "aniversarios", label: "Aniversários", icon: Users     },
 ]

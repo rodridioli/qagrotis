@@ -391,7 +391,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
         method: "DELETE",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ worklogId: targetId, issueKey: deleteTarget.issueKey }),
+        body: JSON.stringify({ worklogId: targetId, issueKey: deleteTarget.issueKey, userId: selectedUserId ?? undefined }),
       })
       const json = (await res.json().catch(() => ({}))) as { error?: string }
       if (!res.ok) {
@@ -730,7 +730,7 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
             aria-label={`Início — ${worklog.issueKey}`}
             onChange={(e) => onFieldChange(worklog.id, "startHHmm", e.target.value)}
             onBlur={handleBlur}
-            className={cn(editInputClass, "tabular-nums")}
+            className={cn(editInputClass, "tabular-nums dark:[color-scheme:dark]")}
           />
         </td>
 
@@ -744,7 +744,7 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
             aria-label={`Fim — ${worklog.issueKey}`}
             onChange={(e) => onFieldChange(worklog.id, "endHHmm", e.target.value)}
             onBlur={handleBlur}
-            className={cn(editInputClass, "tabular-nums")}
+            className={cn(editInputClass, "tabular-nums dark:[color-scheme:dark]")}
           />
         </td>
 

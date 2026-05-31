@@ -113,6 +113,9 @@ const DeleteBodySchema = z.object({
   worklogId: z.string().min(1),
   /** Chave da issue Jira (ex: "PROJ-123"). Quando presente, tenta Jira API primeiro. */
   issueKey: z.string().min(1).optional(),
+  /** userId do dono do worklog. Quando diferente do utilizador da sessão, as credenciais
+   *  do dono são tentadas primeiro — necessário quando MGR exclui worklog de outro membro. */
+  userId: z.string().min(1).optional(),
 })
 
 export async function DELETE(req: NextRequest) {
@@ -142,7 +145,14 @@ export async function DELETE(req: NextRequest) {
   // O endpoint DELETE do Clockwork não está documentado; a remoção canónica
   // usa a Jira Cloud REST API: DELETE /rest/api/3/issue/{key}/worklog/{id}.
   if (body.issueKey) {
-    const jiraCreds = await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
+    // Tenta credenciais do dono do worklog primeiro (quando MGR exclui worklog de outro membro,
+    // a conta Jira do MGR pode não ter acesso ao projeto e o Jira retorna 404 silencioso).
+    const ownerCreds =
+      body.userId && body.userId !== session.user.id
+        ? await resolveJiraCredentialsForRequest(body.userId)
+        : null
+    const jiraCreds = ownerCreds
+      ?? await resolveJiraCredentialsForRequest(session.user.id, session.user.email ?? "")
       ?? await getMgrJiraCredentials()
 
     if (jiraCreds) {

@@ -12,7 +12,6 @@ import {
   LayoutDashboard,
   Rocket,
   Sparkles,
-  Target,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/core/utils"
@@ -40,29 +39,26 @@ function getItems(
   const suites: TrabalhoItem           = { id: "suites",                 label: "Suítes",    Icon: Rocket,         href: "/suites" }
   const cenarios: TrabalhoItem         = { id: "cenarios",               label: "Cenários",  Icon: FileText,       href: "/cenarios" }
   const gerador: TrabalhoItem          = { id: "gerador",                label: "Gerador",   Icon: Sparkles,       href: "/gerador" }
-  const okr: TrabalhoItem              = { id: "okr",                    label: "OKR",       Icon: Target,         href: "/equipe?tab=metas", disabled: true }
 
   const showGerador = hasIntegracoes && hasJiraConfigured
 
   switch (role) {
     case "Padrão:UX":
-      return [kanban, registrosIndividual, clockwork, okr]
+      return [kanban, registrosIndividual, clockwork]
     case "Administrador:UX":
-      return [kanban, registrosEquipe, clockwork, okr]
+      return [kanban, registrosEquipe, clockwork]
     case "Padrão:TW":
-      return [registrosIndividual, clockwork, okr]
+      return [registrosIndividual, clockwork]
     case "Administrador:TW":
-      return [registrosEquipe, clockwork, okr]
+      return [registrosEquipe, clockwork]
     case "Padrão:QA": {
       const items: TrabalhoItem[] = [painel, registrosIndividual, suites, cenarios]
       if (showGerador) items.push(gerador)
-      items.push(okr)
       return items
     }
     case "Administrador:QA": {
       const items: TrabalhoItem[] = [painel, registrosEquipe, clockwork, suites, cenarios]
       if (showGerador) items.push(gerador)
-      items.push(okr)
       return items
     }
     default:
@@ -77,7 +73,6 @@ function matchesHref(
 ): boolean {
   if (href === "/equipe?tab=lancamentos") return pathname.startsWith("/equipe") && tab === "lancamentos"
   if (href === "/equipe?tab=clockwork")   return pathname.startsWith("/equipe") && tab === "clockwork"
-  if (href === "/equipe?tab=metas")       return pathname.startsWith("/equipe") && tab === "metas"
   return pathname.startsWith(href)
 }
 
