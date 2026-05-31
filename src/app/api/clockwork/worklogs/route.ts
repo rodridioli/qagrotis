@@ -67,7 +67,13 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const targetEmail = await resolveEmailForQaUserId(requestedUserId)
+  let targetEmail: string | null
+  try {
+    targetEmail = await resolveEmailForQaUserId(requestedUserId)
+  } catch (e) {
+    console.error("[api/clockwork/worklogs GET] resolveEmailForQaUserId exception", e)
+    return Response.json({ error: "Erro interno ao resolver utilizador." }, { status: 500 })
+  }
   if (!targetEmail) {
     return Response.json({ error: "Não foi possível resolver o e-mail do utilizador." }, { status: 400 })
   }
@@ -386,10 +392,13 @@ export async function PATCH(req: NextRequest) {
 
   if (!createResult.ok) {
     console.error("[api/clockwork/worklogs PATCH fallback CREATE] falhou — worklog original preservado", {
-      worklogId, issueKey, error: createResult.error,
+      worklogId, issueKey, error: createResult.error, clockworkDetail: createResult.clockworkDetail,
     })
     return Response.json(
-      { error: `Não foi possível salvar o registro (${createResult.error ?? "erro no Clockwork"}).` },
+      {
+        error: `Não foi possível salvar o registro no Clockwork.`,
+        detail: createResult.clockworkDetail ?? createResult.error ?? "Erro desconhecido.",
+      },
       { status: 502 },
     )
   }

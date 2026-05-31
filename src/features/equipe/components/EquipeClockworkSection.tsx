@@ -366,8 +366,10 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
         body: JSON.stringify({ worklogId: worklog.id, issueKey: worklog.issueKey, started: newStarted, timeSpentSeconds: seconds, comment: state.comment, userId: selectedUserId ?? undefined }),
       })
       if (!res.ok) {
-        const json = (await res.json().catch(() => ({}))) as { error?: string }
-        throw new Error(json.error ?? `Erro ${res.status}`)
+        const json = (await res.json().catch(() => ({}))) as { error?: string; detail?: string }
+        const msg = json.error ?? `Erro ${res.status}`
+        const full = json.detail ? `${msg} — ${json.detail}` : msg
+        throw new Error(full)
       }
       // Atualiza estado local para que totalSecondsMonth recalcule imediatamente
       setWorklogs((prev) =>

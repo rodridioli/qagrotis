@@ -133,41 +133,68 @@ export async function createClockworkWorklog(opts: {
   timeSpentSeconds: number
   comment?: string | null
   authorEmail?: string | null
-}): Promise<{ ok: boolean; error?: string }> {
+}): Promise<{ ok: boolean; error?: string; clockworkDetail?: string }> {
   const { token, issueKey, startedAt, timeSpentSeconds, comment, authorEmail } = opts
 
-  const body: Record<string, unknown> = {
+  const baseBody: Record<string, unknown> = {
     issue: { key: issueKey },
     started: startedAt,
     timeSpentSeconds: Math.round(timeSpentSeconds),
   }
-  if (comment?.trim()) body.comment = comment.trim()
-  if (authorEmail?.trim()) body.author = { emailAddress: authorEmail.trim() }
+  if (comment?.trim()) baseBody.comment = comment.trim()
 
-  try {
-    const res = await fetch(`${CW_HOST}/v1/worklogs`, {
-      method: "POST",
-      headers: {
-        Authorization: `Token ${token.trim()}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(15_000),
-    })
-    if (!res.ok) {
+  async function postWorklog(body: Record<string, unknown>): Promise<{ ok: boolean; status: number; text: string }> {
+    try {
+      const res = await fetch(`${CW_HOST}/v1/worklogs`, {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${token.trim()}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(15_000),
+      })
       const text = await res.text().catch(() => "")
-      console.error(
-        `[clockwork] createClockworkWorklog: status ${res.status} para ${issueKey} —`,
-        text.slice(0, 300),
-      )
-      return { ok: false, error: `Clockwork HTTP ${res.status}` }
+      return { ok: res.ok, status: res.status, text }
+    } catch (err) {
+      return { ok: false, status: 0, text: String(err) }
     }
-    console.info(`[clockwork] createClockworkWorklog: worklog criado para ${issueKey} (${timeSpentSeconds}s)`)
+  }
+
+  // 1ª tentativa: com author (atribuição correta)
+  if (authorEmail?.trim()) {
+    const withAuthor = { ...baseBody, author: { emailAddress: authorEmail.trim() } }
+    const r = await postWorklog(withAuthor)
+    if (r.ok) {
+      console.info(`[clockwork] createClockworkWorklog: worklog criado para ${issueKey} (${timeSpentSeconds}s) com author`)
+      return { ok: true }
+    }
+    console.warn(
+      `[clockwork] createClockworkWorklog: status ${r.status} com author para ${issueKey} — tentando sem author. Detalhe: ${r.text.slice(0, 200)}`,
+    )
+    // Se for erro de cliente (4xx), tenta sem author (token pode não ter permissão "create on behalf of")
+    // Se for erro de rede/timeout (status 0), propaga imediatamente
+    if (r.status === 0) {
+      return { ok: false, error: "Erro de rede ao contactar Clockwork.", clockworkDetail: r.text.slice(0, 300) }
+    }
+  }
+
+  // 2ª tentativa: sem author (Clockwork atribui ao token owner)
+  const r2 = await postWorklog(baseBody)
+  if (r2.ok) {
+    console.info(`[clockwork] createClockworkWorklog: worklog criado para ${issueKey} (${timeSpentSeconds}s) sem author`)
     return { ok: true }
-  } catch (err) {
-    console.error("[clockwork] createClockworkWorklog exception:", err, "para", issueKey)
-    return { ok: false, error: String(err) }
+  }
+
+  console.error(
+    `[clockwork] createClockworkWorklog: falhou (status ${r2.status}) para ${issueKey} —`,
+    r2.text.slice(0, 300),
+  )
+  return {
+    ok: false,
+    error: `Clockwork HTTP ${r2.status || "network error"}`,
+    clockworkDetail: r2.text.slice(0, 300),
   }
 }
 
