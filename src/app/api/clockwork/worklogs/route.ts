@@ -359,63 +359,90 @@ export async function PATCH(req: NextRequest) {
       }
     : undefined
 
-  const jiraPath = `/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(worklogId)}?notifyUsers=false`
-  const attempts: { jiraUrl: string; status: number }[] = []
+  // Payload Jira — reutilizado nas duas tentativas por credencial
+  const jiraBody = JSON.stringify({
+    started: jiraStarted,
+    timeSpentSeconds,
+    ...(jiraComment ? { comment: jiraComment } : {}),
+  })
 
-  // ── Itera sobre todas as instâncias Jira ─────────────────────────────────────
+  // Caminho base sem o flag — suficiente para worklogs editáveis normais
+  const jiraPathBase = `/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(worklogId)}?notifyUsers=false`
+  // Caminho com override — necessário quando o worklog está num sprint fechado
+  // ou issue em estado não-editável. Requer "Edit All Worklogs" no projeto Jira.
+  const jiraPathOverride = `${jiraPathBase}&overrideEditableFlag=true`
+
+  const attempts: { jiraUrl: string; status: number; withOverride?: boolean }[] = []
+
+  // ── Itera sobre todas as credenciais disponíveis ──────────────────────────────
   for (const creds of credList) {
     const jiraBase  = creds.jiraUrl.replace(/\/$/, "")
     const basicCred = Buffer.from(`${creds.jiraEmail}:${creds.apiToken}`).toString("base64")
-    const fullUrl   = `${jiraBase}${jiraPath}`
+    const headers   = {
+      Authorization: `Basic ${basicCred}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    }
 
+    // ── Tentativa 1: sem overrideEditableFlag (worklogs normais) ─────────────
     try {
-      const jiraRes = await fetch(fullUrl, {
-        method: "PUT",
-        headers: {
-          Authorization: `Basic ${basicCred}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          started: jiraStarted,
-          timeSpentSeconds,
-          ...(jiraComment ? { comment: jiraComment } : {}),
-        }),
+      const res1 = await fetch(`${jiraBase}${jiraPathBase}`, {
+        method: "PUT", headers, body: jiraBody,
         signal: AbortSignal.timeout(15_000),
       })
 
-      if (jiraRes.ok) {
-        return Response.json({ ok: true })
+      if (res1.ok) return Response.json({ ok: true })
+
+      const text1 = await res1.text().catch(() => "")
+
+      if (res1.status === 401 || res1.status === 403) {
+        attempts.push({ jiraUrl: jiraBase, status: res1.status })
+        console.warn("[clockwork/worklogs PATCH] auth error", { jiraBase, issueKey, status: res1.status })
+        continue // sem permissão → próxima credencial
       }
 
-      const text = await jiraRes.text().catch(() => "")
-      attempts.push({ jiraUrl: jiraBase, status: jiraRes.status })
+      if (res1.status === 404) {
+        attempts.push({ jiraUrl: jiraBase, status: 404 })
+        console.warn("[clockwork/worklogs PATCH] 404", { jiraBase, issueKey })
+        continue // issue não existe aqui → próxima credencial
+      }
 
-      // 401/403 — sem permissão nesta instância → tenta a próxima
-      if (jiraRes.status === 401 || jiraRes.status === 403) {
-        console.warn("[api/clockwork/worklogs PATCH] auth error, tentando próxima instância", {
-          jiraBase, worklogId, issueKey, status: jiraRes.status,
+      // ── Tentativa 2: com overrideEditableFlag (sprint fechado / issue não-editável) ─
+      if (res1.status === 400) {
+        console.warn("[clockwork/worklogs PATCH] 400 sem override, retentando com overrideEditableFlag", {
+          jiraBase, issueKey, worklogId, body: text1.slice(0, 200),
         })
-        continue
+
+        try {
+          const res2 = await fetch(`${jiraBase}${jiraPathOverride}`, {
+            method: "PUT", headers, body: jiraBody,
+            signal: AbortSignal.timeout(15_000),
+          })
+
+          if (res2.ok) return Response.json({ ok: true })
+
+          const text2 = await res2.text().catch(() => "")
+          attempts.push({ jiraUrl: jiraBase, status: res2.status, withOverride: true })
+          console.error("[clockwork/worklogs PATCH] falhou mesmo com override", {
+            jiraBase, issueKey, worklogId, status: res2.status, body: text2.slice(0, 200),
+          })
+          continue
+        } catch (e2) {
+          attempts.push({ jiraUrl: jiraBase, status: 0, withOverride: true })
+          console.error("[clockwork/worklogs PATCH] network error no retry override", e2)
+          continue
+        }
       }
 
-      // 404 — projeto não existe nesta instância → tenta a próxima
-      if (jiraRes.status === 404) {
-        console.warn("[api/clockwork/worklogs PATCH] 404 na instância, tentando próxima", {
-          jiraBase, worklogId, issueKey,
-        })
-        continue
-      }
-
-      // Outros erros (400, 5xx) — loga e tenta a próxima
-      console.error("[api/clockwork/worklogs PATCH] erro Jira", {
-        jiraBase, worklogId, issueKey, status: jiraRes.status, body: text.slice(0, 200),
+      // Outros erros (5xx, etc.)
+      attempts.push({ jiraUrl: jiraBase, status: res1.status })
+      console.error("[clockwork/worklogs PATCH] erro Jira inesperado", {
+        jiraBase, issueKey, worklogId, status: res1.status, body: text1.slice(0, 200),
       })
       continue
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      console.error("[api/clockwork/worklogs PATCH] network error", { jiraBase, worklogId, issueKey, error: msg })
       attempts.push({ jiraUrl: jiraBase, status: 0 })
+      console.error("[clockwork/worklogs PATCH] network error", { jiraBase, issueKey, error: String(e) })
       continue
     }
   }
