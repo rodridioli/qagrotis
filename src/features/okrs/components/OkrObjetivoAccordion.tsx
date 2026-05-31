@@ -1,9 +1,15 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, Pencil, Plus, X } from "lucide-react"
+import { ChevronDown, MoreVertical, Pencil, Plus, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { OkrProgressBar } from "@/features/okrs/components/OkrProgressBar"
 import { OkrSituacaoBadge } from "@/features/okrs/components/OkrSituacaoBadge"
 import { OkrKeyResultCard } from "@/features/okrs/components/OkrKeyResultCard"
@@ -11,7 +17,7 @@ import { OkrObjetivoFormModal } from "@/features/okrs/components/OkrObjetivoForm
 import { OkrKeyResultFormModal } from "@/features/okrs/components/OkrKeyResultFormModal"
 import { OkrCancelModal } from "@/features/okrs/components/OkrCancelModal"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { EQUIPE_LABELS, type OkrObjetivoDto, type OkrPeriodoDto } from "@/features/okrs/lib/okrs-schemas"
+import { EQUIPE_LABELS, type OkrEquipeDto, type OkrObjetivoDto, type OkrPeriodoDto } from "@/features/okrs/lib/okrs-schemas"
 import {
   updateOkrObjetivo,
   cancelOkrObjetivo,
@@ -114,7 +120,7 @@ export function OkrObjetivoAccordion({
       {/* Header do accordion */}
       <div
         className={cn(
-          "flex items-center gap-3 px-4 py-3 cursor-pointer select-none transition-colors",
+          "flex items-center gap-2 px-4 py-3 cursor-pointer select-none transition-colors",
           open ? "bg-muted/20" : "hover:bg-muted/40",
         )}
         onClick={() => setOpen((v) => !v)}
@@ -126,60 +132,79 @@ export function OkrObjetivoAccordion({
         <ChevronDown
           className={cn("size-4 shrink-0 text-text-secondary transition-transform duration-200", open && "rotate-180")}
         />
-        <div className="flex-1 min-w-0 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={cn("text-sm font-semibold text-text-primary", isCanceled && "line-through")}>
-              {objetivo.descricao}
-            </span>
-            <OkrSituacaoBadge situacao={objetivo.situacao} />
-            {objetivo.equipes.map((e) => (
-              <span key={e} className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                {EQUIPE_LABELS[e]}
-              </span>
-            ))}
-          </div>
-          {!isCanceled && (
-            <OkrProgressBar value={objetivo.percentualConcluido} max={100} showLabel />
-          )}
-          {isCanceled && objetivo.motivoCancelamento && (
-            <p className="text-xs text-text-secondary">
-              <span className="font-medium">Motivo:</span> {objetivo.motivoCancelamento}
-            </p>
-          )}
-        </div>
 
-        {canEditObjetivo && !okrEncerrado && !isCanceled && (
-          <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setEditOpen(true)}
-              aria-label="Editar objetivo"
-            >
-              <Pencil className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setCancelOpen(true)}
-              aria-label="Cancelar objetivo"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-            >
-              <X className="size-4" />
-            </Button>
+        {/* Badges de equipe — antes do texto */}
+        {objetivo.equipes.map((e) => (
+          <OkrEquipeBadge key={e} equipe={e} />
+        ))}
+
+        {/* Descrição */}
+        <span className={cn("min-w-0 flex-1 text-sm font-semibold text-text-primary truncate", isCanceled && "line-through")}>
+          {objetivo.descricao}
+        </span>
+
+        {/* Badge de situação */}
+        <OkrSituacaoBadge situacao={objetivo.situacao} />
+
+        {/* Motivo de cancelamento (inline quando cancelado) */}
+        {isCanceled && objetivo.motivoCancelamento && (
+          <span className="hidden sm:inline text-xs text-text-secondary truncate max-w-[12rem]">
+            {objetivo.motivoCancelamento}
+          </span>
+        )}
+
+        {/* Barra de progresso — mesma linha, alinhada à direita, largura fixa */}
+        {!isCanceled && (
+          <div className="shrink-0 w-28" onClick={(e) => e.stopPropagation()}>
+            <OkrProgressBar value={objetivo.percentualConcluido} max={100} showLabel />
           </div>
         )}
 
-        <span className="ml-2 shrink-0 text-xs tabular-nums text-text-secondary">
-          {activeKrs.length} KR{activeKrs.length !== 1 ? "s" : ""}
-        </span>
+        {/* MoreOptions — Editar / Cancelar */}
+        {canEditObjetivo && !okrEncerrado && !isCanceled && (
+          <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label="Mais opções do objetivo"
+                    className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+                  />
+                }
+              >
+                <MoreVertical className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="bottom">
+                <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                  <Pencil className="size-4" />
+                  Editar
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => setCancelOpen(true)}
+                >
+                  <X className="size-4" />
+                  Cancelar objetivo
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+
+        {/* Contagem de KRs — só exibe quando > 0 */}
+        {activeKrs.length > 0 && (
+          <span className="ml-1 shrink-0 text-xs tabular-nums text-text-secondary">
+            {activeKrs.length} KR{activeKrs.length !== 1 ? "s" : ""}
+          </span>
+        )}
       </div>
 
       {/* Conteúdo */}
       {open && (
         <div className="border-t border-border-default px-4 py-4 space-y-3">
           {objetivo.keyResults.length === 0 ? (
-            <EmptyState message="Nenhum Key Result. Adicione o primeiro." />
+            <EmptyState message="Nenhum resultado-chave encontrado." />
           ) : (
             <div className="space-y-3">
               {objetivo.keyResults.map((kr) => (
@@ -208,7 +233,7 @@ export function OkrObjetivoAccordion({
               className="gap-2"
             >
               <Plus className="size-4" />
-              Key Result
+              Adicionar Resultado-chave
             </Button>
           )}
         </div>
@@ -238,5 +263,24 @@ export function OkrObjetivoAccordion({
         membros={membros}
       />
     </div>
+  )
+}
+
+// ── Badge de equipe — mesmo padrão visual do OkrSituacaoBadge ────────────────
+
+const BASE_BADGE = "inline-flex items-center justify-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium shrink-0"
+
+const EQUIPE_BADGE_CONFIG: Record<OkrEquipeDto, string> = {
+  QA:     "border-emerald-300/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+  UX:     "border-violet-300/50  bg-violet-50  text-violet-700  dark:bg-violet-950/30  dark:text-violet-400",
+  TW:     "border-amber-300/50   bg-amber-50   text-amber-700   dark:bg-amber-950/30   dark:text-amber-400",
+  GESTAO: "border-sky-300/50     bg-sky-50     text-sky-700     dark:bg-sky-950/30     dark:text-sky-400",
+}
+
+function OkrEquipeBadge({ equipe }: { equipe: OkrEquipeDto }) {
+  return (
+    <span className={`${BASE_BADGE} ${EQUIPE_BADGE_CONFIG[equipe]}`}>
+      {EQUIPE_LABELS[equipe]}
+    </span>
   )
 }

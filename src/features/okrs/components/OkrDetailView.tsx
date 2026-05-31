@@ -126,7 +126,7 @@ export function OkrDetailView({
           {isMgr && !okrEncerrado && (
             <Button variant="outline" size="sm" onClick={() => setObjetivoFormOpen(true)} className="shrink-0 gap-1.5">
               <Plus className="size-4" />
-              Adicionar objetivo
+              Adicionar Objetivo
             </Button>
           )}
         </div>
