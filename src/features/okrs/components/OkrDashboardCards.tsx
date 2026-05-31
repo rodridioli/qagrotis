@@ -38,7 +38,7 @@ export function OkrDashboardCards({ okr }: OkrDashboardCardsProps) {
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      {stat(allObjetivos.length, "Objetivos", `${cancelados.length} cancelado${cancelados.length !== 1 ? "s" : ""}`)}
+      {stat(allObjetivos.length, "Objetivos")}
       {stat(allKrs.length, "Key Results")}
       {stat(allIniciativas.length, "Iniciativas")}
       {stat(`${progressoTotal.toFixed(0)}%`, "% Conclusão")}

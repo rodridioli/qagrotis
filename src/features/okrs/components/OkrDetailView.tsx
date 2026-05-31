@@ -104,12 +104,6 @@ export function OkrDetailView({
             <OkrSituacaoBadge situacao={okr.situacao} />
           </div>
         </div>
-        {isMgr && !okrEncerrado && (
-          <Button size="sm" onClick={() => setObjetivoFormOpen(true)} className="shrink-0 gap-2">
-            <Plus className="size-4" />
-            Objetivo
-          </Button>
-        )}
       </div>
 
       {/* Banner OKR encerrado */}
@@ -127,27 +121,39 @@ export function OkrDetailView({
 
       {/* Objetivos */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">Objetivos</h2>
-        {okr.objetivos.length === 0 ? (
-          <EmptyState message="Nenhum objetivo cadastrado. Adicione o primeiro." />
-        ) : (
-          okr.objetivos.map((obj, idx) => (
-            <OkrObjetivoAccordion
-              key={obj.id}
-              objetivo={obj}
-              periodo={okr.periodo}
-              canEditObjetivo={canEditObjetivo}
-              canEditKr={canEditKr}
-              canUpdateValue={canUpdateValue}
-              canManageIniciativas={canManageIniciativas}
-              canUpdateIniciativaStatus={canUpdateIniciativaStatus}
-              currentUserId={currentUserId}
-              okrEncerrado={okrEncerrado && !isMgr}
-              onRefresh={load}
-              defaultOpen={idx === 0}
-            />
-          ))
-        )}
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-medium text-text-primary">Objetivos</h2>
+          {isMgr && !okrEncerrado && (
+            <Button variant="outline" size="sm" onClick={() => setObjetivoFormOpen(true)} className="shrink-0 gap-1.5">
+              <Plus className="size-4" />
+              Adicionar objetivo
+            </Button>
+          )}
+        </div>
+        <div className="rounded-xl border border-border-default bg-surface-card">
+          {okr.objetivos.length === 0 ? (
+            <EmptyState message="Nenhum registro encontrado." />
+          ) : (
+            <div className="divide-y divide-border-default">
+              {okr.objetivos.map((obj, idx) => (
+                <OkrObjetivoAccordion
+                  key={obj.id}
+                  objetivo={obj}
+                  periodo={okr.periodo}
+                  canEditObjetivo={canEditObjetivo}
+                  canEditKr={canEditKr}
+                  canUpdateValue={canUpdateValue}
+                  canManageIniciativas={canManageIniciativas}
+                  canUpdateIniciativaStatus={canUpdateIniciativaStatus}
+                  currentUserId={currentUserId}
+                  okrEncerrado={okrEncerrado && !isMgr}
+                  onRefresh={load}
+                  defaultOpen={idx === 0}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <OkrObjetivoFormModal

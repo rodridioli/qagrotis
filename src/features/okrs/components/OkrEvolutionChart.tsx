@@ -31,14 +31,6 @@ interface OkrEvolutionChartProps {
 export function OkrEvolutionChart({ okr }: OkrEvolutionChartProps) {
   const allKrs = okr.objetivos.flatMap((o) => o.keyResults).filter((kr) => kr.situacao === "ATIVO" && kr.evolucao.length > 0)
 
-  if (allKrs.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-10 text-sm text-text-secondary">
-        Nenhuma evolução registrada ainda.
-      </div>
-    )
-  }
-
   // Monta série por mês para cada KR
   const allMonths = new Set<string>()
   for (const kr of allKrs) {
