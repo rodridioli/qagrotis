@@ -4,7 +4,8 @@ import * as React from "react"
 import { Check, Loader2, X } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
+import { Select, SelectTrigger, SelectValue, SelectPopup, SelectItem } from "@/components/ui/select"
 import { OKR_EQUIPES, EQUIPE_LABELS, type OkrEquipeDto, type OkrObjetivoDto } from "@/features/okrs/lib/okrs-schemas"
 
 interface OkrObjetivoFormModalProps {
@@ -23,74 +24,69 @@ export function OkrObjetivoFormModal({
   initial,
 }: OkrObjetivoFormModalProps) {
   const [descricao, setDescricao] = React.useState(initial?.descricao ?? "")
-  const [equipes, setEquipes] = React.useState<OkrEquipeDto[]>(initial?.equipes ?? [])
-  const [errors, setErrors] = React.useState<{ descricao?: string; equipes?: string }>({})
+  const [equipe, setEquipe] = React.useState<OkrEquipeDto | "">(initial?.equipes?.[0] ?? "")
+  const [errors, setErrors] = React.useState<{ descricao?: string; equipe?: string }>({})
 
   React.useEffect(() => {
     if (open) {
       setDescricao(initial?.descricao ?? "")
-      setEquipes(initial?.equipes ?? [])
+      setEquipe(initial?.equipes?.[0] ?? "")
       setErrors({})
     }
   }, [open, initial?.descricao, initial?.equipes])
 
-  function toggleEquipe(equipe: OkrEquipeDto) {
-    setEquipes((prev) =>
-      prev.includes(equipe) ? prev.filter((e) => e !== equipe) : [...prev, equipe],
-    )
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const errs: { descricao?: string; equipes?: string } = {}
-    if (!descricao.trim()) errs.descricao = "Descrição é obrigatória."
-    if (equipes.length === 0) errs.equipes = "Selecione ao menos uma equipe."
+    const errs: { descricao?: string; equipe?: string } = {}
+    if (!descricao.trim()) errs.descricao = "Objetivo é obrigatório."
+    if (!equipe) errs.equipe = "Selecione uma equipe."
     if (Object.keys(errs).length) { setErrors(errs); return }
     setErrors({})
-    await onSubmit({ descricao: descricao.trim(), equipes })
+    await onSubmit({ descricao: descricao.trim(), equipes: [equipe as OkrEquipeDto] })
   }
 
   const isEditing = !!initial
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Editar Objetivo" : "Novo Objetivo"}</DialogTitle>
         </DialogHeader>
         <form id="objetivo-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">
-              Descrição <span className="text-destructive">*</span>
+              Objetivo <span className="text-destructive">*</span>
             </label>
-            <Textarea
+            <Input
               placeholder="Ex.: Ampliar o nível de automação de testes."
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
-              rows={3}
               disabled={loading}
             />
             {errors.descricao && <p className="text-xs text-destructive">{errors.descricao}</p>}
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">
-              Equipes responsáveis <span className="text-destructive">*</span>
+              Equipe responsável <span className="text-destructive">*</span>
             </label>
-            <div className="flex flex-wrap gap-3">
-              {OKR_EQUIPES.map((equipe) => (
-                <label key={equipe} className="flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={equipes.includes(equipe)}
-                    onChange={() => toggleEquipe(equipe)}
-                    disabled={loading}
-                    className="size-4 rounded border border-border-default bg-surface-input accent-brand-primary"
-                  />
-                  <span className="text-sm text-text-primary">{EQUIPE_LABELS[equipe]}</span>
-                </label>
-              ))}
-            </div>
-            {errors.equipes && <p className="text-xs text-destructive">{errors.equipes}</p>}
+            <Select
+              value={equipe}
+              onValueChange={(v) => setEquipe(v as OkrEquipeDto)}
+              disabled={loading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma equipe" />
+              </SelectTrigger>
+              <SelectPopup>
+                {OKR_EQUIPES.map((eq) => (
+                  <SelectItem key={eq} value={eq}>
+                    {EQUIPE_LABELS[eq]}
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+            {errors.equipe && <p className="text-xs text-destructive">{errors.equipe}</p>}
           </div>
         </form>
         <DialogFooter>
