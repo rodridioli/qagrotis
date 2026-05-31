@@ -1,13 +1,17 @@
 "use client"
 
 import * as React from "react"
-import { Pencil, X, TrendingUp } from "lucide-react"
+import { MoreVertical, Pencil, TrendingUp, X } from "lucide-react"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { OkrProgressBar } from "@/features/okrs/components/OkrProgressBar"
 import { OkrRiscoBadge } from "@/features/okrs/components/OkrRiscoBadge"
 import { OkrSituacaoBadge } from "@/features/okrs/components/OkrSituacaoBadge"
-import { OkrIniciativasChecklist } from "@/features/okrs/components/OkrIniciativasChecklist"
 import { OkrKeyResultFormModal } from "@/features/okrs/components/OkrKeyResultFormModal"
 import { OkrKrUpdateModal } from "@/features/okrs/components/OkrKrUpdateModal"
 import { OkrCancelModal } from "@/features/okrs/components/OkrCancelModal"
@@ -15,7 +19,6 @@ import {
   UNIDADE_LABELS,
   type OkrKeyResultDto,
   type OkrEquipeDto,
-  type OkrPeriodoDto,
 } from "@/features/okrs/lib/okrs-schemas"
 import {
   updateOkrKeyResult,
@@ -28,11 +31,8 @@ import { cn } from "@/core/utils"
 interface OkrKeyResultCardProps {
   kr: OkrKeyResultDto
   equipes: OkrEquipeDto[]
-  periodo: OkrPeriodoDto
   canEditKr: boolean
   canUpdateValue: boolean
-  canManageIniciativas: boolean
-  canUpdateIniciativaStatus: boolean
   currentUserId: string
   okrEncerrado: boolean
   onRefresh: () => void
@@ -41,11 +41,8 @@ interface OkrKeyResultCardProps {
 export function OkrKeyResultCard({
   kr,
   equipes,
-  periodo,
   canEditKr,
   canUpdateValue,
-  canManageIniciativas,
-  canUpdateIniciativaStatus,
   currentUserId,
   okrEncerrado,
   onRefresh,
@@ -109,9 +106,9 @@ export function OkrKeyResultCard({
         isCanceled && "opacity-60",
       )}
     >
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <div className="flex-1 min-w-0 space-y-1">
+      {/* Header — descrição + badges + barra de progresso inline + MoreOptions */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className={cn("text-sm font-medium text-text-primary", isCanceled && "line-through")}>
               {kr.descricao}
@@ -120,67 +117,67 @@ export function OkrKeyResultCard({
             {!isCanceled && <OkrRiscoBadge risco={kr.risco} />}
           </div>
           {isCanceled && kr.motivoCancelamento && (
-            <p className="text-xs text-text-secondary">
+            <p className="mt-0.5 text-xs text-text-secondary">
               <span className="font-medium">Motivo:</span> {kr.motivoCancelamento}
             </p>
           )}
           {kr.responsaveis.length > 0 && (
-            <p className="text-xs text-text-secondary">
+            <p className="mt-0.5 text-xs text-text-secondary">
               Responsáveis: {kr.responsaveis.map((r) => r.name).join(", ")}
             </p>
           )}
         </div>
 
-        {!okrEncerrado && !isCanceled && (
-          <div className="flex shrink-0 items-center gap-1">
-            {(canUpdateValue && isMyKr) || canEditKr ? (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setUpdateOpen(true)}
-                aria-label="Atualizar valor"
-              >
-                <TrendingUp className="size-4" />
-              </Button>
-            ) : null}
-            {canEditKr && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={openEdit}
-                  aria-label="Editar Key Result"
-                >
-                  <Pencil className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setCancelOpen(true)}
-                  aria-label="Cancelar Key Result"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <X className="size-4" />
-                </Button>
-              </>
-            )}
+        {/* Barra de progresso — mesma linha, alinhada à direita */}
+        {!isCanceled && (
+          <div className="shrink-0 w-28">
+            <OkrProgressBar value={kr.progressoPercent} max={100} showLabel />
           </div>
+        )}
+
+        {/* MoreOptions — Atualizar / Editar / Cancelar */}
+        {!okrEncerrado && !isCanceled && (((canUpdateValue && isMyKr) || canEditKr)) && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label="Mais opções do resultado-chave"
+                  className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+                />
+              }
+            >
+              <MoreVertical className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="bottom">
+              {((canUpdateValue && isMyKr) || canEditKr) && (
+                <DropdownMenuItem onClick={() => setUpdateOpen(true)}>
+                  <TrendingUp className="size-4" />
+                  Atualizar
+                </DropdownMenuItem>
+              )}
+              {canEditKr && (
+                <DropdownMenuItem onClick={openEdit}>
+                  <Pencil className="size-4" />
+                  Editar
+                </DropdownMenuItem>
+              )}
+              {canEditKr && (
+                <DropdownMenuItem variant="destructive" onClick={() => setCancelOpen(true)}>
+                  <X className="size-4" />
+                  Cancelar
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
 
-      {/* Progresso */}
+      {/* Valor atual / meta — linha secundária */}
       {!isCanceled && (
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs text-text-secondary">
-            <span className="tabular-nums">
-              {kr.valorAtual} / {kr.meta} {unidadeLabel}
-            </span>
-            <span className="tabular-nums font-semibold text-text-primary">
-              {kr.progressoPercent.toFixed(0)}%
-            </span>
-          </div>
-          <OkrProgressBar value={kr.progressoPercent} max={100} />
-        </div>
+        <p className="text-xs tabular-nums text-text-secondary">
+          {kr.valorAtual} / {kr.meta} {unidadeLabel}
+        </p>
       )}
 
       {/* Evolução mensal */}
@@ -212,23 +209,6 @@ export function OkrKeyResultCard({
           )}
         </div>
       )}
-
-      {/* Iniciativas */}
-      <div className="border-t border-border-default pt-3">
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-text-secondary">
-          Iniciativas
-        </p>
-        <OkrIniciativasChecklist
-          keyResultId={kr.id}
-          iniciativas={kr.iniciativas}
-          equipes={equipes}
-          canManage={canManageIniciativas && !isCanceled}
-          canUpdateStatus={canUpdateIniciativaStatus}
-          currentUserId={currentUserId}
-          okrEncerrado={okrEncerrado}
-          onRefresh={onRefresh}
-        />
-      </div>
 
       {/* Modais */}
       <OkrKeyResultFormModal

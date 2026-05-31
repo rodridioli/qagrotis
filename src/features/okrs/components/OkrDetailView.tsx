@@ -39,8 +39,6 @@ export function OkrDetailView({
   const canEditObjetivo = can(role, "okr.objetivo.edit")
   const canEditKr = can(role, "okr.kr.edit")
   const canUpdateValue = can(role, "okr.kr.updateValue")
-  const canManageIniciativas = can(role, "okr.iniciativa.manage")
-  const canUpdateIniciativaStatus = can(role, "okr.iniciativa.updateStatus")
 
   const [okr, setOkr] = React.useState<OkrDetailDto | null>(null)
   const [loading, setLoading] = React.useState(true)
@@ -139,12 +137,9 @@ export function OkrDetailView({
                 <OkrObjetivoAccordion
                   key={obj.id}
                   objetivo={obj}
-                  periodo={okr.periodo}
                   canEditObjetivo={canEditObjetivo}
                   canEditKr={canEditKr}
                   canUpdateValue={canUpdateValue}
-                  canManageIniciativas={canManageIniciativas}
-                  canUpdateIniciativaStatus={canUpdateIniciativaStatus}
                   currentUserId={currentUserId}
                   okrEncerrado={okrEncerrado && !isMgr}
                   onRefresh={load}

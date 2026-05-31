@@ -17,7 +17,7 @@ import { OkrObjetivoFormModal } from "@/features/okrs/components/OkrObjetivoForm
 import { OkrKeyResultFormModal } from "@/features/okrs/components/OkrKeyResultFormModal"
 import { OkrCancelModal } from "@/features/okrs/components/OkrCancelModal"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { EQUIPE_LABELS, type OkrEquipeDto, type OkrObjetivoDto, type OkrPeriodoDto } from "@/features/okrs/lib/okrs-schemas"
+import { EQUIPE_LABELS, type OkrEquipeDto, type OkrObjetivoDto } from "@/features/okrs/lib/okrs-schemas"
 import {
   updateOkrObjetivo,
   cancelOkrObjetivo,
@@ -29,12 +29,9 @@ import { cn } from "@/core/utils"
 
 interface OkrObjetivoAccordionProps {
   objetivo: OkrObjetivoDto
-  periodo: OkrPeriodoDto
   canEditObjetivo: boolean
   canEditKr: boolean
   canUpdateValue: boolean
-  canManageIniciativas: boolean
-  canUpdateIniciativaStatus: boolean
   currentUserId: string
   okrEncerrado: boolean
   onRefresh: () => void
@@ -43,12 +40,9 @@ interface OkrObjetivoAccordionProps {
 
 export function OkrObjetivoAccordion({
   objetivo,
-  periodo,
   canEditObjetivo,
   canEditKr,
   canUpdateValue,
-  canManageIniciativas,
-  canUpdateIniciativaStatus,
   currentUserId,
   okrEncerrado,
   onRefresh,
@@ -212,11 +206,8 @@ export function OkrObjetivoAccordion({
                   key={kr.id}
                   kr={kr}
                   equipes={objetivo.equipes}
-                  periodo={periodo}
                   canEditKr={canEditKr && !isCanceled}
                   canUpdateValue={canUpdateValue}
-                  canManageIniciativas={canManageIniciativas && !isCanceled}
-                  canUpdateIniciativaStatus={canUpdateIniciativaStatus}
                   currentUserId={currentUserId}
                   okrEncerrado={okrEncerrado}
                   onRefresh={onRefresh}
