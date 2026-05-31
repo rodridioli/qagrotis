@@ -1,26 +1,18 @@
 "use client"
 
-import { cn } from "@/core/utils"
 import type { OkrSituacaoDto, OkrObjetivoSituacaoDto, OkrKrSituacaoDto } from "@/features/okrs/lib/okrs-schemas"
 
 type SituacaoBadgeVariant = OkrSituacaoDto | OkrObjetivoSituacaoDto | OkrKrSituacaoDto
 
+const BASE = "inline-flex items-center justify-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium"
+
 const VARIANT_CONFIG: Record<string, { label: string; className: string }> = {
-  ATIVO:     { label: "Ativo",     className: "bg-primary/10 text-primary" },
-  ENCERRADO: { label: "Encerrado", className: "bg-muted text-muted-foreground" },
-  CANCELADO: { label: "Cancelado", className: "bg-destructive/10 text-destructive" },
+  ATIVO:     { label: "Ativo",     className: "border-badge-success/30 bg-badge-success/10 text-badge-success-text" },
+  ENCERRADO: { label: "Encerrado", className: "border-border-default bg-neutral-grey-50 text-text-secondary" },
+  CANCELADO: { label: "Cancelado", className: "border-destructive/30 bg-destructive/10 text-destructive" },
 }
 
 export function OkrSituacaoBadge({ situacao }: { situacao: SituacaoBadgeVariant }) {
   const cfg = VARIANT_CONFIG[situacao] ?? VARIANT_CONFIG.ATIVO
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-        cfg.className,
-      )}
-    >
-      {cfg.label}
-    </span>
-  )
+  return <span className={`${BASE} ${cfg.className}`}>{cfg.label}</span>
 }

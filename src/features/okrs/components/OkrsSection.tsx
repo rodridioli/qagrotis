@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, MoreVertical, Eye, Pencil, CheckSquare, XSquare } from "lucide-react"
+import { Plus, MoreVertical, Eye, CheckSquare, XSquare } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
+import { TableToolbar } from "@/components/shared/TableToolbar"
 import { OkrSituacaoBadge } from "@/features/okrs/components/OkrSituacaoBadge"
 import { OkrProgressBar } from "@/features/okrs/components/OkrProgressBar"
 import { OkrFormModal } from "@/features/okrs/components/OkrFormModal"
@@ -120,37 +121,35 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            placeholder="Buscar OKR..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="h-9 w-full rounded-custom border border-border-default bg-surface-input pl-9 pr-3 text-sm text-text-primary outline-none placeholder:text-text-secondary focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
-          />
-          <svg className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-        </div>
-        {canCreate && (
-          <Button onClick={() => setFormOpen(true)} className="shrink-0 gap-2">
-            <Plus className="size-4" />
-            Novo OKR
-          </Button>
-        )}
-      </div>
-
       {loading ? (
         <SectionSpinner minHeight="min-h-[40vh]" />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          message={
-            query.trim()
-              ? `Nenhum resultado para "${query}".`
-              : "Nenhum OKR cadastrado."
-          }
-        />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-card">
+        <div className="overflow-hidden rounded-xl bg-surface-card shadow-card">
+          <TableToolbar
+            search={query}
+            onSearchChange={(v) => setQuery(v)}
+            searchPlaceholder="Buscar OKR..."
+            totalLabel="Total de OKRs"
+            totalCount={filtered.length}
+            baseCount={okrs.length}
+            extra={
+              canCreate ? (
+                <Button onClick={() => setFormOpen(true)} className="shrink-0 gap-2">
+                  <Plus className="size-4" />
+                  Adicionar OKR
+                </Button>
+              ) : undefined
+            }
+          />
+          {filtered.length === 0 ? (
+            <EmptyState
+              message={
+                query.trim()
+                  ? `Nenhum resultado para "${query}".`
+                  : "Nenhum OKR cadastrado."
+              }
+            />
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
@@ -159,7 +158,7 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Ano</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Período</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Objetivos</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Key Results</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Resultados-chave</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Situação</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Atualizado em</th>
                   <th className="w-12 px-3 py-3 text-center text-xs font-semibold text-text-secondary">
@@ -259,6 +258,7 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
               </tbody>
             </table>
           </div>
+          )}
         </div>
       )}
 

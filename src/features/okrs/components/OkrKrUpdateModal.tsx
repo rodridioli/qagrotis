@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Check, Loader2, X } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -80,11 +81,16 @@ export function OkrKrUpdateModal({ open, onClose, onSubmit, kr, loading }: OkrKr
           </div>
         </form>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
+          <Button variant="outline" onClick={onClose} disabled={loading} className="gap-1.5">
+            <X className="size-4 shrink-0" aria-hidden />
             Cancelar
           </Button>
-          <Button type="submit" form="kr-update-form" disabled={loading}>
-            {loading ? "Salvando..." : "Salvar"}
+          <Button type="submit" form="kr-update-form" disabled={loading} className="gap-1.5">
+            {loading ? (
+              <><Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />Salvando…</>
+            ) : (
+              <><Check className="size-4 shrink-0" aria-hidden />Salvar</>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

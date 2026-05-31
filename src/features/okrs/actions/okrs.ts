@@ -103,19 +103,18 @@ async function assertOkrEditavel(okrId: string, isMgr: boolean): Promise<void> {
 
 // ── Código automático ─────────────────────────────────────────────────────────
 
-async function gerarCodigoOkr(ano: number): Promise<string> {
+async function gerarCodigoOkr(): Promise<string> {
   const result = await prisma.okr.aggregate({
-    where: { ano },
     _max: { codigo: true },
   })
   const last = result._max.codigo
   let seq = 1
   if (last) {
-    const parts = last.split("-")
-    const n = parseInt(parts[2] ?? "0", 10)
+    // Suporta formatos OKR-001 (novo) e OKR-2025-001 (legado)
+    const n = parseInt(/(\d{3})$/.exec(last)?.[1] ?? "0", 10)
     if (!Number.isNaN(n)) seq = n + 1
   }
-  return `OKR-${ano}-${String(seq).padStart(3, "0")}`
+  return `OKR-${String(seq).padStart(3, "0")}`
 }
 
 // ── Mappers ───────────────────────────────────────────────────────────────────
@@ -485,7 +484,7 @@ export async function createOkr(input: CreateOkrInput): Promise<ActionResult<{ i
     const parsed = createOkrSchema.safeParse(input)
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
-    const codigo = await gerarCodigoOkr(parsed.data.ano)
+    const codigo = await gerarCodigoOkr()
     const okr = await prisma.okr.create({
       data: {
         id: crypto.randomUUID(),

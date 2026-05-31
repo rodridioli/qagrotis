@@ -44,6 +44,39 @@ if (emptyFields.length > 0) {
 }
 ```
 
+### Botões em Modais (Tolerância Zero)
+
+Todo `<Button>` dentro de `<DialogFooter>` **DEVE** ter ícone à esquerda com `aria-hidden` e `className="gap-1.5"`.
+
+| Tipo | variant | Ícone idle | Ícone loading |
+|---|---|---|---|
+| Cancelar | `outline` | `<X className="size-4 shrink-0" aria-hidden />` | — (não tem loading) |
+| Confirmar/Salvar | `default` | `<Check className="size-4 shrink-0" aria-hidden />` | `<Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />` |
+| Destrutivo | `destructive` | `<Ban className="size-4 shrink-0" aria-hidden />` | `<Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />` |
+
+```tsx
+// ✅ CORRETO — padrão obrigatório
+<DialogFooter>
+  <Button variant="outline" onClick={onClose} disabled={loading} className="gap-1.5">
+    <X className="size-4 shrink-0" aria-hidden />
+    Cancelar
+  </Button>
+  <Button type="submit" form="my-form" disabled={loading} className="gap-1.5">
+    {loading ? (
+      <><Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />Salvando…</>
+    ) : (
+      <><Check className="size-4 shrink-0" aria-hidden />Salvar</>
+    )}
+  </Button>
+</DialogFooter>
+
+// ❌ PROIBIDO — botão sem ícone
+<Button onClick={onClose}>Cancelar</Button>
+<Button>{loading ? "Salvando..." : "Salvar"}</Button>
+```
+
+Referências canônicas no projeto: `EquipeAusenciasSection.tsx`, `ChapterScheduleDialog.tsx`, `OnboardingGate.tsx`
+
 ### Botão de Filtro (padrão único, nunca variar)
 ```tsx
 // Copiar literalmente de TableToolbar.tsx — sem label ao lado do ícone
@@ -262,5 +295,6 @@ Revise o código implementado e marque cada item. **Corrija antes de entregar �
 - [ ] Todos os estados implementados: Skeleton (loading), erro+retry, vazio+CTA, sucesso toast
 - [ ] Loading: apenas um responsável por tela; `<SectionSpinner />` sem `label` customizado; nunca dois loaders simultâneos
 - [ ] Botões icon-only têm `aria-label`; modais com focus trap + restore
+- [ ] Todos os `<Button>` em `<DialogFooter>` têm ícone à esquerda com `aria-hidden` e `gap-1.5`
 - [ ] Mobile-first: estilos base para mobile, `sm:` para escalar
 - [ ] Componentes novos documentados no Storybook (default, loading, erro, vazio)

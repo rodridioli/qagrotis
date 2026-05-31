@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Ban, Loader2, X } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -64,11 +65,16 @@ export function OkrCancelModal({
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
+          <Button variant="outline" onClick={onClose} disabled={loading} className="gap-1.5">
+            <X className="size-4 shrink-0" aria-hidden />
             Cancelar
           </Button>
-          <Button variant="destructive" onClick={handleConfirm} disabled={loading}>
-            {loading ? "Cancelando..." : "Confirmar cancelamento"}
+          <Button variant="destructive" onClick={handleConfirm} disabled={loading} className="gap-1.5">
+            {loading ? (
+              <><Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />Cancelando…</>
+            ) : (
+              <><Ban className="size-4 shrink-0" aria-hidden />Confirmar cancelamento</>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
