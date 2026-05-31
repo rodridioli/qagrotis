@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.6.30",
+    "commit": "deploy-vercel",
+    "date": "2026-05-30",
+    "tag": "Novidade",
+    "author": "Rodrigo Diego de Oliveira",
+    "changes": [
+      "feat(avaliacoes): padronização visual dos cards superiores da tela de avaliação",
+      "refactor(qa/actions): remover funções deletar individuais consolidadas no hard delete MGR",
+      "fix(equipes): alinhar tela de Equipes ao padrão visual de Usuários",
+      "feat(equipes): nova funcionalidade Configurações > Equipes com filtro de visibilidade por equipe",
+      "chore(reviewer): ajustes de segurança, testes RBAC e correções de linter",
+      "test(security): cobertura unitária para db-utils, RBAC e jira-credentials",
+      "feat(records): exclusão definitiva de registros inativos para Administrador:MGR",
+      "feat(rbac/menu): adicionar Clockwork para Padrão:UX e Padrão:TW",
+      "feat(auth): redirecionar perfil UX para /kanban ao fazer login",
+      "fix(ausencias): corrigir cor do botão Aprovar e alinhamento do MoreVertical",
+      "fix(ui): raise overlay z-index to z-30 to cover sticky table columns",
+      "fix(feedbacks): ocultar campo Tipo na visualização de feedback concluído",
+      "fix(ui): LoadingOverlay covers content area only, not full screen",
+      "fix(ui): add missing confirmIcon to all ConfirmDialog usages",
+      "fix(empty-states): standardize remaining non-compliant empty state messages"
+    ]
+  },
+  {
     "version": "1.6.29",
     "commit": "deploy-vercel",
     "date": "2026-05-27",
