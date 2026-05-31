@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Rocket,
   Sparkles,
+  Target,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/core/utils"
@@ -31,34 +32,38 @@ function getItems(
   hasIntegracoes: boolean,
   hasJiraConfigured: boolean,
 ): TrabalhoItem[] {
-  const registrosEquipe: TrabalhoItem  = { id: "registros-equipe",      label: "Registros", Icon: Check,          href: "/equipe?tab=lancamentos" }
-  const registrosIndividual: TrabalhoItem = { id: "registros-individual", label: "Registros", Icon: Check,          href: "/individual/lancamentos" }
-  const clockwork: TrabalhoItem        = { id: "clockwork",              label: "Clockwork", Icon: Clock4,         href: "/equipe?tab=clockwork" }
-  const kanban: TrabalhoItem           = { id: "kanban",                 label: "Kanban",    Icon: KanbanSquare,   href: "/kanban" }
-  const painel: TrabalhoItem           = { id: "painel",                 label: "Painel",    Icon: LayoutDashboard, href: "/dashboard" }
-  const suites: TrabalhoItem           = { id: "suites",                 label: "Suítes",    Icon: Rocket,         href: "/suites" }
-  const cenarios: TrabalhoItem         = { id: "cenarios",               label: "Cenários",  Icon: FileText,       href: "/cenarios" }
-  const gerador: TrabalhoItem          = { id: "gerador",                label: "Gerador",   Icon: Sparkles,       href: "/gerador" }
+  const registrosEquipe: TrabalhoItem     = { id: "registros-equipe",      label: "Registros", Icon: Check,           href: "/equipe?tab=lancamentos" }
+  const registrosIndividual: TrabalhoItem = { id: "registros-individual",  label: "Registros", Icon: Check,           href: "/individual/lancamentos" }
+  const clockwork: TrabalhoItem           = { id: "clockwork",              label: "Clockwork", Icon: Clock4,          href: "/equipe?tab=clockwork" }
+  const kanban: TrabalhoItem              = { id: "kanban",                 label: "Kanban",    Icon: KanbanSquare,    href: "/kanban" }
+  const painel: TrabalhoItem              = { id: "painel",                 label: "Painel",    Icon: LayoutDashboard, href: "/dashboard" }
+  const suites: TrabalhoItem              = { id: "suites",                 label: "Suítes",    Icon: Rocket,          href: "/suites" }
+  const cenarios: TrabalhoItem            = { id: "cenarios",               label: "Cenários",  Icon: FileText,        href: "/cenarios" }
+  const gerador: TrabalhoItem             = { id: "gerador",                label: "Gerador",   Icon: Sparkles,        href: "/gerador" }
+  /** OKR é exibido mas desabilitado para todos os perfis não-MGR */
+  const okrDisabled: TrabalhoItem         = { id: "okr",                    label: "OKR",       Icon: Target,          href: "/equipe?tab=metas", disabled: true }
 
   const showGerador = hasIntegracoes && hasJiraConfigured
 
   switch (role) {
     case "Padrão:UX":
-      return [kanban, registrosIndividual, clockwork]
+      return [kanban, registrosIndividual, clockwork, okrDisabled]
     case "Administrador:UX":
-      return [kanban, registrosEquipe, clockwork]
+      return [kanban, registrosEquipe, clockwork, okrDisabled]
     case "Padrão:TW":
-      return [registrosIndividual, clockwork]
+      return [registrosIndividual, clockwork, okrDisabled]
     case "Administrador:TW":
-      return [registrosEquipe, clockwork]
+      return [registrosEquipe, clockwork, okrDisabled]
     case "Padrão:QA": {
-      const items: TrabalhoItem[] = [painel, registrosIndividual, suites, cenarios]
+      const items: TrabalhoItem[] = [painel, registrosIndividual, clockwork, suites, cenarios]
       if (showGerador) items.push(gerador)
+      items.push(okrDisabled)
       return items
     }
     case "Administrador:QA": {
       const items: TrabalhoItem[] = [painel, registrosEquipe, clockwork, suites, cenarios]
       if (showGerador) items.push(gerador)
+      items.push(okrDisabled)
       return items
     }
     default:

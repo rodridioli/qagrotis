@@ -27,23 +27,20 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
     const tab = searchParams.get("tab")
     const isLancamentosTopLevel = tab === "lancamentos" && !canAccessLancamentos
     const isClockworkTopLevel = tab === "clockwork" && hideClockwork
-    const isOkrTopLevel = tab === "metas" && hideOkr
+    // "metas" (OKR) nunca pertence ao grupo Equipe — pertence a Gestão (MGR) ou Trabalho (outros)
+    const isOkrTopLevel = tab === "metas"
     const now = pathname.startsWith("/equipe") && !isLancamentosTopLevel && !isClockworkTopLevel && !isOkrTopLevel
     const was = prevPath.current.startsWith("/equipe")
     prevPath.current = pathname
     if (now && !was) setOpen(true)
     if (!now && was) setOpen(false)
-  }, [pathname, searchParams, canAccessLancamentos, hideClockwork, hideOkr])
+  }, [pathname, searchParams, canAccessLancamentos, hideClockwork])
 
   const activeTabId = searchParams.get("tab") ?? "chapters"
-  // Quando OKR está oculto para este grupo e a tab atual é metas, não é rota de Equipe
-  const isOkrRoute = hideOkr && activeTabId === "metas"
   const parentActive = pathname.startsWith("/equipe")
     && !(activeTabId === "lancamentos" && !canAccessLancamentos)
     && !(activeTabId === "clockwork" && hideClockwork)
-    && !isOkrRoute
-  // Suprime visualmente a abertura do accordion quando estamos na rota OKR
-  const effectiveOpen = open && !isOkrRoute
+    && activeTabId !== "metas"
 
   function go(href: string) {
     if (onNavigate) onNavigate(href)
@@ -126,12 +123,13 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
         </button>
       </div>
 
-      {effectiveOpen ? (
+      {open ? (
         <nav id="equipe-sidebar-subnav" aria-label="Secções Equipe" className="ml-2 border-l border-border-default pl-2">
           <ul className="flex flex-col gap-0.5">
             {EQUIPE_NAV_ENTRIES.filter((e) => {
               if (e.id === "lancamentos" && !canAccessLancamentos) return false
               if (e.id === "clockwork" && hideClockwork) return false
+              if (e.id === "metas"       && hideOkr)       return false
               return true
             }).map(({ id, label, icon: Icon }) => {
               const href = `/equipe?tab=${id}`
