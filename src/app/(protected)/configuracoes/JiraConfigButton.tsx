@@ -50,7 +50,7 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
         setAccountEmail(resolvedAccountEmail)
         setJiraUrl(d.jiraUrl?.trim() || "https://agrotis.atlassian.net/")
         // Se não há e-mail armazenado, pré-preencher com o e-mail real da sessão
-        setEmail(d.jiraEmail?.trim() || resolvedAccountEmail)
+        setEmail(resolvedAccountEmail || d.jiraEmail?.trim() || "")
         setHasStoredToken(!!d.hasToken)
       } else {
         setAccountEmail(defaultEmail)
