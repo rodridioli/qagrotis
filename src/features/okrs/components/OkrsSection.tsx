@@ -163,13 +163,7 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
             baseCount={okrs.length}
           />
           {filtered.length === 0 ? (
-            <EmptyState
-              message={
-                query.trim()
-                  ? `Nenhum resultado para "${query}".`
-                  : "Nenhum OKR cadastrado."
-              }
-            />
+            <EmptyState message="Nenhum registro encontrado." />
           ) : (
           <div className="overflow-x-auto">
             <table className="qagrotis-table-row-hover w-full min-w-[640px] table-fixed text-sm">
