@@ -113,10 +113,12 @@ export async function listMembrosDisponiveis(leaderId: string): Promise<MembroDi
     throw new Error("Líder inválido.")
   }
 
-  const alreadyLinked = await prisma.teamMembership.findMany({
-    select: { memberId: true },
-  })
+  const [alreadyLinked, inactiveRecords] = await Promise.all([
+    prisma.teamMembership.findMany({ select: { memberId: true } }),
+    prisma.inactiveUser.findMany({ select: { userId: true } }),
+  ])
   const linkedIds = new Set(alreadyLinked.map((m) => m.memberId))
+  const inactiveIds = new Set(inactiveRecords.map((r) => r.userId))
 
   const available = await prisma.createdUser.findMany({
     where: { type: "Padrão", accessProfile: leader.accessProfile },
@@ -125,7 +127,7 @@ export async function listMembrosDisponiveis(leaderId: string): Promise<MembroDi
   })
 
   return available
-    .filter((u) => !linkedIds.has(u.id))
+    .filter((u) => !linkedIds.has(u.id) && !inactiveIds.has(u.id))
     .map((u) => ({
       id: u.id,
       name: u.name ?? u.email,

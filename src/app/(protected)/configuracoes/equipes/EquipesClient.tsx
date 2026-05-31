@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectTrigger,
-  SelectValue,
   SelectPopup,
   SelectItem,
 } from "@/components/ui/select"
@@ -242,24 +241,29 @@ export default function EquipesClient({ initialLideres }: Props) {
                         )}
                       </td>
                       <td className="py-3 pl-2 pr-4">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <button
-                                type="button"
-                                aria-label={`Ações para ${lider.name}`}
-                                className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100"
-                              />
-                            }
-                          >
-                            <MoreVertical className="size-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openSheet(lider)}>
-                              Gerenciar equipe
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  aria-label={`Ações para ${lider.name}`}
+                                  className="flex size-8 items-center justify-center rounded-custom text-text-secondary transition-colors hover:bg-neutral-grey-100"
+                                />
+                              }
+                            >
+                              <MoreVertical className="size-4" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-[180px]">
+                              <DropdownMenuItem
+                                className="whitespace-nowrap"
+                                onClick={() => openSheet(lider)}
+                              >
+                                Gerenciar equipe
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -352,17 +356,13 @@ export default function EquipesClient({ initialLideres }: Props) {
                       )}
                     </section>
 
-                    {/* ── Adicionar membro ── */}
-                    <section>
-                      <h3 className="mb-3 text-sm font-semibold text-text-primary">
-                        Adicionar membro
-                      </h3>
+                    {/* ── Adicionar membro — oculto quando não há disponíveis ── */}
+                    {disponiveis.length > 0 && (
+                      <section>
+                        <h3 className="mb-3 text-sm font-semibold text-text-primary">
+                          Adicionar membro
+                        </h3>
 
-                      {disponiveis.length === 0 ? (
-                        <p className="text-sm text-text-secondary">
-                          Todos os usuários deste perfil já pertencem a uma equipe.
-                        </p>
-                      ) : (
                         <div className="flex gap-2">
                           <div className="flex-1">
                             <Select
@@ -373,12 +373,16 @@ export default function EquipesClient({ initialLideres }: Props) {
                               }}
                             >
                               <SelectTrigger aria-label="Selecionar membro para adicionar">
-                                <SelectValue placeholder="Selecionar membro..." />
+                                <span className={selectedMembroId ? "text-text-primary" : "text-text-secondary"}>
+                                  {selectedMembroId
+                                    ? (disponiveis.find((d) => d.id === selectedMembroId)?.name ?? selectedMembroId)
+                                    : "Selecionar membro..."}
+                                </span>
                               </SelectTrigger>
                               <SelectPopup>
                                 {disponiveis.map((d) => (
                                   <SelectItem key={d.id} value={d.id}>
-                                    {d.name} — {d.email}
+                                    {d.name}
                                   </SelectItem>
                                 ))}
                               </SelectPopup>
@@ -399,14 +403,14 @@ export default function EquipesClient({ initialLideres }: Props) {
                             Adicionar
                           </Button>
                         </div>
-                      )}
 
-                      {duplicityError && (
-                        <p className="mt-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                          {duplicityError}
-                        </p>
-                      )}
-                    </section>
+                        {duplicityError && (
+                          <p className="mt-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                            {duplicityError}
+                          </p>
+                        )}
+                      </section>
+                    )}
                   </>
                 )}
               </div>
@@ -429,6 +433,7 @@ export default function EquipesClient({ initialLideres }: Props) {
             : ""
         }
         confirmLabel="Remover"
+        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
         buttonVariant="destructive"
         disabled={removePending}
         onConfirm={handleRemoveConfirm}
