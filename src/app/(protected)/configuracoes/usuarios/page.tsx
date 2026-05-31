@@ -1,8 +1,8 @@
 import { auth } from "@/core/auth"
 import { getQaUsers } from "@/features/usuarios/actions/usuarios"
 import { checkIsAdmin } from "@/core/session"
+import { getTeamMemberIds } from "@/features/equipe/actions/equipes"
 import { serializeRscProps } from "@/core/rsc-serialize"
-import { type AccessProfile } from "@/core/rbac/policy"
 import UsuariosClient from "./UsuariosClient"
 
 
@@ -22,22 +22,22 @@ export default async function UsuariosPage() {
   const isMgrAdmin =
     session?.user?.type === "Administrador" && session?.user?.accessProfile === "MGR"
 
-  // RBAC: Admin+QA/UX/TW só vê usuários do próprio perfil; Admin+MGR vê todos.
+  // RBAC: Admin+MGR vê todos; Admin+QA/UX/TW vê apenas membros da sua equipe.
   const viewerType = session?.user?.type ?? null
-  const viewerProfile = (session?.user?.accessProfile ?? null) as AccessProfile | null
-  const restrictByProfile =
+  const restrictToTeam =
     viewerType === "Administrador" &&
-    viewerProfile !== null &&
-    viewerProfile !== "MGR"
-  /** QA: inclui cadastros sem perfil gravado (legado = QA). UX/TW: apenas perfil explícito. */
-  const users =
-    restrictByProfile && viewerProfile
-      ? viewerProfile === "QA"
-        ? allUsers.filter((u) => (u.accessProfile ?? "QA") === "QA")
-        : allUsers.filter((u) => u.accessProfile === viewerProfile)
-      : allUsers
-  const listProfileFilter =
-    restrictByProfile && viewerProfile ? viewerProfile : null
+    session?.user?.accessProfile !== null &&
+    session?.user?.accessProfile !== "MGR"
+
+  let allowedUserIds: string[] | null = null
+  if (restrictToTeam && session?.user?.id) {
+    const memberIds = await getTeamMemberIds(session.user.id)
+    allowedUserIds = [session.user.id, ...memberIds]
+  }
+
+  const users = allowedUserIds
+    ? allUsers.filter((u) => allowedUserIds!.includes(u.id))
+    : allUsers
 
   if (rUsers.status === "rejected") {
     console.error("[usuarios/page] getQaUsers:", rUsers.reason)
@@ -71,7 +71,7 @@ export default async function UsuariosPage() {
       isAdmin={isAdmin}
       isMgrAdmin={isMgrAdmin}
       canHardDelete={isMgrAdmin}
-      listProfileFilter={listProfileFilter}
+      allowedUserIds={serializeRscProps(allowedUserIds)}
       usersFetchFailed={usersFetchFailed}
       usersFetchErrorMessage={usersFetchErrorMessage}
     />

@@ -57,11 +57,11 @@ function getInitials(name: string): string {
     .toUpperCase()
 }
 
-/** Mesma regra do servidor em `usuarios/page.tsx` após `getQaUsers()`. */
-function filterUsersForList(all: QaUserRecord[], filter: AccessProfile | null): QaUserRecord[] {
-  if (!filter) return all
-  if (filter === "QA") return all.filter((u) => (u.accessProfile ?? "QA") === "QA")
-  return all.filter((u) => u.accessProfile === filter)
+/** Filtra a lista de usuários para o cliente — respeita allowedUserIds (equipe) quando não null. */
+function filterUsersForList(all: QaUserRecord[], allowedUserIds: string[] | null): QaUserRecord[] {
+  if (!allowedUserIds) return all
+  const allowed = new Set(allowedUserIds)
+  return all.filter((u) => allowed.has(u.id))
 }
 
 interface FilterState {
@@ -76,8 +76,8 @@ interface Props {
   /** true apenas para Administrador:MGR — único que pode criar, inativar e editar outros. */
   isMgrAdmin?: boolean
   canHardDelete?: boolean
-  /** Admin QA/UX/TW: reaplica o filtro de perfil após recarregar lista no cliente. */
-  listProfileFilter?: AccessProfile | null
+  /** IDs permitidos para Admin QA/UX/TW (próprio + membros da equipe). null = sem restrição (MGR). */
+  allowedUserIds?: string[] | null
   /** true quando getQaUsers() falhou no servidor — lista veio vazia por erro, não porque não há cadastros */
   usersFetchFailed?: boolean
   usersFetchErrorMessage?: string | null
@@ -89,7 +89,7 @@ export default function UsuariosClient({
   isAdmin,
   isMgrAdmin = false,
   canHardDelete = false,
-  listProfileFilter = null,
+  allowedUserIds = null,
   usersFetchFailed = false,
   usersFetchErrorMessage = null,
 }: Props) {
@@ -109,9 +109,9 @@ export default function UsuariosClient({
     if (!currentUserId) return
     if (initialUsers.some((u) => u.id === currentUserId)) return
     getQaUsers()
-      .then((fresh) => setUsers(filterUsersForList(fresh, listProfileFilter)))
+      .then((fresh) => setUsers(filterUsersForList(fresh, allowedUserIds)))
       .catch(() => {})
-  }, [currentUserId, initialUsers, listProfileFilter])
+  }, [currentUserId, initialUsers, allowedUserIds])
   const [isInativando, setIsInativando] = useState(false)
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc")
 
@@ -285,7 +285,7 @@ export default function UsuariosClient({
     setReloadBusy(true)
     try {
       const fresh = await getQaUsers()
-      setUsers(filterUsersForList(fresh, listProfileFilter))
+      setUsers(filterUsersForList(fresh, allowedUserIds))
       setFetchRecovered(true)
       toast.success("Lista de usuários carregada.")
       router.refresh()

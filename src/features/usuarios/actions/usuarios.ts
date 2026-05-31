@@ -15,6 +15,8 @@ import {
 import {
   ensureAllUserProfileColumns,
 } from "@/core/prisma-schema-ensure"
+import { buildRole, can } from "@/core/rbac/policy"
+import { getTeamMemberIds } from "@/features/equipe/actions/equipes"
 import {
   diasTrabalhoHibridoForStorage,
   normalizeDiasTrabalhoHibrido,
@@ -360,13 +362,22 @@ export async function getQaUserProfile(id: string): Promise<QaUserProfile | null
 }
 
 export async function ativarQaUser(id: string): Promise<{ error?: string }> {
+  let session: Awaited<ReturnType<typeof requireAdmin>>
   try {
-    await requireAdmin()
+    session = await requireAdmin()
   } catch {
     return { error: "Não autorizado." }
   }
   const result = userIdSchema.safeParse(id)
   if (!result.success) return { error: "ID inválido." }
+
+  // Admin QA/UX/TW só pode ativar membros da sua própria equipe
+  const actorRole = buildRole(session.user.type, session.user.accessProfile)
+  const isMgr = session.user.type === "Administrador" && session.user.accessProfile === "MGR"
+  if (!isMgr && !can(actorRole, "individual.viewOthers")) {
+    const memberIds = await getTeamMemberIds(session.user.id)
+    if (!memberIds.includes(id)) return { error: "Não autorizado." }
+  }
 
   try {
     const isInactive = await prisma.inactiveUser.findUnique({ where: { userId: id } })
@@ -393,14 +404,24 @@ export async function ativarQaUser(id: string): Promise<{ error?: string }> {
 }
 
 export async function inativarQaUsers(ids: string[]): Promise<{ error?: string }> {
+  let session: Awaited<ReturnType<typeof requireAdmin>>
   try {
-    await requireAdmin()
+    session = await requireAdmin()
   } catch {
     return { error: "Não autorizado." }
   }
   if (ids.length === 0) return {}
   const result = idsArraySchema.safeParse(ids)
   if (!result.success) return { error: "IDs inválidos." }
+
+  // Admin QA/UX/TW só pode inativar membros da sua própria equipe
+  const actorRole = buildRole(session.user.type, session.user.accessProfile)
+  const isMgr = session.user.type === "Administrador" && session.user.accessProfile === "MGR"
+  if (!isMgr && !can(actorRole, "individual.viewOthers")) {
+    const memberIds = new Set(await getTeamMemberIds(session.user.id))
+    const unauthorized = ids.filter((id) => !memberIds.has(id))
+    if (unauthorized.length > 0) return { error: "Não autorizado." }
+  }
 
   try {
     // Protect against removing the last active admin

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Loader2, PanelsTopLeft } from "lucide-react"
+import { AlertTriangle, Check, Loader2, PanelsTopLeft } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { CancelActionButton } from "@/components/shared/CancelActionButton"
@@ -26,6 +26,13 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
   const [hasStoredToken, setHasStoredToken] = useState(false)
   const [saving, setSaving] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ jiraUrl?: boolean; email?: boolean; token?: boolean }>({})
+  /** E-mail real da sessão retornado pela API — usado para detectar divergência. */
+  const [accountEmail, setAccountEmail] = useState("")
+
+  const emailDiverges =
+    !!accountEmail &&
+    !!email.trim() &&
+    email.trim().toLowerCase() !== accountEmail.toLowerCase()
 
   async function handleOpen() {
     setToken("")
@@ -37,15 +44,21 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
           jiraUrl?: string
           jiraEmail?: string
           hasToken?: boolean
+          accountEmail?: string
         }
+        const resolvedAccountEmail = d.accountEmail?.trim() ?? defaultEmail
+        setAccountEmail(resolvedAccountEmail)
         setJiraUrl(d.jiraUrl?.trim() || "https://agrotis.atlassian.net/")
-        setEmail(d.jiraEmail?.trim() || defaultEmail)
+        // Se não há e-mail armazenado, pré-preencher com o e-mail real da sessão
+        setEmail(d.jiraEmail?.trim() || resolvedAccountEmail)
         setHasStoredToken(!!d.hasToken)
       } else {
+        setAccountEmail(defaultEmail)
         setJiraUrl("https://agrotis.atlassian.net/")
         setEmail(defaultEmail)
       }
     } catch {
+      setAccountEmail(defaultEmail)
       setJiraUrl("https://agrotis.atlassian.net/")
       setEmail(defaultEmail)
     }
@@ -128,7 +141,18 @@ export default function JiraConfigButton({ defaultEmail = "" }: Props) {
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">E-mail da conta Jira <span className="text-destructive">*</span></label>
-              <Input placeholder="seu@email.com" value={email} onChange={(e) => { setEmail(e.target.value); setFieldErrors(p => ({ ...p, email: false })) }} aria-invalid={!!fieldErrors.email} />
+              <Input
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setFieldErrors(p => ({ ...p, email: false })) }}
+                aria-invalid={!!fieldErrors.email}
+              />
+              {emailDiverges && (
+                <p className="flex items-start gap-1.5 text-xs text-badge-warning-text" role="alert">
+                  <AlertTriangle className="mt-px size-3.5 shrink-0" aria-hidden />
+                  E-mail diferente do seu acesso ({accountEmail}). Confirme que é a conta Atlassian correta.
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">API Token {!hasStoredToken && <span className="text-destructive">*</span>}</label>
