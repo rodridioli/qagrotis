@@ -1145,7 +1145,7 @@ export function QaDashboardClient({ membros, progressaoMap, brokenTestIssueTypeN
   return (
     <div className="min-w-0 space-y-6">
       {loading ? (
-        <SectionSpinner minHeight="min-h-[400px]" label="Carregando dados..." />
+        <SectionSpinner minHeight="min-h-[400px]" />
       ) : (
         <>
           {/* Avatar strip + year selector */}

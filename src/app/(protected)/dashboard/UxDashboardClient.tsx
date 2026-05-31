@@ -1384,7 +1384,7 @@ export function UxDashboardClient({ membros, progressaoMap, approvalIssues, memb
   return (
     <div className="min-w-0 space-y-6">
       {loading ? (
-        <SectionSpinner minHeight="min-h-[400px]" label="Carregando dados..." />
+        <SectionSpinner minHeight="min-h-[400px]" />
       ) : (
         <>
           {/* Avatar strip + period selector na mesma linha */}
