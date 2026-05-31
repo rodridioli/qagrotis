@@ -447,20 +447,23 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
-  // ── Todas as instâncias falharam ─────────────────────────────────────────────
+  // ── Todas as instâncias falharam — gera mensagem de erro específica ─────────
+  const projectKey = issueKey.split("-")[0] ?? issueKey
+
+  // 403 no retry com override = falta permissão "Edit All Worklogs" no projeto Jira
+  const has403Override = attempts.some((a) => a.withOverride && a.status === 403)
+
   const detail = attempts
-    .map((a) => `${a.jiraUrl} → HTTP ${a.status || "network error"}`)
+    .map((a) => `${a.jiraUrl} → HTTP ${a.status || "network error"}${a.withOverride ? " (com override)" : ""}`)
     .join("; ")
 
   console.error("[api/clockwork/worklogs PATCH] todas as instâncias falharam", {
     worklogId, issueKey, attempts,
   })
 
-  return Response.json(
-    {
-      error: `Nenhuma instância Jira conseguiu editar o worklog (${issueKey}). Verifique as credenciais configuradas.`,
-      detail,
-    },
-    { status: 422 },
-  )
+  const errorMsg = has403Override
+    ? `Sem permissão para editar worklog de terceiros no projeto ${projectKey}. No Jira, adicione seu usuário ao papel "Edit All Worklogs" no projeto ${projectKey}, ou peça ao dono do worklog que configure suas credenciais Jira no app.`
+    : `Não foi possível editar o worklog (${issueKey}). Verifique as credenciais Jira em Configurações.`
+
+  return Response.json({ error: errorMsg, detail }, { status: 422 })
 }
