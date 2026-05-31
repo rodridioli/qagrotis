@@ -252,6 +252,8 @@ const PatchBodySchema = z.object({
   started: z.string().min(1),           // ISO datetime (ex: "2026-05-28T09:00:00.000Z")
   timeSpentSeconds: z.number().int().positive(),
   comment: z.string().max(2000),
+  /** userId do dono do worklog. Necessário quando MGR edita worklog de outro membro. */
+  userId: z.string().min(1).optional(),
 })
 
 export type ClockworkPatchBody = z.infer<typeof PatchBodySchema>
@@ -334,19 +336,74 @@ export async function PATCH(req: NextRequest) {
         }
 
         const text = await jiraRes.text().catch(() => "")
-        console.error("[api/clockwork/worklogs PATCH via Jira] falhou", {
+        console.warn("[api/clockwork/worklogs PATCH via Jira] falhou, tentando fallback Clockwork", {
           worklogId, issueKey, jiraStatus: jiraRes.status, jiraBody: text.slice(0, 300),
         })
-        return Response.json(
-          { error: `Não foi possível salvar o registro no Jira (HTTP ${jiraRes.status}). Verifique sua conexão e tente novamente.` },
-          { status: 502 },
-        )
+        // fall through to Clockwork fallback
       } catch (e) {
-        console.error("[api/clockwork/worklogs PATCH via Jira] network error", e)
-        return Response.json({ error: "Erro de rede ao salvar o registro." }, { status: 502 })
+        console.error("[api/clockwork/worklogs PATCH via Jira] network error, tentando Clockwork", e)
+        // fall through to Clockwork fallback
       }
     }
   }
 
-  return Response.json({ error: "Credenciais Jira não configuradas." }, { status: 400 })
+  // ── Fallback: Clockwork delete + recreate ─────────────────────────────────────
+  // A Clockwork API não expõe PATCH — a estratégia é DELETE + POST.
+  // Usado quando: Jira retorna 400/404/5xx (ex: issue de outro projeto Jira)
+  // ou quando credenciais Jira não estão configuradas.
+  if (!issueKey) {
+    return Response.json({ error: "Credenciais Jira não configuradas e issueKey ausente." }, { status: 400 })
+  }
+
+  const cwToken = await getClockworkApiTokenResolved().catch(() => "")
+  if (!cwToken) {
+    return Response.json({ error: "Credenciais Jira não configuradas e Clockwork não disponível." }, { status: 400 })
+  }
+
+  // 1. Remove o worklog antigo do Clockwork
+  const cwDeleteUrl = `${CW_HOST}/v1/worklogs/${encodeURIComponent(worklogId)}`
+  try {
+    const cwDelRes = await fetch(cwDeleteUrl, {
+      method: "DELETE",
+      headers: { Authorization: `Token ${cwToken.trim()}`, Accept: "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    })
+    // 204/200 = sucesso; 404 = já foi removido — ambos aceitáveis
+    if (!cwDelRes.ok && cwDelRes.status !== 404) {
+      const errText = await cwDelRes.text().catch(() => "")
+      console.error("[api/clockwork/worklogs PATCH fallback DELETE]", {
+        worklogId, cwStatus: cwDelRes.status, cwBody: errText.slice(0, 200),
+      })
+      return Response.json(
+        { error: `Clockwork retornou HTTP ${cwDelRes.status} ao remover worklog.` },
+        { status: 502 },
+      )
+    }
+  } catch (e) {
+    console.error("[api/clockwork/worklogs PATCH fallback DELETE] network error", e)
+    return Response.json({ error: "Erro de rede ao remover worklog no Clockwork." }, { status: 502 })
+  }
+
+  // 2. Recria o worklog com os valores atualizados
+  // Usa o userId do body (quando MGR edita worklog de outro membro) ou o da sessão.
+  const targetUserId = body.userId ?? session.user.id
+  const targetEmail = await resolveEmailForQaUserId(targetUserId).catch(() => null)
+  const createResult = await createClockworkWorklog({
+    token: cwToken,
+    issueKey,
+    startedAt: started,
+    timeSpentSeconds,
+    comment: comment || null,
+    authorEmail: targetEmail ?? session.user.email ?? null,
+  })
+
+  if (createResult.ok) return Response.json({ ok: true })
+
+  console.error("[api/clockwork/worklogs PATCH fallback CREATE] falhou", {
+    worklogId, issueKey, error: createResult.error,
+  })
+  return Response.json(
+    { error: `Não foi possível salvar o registro (${createResult.error ?? "erro no Clockwork"}).` },
+    { status: 502 },
+  )
 }

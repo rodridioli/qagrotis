@@ -363,7 +363,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ worklogId: worklog.id, issueKey: worklog.issueKey, started: newStarted, timeSpentSeconds: seconds, comment: state.comment }),
+        body: JSON.stringify({ worklogId: worklog.id, issueKey: worklog.issueKey, started: newStarted, timeSpentSeconds: seconds, comment: state.comment, userId: selectedUserId ?? undefined }),
       })
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string }
