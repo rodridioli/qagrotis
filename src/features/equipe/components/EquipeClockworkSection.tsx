@@ -363,7 +363,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ worklogId: worklog.id, issueKey: worklog.issueKey, started: newStarted, timeSpentSeconds: seconds, comment: state.comment, userId: selectedUserId ?? undefined }),
+        body: JSON.stringify({ worklogId: worklog.id, issueKey: worklog.issueKey, started: newStarted, timeSpentSeconds: seconds, comment: state.comment, userId: selectedUserId ?? undefined, originalStarted: worklog.started }),
       })
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string; detail?: string }
@@ -393,7 +393,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
         method: "DELETE",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ worklogId: targetId, issueKey: deleteTarget.issueKey, userId: selectedUserId ?? undefined }),
+        body: JSON.stringify({ worklogId: targetId, issueKey: deleteTarget.issueKey, userId: selectedUserId ?? undefined, started: deleteTarget.started }),
       })
       const json = (await res.json().catch(() => ({}))) as { error?: string }
       if (!res.ok) {

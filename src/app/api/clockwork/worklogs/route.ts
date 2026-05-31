@@ -3,6 +3,7 @@ import { validateOrigin } from "@/core/security"
 import { buildRole, can } from "@/core/rbac/policy"
 import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
 import { fetchClockworkWorklogsForEmail, createClockworkWorklog } from "@/features/qa/lib/clockwork-worklogs-fetch"
+import { findJiraWorklogIdByStarted } from "@/features/qa/lib/jira-worklogs-fetch"
 import {
   getMgrJiraCredentials,
   resolveJiraCredentialsForRequest,
@@ -122,6 +123,9 @@ const DeleteBodySchema = z.object({
   /** userId do dono do worklog. Quando diferente do utilizador da sessão, as credenciais
    *  do dono são tentadas primeiro — necessário quando MGR exclui worklog de outro membro. */
   userId: z.string().min(1).optional(),
+  /** Instante de início (ISO) do worklog — usado para resolver o ID real no Jira,
+   *  já que o ID listado via Clockwork não corresponde ao ID do worklog Jira. */
+  started: z.string().min(1).optional(),
 })
 
 export async function DELETE(req: NextRequest) {
@@ -164,7 +168,18 @@ export async function DELETE(req: NextRequest) {
     if (jiraCreds) {
       const jiraBase  = jiraCreds.jiraUrl.replace(/\/$/, "")
       const basicCred = Buffer.from(`${jiraCreds.jiraEmail}:${jiraCreds.apiToken}`).toString("base64")
-      const jiraUrl   = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(body.issueKey)}/worklog/${encodeURIComponent(body.worklogId)}`
+
+      // O ID listado via Clockwork não é o ID do worklog Jira — resolve o real pelo instante.
+      let jiraWorklogId = body.worklogId
+      if (body.started) {
+        const ownerEmail = body.userId
+          ? await resolveEmailForQaUserId(body.userId).catch(() => null)
+          : (session.user.email ?? null)
+        const resolved = await findJiraWorklogIdByStarted(jiraBase, basicCred, body.issueKey, body.started, ownerEmail)
+        if (resolved.worklogId) jiraWorklogId = resolved.worklogId
+      }
+
+      const jiraUrl   = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(body.issueKey)}/worklog/${encodeURIComponent(jiraWorklogId)}`
 
       try {
         const jiraRes = await fetch(jiraUrl, {
@@ -260,6 +275,9 @@ const PatchBodySchema = z.object({
   comment: z.string().max(2000),
   /** userId do dono do worklog. Necessário quando MGR edita worklog de outro membro. */
   userId: z.string().min(1).optional(),
+  /** Instante de início ORIGINAL (ISO) do worklog, antes da edição — usado para
+   *  resolver o ID real no Jira (o ID listado via Clockwork não é o ID do Jira). */
+  originalStarted: z.string().min(1).optional(),
 })
 
 export type ClockworkPatchBody = z.infer<typeof PatchBodySchema>
@@ -303,7 +321,19 @@ export async function PATCH(req: NextRequest) {
     if (jiraCreds) {
       const jiraBase  = jiraCreds.jiraUrl.replace(/\/$/, "")
       const basicCred = Buffer.from(`${jiraCreds.jiraEmail}:${jiraCreds.apiToken}`).toString("base64")
-      const jiraUrl   = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(worklogId)}`
+
+      // O ID listado via Clockwork não é o ID do worklog Jira — resolve o real pelo
+      // instante de início ORIGINAL antes de editar. Sem isto, o PUT sempre dá 404.
+      let jiraWorklogId = worklogId
+      if (body.originalStarted) {
+        const ownerEmail = body.userId
+          ? await resolveEmailForQaUserId(body.userId).catch(() => null)
+          : (session.user.email ?? null)
+        const resolved = await findJiraWorklogIdByStarted(jiraBase, basicCred, issueKey, body.originalStarted, ownerEmail)
+        if (resolved.worklogId) jiraWorklogId = resolved.worklogId
+      }
+
+      const jiraUrl   = `${jiraBase}/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(jiraWorklogId)}`
 
       // Jira Cloud v3: started deve usar offset explícito (+0000), não Z
       const jiraStarted = started.replace(/Z$/, "+0000")

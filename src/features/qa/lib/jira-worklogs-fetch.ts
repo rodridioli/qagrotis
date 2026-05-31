@@ -126,6 +126,69 @@ export async function jiraJson<T>(
   return { ok: res.ok, status: res.status, data, text }
 }
 
+/**
+ * Resolve o ID **real** de um worklog Jira a partir do instante de início.
+ *
+ * Necessário porque os worklogs listados via Clockwork Pro expõem o ID interno
+ * do Clockwork (`cw-…`), que NÃO corresponde ao ID do worklog no Jira. Sem esta
+ * resolução, qualquer PUT/DELETE em `/issue/{key}/worklog/{id}` usaria um ID
+ * inexistente no Jira e retornaria 404.
+ *
+ * Casa pelo instante `started` (mesmo epoch, tolerância de 60s) dentro da issue.
+ * Quando há mais de um candidato, filtra pelo e-mail do autor (quando fornecido).
+ *
+ * @returns o ID do worklog no Jira, ou `null` se não encontrado/sem acesso.
+ */
+export async function findJiraWorklogIdByStarted(
+  base: string,
+  credentials: string,
+  issueKey: string,
+  startedIso: string,
+  ownerEmail?: string | null,
+): Promise<{ worklogId: string | null; httpStatus: number }> {
+  const targetMs = new Date(startedIso).getTime()
+  if (Number.isNaN(targetMs)) return { worklogId: null, httpStatus: 0 }
+  const ownerLower = ownerEmail?.trim().toLowerCase() ?? ""
+
+  let startAt = 0
+  let lastStatus = 0
+  for (;;) {
+    const url = `${base}/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog?startAt=${startAt}&maxResults=100`
+    const { ok, status, data } = await jiraJson<{
+      worklogs?: {
+        id: string
+        started?: string
+        author?: { emailAddress?: string }
+      }[]
+      total?: number
+    }>(url, credentials)
+    lastStatus = status
+    if (!ok || !data?.worklogs) break
+
+    const matches = data.worklogs.filter((w) => {
+      if (!w.started) return false
+      const ms = new Date(w.started).getTime()
+      return !Number.isNaN(ms) && Math.abs(ms - targetMs) <= 60_000
+    })
+    if (matches.length === 1) return { worklogId: matches[0]!.id, httpStatus: status }
+    if (matches.length > 1) {
+      if (ownerLower) {
+        const byOwner = matches.find(
+          (w) => (w.author?.emailAddress ?? "").trim().toLowerCase() === ownerLower,
+        )
+        if (byOwner) return { worklogId: byOwner.id, httpStatus: status }
+      }
+      // Ambíguo sem e-mail do autor — usa o primeiro para não bloquear a edição.
+      return { worklogId: matches[0]!.id, httpStatus: status }
+    }
+
+    startAt += data.worklogs.length
+    const total = data.total ?? startAt
+    if (startAt >= total || data.worklogs.length === 0) break
+  }
+  return { worklogId: null, httpStatus: lastStatus }
+}
+
 export async function findJiraAccountIdByEmail(
   base: string,
   credentials: string,
