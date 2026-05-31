@@ -27,17 +27,19 @@ export function EquipeSidebarNavGroup({ collapsed, onNavigate, canAccessLancamen
     const tab = searchParams.get("tab")
     const isLancamentosTopLevel = tab === "lancamentos" && !canAccessLancamentos
     const isClockworkTopLevel = tab === "clockwork" && hideClockwork
-    const now = pathname.startsWith("/equipe") && !isLancamentosTopLevel && !isClockworkTopLevel
+    const isOkrTopLevel = tab === "metas" && hideOkr
+    const now = pathname.startsWith("/equipe") && !isLancamentosTopLevel && !isClockworkTopLevel && !isOkrTopLevel
     const was = prevPath.current.startsWith("/equipe")
     prevPath.current = pathname
     if (now && !was) setOpen(true)
     if (!now && was) setOpen(false)
-  }, [pathname, searchParams, canAccessLancamentos, hideClockwork])
+  }, [pathname, searchParams, canAccessLancamentos, hideClockwork, hideOkr])
 
   const activeTabId = searchParams.get("tab") ?? "chapters"
   const parentActive = pathname.startsWith("/equipe")
     && !(activeTabId === "lancamentos" && !canAccessLancamentos)
     && !(activeTabId === "clockwork" && hideClockwork)
+    && !(activeTabId === "metas" && hideOkr)
 
   function go(href: string) {
     if (onNavigate) onNavigate(href)

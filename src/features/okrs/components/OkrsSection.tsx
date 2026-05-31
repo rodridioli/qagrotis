@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, MoreVertical, Eye, CheckSquare, XSquare } from "lucide-react"
+import { Plus, MoreVertical, Eye, CheckSquare, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,6 +13,7 @@ import {
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { TableToolbar } from "@/components/shared/TableToolbar"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { OkrSituacaoBadge } from "@/features/okrs/components/OkrSituacaoBadge"
 import { OkrProgressBar } from "@/features/okrs/components/OkrProgressBar"
 import { OkrFormModal } from "@/features/okrs/components/OkrFormModal"
@@ -26,6 +27,7 @@ import {
   listOkrs,
   createOkr,
   updateOkrSituacao,
+  deleteOkr,
 } from "@/features/okrs/actions/okrs"
 import { buildRole, can } from "@/core/rbac/policy"
 
@@ -48,7 +50,7 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
   const canCreate = can(role, "okr.create")
   const canEdit = can(role, "okr.edit")
   const canClose = can(role, "okr.close")
-  const canCancel = can(role, "okr.cancel")
+  const canDelete = can(role, "okr.delete")
 
   const [okrs, setOkrs] = React.useState<OkrListRow[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -57,6 +59,7 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
   const [creating, setCreating] = React.useState(false)
   const [selectedOkrId, setSelectedOkrId] = React.useState<string | null>(null)
   const [actionSaving, setActionSaving] = React.useState<string | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null)
 
   const load = React.useCallback(async () => {
     setLoading(true)
@@ -94,12 +97,27 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
     }
   }
 
-  async function handleSituacao(id: string, situacao: "ENCERRADO" | "CANCELADO") {
+  async function handleSituacao(id: string, situacao: "ENCERRADO") {
     setActionSaving(id)
     try {
       const res = await updateOkrSituacao(id, { situacao })
       if ("error" in res) { toast.error(res.error); return }
-      toast.success(situacao === "ENCERRADO" ? "OKR encerrado." : "OKR cancelado.")
+      toast.success("OKR encerrado.")
+      load()
+    } finally {
+      setActionSaving(null)
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTargetId) return
+    const id = deleteTargetId
+    setDeleteTargetId(null)
+    setActionSaving(id)
+    try {
+      const res = await deleteOkr(id)
+      if ("error" in res) { toast.error(res.error); return }
+      toast.success("OKR excluído.")
       load()
     } finally {
       setActionSaving(null)
@@ -151,9 +169,9 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
             />
           ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="qagrotis-table-row-hover w-full min-w-[640px] table-fixed text-sm">
               <thead>
-                <tr className="border-b border-border-default bg-muted/40">
+                <tr className="border-b border-border-default bg-neutral-grey-50">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Ano</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Período</th>
@@ -170,13 +188,13 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
                 {filtered.map((okr) => (
                   <tr
                     key={okr.id}
-                    className="border-b border-border-default last:border-b-0 transition-colors hover:bg-muted/20"
+                    className="border-b border-border-default last:border-b-0 transition-colors"
                   >
                     <td className="px-4 py-3">
                       <button
                         type="button"
                         onClick={() => setSelectedOkrId(okr.id)}
-                        className="font-semibold text-primary hover:underline tabular-nums"
+                        className="font-semibold text-brand-primary hover:underline tabular-nums"
                       >
                         {okr.codigo}
                       </button>
@@ -240,14 +258,14 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
                               Encerrar
                             </DropdownMenuItem>
                           )}
-                          {canCancel && okr.situacao !== "CANCELADO" && (
+                          {canDelete && (
                             <DropdownMenuItem
                               variant="destructive"
-                              onClick={() => handleSituacao(okr.id, "CANCELADO")}
+                              onClick={() => setDeleteTargetId(okr.id)}
                               disabled={actionSaving === okr.id}
                             >
-                              <XSquare className="size-4" />
-                              Cancelar
+                              <Trash2 className="size-4" />
+                              Excluir
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -267,6 +285,17 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
         onClose={() => setFormOpen(false)}
         onSubmit={handleCreate}
         loading={creating}
+      />
+
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTargetId(null) }}
+        title="Excluir OKR"
+        description="Esta ação é permanente e removerá todos os objetivos, Resultados-chave e iniciativas vinculados. Deseja continuar?"
+        confirmLabel="Excluir"
+        confirmIcon={<Trash2 className="size-4" />}
+        disabled={actionSaving !== null}
+        onConfirm={handleDelete}
       />
     </div>
   )
