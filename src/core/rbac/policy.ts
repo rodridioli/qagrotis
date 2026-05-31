@@ -60,7 +60,7 @@ export type Capability =
   | "okr.create"
   | "okr.edit"
   | "okr.close"
-  | "okr.cancel"
+  | "okr.delete"
   | "okr.objetivo.create"
   | "okr.objetivo.edit"
   | "okr.objetivo.cancel"
@@ -264,7 +264,7 @@ const POLICY: Record<Role, RoleConfig> = {
       "okr.create",
       "okr.edit",
       "okr.close",
-      "okr.cancel",
+      "okr.delete",
       "okr.objetivo.create",
       "okr.objetivo.edit",
       "okr.objetivo.cancel",

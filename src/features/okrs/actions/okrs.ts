@@ -524,6 +524,22 @@ export async function updateOkrSituacao(
   }
 }
 
+export async function deleteOkr(okrId: string): Promise<ActionResult<void>> {
+  try {
+    await requireMgr()
+
+    const existing = await prisma.okr.findUnique({ where: { id: okrId }, select: { id: true } })
+    if (!existing) return { error: "OKR não encontrado." }
+
+    await prisma.okr.delete({ where: { id: okrId } })
+
+    revalidatePath("/equipe")
+    return { data: undefined }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erro ao excluir OKR." }
+  }
+}
+
 // ── Objetivos ─────────────────────────────────────────────────────────────────
 
 export async function createOkrObjetivo(
