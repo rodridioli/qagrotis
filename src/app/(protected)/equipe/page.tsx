@@ -25,6 +25,7 @@ export default async function EquipePage({
 
   const [isAdmin, session] = await Promise.all([checkIsAdmin(), auth()])
   const role = buildRole(session?.user?.type, session?.user?.accessProfile)
+  const userType = session?.user?.type ?? "Padrão"
   const userAccessProfile = (session?.user?.accessProfile ?? "QA") as AccessProfile
   const currentUserId = session?.user?.id ?? ""
   const isMgr = isAdmin && userAccessProfile === "MGR"
@@ -48,6 +49,7 @@ export default async function EquipePage({
   return (
     <EquipeClient
       isAdmin={serializeRscProps(isAdmin)}
+      userType={serializeRscProps(userType)}
       userAccessProfile={serializeRscProps(userAccessProfile)}
       canFilterByProfile={serializeRscProps(canFilterByProfile)}
       canAccessEquipeLancamentos={serializeRscProps(canAccessEquipeLancamentos)}

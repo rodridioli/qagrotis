@@ -1,7 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-// Connection config is in prisma.config.ts (Prisma 7+)
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,31 +6,21 @@ datasource db {
   provider = "postgresql"
 }
 
-enum Plan {
-  FREE
-  TRIAL
-  PRO
-}
-
-// ── Auth.js models ────────────────────────────────────────────────────────────
-
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
+  id                     String    @id @default(cuid())
+  name                   String?
+  email                  String    @unique
+  emailVerified          DateTime?
+  image                  String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
   plan                   Plan      @default(TRIAL)
   trialEndsAt            DateTime?
   stripeCustomerId       String?   @unique
   stripeSubscriptionId   String?   @unique
   stripeCurrentPeriodEnd DateTime?
-
-  accounts Account[]
-  sessions Session[]
+  accounts               Account[]
+  sessions               Session[]
 }
 
 model Account {
@@ -49,11 +35,9 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([provider, providerAccountId])
 }
@@ -62,10 +46,9 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model VerificationToken {
@@ -75,10 +58,6 @@ model VerificationToken {
 
   @@id([identifier, token])
 }
-
-// ── Legacy (kept for schema compatibility) ────────────────────────────────────
-
-// ── QAgrotis domain models ────────────────────────────────────────────────────
 
 model Cliente {
   id           String   @id
@@ -93,28 +72,28 @@ model Cliente {
 }
 
 model Sistema {
-  id          String   @id
+  id          String    @id
   name        String
   description String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  modulos     Modulo[]
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   cenarios    Cenario[]
+  modulos     Modulo[]
   suites      Suite[]
 }
 
 model Modulo {
-  id          String   @id
+  id          String    @id
   name        String
   description String?
   sistemaId   String
   sistemaName String
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  sistema     Sistema  @relation(fields: [sistemaId], references: [id])
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   cenarios    Cenario[]
+  sistema     Sistema   @relation(fields: [sistemaId], references: [id])
   suites      Suite[]
 
   @@index([active, sistemaName])
@@ -122,18 +101,17 @@ model Modulo {
 }
 
 model Cenario {
-  id                String    @id
+  id                String      @id
   scenarioName      String
   system            String
   module            String
-  client            String    @default("")
-  execucoes         Int       @default(0)
-  erros             Int       @default(0)
-  suites            Int       @default(0)
+  client            String      @default("")
+  execucoes         Int         @default(0)
+  erros             Int         @default(0)
+  suites            Int         @default(0)
   tipo              String
-  active            Boolean   @default(true)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  active            Boolean     @default(true)
+  createdAt         DateTime    @default(now())
   createdBy         String?
   risco             String?
   regraDeNegocio    String?
@@ -148,16 +126,15 @@ model Cenario {
   usuarioTeste      String?
   senhaTeste        String?
   senhaFalsa        String?
-  steps             Json      @default("[]")
-  deps              String[]  @default([])
+  steps             Json        @default("[]")
+  deps              String[]    @default([])
   credencialId      String?
-
-  // Relationships
   systemId          String?
   moduleId          String?
-  sistema           Sistema?    @relation(fields: [systemId], references: [id])
-  modulo            Modulo?     @relation(fields: [moduleId], references: [id])
+  updatedAt         DateTime    @updatedAt
   credencial        Credencial? @relation(fields: [credencialId], references: [id])
+  modulo            Modulo?     @relation(fields: [moduleId], references: [id])
+  sistema           Sistema?    @relation(fields: [systemId], references: [id])
 
   @@index([active])
   @@index([system])
@@ -166,84 +143,67 @@ model Cenario {
   @@index([createdAt])
 }
 
-// Suite stores cenarios and historico as embedded JSON arrays (denormalized)
 model Suite {
-  id        String   @id
-  suiteName String
-  versao    String
-  sistema   String
-  modulo    String
-  cliente   String   @default("")
-  tipo      String
-  objetivo  String?
-  active    Boolean  @default(true)
-  encerrada Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  cenarios  Json     @default("[]")
-  historico Json     @default("[]")
-
-  // Relationships
-  sistemaId String?
-  moduloId  String?
-  sistemaRef Sistema? @relation(fields: [sistemaId], references: [id])
+  id         String   @id
+  suiteName  String
+  versao     String
+  sistema    String
+  modulo     String
+  cliente    String   @default("")
+  tipo       String
+  objetivo   String?
+  active     Boolean  @default(true)
+  encerrada  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  cenarios   Json     @default("[]")
+  historico  Json     @default("[]")
+  sistemaId  String?
+  moduloId   String?
+  updatedAt  DateTime @updatedAt
   moduloRef  Modulo?  @relation(fields: [moduloId], references: [id])
+  sistemaRef Sistema? @relation(fields: [sistemaId], references: [id])
 
   @@index([active])
   @@index([createdAt])
   @@index([active, sistema])
 }
 
-// ── Auth / user management ────────────────────────────────────────────────────
-
-enum AccessProfile {
-  QA
-  UX
-  TW
-  MGR
-}
-
-// Users created by admins (have passwords, managed manually)
 model CreatedUser {
-  id               String    @id
-  name             String
-  email            String    @unique
-  type             String    @default("Padrão")
-  accessProfile    AccessProfile?
-  classificacao    String?
-  photoPath        String?
-  dataNascimento   DateTime?
-  horarioEntrada   String?
-  horarioSaida     String?
-  formatoTrabalho  String?
-  /** Dias presenciais no modo Híbrido: `["seg","ter",…]` */
+  id                  String           @id
+  name                String
+  email               String           @unique
+  type                String           @default("Padrão")
+  classificacao       String?
+  photoPath           String?
+  dataNascimento      DateTime?
+  horarioEntrada      String?
+  horarioSaida        String?
+  formatoTrabalho     String?
+  /// * Dias presenciais no modo Híbrido: `["seg","ter",…]`
   diasTrabalhoHibrido Json?
-  password         String    @default("")
-  createdAt        DateTime  @default(now())
-
-  // --- Novos Campos ---
-  cep              String?
-  address          String?
-  addressNumber    String?
-  neighborhood     String?
-  country          String?
-  state            String?
-  city             String?
-  phone            String?
-  emergencyContact String?
-  instagram        String?
-  linkedin         String?
-
-  education        Json?     // [{ title, institution, year }]
-  courses          Json?     // [{ name, institution, year, hours }]
-  languages        Json?     // [{ name, level }]
-  certifications   Json?     // [{ title, institution, year }]
-  careerHistory    Json?     // [{ date, cargo, salary, type }]
-
-  notifications  Notification[]
-  userBadges     UserBadge[]
-  teamAsLeader   TeamMembership[] @relation("TeamLeader")
-  teamAsMember   TeamMembership?  @relation("TeamMember")
+  password            String           @default("")
+  createdAt           DateTime         @default(now())
+  accessProfile       AccessProfile?
+  cep                 String?
+  address             String?
+  addressNumber       String?
+  neighborhood        String?
+  country             String?
+  state               String?
+  city                String?
+  phone               String?
+  emergencyContact    String?
+  instagram           String?
+  linkedin            String?
+  education           Json?
+  courses             Json?
+  languages           Json?
+  certifications      Json?
+  careerHistory       Json?
+  notifications       Notification[]
+  userBadges          UserBadge[]
+  teamAsLeader        TeamMembership[] @relation("TeamLeader")
+  teamAsMember        TeamMembership?  @relation("TeamMember")
 }
 
 /// Credenciais Jira por usuário (mesmo userId da sessão: CreatedUser ou fallback OAuth).
@@ -265,47 +225,41 @@ model ClockworkIntegration {
   updatedAt       DateTime @updatedAt
 }
 
-// Profile overrides for both mock and created users (name, email, type, photo)
 model UserProfile {
-  userId          String    @id
-  name            String?
-  email           String?
-  type            String?
-  accessProfile   AccessProfile?
-  classificacao   String?
-  photoPath       String?
-  dataNascimento  DateTime?
-  horarioEntrada  String?
-  horarioSaida    String?
-  formatoTrabalho String?
+  userId              String         @id
+  name                String?
+  email               String?
+  type                String?
+  classificacao       String?
+  photoPath           String?
+  dataNascimento      DateTime?
+  horarioEntrada      String?
+  horarioSaida        String?
+  formatoTrabalho     String?
   diasTrabalhoHibrido Json?
-
-  // --- Novos Campos ---
-  cep              String?
-  address          String?
-  addressNumber    String?
-  neighborhood     String?
-  country          String?
-  state            String?
-  city             String?
-  phone            String?
-  emergencyContact String?
-  instagram        String?
-  linkedin         String?
-
-  education        Json?
-  courses          Json?
-  languages        Json?
-  certifications   Json?
-  careerHistory    Json?
+  accessProfile       AccessProfile?
+  cep                 String?
+  address             String?
+  addressNumber       String?
+  neighborhood        String?
+  country             String?
+  state               String?
+  city                String?
+  phone               String?
+  emergencyContact    String?
+  instagram           String?
+  linkedin            String?
+  education           Json?
+  courses             Json?
+  languages           Json?
+  certifications      Json?
+  careerHistory       Json?
 }
 
-// Soft-delete registry for mock users (mock users cannot be deleted from constants)
 model InactiveUser {
   userId String @id
 }
 
-// One-time invite links for new users to set their password
 model InviteToken {
   token     String   @id
   userId    String
@@ -317,33 +271,30 @@ model InviteToken {
   @@index([expiresAt])
 }
 
-// ── Equipe / Chapters ────────────────────────────────────────────────────────
-
 model EquipeChapter {
-  id        String   @id @default(cuid())
+  id        String                @id @default(cuid())
   tema      String
-  /** Calendário do chapter (meia-noite UTC do dia civil). */
+  /// * Calendário do chapter (meia-noite UTC do dia civil).
   data      DateTime
   hyperlink String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
   authors   EquipeChapterAuthor[]
   ratings   EquipeChapterRating[]
 
   @@index([data])
 }
 
-/** Avaliação anónima na UI (autor guardado como userId no servidor). */
+/// * Avaliação anónima na UI (autor guardado como userId no servidor).
 model EquipeChapterRating {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   chapterId String
   userId    String
   stars     Int
-  comment   String   @default("")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  chapter EquipeChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  comment   String        @default("")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  chapter   EquipeChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
   @@unique([chapterId, userId])
   @@index([chapterId])
@@ -359,35 +310,27 @@ model EquipeChapterAuthor {
   @@index([userId])
 }
 
-// ── Individual / Avaliação de desempenho (MGR) ───────────────────────────────
-
-enum IndividualPerformanceEvaluationStatus {
-  RASCUNHO
-  CONCLUIDA
-}
-
-/** Avaliação de desempenho por usuário (avaliado); gestor grava competências e situação. */
+/// * Avaliação de desempenho por usuário (avaliado); gestor grava competências e situação.
 model IndividualPerformanceEvaluation {
-  id                 String                               @id @default(cuid())
-  evaluatedUserId   String
-  evaluatorUserId   String
-  /** Sequência por usuário avaliado (ex.: 1, 2, 3…). */
-  codigo             Int
-  status             IndividualPerformanceEvaluationStatus @default(RASCUNHO)
-  /** Mapa competênciaId → índice da coluna 0..4 (Não Atende … Excelente). */
-  selections         Json                                 @default("{}")
-  /** Percentual global (planilha); nulo quando incompleto em rascunho. */
-  pontuacaoPercent   Float?
-  /** Período de referência (trimestre ou semestre). */
-  periodo            String                               @default("T1_TRIMESTRE")
-  createdAt          DateTime                             @default(now())
-  updatedAt          DateTime                             @updatedAt
+  id               String                                @id @default(cuid())
+  evaluatedUserId  String
+  evaluatorUserId  String
+  /// * Sequência por usuário avaliado (ex.: 1, 2, 3…).
+  codigo           Int
+  status           IndividualPerformanceEvaluationStatus @default(RASCUNHO)
+  /// * Mapa competênciaId → índice da coluna 0..4 (Não Atende … Excelente).
+  selections       Json                                  @default("{}")
+  /// * Percentual global (planilha); nulo quando incompleto em rascunho.
+  pontuacaoPercent Float?
+  createdAt        DateTime                              @default(now())
+  updatedAt        DateTime                              @updatedAt
+  /// * Período de referência (trimestre ou semestre).
+  periodo          String                                @default("T1_TRIMESTRE")
 
   @@unique([evaluatedUserId, codigo])
   @@index([evaluatedUserId])
 }
 
-// Test environment credentials (URL, username, password) reusable across scenarios
 model Credencial {
   id          String    @id
   nome        String
@@ -403,7 +346,6 @@ model Credencial {
   @@index([createdAt])
 }
 
-// AI provider integrations (Google, OpenAI, Anthropic, Groq, OpenRouter)
 model Integracao {
   id        String   @id
   descricao String   @default("")
@@ -418,96 +360,61 @@ model Integracao {
   @@index([createdAt])
 }
 
-// ── Individual / Feedback (MGR) ──────────────────────────────────────────────
-
-enum IndividualFeedbackStatus {
-  RASCUNHO
-  CONCLUIDA
-}
-
-/**
- * Feedback individual por usuário avaliado; tipo determina os campos obrigatórios.
- * Tipos: POSITIVO | DESENVOLVIMENTO | CORRETIVO | FORMAL_CICLO | TREZENTOS_SESSENTA
- */
+/// *
+///  * Feedback individual por usuário avaliado; tipo determina os campos obrigatórios.
+///  * Tipos: POSITIVO | DESENVOLVIMENTO | CORRETIVO | FORMAL_CICLO | TREZENTOS_SESSENTA
 model IndividualFeedback {
-  id                String                   @id @default(cuid())
-  evaluatedUserId   String
-  evaluatorUserId   String
-  /** Sequência por usuário avaliado (ex.: 1, 2, 3…). */
-  codigo            Int
-  tipo              String
-  status            IndividualFeedbackStatus @default(RASCUNHO)
-  /** Campos dinâmicos por tipo: { contexto, feedback, impacto, … } */
-  campos            Json                     @default("{}")
-  /** Período de referência (trimestre ou semestre) */
-  periodo           String                   @default("T1_TRIMESTRE")
-  createdAt         DateTime                 @default(now())
-  updatedAt         DateTime                 @updatedAt
+  id              String                   @id @default(cuid())
+  evaluatedUserId String
+  evaluatorUserId String
+  /// * Sequência por usuário avaliado (ex.: 1, 2, 3…).
+  codigo          Int
+  tipo            String
+  status          IndividualFeedbackStatus @default(RASCUNHO)
+  /// * Campos dinâmicos por tipo: { contexto, feedback, impacto, … }
+  campos          Json                     @default("{}")
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  /// * Período de referência (trimestre ou semestre)
+  periodo         String                   @default("T1_TRIMESTRE")
 
   @@unique([evaluatedUserId, codigo])
   @@index([evaluatedUserId])
 }
 
 model IndividualProgressao {
-  id               String   @id @default(cuid())
-  evaluatedUserId  String
-  createdByUserId  String
-  /** Sequência por usuário avaliado (ex.: 1, 2, 3…) — exibido como PGS-001. */
-  codigo           Int
-  data             DateTime
-  /** ADMISSAO | DISSIDIO | PROMOCAO | MERITO */
-  tipo             String
-  /** CLT | PJ | COOPERADO */
-  regime           String
-  /** Cargo/função no momento da progressão. */
-  cargo            String?
-  /** Valor hora em centavos (ex.: 150000 = R$ 1.500,00). */
-  valorHora        Int?
-  /** Valor em centavos (ex.: 200000 = R$ 2.000,00). */
-  valor            Int
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(cuid())
+  evaluatedUserId String
+  createdByUserId String
+  /// * Sequência por usuário avaliado (ex.: 1, 2, 3…) — exibido como PGS-001.
+  codigo          Int
+  data            DateTime
+  /// * ADMISSAO | DISSIDIO | PROMOCAO | MERITO
+  tipo            String
+  /// * CLT | PJ | COOPERADO
+  regime          String
+  /// * Valor em centavos (ex.: 200000 = R$ 2.000,00).
+  valor           Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  /// * Cargo/função no momento da progressão.
+  cargo           String?
+  /// * Valor hora em centavos (ex.: 150000 = R$ 1.500,00).
+  valorHora       Int?
 
   @@unique([evaluatedUserId, codigo])
   @@index([evaluatedUserId])
 }
 
-// ── Notifications ─────────────────────────────────────────────────────────────
-
-enum NotificationType {
-  FEEDBACK
-  EVALUATION
-  PROGRESSION
-  ACHIEVEMENT
-  ABSENCE_REQUEST
-  DOMAIN_EVALUATION
-}
-
-// ── Ausências ──────────────────────────────────────────────────────────────────
-
-enum AusenciaTipo {
-  FALTA
-  BANCO_HORAS
-  ATESTADO
-  ATRASO
-  OUTRO
-}
-
-enum AusenciaSituacao {
-  PENDENTE
-  APROVADA
-  RECUSADA
-}
-
 model Notification {
   id        String           @id @default(cuid())
   userId    String
-  user      CreatedUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      NotificationType
   title     String
   message   String
   link      String?
   createdAt DateTime         @default(now())
+  user      CreatedUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -515,23 +422,23 @@ model Notification {
 model UserBadge {
   id         String      @id @default(cuid())
   userId     String
-  user       CreatedUser @relation(fields: [userId], references: [id], onDelete: Cascade)
   badgeId    String
   unlockedAt DateTime    @default(now())
+  user       CreatedUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, badgeId])
   @@index([userId])
 }
 
 model IndividualFerias {
-  id               String   @id @default(cuid())
-  evaluatedUserId  String
-  createdByUserId  String
-  codigo           Int
-  inicio           DateTime
-  dias             Int
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(cuid())
+  evaluatedUserId String
+  createdByUserId String
+  codigo          Int
+  inicio          DateTime
+  dias            Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@unique([evaluatedUserId, codigo])
   @@index([evaluatedUserId])
@@ -543,69 +450,57 @@ model IndividualAusencias {
   createdByUserId String
   codigo          Int
   tipo            AusenciaTipo
-  dataInicio      DateTime
-  dataFim         DateTime
   justificativa   String
   situacao        AusenciaSituacao @default(PENDENTE)
   motivoRecusa    String?
   aprovadoPorId   String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  dataFim         DateTime
+  dataInicio      DateTime
 
   @@unique([evaluatedUserId, codigo])
   @@index([evaluatedUserId])
   @@index([situacao])
 }
 
-// ── Team Memberships ──────────────────────────────────────────────────────────
-
 /// Vínculo líder → membro para o módulo Equipes.
 /// Um membro pertence a no máximo um líder (memberId unique).
 model TeamMembership {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   leaderId  String
-  memberId  String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  leader CreatedUser @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: Cascade)
-  member CreatedUser @relation("TeamMember", fields: [memberId], references: [id], onDelete: Cascade)
+  memberId  String      @unique
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  leader    CreatedUser @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: Cascade)
+  member    CreatedUser @relation("TeamMember", fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([leaderId])
   @@map("team_memberships")
 }
 
-// ── Chapter Prizes / Resgates ──────────────────────────────────────────────────
-
-// ── Domínio de Produto (avaliação de domínio por módulo) ─────────────────────
-
-enum DominioAvaliacaoStatus {
-  PENDENTE
-  CONCLUIDA
-}
-
-/** Configuração global de Produtos e Módulos para avaliações de domínio. Singleton (id = "global"). */
+/// * Configuração global de Produtos e Módulos para avaliações de domínio. Singleton (id = "global").
 model DominioConfiguracao {
   id              String   @id @default("global")
-  /** [{ id: uuid, nome: string, modulos: [{ id: uuid, nome: string }] }] */
+  /// * [{ id: uuid, nome: string, modulos: [{ id: uuid, nome: string }] }]
   produtos        Json     @default("[]")
   updatedByUserId String?
   updatedAt       DateTime @updatedAt
 }
 
-/** Avaliação de domínio de um usuário sobre os módulos de produto da empresa. */
+/// * Avaliação de domínio de um usuário sobre os módulos de produto da empresa.
 model DominioAvaliacao {
   id               String                 @id @default(cuid())
   evaluatedUserId  String
   solicitadaPorId  String
-  /** Sequência por usuário avaliado (ex.: 1, 2, 3…). */
+  /// * Sequência por usuário avaliado (ex.: 1, 2, 3…).
   codigo           Int
   status           DominioAvaliacaoStatus @default(PENDENTE)
-  /** Percentual global calculado após preenchimento. */
+  /// * Percentual global calculado após preenchimento.
   resultadoPercent Float?
-  /** [{ produtoId: string, moduloId: string, estrelas: 1..5 }] */
+  /// * [{ produtoId: string, moduloId: string, estrelas: 1..5 }]
   respostas        Json                   @default("[]")
-  /** Snapshot da configuração de produtos/módulos no momento da solicitação. */
+  /// * Snapshot da configuração de produtos/módulos no momento da solicitação.
   configSnapshot   Json                   @default("[]")
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
@@ -626,30 +521,28 @@ model ChapterRedemption {
   @@index([userId])
 }
 
-// ── Cache de worklogs Jira ────────────────────────────────────────────────────
-
 /// Entrada individual de worklog cacheada do Jira.
 /// Armazenada por (userId, issueKey, startedAt) — garante histórico permanente
 /// independente do limite de 92 dias da API Jira.
 model JiraWorklogCache {
-  id                   String   @id @default(cuid())
-  userId               String
-  issueKey             String
-  projectName          String?
-  typeField            String?
-  status               String?
-  tag                  String?
-  priority             String?
-  issueType            String?
-  retornos             Int      @default(0)
-  retornosByAssignee   Json     @default("{}")
-  authorJiraAccountId  String?
-  qtdCenariosQA        Int      @default(0)
-  qtdCenariosErro      Int      @default(0)
-  startedAt            DateTime
-  timeSpentSeconds     Int
-  year                 Int
-  month                Int
+  id                  String   @id @default(cuid())
+  userId              String
+  issueKey            String
+  projectName         String?
+  typeField           String?
+  status              String?
+  startedAt           DateTime
+  timeSpentSeconds    Int
+  year                Int
+  month               Int
+  authorJiraAccountId String?
+  priority            String?
+  retornos            Int      @default(0)
+  retornosByAssignee  Json     @default("{}")
+  tag                 String?
+  issueType           String?
+  qtdCenariosErro     Int      @default(0)
+  qtdCenariosQA       Int      @default(0)
 
   @@unique([userId, issueKey, startedAt])
   @@index([userId, year, month])
@@ -660,9 +553,9 @@ model JiraWorklogCache {
 /// Permite saber que um mês com zero worklogs foi de fato sincronizado.
 ///
 /// jirasBroken    — contagem de Broken Test issues criadas pelo reporter no mês
-///                  (calculada via JQL independente de worklogs, igual à tela Lançamentos).
+/// (calculada via JQL independente de worklogs, igual à tela Lançamentos).
 /// cenariosErroSum — soma de qtdCenariosQA das BT issues do reporter no mês
-///                  (usado como "Cenários com Erro" Tipo B no QA Dashboard).
+/// (usado como "Cenários com Erro" Tipo B no QA Dashboard).
 model JiraWorklogSyncMarker {
   id              String   @id @default(cuid())
   userId          String
@@ -680,10 +573,11 @@ model JiraWorklogSyncMarker {
 /// ex-membros desativados no Jira continuem sendo sincronizados enquanto
 /// o accountId for conhecido.
 model JiraAccountIdCache {
-  userId      String   @id
-  accountId   String
-  resolvedAt  DateTime @updatedAt
-  resolvedBy  String?  /// "email" | "displayName" | "db-worklog-cache" | "admin"
+  userId     String   @id
+  accountId  String
+  resolvedAt DateTime @updatedAt
+  /// "email" | "displayName" | "db-worklog-cache" | "admin"
+  resolvedBy String?
 }
 
 /// Atribuição de issue do kanban UX a um membro do sistema.
@@ -692,7 +586,7 @@ model JiraAccountIdCache {
 model KanbanAssignment {
   issueKey   String   @id
   userId     String
-  cardType   String   @default("demanda") // "demanda" | "ux_tarefa"
+  cardType   String   @default("demanda")
   assignedAt DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -705,7 +599,7 @@ model KanbanAssignment {
 model KanbanUserCardState {
   issueKey  String   @id
   userId    String
-  column    String   // "backlog"|"in_progress"|"paused"|"waiting"|"in_approval"|"done"|"canceled"
+  column    String
   updatedAt DateTime @updatedAt
 
   @@index([userId])
@@ -734,9 +628,9 @@ model KanbanTimerSession {
 model KanbanInApprovalTracker {
   issueKey            String    @id
   userId              String
-  cardType            String    // "demanda" | "ux_tarefa"
-  approverAccountId   String?   // Jira accountId do aprovador selecionado
-  approverDisplayName String?   // Nome exibido do aprovador
+  cardType            String
+  approverAccountId   String?
+  approverDisplayName String?
   enteredAt           DateTime  @default(now())
   lastCommentAt       DateTime?
 
@@ -744,7 +638,167 @@ model KanbanInApprovalTracker {
   @@map("kanban_in_approval_trackers")
 }
 
-// ── OKRs ─────────────────────────────────────────────────────────────────────
+model Okr {
+  id        String        @id @default(cuid())
+  codigo    String        @unique
+  ano       Int
+  periodo   OkrPeriodo
+  situacao  OkrSituacao   @default(ATIVO)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  objetivos OkrObjetivo[]
+
+  @@index([ano])
+  @@index([situacao])
+  @@map("okrs")
+}
+
+model OkrObjetivo {
+  id                  String              @id @default(cuid())
+  okrId               String
+  descricao           String
+  situacao            OkrObjetivoSituacao @default(ATIVO)
+  motivoCancelamento  String?
+  percentualConcluido Float               @default(0)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  keyResults          OkrKeyResult[]
+  equipes             OkrObjetivoEquipe[]
+  okr                 Okr                 @relation(fields: [okrId], references: [id], onDelete: Cascade)
+
+  @@index([okrId])
+  @@map("okr_objetivos")
+}
+
+model OkrObjetivoEquipe {
+  objetivoId String
+  equipe     OkrEquipe
+  objetivo   OkrObjetivo @relation(fields: [objetivoId], references: [id], onDelete: Cascade)
+
+  @@id([objetivoId, equipe])
+  @@map("okr_objetivo_equipes")
+}
+
+model OkrKeyResult {
+  id                   String             @id @default(cuid())
+  objetivoId           String
+  descricao            String
+  unidade              OkrUnidade         @default(PERCENTUAL)
+  unidadePersonalizada String?
+  valorInicial         Float              @default(0)
+  valorAtual           Float              @default(0)
+  meta                 Float              @default(100)
+  situacao             OkrKrSituacao      @default(ATIVO)
+  motivoCancelamento   String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  iniciativas          OkrIniciativa[]
+  objetivo             OkrObjetivo        @relation(fields: [objetivoId], references: [id], onDelete: Cascade)
+  evolucao             OkrKrEvolucao[]
+  responsaveis         OkrKrResponsavel[]
+
+  @@index([objetivoId])
+  @@map("okr_key_results")
+}
+
+model OkrKrResponsavel {
+  keyResultId String
+  userId      String
+  keyResult   OkrKeyResult @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
+
+  @@id([keyResultId, userId])
+  @@index([userId])
+  @@map("okr_kr_responsaveis")
+}
+
+model OkrKrEvolucao {
+  id          String       @id @default(cuid())
+  keyResultId String
+  mes         Int
+  ano         Int
+  valor       Float
+  createdAt   DateTime     @default(now())
+  keyResult   OkrKeyResult @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
+
+  @@unique([keyResultId, mes, ano])
+  @@index([keyResultId])
+  @@map("okr_kr_evolucao")
+}
+
+model OkrIniciativa {
+  id           String                     @id @default(cuid())
+  keyResultId  String
+  descricao    String
+  status       OkrIniciativaStatus        @default(PENDENTE)
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+  responsaveis OkrIniciativaResponsavel[]
+  keyResult    OkrKeyResult               @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
+
+  @@index([keyResultId])
+  @@map("okr_iniciativas")
+}
+
+model OkrIniciativaResponsavel {
+  iniciativaId String
+  userId       String
+  iniciativa   OkrIniciativa @relation(fields: [iniciativaId], references: [id], onDelete: Cascade)
+
+  @@id([iniciativaId, userId])
+  @@index([userId])
+  @@map("okr_iniciativa_responsaveis")
+}
+
+enum Plan {
+  FREE
+  TRIAL
+  PRO
+}
+
+enum AccessProfile {
+  QA
+  UX
+  TW
+  MGR
+}
+
+enum IndividualPerformanceEvaluationStatus {
+  RASCUNHO
+  CONCLUIDA
+}
+
+enum IndividualFeedbackStatus {
+  RASCUNHO
+  CONCLUIDA
+}
+
+enum NotificationType {
+  FEEDBACK
+  EVALUATION
+  PROGRESSION
+  ACHIEVEMENT
+  ABSENCE_REQUEST
+  DOMAIN_EVALUATION
+}
+
+enum AusenciaTipo {
+  FALTA
+  BANCO_HORAS
+  ATESTADO
+  OUTRO
+  ATRASO
+}
+
+enum AusenciaSituacao {
+  PENDENTE
+  APROVADA
+  RECUSADA
+}
+
+enum DominioAvaliacaoStatus {
+  PENDENTE
+  CONCLUIDA
+}
 
 enum OkrPeriodo {
   Q1
@@ -790,123 +844,4 @@ enum OkrEquipe {
   UX
   TW
   GESTAO
-}
-
-model Okr {
-  id        String     @id @default(cuid())
-  codigo    String     @unique
-  ano       Int
-  periodo   OkrPeriodo
-  situacao  OkrSituacao @default(ATIVO)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-
-  objetivos OkrObjetivo[]
-
-  @@index([ano])
-  @@index([situacao])
-  @@map("okrs")
-}
-
-model OkrObjetivo {
-  id                   String              @id @default(cuid())
-  okrId                String
-  descricao            String
-  situacao             OkrObjetivoSituacao @default(ATIVO)
-  motivoCancelamento   String?
-  percentualConcluido  Float               @default(0)
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-
-  okr        Okr          @relation(fields: [okrId], references: [id], onDelete: Cascade)
-  equipes    OkrObjetivoEquipe[]
-  keyResults OkrKeyResult[]
-
-  @@index([okrId])
-  @@map("okr_objetivos")
-}
-
-model OkrObjetivoEquipe {
-  objetivoId String
-  equipe     OkrEquipe
-
-  objetivo OkrObjetivo @relation(fields: [objetivoId], references: [id], onDelete: Cascade)
-
-  @@id([objetivoId, equipe])
-  @@map("okr_objetivo_equipes")
-}
-
-model OkrKeyResult {
-  id                   String       @id @default(cuid())
-  objetivoId           String
-  descricao            String
-  unidade              OkrUnidade   @default(PERCENTUAL)
-  unidadePersonalizada String?
-  valorInicial         Float        @default(0)
-  valorAtual           Float        @default(0)
-  meta                 Float        @default(100)
-  situacao             OkrKrSituacao @default(ATIVO)
-  motivoCancelamento   String?
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-
-  objetivo     OkrObjetivo          @relation(fields: [objetivoId], references: [id], onDelete: Cascade)
-  responsaveis OkrKrResponsavel[]
-  evolucao     OkrKrEvolucao[]
-  iniciativas  OkrIniciativa[]
-
-  @@index([objetivoId])
-  @@map("okr_key_results")
-}
-
-model OkrKrResponsavel {
-  keyResultId String
-  userId      String
-
-  keyResult OkrKeyResult @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
-
-  @@id([keyResultId, userId])
-  @@index([userId])
-  @@map("okr_kr_responsaveis")
-}
-
-model OkrKrEvolucao {
-  id          String   @id @default(cuid())
-  keyResultId String
-  mes         Int
-  ano         Int
-  valor       Float
-  createdAt   DateTime @default(now())
-
-  keyResult OkrKeyResult @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
-
-  @@unique([keyResultId, mes, ano])
-  @@index([keyResultId])
-  @@map("okr_kr_evolucao")
-}
-
-model OkrIniciativa {
-  id          String              @id @default(cuid())
-  keyResultId String
-  descricao   String
-  status      OkrIniciativaStatus @default(PENDENTE)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-
-  keyResult    OkrKeyResult              @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
-  responsaveis OkrIniciativaResponsavel[]
-
-  @@index([keyResultId])
-  @@map("okr_iniciativas")
-}
-
-model OkrIniciativaResponsavel {
-  iniciativaId String
-  userId       String
-
-  iniciativa OkrIniciativa @relation(fields: [iniciativaId], references: [id], onDelete: Cascade)
-
-  @@id([iniciativaId, userId])
-  @@index([userId])
-  @@map("okr_iniciativa_responsaveis")
 }

@@ -4,7 +4,6 @@ import * as React from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
 import { OKR_EQUIPES, EQUIPE_LABELS, type OkrEquipeDto, type OkrObjetivoDto } from "@/features/okrs/lib/okrs-schemas"
 
 interface OkrObjetivoFormModalProps {
@@ -79,10 +78,12 @@ export function OkrObjetivoFormModal({
             <div className="flex flex-wrap gap-3">
               {OKR_EQUIPES.map((equipe) => (
                 <label key={equipe} className="flex cursor-pointer items-center gap-2">
-                  <Checkbox
+                  <input
+                    type="checkbox"
                     checked={equipes.includes(equipe)}
-                    onCheckedChange={() => toggleEquipe(equipe)}
+                    onChange={() => toggleEquipe(equipe)}
                     disabled={loading}
+                    className="size-4 rounded border border-border-default bg-surface-input accent-brand-primary"
                   />
                   <span className="text-sm text-text-primary">{EQUIPE_LABELS[equipe]}</span>
                 </label>

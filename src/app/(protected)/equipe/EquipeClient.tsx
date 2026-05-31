@@ -12,6 +12,7 @@ import { EquipeFeriasSection } from "@/features/equipe/components/EquipeFeriasSe
 import { EquipeAusenciasSection } from "@/features/equipe/components/EquipeAusenciasSection"
 import { EquipeLancamentosSection } from "@/features/equipe/components/EquipeLancamentosSection"
 import { EquipeClockworkSection } from "@/features/equipe/components/EquipeClockworkSection"
+import { OkrsSection } from "@/features/okrs/components/OkrsSection"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 
@@ -21,6 +22,7 @@ type AccessProfileId = "QA" | "UX" | "TW" | "MGR"
 
 interface Props {
   isAdmin: boolean
+  userType?: string
   userAccessProfile: AccessProfileId
   canFilterByProfile: boolean
   canAccessEquipeLancamentos: boolean
@@ -73,6 +75,7 @@ function tituloMesNascimentoPt(month1to12: number): string {
 
 export default function EquipeClient({
   isAdmin,
+  userType = "Padrão",
   userAccessProfile,
   canFilterByProfile,
   canAccessEquipeLancamentos,
@@ -241,9 +244,13 @@ const aniversariantesPorMes = useMemo(() => {
       {activeTab === "ausencias" && <EquipeAusenciasSection isMgr={isMgr} currentUserId={currentUserId} />}
 
       {activeTab === "metas" && (
-        <div className="flex items-center justify-center py-16">
-          <p className="text-sm text-text-secondary">Em desenvolvimento.</p>
-        </div>
+        <Suspense fallback={<SectionSpinner minHeight="min-h-[60vh]" />}>
+          <OkrsSection
+            userType={userType}
+            userAccessProfile={userAccessProfile}
+            currentUserId={currentUserId}
+          />
+        </Suspense>
       )}
     </div>
   )

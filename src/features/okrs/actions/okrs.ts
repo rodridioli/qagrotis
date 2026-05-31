@@ -72,15 +72,18 @@ async function assertOkrInScope(okrId: string, userId: string, isMgr: boolean): 
     where: { id: userId },
     select: { accessProfile: true },
   })
-  const equipe = user?.accessProfile as OkrEquipeDto | null
-  if (!equipe || equipe === "MGR") throw new Error("Não autorizado.")
+  const profile = user?.accessProfile
+  // Mapeia accessProfile para OkrEquipe (MGR mapeia para GESTAO)
+  const equipeMap: Record<string, OkrEquipeDto> = { QA: "QA", UX: "UX", TW: "TW", MGR: "GESTAO" }
+  const equipe = profile ? (equipeMap[profile] ?? null) : null
+  if (!equipe) throw new Error("Não autorizado.")
 
   const okr = await prisma.okr.findFirst({
     where: {
       id: okrId,
       objetivos: {
         some: {
-          equipes: { some: { equipe: equipe === "MGR" ? undefined : equipe } },
+          equipes: { some: { equipe } },
         },
       },
     },
@@ -251,15 +254,17 @@ export async function listOkrs(): Promise<ActionResult<OkrListRow[]>> {
     const isMgr = can(role, "okr.create")
     const userId = session.user.id
 
+    const equipeMap: Record<string, OkrEquipeDto> = { QA: "QA", UX: "UX", TW: "TW", MGR: "GESTAO" }
     const where = isMgr
       ? {}
       : (() => {
-          const profile = session.user.accessProfile as OkrEquipeDto | undefined
-          if (!profile || profile === "MGR") return { id: "never" }
+          const profile = session.user.accessProfile
+          const equipe = profile ? (equipeMap[profile] ?? null) : null
+          if (!equipe) return { id: "never" as string }
           return {
             objetivos: {
               some: {
-                equipes: { some: { equipe: profile } },
+                equipes: { some: { equipe } },
               },
             },
           }
@@ -478,7 +483,7 @@ export async function createOkr(input: CreateOkrInput): Promise<ActionResult<{ i
   try {
     const { session } = await requireMgr()
     const parsed = createOkrSchema.safeParse(input)
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Dados inválidos." }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
     const codigo = await gerarCodigoOkr(parsed.data.ano)
     const okr = await prisma.okr.create({
@@ -506,7 +511,7 @@ export async function updateOkrSituacao(
   try {
     await requireMgr()
     const parsed = updateOkrSituacaoSchema.safeParse(input)
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Dados inválidos." }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
     await prisma.okr.update({
       where: { id: okrId },
@@ -529,7 +534,7 @@ export async function createOkrObjetivo(
   try {
     await requireMgr()
     const parsed = createObjetivoSchema.safeParse(input)
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Dados inválidos." }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
     await assertOkrEditavel(okrId, true)
 
@@ -560,7 +565,7 @@ export async function updateOkrObjetivo(
   try {
     await requireMgr()
     const parsed = updateObjetivoSchema.safeParse(input)
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Dados inválidos." }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
     const objetivo = await prisma.okrObjetivo.findUnique({
       where: { id: objetivoId },
@@ -598,7 +603,7 @@ export async function cancelOkrObjetivo(
   try {
     await requireMgr()
     const parsed = cancelObjetivoSchema.safeParse(input)
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Dados inválidos." }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
     const objetivo = await prisma.okrObjetivo.findUnique({
       where: { id: objetivoId },
@@ -641,7 +646,7 @@ export async function createOkrKeyResult(
     const { session, role } = await requireOkrAccess()
     if (!can(role, "okr.kr.create")) return { error: "Sem permissão para criar Key Results." }
     const parsed = createKeyResultSchema.safeParse(input)
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Dados inválidos." }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
     const objetivo = await prisma.okrObjetivo.findUnique({
       where: { id: objetivoId },
@@ -688,7 +693,7 @@ export async function updateOkrKeyResult(
     const { session, role } = await requireOkrAccess()
     if (!can(role, "okr.kr.edit")) return { error: "Sem permissão para editar Key Results." }
     const parsed = updateKeyResultSchema.safeParse(input)
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Dados inválidos." }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
     const kr = await prisma.okrKeyResult.findUnique({
       where: { id: krId },
@@ -734,7 +739,7 @@ export async function updateOkrKeyResultValorAtual(
     const { session, role } = await requireOkrAccess()
     if (!can(role, "okr.kr.updateValue")) return { error: "Sem permissão." }
     const parsed = updateKrValorAtualSchema.safeParse(input)
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Dados inválidos." }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
     const kr = await prisma.okrKeyResult.findUnique({
       where: { id: krId },
@@ -795,7 +800,7 @@ export async function cancelOkrKeyResult(
     const { session, role } = await requireOkrAccess()
     if (!can(role, "okr.kr.cancel")) return { error: "Sem permissão para cancelar Key Results." }
     const parsed = cancelKeyResultSchema.safeParse(input)
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Dados inválidos." }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
     const kr = await prisma.okrKeyResult.findUnique({
       where: { id: krId },
@@ -831,7 +836,7 @@ export async function createOkrIniciativa(
     const { session, role } = await requireOkrAccess()
     if (!can(role, "okr.iniciativa.manage")) return { error: "Sem permissão para criar Iniciativas." }
     const parsed = createIniciativaSchema.safeParse(input)
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Dados inválidos." }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
     const kr = await prisma.okrKeyResult.findUnique({
       where: { id: krId },
@@ -872,7 +877,7 @@ export async function updateOkrIniciativa(
     if (!canManage && !canUpdateStatus) return { error: "Sem permissão." }
 
     const parsed = updateIniciativaSchema.safeParse(input)
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Dados inválidos." }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
     const iniciativa = await prisma.okrIniciativa.findUnique({
       where: { id: iniciativaId },
