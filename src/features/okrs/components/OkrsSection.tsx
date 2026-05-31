@@ -139,6 +139,17 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
 
   return (
     <div className="space-y-4">
+      {/* Header externo ao card — padrão da plataforma */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-lg font-semibold text-text-primary">OKRs</p>
+        {canCreate && (
+          <Button onClick={() => setFormOpen(true)} className="gap-2">
+            <Plus className="size-4" />
+            Adicionar OKR
+          </Button>
+        )}
+      </div>
+
       {loading ? (
         <SectionSpinner minHeight="min-h-[40vh]" />
       ) : (
@@ -150,14 +161,6 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
             totalLabel="Total de OKRs"
             totalCount={filtered.length}
             baseCount={okrs.length}
-            extra={
-              canCreate ? (
-                <Button onClick={() => setFormOpen(true)} className="shrink-0 gap-2">
-                  <Plus className="size-4" />
-                  Adicionar OKR
-                </Button>
-              ) : undefined
-            }
           />
           {filtered.length === 0 ? (
             <EmptyState
