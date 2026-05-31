@@ -690,8 +690,6 @@ function KanbanColumnView({
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
-let dragLocked = false
-
 export function UserKanbanClient({
   userId,
   data,
@@ -704,6 +702,9 @@ export function UserKanbanClient({
   )
   const [pendingDone, setPendingDone] = React.useState<UserKanbanCard | null>(null)
   const [pendingInApproval, setPendingInApproval] = React.useState<UserKanbanCard | null>(null)
+  /** Tracks in-flight API calls per issueKey — prevents double-move for the same card
+   *  without blocking drags of other cards. Scoped to component instance (not module-level). */
+  const inFlight = React.useRef(new Set<string>())
   const [hiddenColumns, setHiddenColumns] = React.useState<Set<UserKanbanColumn>>(new Set())
 
   // ── Timer state ──────────────────────────────────────────────────────────────
@@ -801,7 +802,6 @@ export function UserKanbanClient({
   }, [cards])
 
   function onDragEnd(result: DropResult) {
-    if (dragLocked) return
     const { source, destination, draggableId: issueKey } = result
     if (!destination) return
     if (source.droppableId === destination.droppableId) return
@@ -811,6 +811,8 @@ export function UserKanbanClient({
 
     const card = cards.find((c) => c.key === issueKey)
     if (!card) return
+    // Prevent double-move for the same card while its API call is in flight
+    if (inFlight.current.has(issueKey)) return
 
     // Cards already in Canceled cannot be moved
     if (srcCol === "canceled") {
@@ -868,7 +870,7 @@ export function UserKanbanClient({
       })
     }
 
-    dragLocked = true
+    inFlight.current.add(issueKey)
     moveCardInUserKanban(issueKey, card.cardType, dstCol)
       .then((res) => {
         if (!res.ok) {
@@ -880,11 +882,11 @@ export function UserKanbanClient({
           }
         }
       })
-      .catch(() => setCards(prev))
-      .finally(() => { dragLocked = false })
-
-    // Suppress accidental drop in src column (state already updated)
-    void srcCol
+      .catch(() => {
+        setCards(prev)
+        toast.error("Erro ao mover card. Tente novamente.")
+      })
+      .finally(() => { inFlight.current.delete(issueKey) })
   }
 
   async function handleDoneConfirm(mention: MentionUser | null) {
