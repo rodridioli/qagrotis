@@ -171,6 +171,43 @@ export async function createClockworkWorklog(opts: {
   }
 }
 
+/**
+ * Retorna o total de `timeSpentSeconds` de todos os worklogs do Clockwork
+ * para um issueKey específico. Usa `issue_query[]` no endpoint /v1/worklogs.
+ * Retorna 0 em caso de erro ou ausência de dados.
+ */
+export async function fetchClockworkTotalForIssue(opts: {
+  token: string
+  issueKey: string
+}): Promise<number> {
+  const { token, issueKey } = opts
+  try {
+    const url = new URL(`${CW_HOST}/v1/worklogs`)
+    url.searchParams.append("issue_query[]", issueKey)
+    url.searchParams.set("expand", "issues,worklogs")
+
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Token ${token.trim()}` },
+      signal: AbortSignal.timeout(15_000),
+      cache: "no-store",
+    })
+    if (!res.ok) return 0
+
+    let data: unknown
+    try { data = await res.json() } catch { return 0 }
+    if (!Array.isArray(data)) return 0
+
+    return data.reduce((sum: number, row: unknown) => {
+      if (!row || typeof row !== "object") return sum
+      const r = row as CwRow
+      const ts = r.timeSpentSeconds
+      return typeof ts === "number" && Number.isFinite(ts) ? sum + ts : sum
+    }, 0)
+  } catch {
+    return 0
+  }
+}
+
 export function mergeJiraAndClockworkWorklogs(
   jira: JiraLancamentoEntry[],
   clockwork: JiraLancamentoEntry[],

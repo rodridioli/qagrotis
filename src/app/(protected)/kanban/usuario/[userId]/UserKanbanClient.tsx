@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd"
-import { AlertCircle, Check, Clock, EyeOff, Flag, Loader2, Search, User, X } from "lucide-react"
+import { AlertCircle, Check, ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, Clock, Equal, EyeOff, Flag, Loader2, RefreshCw, Search, User, X } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/core/utils"
@@ -23,6 +23,7 @@ import {
   startCardTimer,
   stopCardTimer,
   getActiveTimersForCards,
+  getClockworkTotalsForCards,
   type TimerState,
 } from "@/features/kanban/actions/clockwork-timer"
 
@@ -69,6 +70,24 @@ const PRIORITY_RANK: Record<string, number> = {
 
 function priorityRank(p: string | null): number {
   return PRIORITY_RANK[p?.toLowerCase() ?? ""] ?? 99
+}
+
+// ─── Priority icon ────────────────────────────────────────────────────────────
+
+const PRIORITY_ICON_MAP: Record<string, { Icon: React.ElementType; className: string }> = {
+  highest:  { Icon: ChevronsUp,   className: "text-red-500" },
+  critical: { Icon: ChevronsUp,   className: "text-red-500" },
+  high:     { Icon: ChevronUp,    className: "text-orange-500" },
+  medium:   { Icon: Equal,        className: "text-yellow-500" },
+  low:      { Icon: ChevronDown,  className: "text-blue-400" },
+  lowest:   { Icon: ChevronsDown, className: "text-text-secondary" },
+}
+
+function PriorityIcon({ priority, label }: { priority: string; label: string }) {
+  const config = PRIORITY_ICON_MAP[priority.toLowerCase()]
+  if (!config) return null
+  const { Icon, className } = config
+  return <Icon className={cn("size-4 shrink-0", className)} aria-label={label} />
 }
 
 function sortCards(cards: UserKanbanCard[]): UserKanbanCard[] {
@@ -426,13 +445,19 @@ function UserKanbanCardView({
   onDone,
   timerState,
   nowMs,
+  clockworkBase,
+  onRefreshClockwork,
 }: {
   card: UserKanbanCard
   index: number
   onDone: (card: UserKanbanCard) => void
   timerState: TimerState | null
   nowMs: number
+  clockworkBase: number
+  onRefreshClockwork: () => Promise<void>
 }) {
+  const [refreshing, setRefreshing] = React.useState(false)
+
   const isCanceled = card.column === "canceled"
   const isDone = card.column === "done"
   const jiraUrl = `https://agrotis.atlassian.net/browse/${card.key}`
@@ -442,11 +467,20 @@ function UserKanbanCardView({
     ? (PRIORITY_LABEL_PT[card.priority.toLowerCase()] ?? card.priority)
     : null
 
-  // Timer display — only for in_progress cards with an active session
-  const showTimer = card.column === "in_progress" && timerState?.startedAt != null
-  const timerSeconds = showTimer
-    ? timerState!.accumulatedSeconds + Math.floor((nowMs - timerState!.startedAt!) / 1000)
-    : null
+  // Timer: total Clockwork + elapsed da sessão ativa local
+  const hasActiveSession = timerState?.startedAt != null
+  const elapsed = hasActiveSession
+    ? Math.floor((nowMs - timerState!.startedAt!) / 1000)
+    : 0
+  const timerSeconds = clockworkBase + elapsed
+  const showTimer = timerSeconds > 0 || hasActiveSession
+
+  async function handleRefresh(e: React.MouseEvent) {
+    e.stopPropagation()
+    setRefreshing(true)
+    await onRefreshClockwork()
+    setRefreshing(false)
+  }
 
   return (
     <Draggable draggableId={card.key} index={index} isDragDisabled={isCanceled}>
@@ -481,15 +515,10 @@ function UserKanbanCardView({
             >
               {card.key}
             </a>
-            {(card.priorityIconUrl ?? priorityLabel) && (
+            {priorityLabel && card.priority && (
               <div className="flex shrink-0 items-center gap-1">
-                {priorityLabel && (
-                  <span className="text-xs font-medium text-text-secondary">{priorityLabel}</span>
-                )}
-                {card.priorityIconUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={card.priorityIconUrl} alt="" className="size-4 shrink-0" />
-                )}
+                <PriorityIcon priority={card.priority} label={priorityLabel} />
+                <span className="text-xs font-medium text-text-secondary">{priorityLabel}</span>
               </div>
             )}
           </div>
@@ -511,12 +540,24 @@ function UserKanbanCardView({
           )}
 
           {/* Timer */}
-          {showTimer && timerSeconds != null && (
-            <div className="flex items-center gap-1 rounded-md border border-blue-300/50 bg-blue-50 px-2 py-0.5 dark:border-blue-700/40 dark:bg-blue-900/20">
-              <Clock className="size-3 shrink-0 animate-pulse text-blue-500" aria-hidden />
+          {showTimer && (
+            <div
+              className="flex items-center gap-1 rounded-md border border-blue-300/50 bg-blue-50 px-2 py-0.5 dark:border-blue-700/40 dark:bg-blue-900/20"
+              aria-label="Tempo total no Clockwork"
+            >
+              <Clock className={cn("size-3 shrink-0 text-blue-500", hasActiveSession && "animate-pulse")} aria-hidden />
               <span className="font-mono text-xs font-semibold tabular-nums text-blue-600 dark:text-blue-400">
                 {formatElapsed(timerSeconds)}
               </span>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                aria-label="Atualizar tempo do Clockwork"
+                className="ml-0.5 cursor-pointer rounded p-0.5 text-blue-400 transition-opacity hover:text-blue-600 disabled:opacity-40"
+                disabled={refreshing}
+              >
+                <RefreshCw className={cn("size-3", refreshing && "animate-spin")} />
+              </button>
             </div>
           )}
 
@@ -553,6 +594,8 @@ function KanbanColumnView({
   onHide,
   timerStates,
   nowMs,
+  clockworkTotals,
+  onRefreshClockwork,
 }: {
   col: typeof COLUMNS[number]
   cards: UserKanbanCard[]
@@ -560,6 +603,8 @@ function KanbanColumnView({
   onHide?: () => void
   timerStates: Record<string, TimerState>
   nowMs: number
+  clockworkTotals: Record<string, number>
+  onRefreshClockwork: (issueKey: string) => Promise<void>
 }) {
   const [search, setSearch] = React.useState("")
   const displayed = search.trim()
@@ -630,6 +675,9 @@ function KanbanColumnView({
                 onDone={onDone}
                 timerState={timerStates[card.key] ?? null}
                 nowMs={nowMs}
+                clockworkBase={clockworkTotals[card.key] ?? 0}
+                onRefreshClockwork={() => onRefreshClockwork(card.key)}
+
               />
             ))}
             {provided.placeholder}
@@ -661,6 +709,7 @@ export function UserKanbanClient({
   // ── Timer state ──────────────────────────────────────────────────────────────
   const [timerStates, setTimerStates] = React.useState<Record<string, TimerState>>({})
   const [nowMs, setNowMs] = React.useState(() => Date.now())
+  const [clockworkTotals, setClockworkTotals] = React.useState<Record<string, number>>({})
 
   // Tick a cada segundo para atualizar o display dos timers
   React.useEffect(() => {
@@ -682,7 +731,19 @@ export function UserKanbanClient({
         for (const s of states) map[s.issueKey] = s
         setTimerStates(map)
       })
-      .catch(() => null) // não critica se falhar; timer só não aparece
+      .catch(() => null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
+
+  // Carrega totais do Clockwork para todos os cards visíveis após o mount
+  React.useEffect(() => {
+    if (!data.ok) return
+    const allKeys = data.cards.map((c) => c.key)
+    if (allKeys.length === 0) return
+
+    getClockworkTotalsForCards(allKeys)
+      .then(setClockworkTotals)
+      .catch(() => null)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
@@ -704,6 +765,11 @@ export function UserKanbanClient({
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
+
+  async function handleRefreshClockwork(issueKey: string) {
+    const totals = await getClockworkTotalsForCards([issueKey]).catch(() => null)
+    if (totals) setClockworkTotals((prev) => ({ ...prev, ...totals }))
+  }
 
   function toggleColumn(colId: UserKanbanColumn) {
     setHiddenColumns((prev) => {
@@ -958,6 +1024,8 @@ export function UserKanbanClient({
                       onHide={HIDEABLE_COLS.has(col.id) ? () => toggleColumn(col.id) : undefined}
                       timerStates={timerStates}
                       nowMs={nowMs}
+                      clockworkTotals={clockworkTotals}
+                      onRefreshClockwork={handleRefreshClockwork}
                     />
                   ))}
                 </div>

@@ -17,7 +17,7 @@ import { buildRole, can } from "@/core/rbac/policy"
 import { db } from "@/core/db"
 import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credentials-db"
 import { getClockworkApiTokenResolved } from "@/features/qa/lib/clockwork-credentials-db"
-import { createClockworkWorklog } from "@/features/qa/lib/clockwork-worklogs-fetch"
+import { createClockworkWorklog, fetchClockworkTotalForIssue } from "@/features/qa/lib/clockwork-worklogs-fetch"
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -205,6 +205,48 @@ export async function getActiveTimersForCards(
     startedAt: r.startedAt ? r.startedAt.getTime() : null,
     accumulatedSeconds: r.accumulatedSeconds,
   }))
+}
+
+// ─── getClockworkTotalsForCards ───────────────────────────────────────────────
+
+/**
+ * Retorna o total de segundos postados no Clockwork para cada issueKey informado.
+ * Executa as N chamadas em paralelo via Promise.allSettled.
+ * Retorna mapa vazio se não houver token configurado.
+ */
+export async function getClockworkTotalsForCards(
+  issueKeys: string[],
+): Promise<Record<string, number>> {
+  const session = await requireSession()
+  const role = buildRole(session.user.type, session.user.accessProfile)
+  if (!can(role, "menu.kanban")) return {}
+  if (issueKeys.length === 0) return {}
+
+  let token: string
+  try {
+    token = await getClockworkApiTokenResolved()
+    if (!token?.trim()) return {}
+  } catch {
+    return {}
+  }
+
+  const results = await Promise.allSettled(
+    issueKeys.map((key) =>
+      fetchClockworkTotalForIssue({ token, issueKey: key }).then((total) => ({
+        key,
+        total,
+      })),
+    ),
+  )
+
+  const map: Record<string, number> = {}
+  for (const key of issueKeys) map[key] = 0
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      map[result.value.key] = result.value.total
+    }
+  }
+  return map
 }
 
 // ─── Internal: post worklog to Clockwork ──────────────────────────────────────
