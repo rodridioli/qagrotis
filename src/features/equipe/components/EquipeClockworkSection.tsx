@@ -363,7 +363,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ worklogId: worklog.id, started: newStarted, timeSpentSeconds: seconds, comment: state.comment }),
+        body: JSON.stringify({ worklogId: worklog.id, issueKey: worklog.issueKey, started: newStarted, timeSpentSeconds: seconds, comment: state.comment }),
       })
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string }
@@ -662,8 +662,13 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
     comment:   state.comment,
   })
 
+  // Guard against concurrent saves: when the user presses Tab through multiple
+  // fields, two onBlur events fire in the same tick before `saving: true` is
+  // committed to React state. This ref ensures only one PATCH is sent.
+  const savingRef = React.useRef(false)
+
   function handleBlur() {
-    if (state.saving) return
+    if (state.saving || savingRef.current) return
     // Read live DOM values — not the (potentially stale) React state
     const startHHmm = startInputRef.current?.value   ?? state.startHHmm
     const endHHmm   = endInputRef.current?.value     ?? state.endHHmm
@@ -671,8 +676,11 @@ function WorklogRow({ worklog, state, totalSeconds, onFieldChange, onBlurSave, o
     const last = lastSavedRef.current
     const changed = startHHmm !== last.startHHmm || endHHmm !== last.endHHmm || comment !== last.comment
     if (!changed) return
+    savingRef.current = true
     lastSavedRef.current = { startHHmm, endHHmm, comment }
-    onBlurSave(worklog, { ...state, startHHmm, endHHmm, comment })
+    // Reset savingRef after the async save completes (resolved or rejected)
+    Promise.resolve(onBlurSave(worklog, { ...state, startHHmm, endHHmm, comment }))
+      .finally(() => { savingRef.current = false })
   }
 
   const editInputClass = cn(
