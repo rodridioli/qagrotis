@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { UNIDADE_LABELS, type OkrKeyResultDto } from "@/features/okrs/lib/okrs-schemas"
-import { OkrProgressBar } from "@/features/okrs/components/OkrProgressBar"
 
 interface OkrKrUpdateModalProps {
   open: boolean
@@ -51,7 +50,6 @@ export function OkrKrUpdateModal({ open, onClose, onSubmit, kr, loading }: OkrKr
         <DialogHeader>
           <DialogTitle>Atualizar valor atual</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-text-secondary line-clamp-2">{kr.descricao}</p>
         <form id="kr-update-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text-primary">
@@ -64,20 +62,13 @@ export function OkrKrUpdateModal({ open, onClose, onSubmit, kr, loading }: OkrKr
                 value={valor}
                 onChange={(e) => setValor(e.target.value)}
                 disabled={loading}
-                className="flex-1"
+                className="flex-1 [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
               />
               <span className="text-sm text-text-secondary whitespace-nowrap">
                 / {kr.meta} {unidadeLabel}
               </span>
             </div>
             {error && <p className="text-xs text-destructive">{error}</p>}
-          </div>
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-text-secondary">
-              <span>Progresso</span>
-              <span className="tabular-nums font-medium">{previewPct.toFixed(0)}%</span>
-            </div>
-            <OkrProgressBar value={previewPct} max={100} />
           </div>
         </form>
         <DialogFooter>

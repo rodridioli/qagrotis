@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { OkrProgressBar } from "@/features/okrs/components/OkrProgressBar"
 import { OkrRiscoBadge } from "@/features/okrs/components/OkrRiscoBadge"
-import { OkrSituacaoBadge } from "@/features/okrs/components/OkrSituacaoBadge"
 import { OkrKeyResultFormModal } from "@/features/okrs/components/OkrKeyResultFormModal"
 import { OkrKrUpdateModal } from "@/features/okrs/components/OkrKrUpdateModal"
 import { OkrCancelModal } from "@/features/okrs/components/OkrCancelModal"
@@ -31,6 +30,7 @@ import { cn } from "@/core/utils"
 interface OkrKeyResultCardProps {
   kr: OkrKeyResultDto
   equipes: OkrEquipeDto[]
+  krIndex: number
   canEditKr: boolean
   canUpdateValue: boolean
   currentUserId: string
@@ -41,6 +41,7 @@ interface OkrKeyResultCardProps {
 export function OkrKeyResultCard({
   kr,
   equipes,
+  krIndex,
   canEditKr,
   canUpdateValue,
   currentUserId,
@@ -111,9 +112,9 @@ export function OkrKeyResultCard({
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className={cn("text-sm font-medium text-text-primary", isCanceled && "line-through")}>
+              <span className="font-semibold">KR{String(krIndex).padStart(2, "0")}:</span>{" "}
               {kr.descricao}
             </span>
-            <OkrSituacaoBadge situacao={kr.situacao} />
             {!isCanceled && <OkrRiscoBadge risco={kr.risco} />}
           </div>
           {isCanceled && kr.motivoCancelamento && (
@@ -242,7 +243,7 @@ export function OkrKeyResultCard({
         open={cancelOpen}
         onClose={() => setCancelOpen(false)}
         onConfirm={handleCancel}
-        titulo="Cancelar Key Result"
+        titulo="Cancelar Resultado-chave"
         descricao={kr.descricao}
         loading={saving}
       />

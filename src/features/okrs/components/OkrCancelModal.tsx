@@ -53,7 +53,7 @@ export function OkrCancelModal({
         )}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-text-primary">
-            Motivo do cancelamento <span className="text-destructive">*</span>
+            Motivo <span className="text-destructive">*</span>
           </label>
           <Textarea
             placeholder="Descreva o motivo..."

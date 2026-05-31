@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { OkrProgressBar } from "@/features/okrs/components/OkrProgressBar"
-import { OkrSituacaoBadge } from "@/features/okrs/components/OkrSituacaoBadge"
 import { OkrKeyResultCard } from "@/features/okrs/components/OkrKeyResultCard"
 import { OkrObjetivoFormModal } from "@/features/okrs/components/OkrObjetivoFormModal"
 import { OkrKeyResultFormModal } from "@/features/okrs/components/OkrKeyResultFormModal"
@@ -137,9 +136,6 @@ export function OkrObjetivoAccordion({
           {objetivo.descricao}
         </span>
 
-        {/* Badge de situação */}
-        <OkrSituacaoBadge situacao={objetivo.situacao} />
-
         {/* Motivo de cancelamento (inline quando cancelado) */}
         {isCanceled && objetivo.motivoCancelamento && (
           <span className="hidden sm:inline text-xs text-text-secondary truncate max-w-[12rem]">
@@ -186,12 +182,6 @@ export function OkrObjetivoAccordion({
           </div>
         )}
 
-        {/* Contagem de KRs — só exibe quando > 0 */}
-        {activeKrs.length > 0 && (
-          <span className="ml-1 shrink-0 text-xs tabular-nums text-text-secondary">
-            {activeKrs.length} KR{activeKrs.length !== 1 ? "s" : ""}
-          </span>
-        )}
       </div>
 
       {/* Conteúdo */}
@@ -201,11 +191,12 @@ export function OkrObjetivoAccordion({
             <EmptyState message="Nenhum resultado-chave encontrado." />
           ) : (
             <div className="space-y-3">
-              {objetivo.keyResults.map((kr) => (
+              {objetivo.keyResults.map((kr, idx) => (
                 <OkrKeyResultCard
                   key={kr.id}
                   kr={kr}
                   equipes={objetivo.equipes}
+                  krIndex={idx + 1}
                   canEditKr={canEditKr && !isCanceled}
                   canUpdateValue={canUpdateValue}
                   currentUserId={currentUserId}
