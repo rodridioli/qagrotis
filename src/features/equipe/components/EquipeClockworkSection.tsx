@@ -3,7 +3,7 @@
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
-import { ChevronDown, ChevronUp, Loader2, MoreVertical, Trash2 } from "lucide-react"
+import { Loader2, MoreVertical, Trash2 } from "lucide-react"
 import {
   Select,
   SelectItem,
@@ -137,7 +137,7 @@ function spToUtcIso(dateKey: string, hhmm: string): string {
 }
 
 function formatDuration(seconds: number): string {
-  if (seconds <= 0) return "—"
+  if (seconds <= 0) return "0h"
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
   if (h === 0) return `${m}m`
@@ -225,7 +225,6 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
   const [worklogsLoading, setWorklogsLoading]   = React.useState(false)
   const [worklogsError, setWorklogsError]       = React.useState<string | null>(null)
   const [editMap, setEditMap]                   = React.useState<Map<string, EditState>>(new Map())
-  const [collapsed, setCollapsed]               = React.useState<Set<string>>(new Set())
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = React.useState<CwWorklog | null>(null)
@@ -241,6 +240,9 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
     () => worklogs.reduce((s, w) => s + w.timeSpentSeconds, 0),
     [worklogs],
   )
+
+  /** Rótulo do período exibido no card de totais quando monthLabel ainda não chegou da API. */
+  const periodLabel = monthLabel || PERIOD_OPTIONS.find((o) => o.value === period)?.label || ""
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString())
@@ -261,15 +263,6 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
   function handleMemberSelect(userId: string) {
     setSelectedUserId(userId)
     setParam("cwm", userId)
-  }
-
-  function toggleDay(dateKey: string) {
-    setCollapsed((prev) => {
-      const next = new Set(prev)
-      if (next.has(dateKey)) next.delete(dateKey)
-      else next.add(dateKey)
-      return next
-    })
   }
 
   // Load team members — only MGR can view others; everyone else sees only their own data
@@ -324,7 +317,6 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
           setWorklogs(data.worklogs ?? [])
           setMonthLabel(data.month ?? "")
           setEditMap(buildInitialEditState(data.worklogs ?? []))
-          setCollapsed(new Set())
           setWorklogsLoading(false)
         }
       })
@@ -377,6 +369,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
         const json = (await res.json().catch(() => ({}))) as { error?: string }
         throw new Error(json.error ?? `Erro ${res.status}`)
       }
+      // Atualiza estado local para que totalSecondsMonth recalcule imediatamente
       setWorklogs((prev) =>
         prev.map((w) => w.id === worklog.id ? { ...w, started: newStarted, timeSpentSeconds: seconds, comment: state.comment } : w),
       )
@@ -425,8 +418,6 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
 
   if (membrosLoading) return <SectionSpinner minHeight="min-h-[60vh]" />
 
-  const showSummary = !worklogsLoading && !worklogsError && worklogs.length > 0 && selectedMembro
-
   return (
     <>
       {/* Delete confirmation — reuses the shared ConfirmDialog */}
@@ -447,17 +438,8 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
       <div className="flex flex-col gap-4">
         {/* Controls bar */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Avatar strip (MGR) / Totalizador compacto (não-MGR) */}
+          {/* Avatar strip — MGR only */}
           <div className="min-w-0 flex-1">
-            {!canViewOthersClockwork && !worklogsLoading && !worklogsError && worklogs.length > 0 && (
-              <p className="pl-1 text-sm text-text-secondary" aria-live="polite">
-                Total em {monthLabel}
-                <span className="mx-1.5" aria-hidden>·</span>
-                <span className="font-semibold tabular-nums text-text-primary">
-                  {formatDuration(totalSecondsMonth)}
-                </span>
-              </p>
-            )}
             {canViewOthersClockwork && !membrosLoading && membros.length > 0 && (
               <TooltipProvider delay={0} closeDelay={0}>
                 <div
@@ -533,24 +515,24 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
           </div>
         </div>
 
-        {/* Summary card — member + total hours */}
-        {showSummary && (
+        {/* Summary card — sempre visível quando há usuário selecionado */}
+        {selectedUserId !== null && (
           <div className="flex items-center justify-between rounded-xl bg-surface-card px-4 py-3 shadow-card">
-            <div className="flex items-center gap-3">
-              <UserAvatar
-                name={selectedMembro.name}
-                photoPath={selectedMembro.photoPath ?? null}
-                size={32}
-              />
-              <div>
+            <div>
+              {canViewOthersClockwork && selectedMembro && (
                 <p className="text-sm font-semibold text-text-primary">{selectedMembro.name}</p>
-                <p className="text-xs text-text-secondary">{monthLabel}</p>
-              </div>
+              )}
+              <p className={cn(
+                "text-xs text-text-secondary",
+                canViewOthersClockwork && selectedMembro ? "mt-0.5" : "text-sm font-medium text-text-primary",
+              )}>
+                {periodLabel}
+              </p>
             </div>
             <div className="text-right">
               <p className="text-xs text-text-secondary">Total no mês</p>
-              <p className="text-sm font-semibold tabular-nums text-text-primary">
-                {formatDuration(totalSecondsMonth)}
+              <p className="text-sm font-semibold tabular-nums text-text-primary" aria-live="polite">
+                {worklogsLoading ? "—" : formatDuration(totalSecondsMonth)}
               </p>
             </div>
           </div>
@@ -574,8 +556,6 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
                 key={day.dateKey}
                 day={day}
                 editMap={editMap}
-                collapsed={collapsed.has(day.dateKey)}
-                onToggle={() => toggleDay(day.dateKey)}
                 onFieldChange={(id, field, value) => updateEdit(id, { [field]: value, saveError: null })}
                 onBlurSave={(worklog, state) => saveWorklog(worklog, state)}
                 onDeleteClick={(worklog) => setDeleteTarget(worklog)}
@@ -593,78 +573,63 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
 export interface DayGroupProps {
   day: GroupedDay
   editMap: Map<string, EditState>
-  collapsed: boolean
-  onToggle: () => void
   onFieldChange: (id: string, field: keyof Pick<EditState, "startHHmm" | "endHHmm" | "comment">, value: string) => void
   onBlurSave: (worklog: CwWorklog, state: EditState) => void
   onDeleteClick: (worklog: CwWorklog) => void
 }
 
-export function DayGroup({ day, editMap, collapsed, onToggle, onFieldChange, onBlurSave, onDeleteClick }: DayGroupProps) {
+export function DayGroup({ day, editMap, onFieldChange, onBlurSave, onDeleteClick }: DayGroupProps) {
   return (
     <div className="overflow-hidden rounded-xl bg-surface-card shadow-card">
-      {/* Collapsible header */}
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={!collapsed}
-        className="flex w-full items-center justify-between border-b border-border-default bg-neutral-grey-50 px-4 py-3 text-left transition-colors hover:bg-neutral-grey-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary"
-      >
-        <div className="flex items-center gap-3">
-          {collapsed
-            ? <ChevronDown className="size-4 shrink-0 text-text-secondary" aria-hidden />
-            : <ChevronUp   className="size-4 shrink-0 text-text-secondary" aria-hidden />
-          }
-          <span className="text-sm font-semibold text-text-primary">{day.label}</span>
-        </div>
+      {/* Day header — não-interativo, apenas destaque visual */}
+      <div className="flex w-full items-center justify-between border-b border-border-default bg-neutral-grey-50 px-4 py-3">
+        <span className="text-sm font-semibold text-text-primary">{day.label}</span>
         <span className="ml-4 shrink-0 text-xs font-medium tabular-nums text-text-secondary">
           {formatDuration(day.totalSeconds)} total
         </span>
-      </button>
+      </div>
 
-      {/* Table — hidden when collapsed */}
-      {!collapsed && (
-        <div className="overflow-x-auto">
-          <table className="qagrotis-table-row-hover w-full min-w-[780px] table-fixed text-sm">
-            <colgroup>
-              <col style={{ width: "9rem"   }} />
-              <col />
-              <col style={{ width: "8.5rem" }} />
-              <col style={{ width: "8.5rem" }} />
-              <col style={{ width: "6rem"   }} />
-              <col style={{ width: "3rem"   }} />
-            </colgroup>
-            <thead>
-              <tr className="border-b border-border-default bg-neutral-grey-50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Jira</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Início</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Fim</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Total</th>
-                <th className="py-3 pr-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {day.worklogs.map((w) => {
-                const state = editMap.get(w.id)
-                if (!state) return null
-                const seconds = deriveSeconds(state.startHHmm, state.endHHmm)
-                return (
-                  <WorklogRow
-                    key={w.id}
-                    worklog={w}
-                    state={state}
-                    totalSeconds={seconds}
-                    onFieldChange={onFieldChange}
-                    onBlurSave={onBlurSave}
-                    onDeleteClick={onDeleteClick}
-                  />
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* Table — sempre visível */}
+      <div className="overflow-x-auto">
+        <table className="qagrotis-table-row-hover w-full min-w-[780px] table-fixed text-sm">
+          <colgroup>
+            <col style={{ width: "9rem"   }} />
+            <col />
+            <col style={{ width: "8.5rem" }} />
+            <col style={{ width: "8.5rem" }} />
+            <col style={{ width: "6rem"   }} />
+            <col style={{ width: "3rem"   }} />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-border-default bg-neutral-grey-50">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Jira</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Descrição</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Início</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Fim</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Total</th>
+              <th className="py-3 pr-3" />
+            </tr>
+          </thead>
+          <tbody>
+            {day.worklogs.map((w) => {
+              const state = editMap.get(w.id)
+              if (!state) return null
+              const seconds = deriveSeconds(state.startHHmm, state.endHHmm)
+              return (
+                <WorklogRow
+                  key={w.id}
+                  worklog={w}
+                  state={state}
+                  totalSeconds={seconds}
+                  onFieldChange={onFieldChange}
+                  onBlurSave={onBlurSave}
+                  onDeleteClick={onDeleteClick}
+                />
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

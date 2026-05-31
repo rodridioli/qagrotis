@@ -85,31 +85,11 @@ type Story = StoryObj<typeof meta>
 
 // ── Stories ───────────────────────────────────────────────────────────────────
 
-export const Expandido: Story = {
-  name: "Dia expandido",
+export const Default: Story = {
+  name: "Dia com registros",
   args: {
     day: mockDay,
     editMap: mockEditMap,
-    collapsed: false,
-    onToggle: () => {},
-    onFieldChange: () => {},
-    onBlurSave: () => {},
-    onDeleteClick: () => {},
-  },
-  render: (args) => (
-    <div className="max-w-4xl">
-      <DayGroup {...args} />
-    </div>
-  ),
-}
-
-export const Contraido: Story = {
-  name: "Dia contraído",
-  args: {
-    day: mockDay,
-    editMap: mockEditMap,
-    collapsed: true,
-    onToggle: () => {},
     onFieldChange: () => {},
     onBlurSave: () => {},
     onDeleteClick: () => {},
@@ -141,8 +121,6 @@ export const ComErro: Story = {
         },
       ],
     ]),
-    collapsed: false,
-    onToggle: () => {},
     onFieldChange: () => {},
     onBlurSave: () => {},
     onDeleteClick: () => {},
@@ -174,8 +152,6 @@ export const Salvando: Story = {
         },
       ],
     ]),
-    collapsed: false,
-    onToggle: () => {},
     onFieldChange: () => {},
     onBlurSave: () => {},
     onDeleteClick: () => {},
