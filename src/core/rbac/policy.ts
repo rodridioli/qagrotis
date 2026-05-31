@@ -55,6 +55,21 @@ export type Capability =
   | "individual.viewTeam"
   // Registros
   | "records.hardDelete"
+  // OKRs
+  | "okr.view"
+  | "okr.create"
+  | "okr.edit"
+  | "okr.close"
+  | "okr.cancel"
+  | "okr.objetivo.create"
+  | "okr.objetivo.edit"
+  | "okr.objetivo.cancel"
+  | "okr.kr.create"
+  | "okr.kr.edit"
+  | "okr.kr.cancel"
+  | "okr.kr.updateValue"
+  | "okr.iniciativa.manage"
+  | "okr.iniciativa.updateStatus"
 
 /** Itens visíveis-mas-desabilitados (aparecem cinzas no menu). */
 export type DisabledItem = Capability
@@ -86,6 +101,9 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.jira",
       "config.meuCadastro",
       "individual.lancamentos",
+      "okr.view",
+      "okr.kr.updateValue",
+      "okr.iniciativa.updateStatus",
     ],
     disabled: ["menu.pdi"],
     manageableProfiles: [],
@@ -112,6 +130,13 @@ const POLICY: Record<Role, RoleConfig> = {
       "equipe.lancamentos",
       "equipe.clockwork",
       "individual.viewTeam",
+      "okr.view",
+      "okr.kr.create",
+      "okr.kr.edit",
+      "okr.kr.cancel",
+      "okr.kr.updateValue",
+      "okr.iniciativa.manage",
+      "okr.iniciativa.updateStatus",
     ],
     disabled: ["menu.pdi"],
     manageableProfiles: ["QA"],
@@ -131,6 +156,9 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.meuCadastro",
       "individual.lancamentos",
       "equipe.clockwork",
+      "okr.view",
+      "okr.kr.updateValue",
+      "okr.iniciativa.updateStatus",
     ],
     disabled: ["menu.documentos", "menu.pdi"],
     manageableProfiles: [],
@@ -148,6 +176,13 @@ const POLICY: Record<Role, RoleConfig> = {
       "equipe.lancamentos",
       "equipe.clockwork",
       "individual.viewTeam",
+      "okr.view",
+      "okr.kr.create",
+      "okr.kr.edit",
+      "okr.kr.cancel",
+      "okr.kr.updateValue",
+      "okr.iniciativa.manage",
+      "okr.iniciativa.updateStatus",
     ],
     disabled: ["menu.documentos", "menu.pdi"],
     manageableProfiles: ["UX"],
@@ -166,6 +201,9 @@ const POLICY: Record<Role, RoleConfig> = {
       "config.meuCadastro",
       "individual.lancamentos",
       "equipe.clockwork",
+      "okr.view",
+      "okr.kr.updateValue",
+      "okr.iniciativa.updateStatus",
     ],
     disabled: ["menu.documentos", "menu.pdi"],
     manageableProfiles: [],
@@ -182,6 +220,13 @@ const POLICY: Record<Role, RoleConfig> = {
       "equipe.lancamentos",
       "equipe.clockwork",
       "individual.viewTeam",
+      "okr.view",
+      "okr.kr.create",
+      "okr.kr.edit",
+      "okr.kr.cancel",
+      "okr.kr.updateValue",
+      "okr.iniciativa.manage",
+      "okr.iniciativa.updateStatus",
     ],
     disabled: ["menu.documentos", "menu.pdi"],
     manageableProfiles: ["TW"],
@@ -215,6 +260,20 @@ const POLICY: Record<Role, RoleConfig> = {
       "individual.viewOthers",
       "config.clockwork",
       "config.equipes",
+      "okr.view",
+      "okr.create",
+      "okr.edit",
+      "okr.close",
+      "okr.cancel",
+      "okr.objetivo.create",
+      "okr.objetivo.edit",
+      "okr.objetivo.cancel",
+      "okr.kr.create",
+      "okr.kr.edit",
+      "okr.kr.cancel",
+      "okr.kr.updateValue",
+      "okr.iniciativa.manage",
+      "okr.iniciativa.updateStatus",
     ],
     disabled: ["menu.pdi"],
     manageableProfiles: ["QA", "UX", "TW", "MGR"],

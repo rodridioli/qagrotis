@@ -743,3 +743,170 @@ model KanbanInApprovalTracker {
   @@index([userId])
   @@map("kanban_in_approval_trackers")
 }
+
+// ── OKRs ─────────────────────────────────────────────────────────────────────
+
+enum OkrPeriodo {
+  Q1
+  Q2
+  Q3
+  Q4
+}
+
+enum OkrSituacao {
+  ATIVO
+  ENCERRADO
+  CANCELADO
+}
+
+enum OkrObjetivoSituacao {
+  ATIVO
+  CANCELADO
+}
+
+enum OkrKrSituacao {
+  ATIVO
+  CANCELADO
+}
+
+enum OkrUnidade {
+  PERCENTUAL
+  REAL
+  UNIDADES
+  HORAS
+  DIAS
+  PERSONALIZADA
+}
+
+enum OkrIniciativaStatus {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum OkrEquipe {
+  QA
+  UX
+  TW
+  GESTAO
+}
+
+model Okr {
+  id        String     @id @default(cuid())
+  codigo    String     @unique
+  ano       Int
+  periodo   OkrPeriodo
+  situacao  OkrSituacao @default(ATIVO)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  objetivos OkrObjetivo[]
+
+  @@index([ano])
+  @@index([situacao])
+  @@map("okrs")
+}
+
+model OkrObjetivo {
+  id                   String              @id @default(cuid())
+  okrId                String
+  descricao            String
+  situacao             OkrObjetivoSituacao @default(ATIVO)
+  motivoCancelamento   String?
+  percentualConcluido  Float               @default(0)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  okr        Okr          @relation(fields: [okrId], references: [id], onDelete: Cascade)
+  equipes    OkrObjetivoEquipe[]
+  keyResults OkrKeyResult[]
+
+  @@index([okrId])
+  @@map("okr_objetivos")
+}
+
+model OkrObjetivoEquipe {
+  objetivoId String
+  equipe     OkrEquipe
+
+  objetivo OkrObjetivo @relation(fields: [objetivoId], references: [id], onDelete: Cascade)
+
+  @@id([objetivoId, equipe])
+  @@map("okr_objetivo_equipes")
+}
+
+model OkrKeyResult {
+  id                   String       @id @default(cuid())
+  objetivoId           String
+  descricao            String
+  unidade              OkrUnidade   @default(PERCENTUAL)
+  unidadePersonalizada String?
+  valorInicial         Float        @default(0)
+  valorAtual           Float        @default(0)
+  meta                 Float        @default(100)
+  situacao             OkrKrSituacao @default(ATIVO)
+  motivoCancelamento   String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  objetivo     OkrObjetivo          @relation(fields: [objetivoId], references: [id], onDelete: Cascade)
+  responsaveis OkrKrResponsavel[]
+  evolucao     OkrKrEvolucao[]
+  iniciativas  OkrIniciativa[]
+
+  @@index([objetivoId])
+  @@map("okr_key_results")
+}
+
+model OkrKrResponsavel {
+  keyResultId String
+  userId      String
+
+  keyResult OkrKeyResult @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
+
+  @@id([keyResultId, userId])
+  @@index([userId])
+  @@map("okr_kr_responsaveis")
+}
+
+model OkrKrEvolucao {
+  id          String   @id @default(cuid())
+  keyResultId String
+  mes         Int
+  ano         Int
+  valor       Float
+  createdAt   DateTime @default(now())
+
+  keyResult OkrKeyResult @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
+
+  @@unique([keyResultId, mes, ano])
+  @@index([keyResultId])
+  @@map("okr_kr_evolucao")
+}
+
+model OkrIniciativa {
+  id          String              @id @default(cuid())
+  keyResultId String
+  descricao   String
+  status      OkrIniciativaStatus @default(PENDENTE)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  keyResult    OkrKeyResult              @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
+  responsaveis OkrIniciativaResponsavel[]
+
+  @@index([keyResultId])
+  @@map("okr_iniciativas")
+}
+
+model OkrIniciativaResponsavel {
+  iniciativaId String
+  userId       String
+
+  iniciativa OkrIniciativa @relation(fields: [iniciativaId], references: [id], onDelete: Cascade)
+
+  @@id([iniciativaId, userId])
+  @@index([userId])
+  @@map("okr_iniciativa_responsaveis")
+}
