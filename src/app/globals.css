@@ -56,8 +56,10 @@
   --color-surface-default: var(--surface-default);
   --color-surface-card: var(--surface-card);
   --color-surface-input: var(--surface-input);
+  --color-surface-overlay: var(--surface-overlay);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
+  --color-text-disabled: var(--text-disabled);
   --color-border-default: var(--border-default);
   /** Alerta / aviso (execução de teste — alinhado a #ffb900) */
   --color-alert: var(--alert);
@@ -128,13 +130,15 @@
 :root {
   /* ── QAgrotis Design Tokens — Light Theme ── */
   /* Semantic */
-  --brand-primary:   #00735D;
-  --surface-default: #f4f5f9;
-  --surface-card:    #ffffff;
-  --surface-input:   #f8f9fc;
-  --text-primary:    #1a202c;
-  --text-secondary:  #6b7280;
-  --border-default:  #e5e7eb;
+  --brand-primary:    #00735D;
+  --surface-default:  #f4f5f9;
+  --surface-card:     #ffffff;
+  --surface-input:    #f8f9fc;
+  --surface-overlay:  #eef0f5;
+  --text-primary:     #1a202c;
+  --text-secondary:   #6b7280;
+  --text-disabled:    #b0b8c4;
+  --border-default:   #e5e7eb;
   --alert:             #ffb900;
   --alert-foreground:  #1a202c;
   /* Badge status tokens (light) */
@@ -240,13 +244,15 @@
      ════════════════════════════════════════════════════════════ */
 
   /* ── Semantic tokens ── */
-  --brand-primary:   #2ab89e;
-  --surface-default: #0f1117;
-  --surface-card:    #161923;
-  --surface-input:   #1e2235;
-  --text-primary:    #e8edf5;
-  --text-secondary:  #8b95a5;
-  --border-default:  #252c3d;
+  --brand-primary:    #2ab89e;
+  --surface-default:  #0f1117;
+  --surface-card:     #161923;
+  --surface-input:    #1e2235;
+  --surface-overlay:  #1a1f2e;
+  --text-primary:     #e8edf5;
+  --text-secondary:   #8b95a5;
+  --text-disabled:    #475569;
+  --border-default:   #252c3d;
   --alert:             #ffb900;
   --alert-foreground:  #0f1117;
   /* Badge status tokens (dark) */
@@ -350,6 +356,28 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-default) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border-default);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--neutral-grey-400);
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-corner {
+    background: transparent;
   }
   body {
     @apply bg-background text-foreground;
