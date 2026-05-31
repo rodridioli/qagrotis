@@ -70,7 +70,6 @@ export default async function UsuariosPage() {
       currentUserId={currentUserId}
       isAdmin={isAdmin}
       isMgrAdmin={isMgrAdmin}
-      canHardDelete={isMgrAdmin}
       allowedUserIds={serializeRscProps(allowedUserIds)}
       usersFetchFailed={usersFetchFailed}
       usersFetchErrorMessage={usersFetchErrorMessage}

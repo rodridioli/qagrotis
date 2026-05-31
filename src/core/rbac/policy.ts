@@ -215,7 +215,6 @@ const POLICY: Record<Role, RoleConfig> = {
       "individual.viewOthers",
       "config.clockwork",
       "config.equipes",
-      "records.hardDelete",
     ],
     disabled: ["menu.pdi"],
     manageableProfiles: ["QA", "UX", "TW", "MGR"],

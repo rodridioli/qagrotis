@@ -7,7 +7,8 @@ import { checkAndSendBirthdayNotifications, checkAndSendCompanyAnniversaryNotifi
 import { getPendingDominioAvaliacao } from "@/features/individual/actions/individual-dominio"
 import type { PendingDominioAvaliacaoDto } from "@/features/individual/actions/individual-dominio"
 import { auth } from "@/core/auth"
-import { getUserJiraCredentials } from "@/features/qa/lib/jira-credentials-db"
+import { buildRole } from "@/core/rbac/policy"
+import { getJiraConfiguredStatus, getClockworkConfiguredStatus } from "@/features/integracoes/lib/integration-status"
 import LayoutClient from "./LayoutClient"
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -17,16 +18,24 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   let hasCenario = false
   let isAdmin = false
   let hasJiraConfigured = false
+  let hasClockworkConfigured = false
   let pendingDominioAvaliacao: PendingDominioAvaliacaoDto | null = null
+  let userEmail = ""
   try {
     const session = await auth()
     const userId = session?.user?.id ?? ""
+    userEmail = session?.user?.email ?? ""
+    const role = buildRole(session?.user?.type, session?.user?.accessProfile)
+    const isMgr = role === "Administrador:MGR"
 
-    const [rData, rAdmin, rDominio, rJira] = await Promise.allSettled([
+    const clockworkTask = isMgr ? getClockworkConfiguredStatus() : Promise.resolve(false)
+
+    const [rData, rAdmin, rDominio, rJira, rClockwork] = await Promise.allSettled([
       getLayoutMenuData(),
       checkIsAdmin(),
       getPendingDominioAvaliacao(),
-      userId ? getUserJiraCredentials(userId) : Promise.resolve(null),
+      userId ? getJiraConfiguredStatus(userId) : Promise.resolve(false),
+      clockworkTask,
     ])
     if (rData.status === "fulfilled") {
       const data = rData.value
@@ -42,8 +51,10 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       pendingDominioAvaliacao = rDominio.value
     }
     if (rJira.status === "fulfilled") {
-      const cred = rJira.value
-      hasJiraConfigured = !!(cred?.jiraUrl && cred?.jiraEmail && cred?.apiToken)
+      hasJiraConfigured = rJira.value
+    }
+    if (rClockwork.status === "fulfilled") {
+      hasClockworkConfigured = rClockwork.value
     }
   } catch {
     // If DB is temporarily unavailable, render layout without lists
@@ -61,6 +72,8 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       hasCenario={hasCenario}
       isAdmin={isAdmin}
       hasJiraConfigured={hasJiraConfigured}
+      hasClockworkConfigured={hasClockworkConfigured}
+      userEmail={userEmail}
       pendingDominioAvaliacao={pendingDominioAvaliacao}
     >
       {children}

@@ -2,16 +2,13 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { TableToolbar } from "@/components/shared/TableToolbar"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { IndividualFeedbacksTable } from "@/features/individual/components/IndividualFeedbacksTable"
 import {
-  deleteIndividualFeedback,
   listIndividualFeedbacks,
 } from "@/features/individual/actions/individual-feedbacks"
 import type { IndividualFeedbackListRow } from "@/features/individual/lib/individual-feedback"
@@ -59,8 +56,6 @@ export function IndividualFeedbacksSection({
   const [rows, setRows] = React.useState<IndividualFeedbackListRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [deleteOpen, setDeleteOpen] = React.useState(false)
-  const [deleteRow, setDeleteRow] = React.useState<IndividualFeedbackListRow | null>(null)
   const [q, setQ] = React.useState("")
   const [page, setPage] = React.useState(1)
 
@@ -110,19 +105,6 @@ export function IndividualFeedbacksSection({
     })
   }
 
-  async function confirmDelete() {
-    if (!deleteRow) return
-    const res = await deleteIndividualFeedback(deleteRow.id)
-    if (res.error) {
-      toast.error(res.error)
-      return
-    }
-    toast.success("Feedback removido com sucesso.")
-    setDeleteOpen(false)
-    setDeleteRow(null)
-    void refetch()
-  }
-
   if (loading) return <SectionSpinner minHeight="min-h-[60vh]" />
 
   return (
@@ -149,10 +131,6 @@ export function IndividualFeedbacksSection({
           <IndividualFeedbacksTable
             rows={paginated}
             onEdit={onEdit}
-            onRequestDelete={(row) => {
-              setDeleteRow(row)
-              setDeleteOpen(true)
-            }}
             noWrapper
             footer={
               totalPages > 1 ? (
@@ -169,15 +147,6 @@ export function IndividualFeedbacksSection({
         )}
       </div>
 
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Excluir feedback?"
-        description="Esta ação não pode ser desfeita."
-        confirmLabel="Excluir"
-        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
-        onConfirm={() => void confirmDelete()}
-      />
     </div>
   )
 }

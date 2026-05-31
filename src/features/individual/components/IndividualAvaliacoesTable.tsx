@@ -30,7 +30,7 @@ export interface IndividualAvaliacoesTableProps {
   /** Administrador+MGR: tendência vs avaliação anterior (lista por código desc). */
   scoreTrendByRowId?: Record<string, "up" | "down" | "same">
   onEdit: (row: IndividualPerformanceEvaluationListRow) => void
-  onRequestDelete: (row: IndividualPerformanceEvaluationListRow) => void
+  onRequestDelete?: (row: IndividualPerformanceEvaluationListRow) => void
   /** Exportar (rótulo curto, sem “PDF” no menu). */
   onExport?: (row: IndividualPerformanceEvaluationListRow) => void
   footer?: ReactNode
@@ -215,7 +215,7 @@ export function IndividualAvaliacoesTable({
                           Exportar
                         </DropdownMenuItem>
                       ) : null}
-                      {!readOnly ? (
+                      {!readOnly && onRequestDelete ? (
                         <DropdownMenuItem variant="destructive" onClick={() => onRequestDelete(r)}>
                           <Trash2 className="size-4" />
                           Excluir

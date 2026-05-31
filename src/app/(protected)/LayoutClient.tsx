@@ -40,6 +40,7 @@ import type { IntegracaoSafeRecord } from "@/features/integracoes/actions/integr
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { BackToTop } from "@/components/shared/BackToTop"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
+import { OnboardingGate } from "@/components/shared/OnboardingGate"
 import { DominioResponderSheet } from "@/features/individual/components/DominioResponderSheet"
 import {
   completarDominioAvaliacao,
@@ -243,11 +244,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
               return override.flatMap(({ capability, label }) => {
                 const base = byCapability.get(capability)
                 if (!base || !isVisible(role, capability)) return []
-                // Ocultar completamente o Gerador para perfis QA quando
-                // Jira ou modelos IA não estiverem configurados.
-                if (capability === "menu.gerador" && (!hasIntegracoes || !hasJiraConfigured)) return []
-                // Ocultar Lançamentos para Padrão:QA sem Jira configurado.
-                if (capability === "individual.lancamentos" && role === "Padrão:QA" && !hasJiraConfigured) return []
+                if (capability === "menu.gerador" && !hasIntegracoes) return []
                 return [{ ...base, label: label ?? base.label }]
               })
             })().map(({ href, icon: Icon, label, alwaysEnabled, capability }) => {
@@ -414,7 +411,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed, mobileOpen, onCloseMobi
                 if (href === "/gerador" || href === "/assistente") {
                   disabled = !hasIntegracoes
                 } else if (href === "/suites") {
-                  disabled = needsSistema && (!hasSistemaModulo || !hasCenario || !hasJiraConfigured)
+                  disabled = needsSistema && (!hasSistemaModulo || !hasCenario)
                 } else if (href === "/dashboard" || href === "/cenarios") {
                   disabled = needsSistema && !hasSistemaModulo
                 }
@@ -762,6 +759,8 @@ interface Props {
   hasCenario?: boolean
   isAdmin?: boolean
   hasJiraConfigured?: boolean
+  hasClockworkConfigured?: boolean
+  userEmail?: string
   pendingDominioAvaliacao?: PendingDominioAvaliacaoDto | null
 }
 
@@ -773,6 +772,8 @@ export default function LayoutClient({
   hasCenario: hasCenarioProp = false,
   isAdmin: _isAdmin = false,
   hasJiraConfigured = false,
+  hasClockworkConfigured = false,
+  userEmail = "",
   pendingDominioAvaliacao = null,
 }: Props) {
   const router = useRouter()
@@ -782,6 +783,7 @@ export default function LayoutClient({
   const role: Role = buildRole(session?.user?.type, session?.user?.accessProfile)
   const canAccessEquipeLancamentos = can(role, "equipe.lancamentos")
   const accessProfile: AccessProfile = (session?.user?.accessProfile as AccessProfile) ?? "QA"
+  const isMgr = role === "Administrador:MGR"
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isDark, setIsDark] = useState(false)
@@ -923,6 +925,12 @@ export default function LayoutClient({
 
   return (
     <SistemaContext.Provider value={{ sistemaSelecionado, setSistemaSelecionado: handleSistemaChange }}>
+      <OnboardingGate
+        hasJiraConfigured={hasJiraConfigured}
+        hasClockworkConfigured={hasClockworkConfigured}
+        isMgr={isMgr}
+        defaultEmail={userEmail}
+      />
       {pendingDominioAvaliacao ? (
         <DominioResponderSheet
           open={drawerOpen}

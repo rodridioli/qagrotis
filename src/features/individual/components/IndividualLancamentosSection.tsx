@@ -19,7 +19,6 @@ import {
   Users,
 } from "lucide-react"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { JiraNotConfiguredCard } from "@/components/shared/JiraNotConfiguredCard"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { TableToolbar } from "@/components/shared/TableToolbar"
 import { JiraPriorityBadge } from "@/components/shared/StatusBadge"
@@ -440,24 +439,9 @@ export function IndividualLancamentosSection({
     setTo(r.to)
   }, [presetProp])
 
-  // Credenciais verificadas uma vez por sessão — staleTime: Infinity evita refetch.
-  const credentialsQuery = useQuery({
-    queryKey: ["jira-credentials"],
-    queryFn: async () => {
-      const res = await fetch("/api/jira/credentials", { credentials: "same-origin" })
-      if (!res.ok) return { configured: false, jiraUrl: "" }
-      return res.json() as Promise<{ jiraUrl?: string; configured?: boolean }>
-    },
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
-
-  const jiraConfigured = credentialsQuery.data?.configured ?? null
-
   const lancamentosQuery = useQuery({
     queryKey: ["lancamentos", evaluatedUserId, from, to, preset],
     queryFn: ({ signal }) => fetchLancamentos(evaluatedUserId, from, to, preset, signal),
-    enabled: jiraConfigured === true,
     staleTime: 60_000,
     gcTime: 300_000,
     refetchInterval: 60_000,
@@ -473,7 +457,7 @@ export function IndividualLancamentosSection({
   }
 
   const data = lancamentosQuery.data ?? null
-  const isLoading = credentialsQuery.isLoading || lancamentosQuery.isLoading
+  const isLoading = lancamentosQuery.isLoading
   const isFetching = lancamentosQuery.isFetching
   const error = lancamentosQuery.error ? (lancamentosQuery.error as Error).message : null
   const jiraBase = data?.jiraBrowseBase?.trim() ? data.jiraBrowseBase.replace(/\/$/, "") : null
@@ -515,8 +499,7 @@ export function IndividualLancamentosSection({
 
   return (
     <div className="flex w-full flex-col gap-6">
-      {/* Preset filter — só visível no modo autônomo (sem parent controlando) e com Jira configurado */}
-      {!isControlled && jiraConfigured === true && (
+      {!isControlled && (
         <div className="flex items-center gap-3">
           <Select
             value={preset}
@@ -537,9 +520,7 @@ export function IndividualLancamentosSection({
         </div>
       )}
 
-      {jiraConfigured === false ? (
-        <JiraNotConfiguredCard />
-      ) : isLoading ? (
+      {isLoading ? (
         <SectionSpinner minHeight="min-h-[60vh]" />
       ) : error ? (
         <EmptyState message={`Erro: ${error}`} />

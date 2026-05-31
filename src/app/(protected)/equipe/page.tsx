@@ -8,7 +8,6 @@ import { checkIsAdmin } from "@/core/session"
 import { auth } from "@/core/auth"
 import { buildRole, can, type AccessProfile } from "@/core/rbac/policy"
 import { EQUIPE_TAB_IDS, type EquipeTabId } from "@/features/equipe/components/equipeNavEntries"
-import { getJiraConfiguredStatus, getClockworkConfiguredStatus } from "@/features/integracoes/lib/integration-status"
 import EquipeClient from "./EquipeClient"
 
 export default async function EquipePage({
@@ -32,7 +31,6 @@ export default async function EquipePage({
   const canFilterByProfile = isMgr
   const canAccessEquipeLancamentos = can(role, "equipe.lancamentos")
   const canAccessEquipeClockwork = can(role, "equipe.clockwork")
-  // Apenas Administrador:MGR pode visualizar worklogs de outros membros na aba Clockwork
   const canViewOthersClockwork = isMgr
 
   // Protege acesso direto via URL para roles sem permissão
@@ -41,18 +39,6 @@ export default async function EquipePage({
   }
   if (tab === "clockwork" && !canAccessEquipeClockwork) {
     redirect("/equipe?tab=chapters")
-  }
-
-  // Check de integração para Administrador:MGR
-  let jiraConfigured: boolean | null = null
-  let clockworkConfigured: boolean | null = null
-  if (isMgr && currentUserId) {
-    const [jira, cw] = await Promise.all([
-      getJiraConfiguredStatus(currentUserId),
-      getClockworkConfiguredStatus(),
-    ])
-    jiraConfigured = jira
-    clockworkConfigured = cw
   }
 
   const defaultTab: EquipeTabId = "chapters"
@@ -70,8 +56,6 @@ export default async function EquipePage({
       currentUserId={serializeRscProps(currentUserId)}
       isMgr={serializeRscProps(isMgr)}
       initialTab={initialTab}
-      jiraConfigured={serializeRscProps(jiraConfigured)}
-      clockworkConfigured={serializeRscProps(clockworkConfigured)}
     />
   )
 }

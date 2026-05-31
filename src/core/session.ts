@@ -49,14 +49,6 @@ export async function requireHardDeleteAccess() {
 }
 
 /**
- * Returns true if the current user has the records.hardDelete capability.
- * Does not throw — safe to use in server components for UI feature flags.
- */
-export async function checkCanHardDelete(): Promise<boolean> {
-  return checkCan("records.hardDelete")
-}
-
-/**
  * Returns true if the current session user has the given RBAC capability.
  * Does not throw — safe to use for UI-only feature flags.
  */

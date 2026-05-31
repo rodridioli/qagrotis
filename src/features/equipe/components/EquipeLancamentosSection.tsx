@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useQuery } from "@tanstack/react-query"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   Select,
@@ -17,7 +16,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { JiraNotConfiguredCard } from "@/components/shared/JiraNotConfiguredCard"
 import { SectionSpinner } from "@/components/shared/SectionSpinner"
 import { IndividualLancamentosSection } from "@/features/individual/components/IndividualLancamentosSection"
 import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
@@ -54,20 +52,6 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-
-  // Verifica se Jira está configurado — mesma query key usada por IndividualLancamentosSection
-  // (staleTime: Infinity → cache compartilhado, sem chamadas extras de rede)
-  const credentialsQuery = useQuery({
-    queryKey: ["jira-credentials"],
-    queryFn: async () => {
-      const res = await fetch("/api/jira/credentials", { credentials: "same-origin" })
-      if (!res.ok) return { configured: false }
-      return res.json() as Promise<{ configured?: boolean }>
-    },
-    staleTime: Infinity,
-    gcTime: Infinity,
-  })
-  const jiraConfigured = credentialsQuery.data?.configured ?? null
 
   // MGR não tem lançamentos próprios — default para QA
   const defaultProfile: Exclude<AccessProfileId, "MGR"> =
@@ -130,14 +114,8 @@ export function EquipeLancamentosSection({ userAccessProfile, canFilterByProfile
     return () => { cancelled = true }
   }, [profileFilter, canFilterByProfile, userAccessProfile])
 
-  // Mostra spinner enquanto membros OU credenciais Jira ainda não resolveram
-  if (membrosLoading || credentialsQuery.isLoading) {
+  if (membrosLoading) {
     return <SectionSpinner minHeight="min-h-[60vh]" />
-  }
-
-  // Jira não configurado: exibe apenas a mensagem, sem avatar strip nem selects
-  if (jiraConfigured === false) {
-    return <JiraNotConfiguredCard />
   }
 
   return (

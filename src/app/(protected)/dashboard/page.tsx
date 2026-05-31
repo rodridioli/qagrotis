@@ -21,8 +21,6 @@ import type { SuiteDashboardRecord } from "@/features/qa/actions/suites"
 import { getEquipeMembrosParaLancamentos, getEquipeMembrosParaLancamentosComInativos } from "@/features/equipe/actions/equipe"
 import { getProgressaoHistoricoBatch } from "@/features/individual/actions/individual-progressao"
 import { getApprovalIssuesByTag, getUxMemberJiraIds } from "@/features/qa/actions/jira-worklog-cache"
-import { getJiraConfiguredStatus } from "@/features/integracoes/lib/integration-status"
-import { IntegrationNotConfiguredCard } from "@/components/shared/IntegrationNotConfiguredCard"
 
 export default async function DashboardPage({
   searchParams,
@@ -46,12 +44,6 @@ export default async function DashboardPage({
 
   // ── MGR sem perfil → redireciona para visão padrão MGR ─────────────────
   if (isMgr && !perfil) redirect("/dashboard?perfil=MGR")
-
-  // ── Jira check para todos os painéis MGR ────────────────────────────────
-  if (isMgr && session?.user?.id) {
-    const jiraConfigured = await getJiraConfiguredStatus(session.user.id)
-    if (!jiraConfigured) return <IntegrationNotConfiguredCard type="jira" />
-  }
 
   // ── UX dashboard — apenas Administrador:MGR ──────────────────────────────
   if (perfil === "UX") {

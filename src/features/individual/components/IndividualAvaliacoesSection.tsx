@@ -2,15 +2,12 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { TableToolbar } from "@/components/shared/TableToolbar"
 import { IndividualAvaliacoesTable } from "@/features/individual/components/IndividualAvaliacoesTable"
 import {
-  deleteIndividualPerformanceEvaluation,
   listIndividualPerformanceEvaluations,
   type IndividualPerformanceEvaluationListRow,
 } from "@/features/individual/actions/individual-performance-evaluations"
@@ -62,8 +59,6 @@ export function IndividualAvaliacoesSection({
   const [rows, setRows] = React.useState<IndividualPerformanceEvaluationListRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [deleteOpen, setDeleteOpen] = React.useState(false)
-  const [deleteRow, setDeleteRow] = React.useState<IndividualPerformanceEvaluationListRow | null>(null)
   const [q, setQ] = React.useState("")
   const [page, setPage] = React.useState(1)
 
@@ -127,19 +122,6 @@ export function IndividualAvaliacoesSection({
     })
   }
 
-  async function confirmDelete() {
-    if (!deleteRow) return
-    const res = await deleteIndividualPerformanceEvaluation(deleteRow.id)
-    if (res.error) {
-      toast.error(res.error)
-      return
-    }
-    toast.success("Avaliação removida com sucesso.")
-    setDeleteOpen(false)
-    setDeleteRow(null)
-    void refetch()
-  }
-
   if (loading) return <SectionSpinner minHeight="min-h-[60vh]" />
 
   return (
@@ -194,10 +176,6 @@ export function IndividualAvaliacoesSection({
                   }
                 : undefined
             }
-            onRequestDelete={(row) => {
-              setDeleteRow(row)
-              setDeleteOpen(true)
-            }}
             noWrapper
             footer={
               totalPages > 1 ? (
@@ -214,15 +192,6 @@ export function IndividualAvaliacoesSection({
         )}
       </div>
 
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Excluir avaliação?"
-        description="Esta ação não pode ser desfeita."
-        confirmLabel="Excluir"
-        confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
-        onConfirm={() => void confirmDelete()}
-      />
     </div>
   )
 }

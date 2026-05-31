@@ -1,9 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Clock, Trash2 } from "lucide-react"
-import { toast } from "sonner"
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { Clock } from "lucide-react"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { TablePagination } from "@/components/shared/TablePagination"
 import { TableToolbar } from "@/components/shared/TableToolbar"
@@ -12,7 +10,6 @@ import { IndividualDominioTable } from "@/features/individual/components/Individ
 import { DominioVisualizarSheet } from "@/features/individual/components/DominioVisualizarSheet"
 import {
   listDominioAvaliacoes,
-  deleteDominioAvaliacao,
   type DominioAvaliacaoListRow,
 } from "@/features/individual/actions/individual-dominio"
 
@@ -62,8 +59,6 @@ export function IndividualDominioSection({
   const [error, setError] = React.useState<string | null>(null)
   const [q, setQ] = React.useState("")
   const [page, setPage] = React.useState(1)
-  const [deleteOpen, setDeleteOpen] = React.useState(false)
-  const [deleteRow, setDeleteRow] = React.useState<DominioAvaliacaoListRow | null>(null)
   const [viewOpen, setViewOpen] = React.useState(false)
   const [viewId, setViewId] = React.useState<string | null>(null)
 
@@ -121,19 +116,6 @@ export function IndividualDominioSection({
     return m
   }, [filtered])
 
-  async function confirmDelete() {
-    if (!deleteRow) return
-    const res = await deleteDominioAvaliacao(deleteRow.id)
-    if (res.error) {
-      toast.error(res.error)
-      return
-    }
-    toast.success("Avaliação de domínio removida.")
-    setDeleteOpen(false)
-    setDeleteRow(null)
-    void refetch()
-  }
-
   const pendingRow = rows.find((r) => r.status === "PENDENTE")
 
   const toolbarLeading = (
@@ -185,14 +167,6 @@ export function IndividualDominioSection({
               setViewId(row.id)
               setViewOpen(true)
             }}
-            onRequestDelete={
-              readOnly
-                ? undefined
-                : (row) => {
-                    setDeleteRow(row)
-                    setDeleteOpen(true)
-                  }
-            }
             noWrapper
             footer={
               totalPages > 1 ? (
@@ -215,17 +189,6 @@ export function IndividualDominioSection({
         avaliacaoId={viewId}
       />
 
-      {!readOnly ? (
-        <ConfirmDialog
-          open={deleteOpen}
-          onOpenChange={setDeleteOpen}
-          title="Excluir avaliação de domínio?"
-          description="Esta ação não pode ser desfeita."
-          confirmLabel="Excluir"
-          confirmIcon={<Trash2 className="size-4 shrink-0" aria-hidden />}
-          onConfirm={() => void confirmDelete()}
-        />
-      ) : null}
     </div>
   )
 }

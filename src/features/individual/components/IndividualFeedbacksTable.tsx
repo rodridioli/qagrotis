@@ -20,7 +20,7 @@ import { evaluationPeriodLabel } from "@/features/individual/lib/individual-perf
 export interface IndividualFeedbacksTableProps {
   rows: IndividualFeedbackListRow[]
   onEdit: (row: IndividualFeedbackListRow) => void
-  onRequestDelete: (row: IndividualFeedbackListRow) => void
+  onRequestDelete?: (row: IndividualFeedbackListRow) => void
   onExport?: (row: IndividualFeedbackListRow) => void
   footer?: ReactNode
   /** Quando true, não renderiza o card wrapper — o pai é responsável pelo container. */
@@ -127,10 +127,12 @@ export function IndividualFeedbacksTable({
                               Exportar
                             </DropdownMenuItem>
                           ) : null}
-                          <DropdownMenuItem variant="destructive" onClick={() => onRequestDelete(r)}>
-                            <Trash2 className="size-4" />
-                            Excluir
-                          </DropdownMenuItem>
+                          {onRequestDelete ? (
+                            <DropdownMenuItem variant="destructive" onClick={() => onRequestDelete(r)}>
+                              <Trash2 className="size-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          ) : null}
                         </>
                       ) : null}
                     </DropdownMenuContent>
