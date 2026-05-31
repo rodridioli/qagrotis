@@ -40,7 +40,7 @@ function getItems(
   const suites: TrabalhoItem           = { id: "suites",                 label: "Suítes",    Icon: Rocket,         href: "/suites" }
   const cenarios: TrabalhoItem         = { id: "cenarios",               label: "Cenários",  Icon: FileText,       href: "/cenarios" }
   const gerador: TrabalhoItem          = { id: "gerador",                label: "Gerador",   Icon: Sparkles,       href: "/gerador" }
-  const okr: TrabalhoItem              = { id: "okr",                    label: "OKR",       Icon: Target,         href: "/equipe?tab=metas" }
+  const okr: TrabalhoItem              = { id: "okr",                    label: "OKR",       Icon: Target,         href: "/equipe?tab=metas", disabled: true }
 
   const showGerador = hasIntegracoes && hasJiraConfigured
 
