@@ -25,6 +25,7 @@ import {
   getMembrosByEquipes,
   type OkrEquipeMembro,
 } from "@/features/okrs/actions/okrs"
+import { UserAvatar } from "@/features/equipe/components/EquipePerformanceCard"
 import { cn } from "@/core/utils"
 
 interface OkrKeyResultCardProps {
@@ -122,17 +123,36 @@ export function OkrKeyResultCard({
               <span className="font-medium">Motivo:</span> {kr.motivoCancelamento}
             </p>
           )}
-          {kr.responsaveis.length > 0 && (
-            <p className="mt-0.5 text-xs text-text-secondary">
-              Responsáveis: {kr.responsaveis.map((r) => r.name).join(", ")}
-            </p>
-          )}
         </div>
 
-        {/* Barra de progresso — mesma linha, alinhada à direita */}
+        {/* Avatares + barra de progresso + valor — alinhados à direita */}
         {!isCanceled && (
-          <div className="shrink-0 w-28">
-            <OkrProgressBar value={kr.progressoPercent} max={100} showLabel />
+          <div className="shrink-0 flex items-center gap-3">
+            {/* Avatares dos responsáveis */}
+            {kr.responsaveis.length > 0 && (
+              <div className="flex -space-x-1.5">
+                {kr.responsaveis.slice(0, 4).map((r) => (
+                  <div key={r.userId} title={r.name}>
+                    <UserAvatar name={r.name} photoPath={r.photoPath} size={24} />
+                  </div>
+                ))}
+                {kr.responsaveis.length > 4 && (
+                  <div
+                    className="flex size-6 shrink-0 items-center justify-center rounded-full bg-neutral-grey-100 text-[10px] font-semibold text-text-secondary ring-2 ring-border-default"
+                  >
+                    +{kr.responsaveis.length - 4}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Barra de progresso + valor/meta */}
+            <div className="flex flex-col items-end gap-0.5 w-28">
+              <OkrProgressBar value={kr.progressoPercent} max={100} showLabel />
+              <span className="text-[11px] tabular-nums text-text-secondary">
+                {kr.valorAtual} / {kr.meta} {unidadeLabel}
+              </span>
+            </div>
           </div>
         )}
 
@@ -173,13 +193,6 @@ export function OkrKeyResultCard({
           </DropdownMenu>
         )}
       </div>
-
-      {/* Valor atual / meta — linha secundária */}
-      {!isCanceled && (
-        <p className="text-xs tabular-nums text-text-secondary">
-          {kr.valorAtual} / {kr.meta} {unidadeLabel}
-        </p>
-      )}
 
       {/* Evolução mensal */}
       {!isCanceled && kr.evolucao.length > 0 && (
