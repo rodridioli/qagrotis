@@ -1,6 +1,5 @@
 import { getUserJiraCredentials } from "@/features/qa/lib/jira-credentials-db"
 import { getClockworkApiTokenFromDb } from "@/features/qa/lib/clockwork-credentials-db"
-import { env } from "@/core/env"
 
 /** Verifica se o usuário tem credenciais Jira válidas no banco (sem chamada HTTP). */
 export async function getJiraConfiguredStatus(userId: string): Promise<boolean> {
@@ -20,7 +19,7 @@ export async function getClockworkConfiguredStatus(): Promise<boolean> {
   try {
     const fromDb = await getClockworkApiTokenFromDb()
     if (fromDb) return true
-    return !!env.CLOCKWORK_API_TOKEN.trim()
+    return !!(process.env.CLOCKWORK_API_TOKEN?.trim())
   } catch {
     return false
   }
