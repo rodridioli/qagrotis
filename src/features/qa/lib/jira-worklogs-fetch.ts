@@ -1573,7 +1573,7 @@ export async function fetchKanbanSubtasks(
     .map((p) => `"${p}"`)
     .join(", ")
   const jql =
-    `((status = "UX" AND project in (${projectList})) OR (issuetype = "UX" AND project in (${nonUxProjectList}))) ORDER BY project ASC, updated DESC`
+    `((status = "UX" AND project in (${projectList})) OR (issuetype = "UX" AND project in (${nonUxProjectList}))) AND issueType not in subTaskIssueTypes() ORDER BY project ASC, updated DESC`
 
   const issues: KanbanIssue[] = []
   let nextPageToken: string | null = null

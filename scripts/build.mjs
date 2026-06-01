@@ -88,6 +88,10 @@ if (skipMigrate) {
     // https://www.prisma.io/docs/orm/prisma-migrate/workflows/migrate-advisory-locking
     const isP1002LockOrTimeout =
       /P1002|advisory lock|pg_advisory_lock|timed out trying to acquire/i.test(migrateOut)
+    // Neon sleeping / rede bloqueada durante o build — banco inacessível momentaneamente.
+    // O app funciona normalmente em runtime quando o banco volta a responder.
+    const isP1001Unreachable =
+      /P1001|Can't reach database server/i.test(migrateOut)
 
     if (isP3005Baseline) {
       console.warn(`
@@ -105,12 +109,20 @@ if (skipMigrate) {
        Runtime ainda corrige colunas em falta (ensureUserDataNascimentoColumns).
 ----------------------------------------------------------------------
 `)
+    } else if (isP1001Unreachable) {
+      console.warn(`
+----------------------------------------------------------------------
+[build] migrate deploy: P1001 — banco inacessível (Neon sleeping / rede).
+       Build continua. As migrações serão aplicadas no próximo deploy
+       quando o banco estiver acessível, ou rode migrate deploy manualmente.
+----------------------------------------------------------------------
+`)
     } else {
       console.error(`
 ----------------------------------------------------------------------
 prisma migrate deploy falhou. Verifique DATABASE_URL e os logs acima.
 
-Casos ignorados pelo build: P3005 (baseline), P1002/lock (Neon).
+Casos ignorados pelo build: P3005 (baseline), P1001 (Neon sleeping), P1002/lock.
 Para build sem migrate: SKIP_PRISMA_MIGRATE=1 npm run build
 ----------------------------------------------------------------------
 `)
