@@ -30,6 +30,7 @@ import {
   type OkrUnidadeDto,
   type OkrIniciativaStatusDto,
   type OkrEquipeDto,
+  type OkrKrHistoricoDto,
   type CreateOkrInput,
   type UpdateOkrSituacaoInput,
   type CreateObjetivoInput,
@@ -761,6 +762,7 @@ export async function updateOkrKeyResultValorAtual(
       select: {
         objetivoId: true,
         situacao: true,
+        valorAtual: true,
         responsaveis: { select: { userId: true } },
         objetivo: { select: { okrId: true } },
       },
@@ -777,6 +779,7 @@ export async function updateOkrKeyResultValorAtual(
 
     await assertOkrEditavel(kr.objetivo.okrId, isMgr)
 
+    const valorAnterior = kr.valorAtual
     const now = new Date()
     const mes = now.getMonth() + 1
     const ano = now.getFullYear()
@@ -795,6 +798,15 @@ export async function updateOkrKeyResultValorAtual(
           mes,
           ano,
           valor: parsed.data.valorAtual,
+        },
+      })
+      await tx.okrKrHistorico.create({
+        data: {
+          id: crypto.randomUUID(),
+          keyResultId: krId,
+          valorAnterior,
+          valorNovo: parsed.data.valorAtual,
+          updatedByUserId: session.user.id,
         },
       })
       await recalcularProgressoObjetivo(kr.objetivoId, tx)
@@ -838,6 +850,60 @@ export async function cancelOkrKeyResult(
     return { data: undefined }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erro ao cancelar Key Result." }
+  }
+}
+
+// ── Histórico de atualizações de KR ──────────────────────────────────────────
+
+/**
+ * Retorna o histórico de atualizações de valorAtual de um Key Result,
+ * do mais recente para o mais antigo. Inclui nome do usuário que atualizou.
+ * Requer capability okr.view.
+ */
+export async function getOkrKrHistorico(
+  krId: string,
+): Promise<ActionResult<OkrKrHistoricoDto[]>> {
+  try {
+    const { session, role } = await requireOkrAccess()
+
+    // Verifica que o KR existe e que o usuário tem acesso ao OKR pai
+    const kr = await prisma.okrKeyResult.findUnique({
+      where: { id: krId },
+      select: { objetivo: { select: { okrId: true } } },
+    })
+    if (!kr) return { error: "Key Result não encontrado." }
+
+    const isMgr = can(role, "okr.create")
+    await assertOkrInScope(kr.objetivo.okrId, session.user.id, isMgr)
+
+    const registros = await prisma.okrKrHistorico.findMany({
+      where: { keyResultId: krId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, valorAnterior: true, valorNovo: true, updatedByUserId: true, createdAt: true },
+    })
+
+    if (registros.length === 0) return { data: [] }
+
+    // Resolve nomes em batch (evita N+1)
+    const userIds = [...new Set(registros.map((r) => r.updatedByUserId))]
+    const users = await prisma.createdUser.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true },
+    })
+    const userMap = new Map(users.map((u) => [u.id, u.name]))
+
+    const data: OkrKrHistoricoDto[] = registros.map((r) => ({
+      id: r.id,
+      valorAnterior: r.valorAnterior,
+      valorNovo: r.valorNovo,
+      updatedByUserId: r.updatedByUserId,
+      updatedByName: userMap.get(r.updatedByUserId) ?? null,
+      createdAt: r.createdAt.toISOString(),
+    }))
+
+    return { data }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erro ao buscar histórico." }
   }
 }
 

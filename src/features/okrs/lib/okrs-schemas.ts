@@ -124,6 +124,15 @@ export interface OkrKrEvolucaoDto {
   valor: number
 }
 
+export interface OkrKrHistoricoDto {
+  id: string
+  valorAnterior: number
+  valorNovo: number
+  updatedByUserId: string
+  updatedByName: string | null
+  createdAt: string // ISO
+}
+
 export interface OkrResponsavelDto {
   userId: string
   name: string

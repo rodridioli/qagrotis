@@ -695,6 +695,7 @@ model OkrKeyResult {
   iniciativas          OkrIniciativa[]
   objetivo             OkrObjetivo        @relation(fields: [objetivoId], references: [id], onDelete: Cascade)
   evolucao             OkrKrEvolucao[]
+  historico            OkrKrHistorico[]
   responsaveis         OkrKrResponsavel[]
 
   @@index([objetivoId])
@@ -723,6 +724,21 @@ model OkrKrEvolucao {
   @@unique([keyResultId, mes, ano])
   @@index([keyResultId])
   @@map("okr_kr_evolucao")
+}
+
+/// Histórico de cada atualização de valorAtual de um Key Result.
+/// Registra quem atualizou, quando e qual foi a mudança de valor.
+model OkrKrHistorico {
+  id              String       @id @default(cuid())
+  keyResultId     String
+  valorAnterior   Float
+  valorNovo       Float
+  updatedByUserId String
+  createdAt       DateTime     @default(now())
+  keyResult       OkrKeyResult @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
+
+  @@index([keyResultId])
+  @@map("okr_kr_historico")
 }
 
 model OkrIniciativa {

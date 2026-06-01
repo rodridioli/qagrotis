@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreVertical, Pencil, TrendingUp, X } from "lucide-react"
+import { History, MoreVertical, Pencil, TrendingUp, X } from "lucide-react"
 import { toast } from "sonner"
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import { OkrRiscoBadge } from "@/features/okrs/components/OkrRiscoBadge"
 import { OkrKeyResultFormModal } from "@/features/okrs/components/OkrKeyResultFormModal"
 import { OkrKrUpdateModal } from "@/features/okrs/components/OkrKrUpdateModal"
 import { OkrCancelModal } from "@/features/okrs/components/OkrCancelModal"
+import { OkrKrHistoricoModal } from "@/features/okrs/components/OkrKrHistoricoModal"
 import {
   UNIDADE_LABELS,
   type OkrKeyResultDto,
@@ -52,9 +53,9 @@ export function OkrKeyResultCard({
   const [editOpen, setEditOpen] = React.useState(false)
   const [cancelOpen, setCancelOpen] = React.useState(false)
   const [updateOpen, setUpdateOpen] = React.useState(false)
+  const [historicoOpen, setHistoricoOpen] = React.useState(false)
   const [membros, setMembros] = React.useState<OkrEquipeMembro[]>([])
   const [saving, setSaving] = React.useState(false)
-  const [showEvolucao, setShowEvolucao] = React.useState(false)
 
   const unidadeLabel =
     kr.unidade === "PERSONALIZADA"
@@ -156,8 +157,8 @@ export function OkrKeyResultCard({
           </div>
         )}
 
-        {/* MoreOptions — Atualizar / Editar / Cancelar */}
-        {!okrEncerrado && !isCanceled && (((canUpdateValue && isMyKr) || canEditKr)) && (
+        {/* MoreOptions — Histórico (sempre) + Atualizar / Editar / Cancelar */}
+        {!isCanceled && (
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
@@ -171,19 +172,23 @@ export function OkrKeyResultCard({
               <MoreVertical className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="bottom">
-              {((canUpdateValue && isMyKr) || canEditKr) && (
+              <DropdownMenuItem onClick={() => setHistoricoOpen(true)}>
+                <History className="size-4" />
+                Histórico
+              </DropdownMenuItem>
+              {!okrEncerrado && ((canUpdateValue && isMyKr) || canEditKr) && (
                 <DropdownMenuItem onClick={() => setUpdateOpen(true)}>
                   <TrendingUp className="size-4" />
                   Atualizar
                 </DropdownMenuItem>
               )}
-              {canEditKr && (
+              {!okrEncerrado && canEditKr && (
                 <DropdownMenuItem onClick={openEdit}>
                   <Pencil className="size-4" />
                   Editar
                 </DropdownMenuItem>
               )}
-              {canEditKr && (
+              {!okrEncerrado && canEditKr && (
                 <DropdownMenuItem variant="destructive" onClick={() => setCancelOpen(true)}>
                   <X className="size-4" />
                   Cancelar
@@ -193,36 +198,6 @@ export function OkrKeyResultCard({
           </DropdownMenu>
         )}
       </div>
-
-      {/* Evolução mensal */}
-      {!isCanceled && kr.evolucao.length > 0 && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowEvolucao((v) => !v)}
-            className="text-xs text-text-secondary hover:text-text-primary flex items-center gap-1"
-          >
-            {showEvolucao ? "▲" : "▼"} Evolução mensal
-          </button>
-          {showEvolucao && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {kr.evolucao.map((e) => (
-                <div
-                  key={`${e.ano}-${e.mes}`}
-                  className="rounded-md border border-border-default bg-muted/40 px-2 py-1 text-center"
-                >
-                  <div className="text-xs font-medium text-text-secondary">
-                    {new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(new Date(e.ano, e.mes - 1))}
-                  </div>
-                  <div className="text-xs tabular-nums font-semibold text-text-primary">
-                    {e.valor} {unidadeLabel}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Modais */}
       <OkrKeyResultFormModal
@@ -259,6 +234,13 @@ export function OkrKeyResultCard({
         titulo="Cancelar Resultado-chave"
         descricao={kr.descricao}
         loading={saving}
+      />
+      <OkrKrHistoricoModal
+        open={historicoOpen}
+        onClose={() => setHistoricoOpen(false)}
+        krId={kr.id}
+        krDescricao={`KR${String(krIndex).padStart(2, "0")}: ${kr.descricao}`}
+        unidadeLabel={unidadeLabel}
       />
     </div>
   )
