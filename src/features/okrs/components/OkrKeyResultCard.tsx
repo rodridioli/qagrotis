@@ -117,7 +117,6 @@ export function OkrKeyResultCard({
               <span className="font-semibold">KR{String(krIndex).padStart(2, "0")}:</span>{" "}
               {kr.descricao}
             </span>
-            {!isCanceled && <OkrRiscoBadge risco={kr.risco} />}
           </div>
           {isCanceled && kr.motivoCancelamento && (
             <p className="mt-0.5 text-xs text-text-secondary">
@@ -146,6 +145,9 @@ export function OkrKeyResultCard({
                 )}
               </div>
             )}
+
+            {/* Badge de risco */}
+            <OkrRiscoBadge risco={kr.risco} />
 
             {/* Barra de progresso + valor/meta */}
             <div className="flex flex-col items-end gap-0.5 w-28">

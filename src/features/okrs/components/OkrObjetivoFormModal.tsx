@@ -76,7 +76,9 @@ export function OkrObjetivoFormModal({
               disabled={loading}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selecione uma equipe" />
+                <SelectValue placeholder="Selecione uma equipe">
+                  {equipe ? EQUIPE_LABELS[equipe] : undefined}
+                </SelectValue>
               </SelectTrigger>
               <SelectPopup>
                 {OKR_EQUIPES.map((eq) => (

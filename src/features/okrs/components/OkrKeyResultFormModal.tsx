@@ -100,7 +100,7 @@ export function OkrKeyResultFormModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Editar Resultado-chave" : "Novo Resultado-chave"}</DialogTitle>
         </DialogHeader>
@@ -119,7 +119,7 @@ export function OkrKeyResultFormModal({
             {errors.descricao && <p className="text-xs text-destructive">{errors.descricao}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
                 Unidade <span className="text-destructive">*</span>
@@ -140,25 +140,6 @@ export function OkrKeyResultFormModal({
               </Select>
             </div>
 
-            {unidade === "PERSONALIZADA" && (
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-primary">
-                  Nome da unidade <span className="text-destructive">*</span>
-                </label>
-                <Input
-                  placeholder="Ex.: Pontos"
-                  value={unidadePersonalizada}
-                  onChange={(e) => setUnidadePersonalizada(e.target.value)}
-                  disabled={loading}
-                />
-                {errors.unidadePersonalizada && (
-                  <p className="text-xs text-destructive">{errors.unidadePersonalizada}</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">Valor inicial</label>
               <Input
@@ -170,6 +151,7 @@ export function OkrKeyResultFormModal({
               />
               {errors.valorInicial && <p className="text-xs text-destructive">{errors.valorInicial}</p>}
             </div>
+
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text-primary">
                 Meta <span className="text-destructive">*</span>
@@ -184,6 +166,23 @@ export function OkrKeyResultFormModal({
               {errors.meta && <p className="text-xs text-destructive">{errors.meta}</p>}
             </div>
           </div>
+
+          {unidade === "PERSONALIZADA" && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                Nome da unidade <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="Ex.: Pontos"
+                value={unidadePersonalizada}
+                onChange={(e) => setUnidadePersonalizada(e.target.value)}
+                disabled={loading}
+              />
+              {errors.unidadePersonalizada && (
+                <p className="text-xs text-destructive">{errors.unidadePersonalizada}</p>
+              )}
+            </div>
+          )}
 
           {membros.length > 0 && (
             <div className="space-y-2">

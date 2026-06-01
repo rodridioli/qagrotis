@@ -56,14 +56,16 @@ export function OkrKrUpdateModal({ open, onClose, onSubmit, kr, loading }: OkrKr
               Valor atual ({unidadeLabel}) <span className="text-destructive">*</span>
             </label>
             <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={0}
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
-                disabled={loading}
-                className="flex-1 [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
-              />
+              <div className="flex-1 min-w-0">
+                <Input
+                  type="number"
+                  min={0}
+                  value={valor}
+                  onChange={(e) => setValor(e.target.value)}
+                  disabled={loading}
+                  className="[appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+                />
+              </div>
               <span className="text-sm text-text-secondary whitespace-nowrap">
                 / {kr.meta} {unidadeLabel}
               </span>

@@ -122,7 +122,7 @@ export function OkrDetailView({
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-medium text-text-primary">Objetivos</h2>
           {isMgr && !okrEncerrado && (
-            <Button variant="outline" size="sm" onClick={() => setObjetivoFormOpen(true)} className="shrink-0 gap-1.5">
+            <Button variant="outline" onClick={() => setObjetivoFormOpen(true)} className="shrink-0 gap-1.5">
               <Plus className="size-4" />
               Adicionar Objetivo
             </Button>

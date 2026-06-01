@@ -93,7 +93,7 @@ export function OkrObjetivoAccordion({
     try {
       const res = await createOkrKeyResult(objetivo.id, data)
       if ("error" in res) { toast.error(res.error); return }
-      toast.success("Key Result criado.")
+      toast.success("Resultado-chave criado.")
       setKrFormOpen(false)
       onRefresh()
     } finally {
@@ -210,9 +210,8 @@ export function OkrObjetivoAccordion({
           {canEditKr && !isCanceled && !okrEncerrado && (
             <Button
               variant="outline"
-              size="sm"
               onClick={() => { loadMembros(); setKrFormOpen(true) }}
-              className="gap-2"
+              className="gap-1.5"
             >
               <Plus className="size-4" />
               Adicionar Resultado-chave
