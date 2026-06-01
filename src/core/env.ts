@@ -50,24 +50,17 @@ export const env = {
 } as const
 
 /**
- * Warn loudly in non-test environments when ENCRYPTION_KEY is not configured.
- * In production, db-utils.ts already throws — this catches it earlier (module load time).
+ * Warn loudly when ENCRYPTION_KEY is not configured.
+ * The app remains functional without it (fields stored as plaintext),
+ * but encryption is strongly recommended for production deployments.
+ * Generate a key: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
  */
 if (typeof process !== "undefined" && process.env.NODE_ENV !== "test") {
   const encKey = process.env.ENCRYPTION_KEY
   if (!encKey || encKey.length !== 64) {
-    if (process.env.NODE_ENV === "production") {
-      // In production throw immediately — sensitive fields cannot be stored safely without it.
-      throw new Error(
-        "[env] ENCRYPTION_KEY is required in production. " +
-        "Generate a 64-char hex key: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
-      )
-    } else {
-      // In development, warn but allow startup (useful for initial project setup).
-      console.warn(
-        "[env] WARNING: ENCRYPTION_KEY is not set. Sensitive fields (API keys, passwords) " +
-        "will be stored without encryption. Set a 64-char hex key in your .env file before handling real data."
-      )
-    }
+    console.warn(
+      "[env] WARNING: ENCRYPTION_KEY is not set. Sensitive fields (API tokens, passwords) " +
+      "will be stored without encryption. Add a 64-char hex key to your deployment env vars."
+    )
   }
 }

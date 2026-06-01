@@ -59,22 +59,13 @@ describe("encryptField / decryptField", () => {
     expect(decryptField("texto-puro")).toBe("texto-puro")
   })
 
-  it("sem ENCRYPTION_KEY em dev/test: encryptField apenas warn, não lança", () => {
+  it("sem ENCRYPTION_KEY: encryptField apenas warn e retorna plaintext, nunca lança", () => {
     delete process.env.ENCRYPTION_KEY
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     expect(() => encryptField("x")).not.toThrow()
+    expect(encryptField("x")).toBe("x")
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("ENCRYPTION_KEY"))
     warnSpy.mockRestore()
-  })
-
-  it("em produção sem ENCRYPTION_KEY: encryptField lança", () => {
-    delete process.env.ENCRYPTION_KEY
-    const orig = process.env.NODE_ENV
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(process.env as any).NODE_ENV = "production"
-    expect(() => encryptField("x")).toThrow("ENCRYPTION_KEY ausente")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(process.env as any).NODE_ENV = orig
   })
 })
 
