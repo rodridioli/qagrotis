@@ -50,10 +50,13 @@ export async function getKanbanSubtasks(): Promise<KanbanResult> {
     return { ok: false, error: "Credenciais Jira não configuradas.", reason: "jira_not_configured" }
   }
 
+  console.log(`[kanban] getKanbanSubtasks userId=${session.user.id} jiraBase=${creds.base}`)
+
   try {
     const issues = await fetchKanbanSubtasks(creds.base, creds.credentials)
     return { ok: true, issues }
-  } catch {
+  } catch (e) {
+    console.error("[kanban] getKanbanSubtasks threw:", e)
     return { ok: false, error: "Erro ao buscar dados do Jira. Tente novamente.", reason: "fetch_error" }
   }
 }
@@ -120,6 +123,22 @@ export async function getUxTarefasForMainKanban(): Promise<UxTarefasResult> {
   const creds = await resolveCredentials(session.user.id)
   if (!creds) {
     return { ok: false, error: "Credenciais Jira não configuradas.", reason: "jira_not_configured" }
+  }
+
+  console.log(`[kanban] getUxTarefasForMainKanban userId=${session.user.id} jiraBase=${creds.base}`)
+
+  // Quick sanity check: hit the Jira API directly to confirm credentials work
+  try {
+    const { default: fetch } = await import("node-fetch").catch(() => ({ default: globalThis.fetch }))
+    void fetch
+    const testRes = await globalThis.fetch(`${creds.base}/rest/api/3/myself`, {
+      signal: AbortSignal.timeout(8_000),
+      headers: { Authorization: `Basic ${creds.credentials}`, Accept: "application/json" },
+    })
+    const testJson = await testRes.json().catch(() => null)
+    console.log(`[kanban] /myself → status=${testRes.status} accountId=${(testJson as { accountId?: string })?.accountId ?? "?"} email=${(testJson as { emailAddress?: string })?.emailAddress ?? "?"}`)
+  } catch (e) {
+    console.log(`[kanban] /myself error:`, e)
   }
 
   try {
