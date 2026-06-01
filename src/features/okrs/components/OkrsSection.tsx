@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, MoreVertical, Eye, CheckSquare, Trash2 } from "lucide-react"
+import { Plus, MoreVertical, Eye, CheckSquare, RotateCcw, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -48,7 +48,6 @@ function formatDate(iso: string): string {
 export function OkrsSection({ userType, userAccessProfile, currentUserId }: OkrsSectionProps) {
   const role = buildRole(userType, userAccessProfile)
   const canCreate = can(role, "okr.create")
-  const canEdit = can(role, "okr.edit")
   const canClose = can(role, "okr.close")
   const canDelete = can(role, "okr.delete")
 
@@ -60,6 +59,7 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
   const [selectedOkrId, setSelectedOkrId] = React.useState<string | null>(null)
   const [actionSaving, setActionSaving] = React.useState<string | null>(null)
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null)
+  const [closeTargetId, setCloseTargetId] = React.useState<string | null>(null)
 
   const load = React.useCallback(async () => {
     setLoading(true)
@@ -97,12 +97,27 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
     }
   }
 
-  async function handleSituacao(id: string, situacao: "ENCERRADO") {
+  async function handleEncerrar() {
+    if (!closeTargetId) return
+    const id = closeTargetId
+    setCloseTargetId(null)
     setActionSaving(id)
     try {
-      const res = await updateOkrSituacao(id, { situacao })
+      const res = await updateOkrSituacao(id, { situacao: "ENCERRADO" })
       if ("error" in res) { toast.error(res.error); return }
       toast.success("OKR encerrado.")
+      load()
+    } finally {
+      setActionSaving(null)
+    }
+  }
+
+  async function handleReabrir(id: string) {
+    setActionSaving(id)
+    try {
+      const res = await updateOkrSituacao(id, { situacao: "ATIVO" })
+      if ("error" in res) { toast.error(res.error); return }
+      toast.success("OKR reaberto.")
       load()
     } finally {
       setActionSaving(null)
@@ -167,6 +182,16 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
           ) : (
           <div className="overflow-x-auto">
             <table className="qagrotis-table-row-hover w-full min-w-[640px] table-fixed text-sm">
+              <colgroup>
+                <col />
+                <col />
+                <col />
+                <col />
+                <col />
+                <col />
+                <col />
+                <col className="w-12" />
+              </colgroup>
               <thead>
                 <tr className="border-b border-border-default bg-neutral-grey-50">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Código</th>
@@ -176,7 +201,7 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Resultados-chave</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Situação</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">Atualizado em</th>
-                  <th className="py-3 pl-2 pr-4 text-center text-xs font-semibold text-text-secondary">
+                  <th className="w-12 py-3 pr-4 text-right text-xs font-semibold text-text-secondary">
                     <span className="sr-only">Ações</span>
                   </th>
                 </tr>
@@ -228,14 +253,14 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
                     <td className="px-4 py-3 tabular-nums text-text-secondary whitespace-nowrap">
                       {formatDate(okr.updatedAt)}
                     </td>
-                    <td className="py-3 pl-2 pr-4">
+                    <td className="w-12 py-3 pr-4 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={
                             <button
                               type="button"
                               aria-label="Mais ações"
-                              className="flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
+                              className="ml-auto flex size-8 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-neutral-grey-100 hover:text-text-primary"
                             />
                           }
                         >
@@ -248,11 +273,20 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
                           </DropdownMenuItem>
                           {canClose && okr.situacao === "ATIVO" && (
                             <DropdownMenuItem
-                              onClick={() => handleSituacao(okr.id, "ENCERRADO")}
+                              onClick={() => setCloseTargetId(okr.id)}
                               disabled={actionSaving === okr.id}
                             >
                               <CheckSquare className="size-4" />
                               Encerrar
+                            </DropdownMenuItem>
+                          )}
+                          {canClose && okr.situacao === "ENCERRADO" && (
+                            <DropdownMenuItem
+                              onClick={() => handleReabrir(okr.id)}
+                              disabled={actionSaving === okr.id}
+                            >
+                              <RotateCcw className="size-4" />
+                              Reabrir
                             </DropdownMenuItem>
                           )}
                           {canDelete && (
@@ -284,11 +318,25 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
         loading={creating}
       />
 
+      {/* Modal de confirmação — Encerrar */}
+      <ConfirmDialog
+        open={closeTargetId !== null}
+        onOpenChange={(open) => { if (!open) setCloseTargetId(null) }}
+        title="Encerrar OKR"
+        description="Ao encerrar este OKR, todas as opções de edição serão desativadas. Você poderá reabri-lo posteriormente se necessário. Deseja continuar?"
+        confirmLabel="Encerrar"
+        confirmIcon={<CheckSquare className="size-4" />}
+        buttonVariant="default"
+        disabled={actionSaving !== null}
+        onConfirm={handleEncerrar}
+      />
+
+      {/* Modal de confirmação — Excluir */}
       <ConfirmDialog
         open={deleteTargetId !== null}
         onOpenChange={(open) => { if (!open) setDeleteTargetId(null) }}
         title="Excluir OKR"
-        description="Esta ação é permanente e removerá todos os objetivos, Resultados-chave e iniciativas vinculados. Deseja continuar?"
+        description="Esta ação é permanente e removerá todos os Objetivos e Resultados-chave vinculados. Deseja continuar?"
         confirmLabel="Excluir"
         confirmIcon={<Trash2 className="size-4" />}
         disabled={actionSaving !== null}

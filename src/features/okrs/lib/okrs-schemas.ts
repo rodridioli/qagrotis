@@ -44,7 +44,7 @@ export const createOkrSchema = z.object({
 export type CreateOkrInput = z.infer<typeof createOkrSchema>
 
 export const updateOkrSituacaoSchema = z.object({
-  situacao: z.enum(["ENCERRADO", "CANCELADO"]),
+  situacao: z.enum(["ATIVO", "ENCERRADO", "CANCELADO"]),
 })
 export type UpdateOkrSituacaoInput = z.infer<typeof updateOkrSituacaoSchema>
 

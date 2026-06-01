@@ -105,9 +105,9 @@ export function OkrDetailView({
       </div>
 
       {/* Banner OKR encerrado */}
-      {okrEncerrado && !isMgr && (
+      {okrEncerrado && (
         <div className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          Este OKR está encerrado. Somente Administrador:MGR pode editar.
+          Este OKR está encerrado. Reabra-o para editar novamente.
         </div>
       )}
 
@@ -141,7 +141,7 @@ export function OkrDetailView({
                   canEditKr={canEditKr}
                   canUpdateValue={canUpdateValue}
                   currentUserId={currentUserId}
-                  okrEncerrado={okrEncerrado && !isMgr}
+                  okrEncerrado={okrEncerrado}
                   onRefresh={load}
                   defaultOpen={idx === 0}
                 />
