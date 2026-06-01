@@ -1,14 +1,16 @@
-import { getUserJiraCredentials } from "@/features/qa/lib/jira-credentials-db"
+import { resolveJiraCredentialsForRequest } from "@/features/qa/lib/jira-credentials-db"
 import { getClockworkApiTokenFromDb } from "@/features/qa/lib/clockwork-credentials-db"
 
-/** Verifica se o usuário tem credenciais Jira válidas no banco (sem chamada HTTP). */
-export async function getJiraConfiguredStatus(userId: string): Promise<boolean> {
+/**
+ * Verifica se o usuário tem credenciais Jira válidas — checa BD com fallback
+ * para cookies legados (mesmo comportamento de resolveJiraCredentialsForRequest).
+ * Passa sessionEmail para que o fallback de cookies só seja aceito quando o
+ * e-mail do cookie corresponde ao do utilizador autenticado.
+ */
+export async function getJiraConfiguredStatus(userId: string, sessionEmail?: string): Promise<boolean> {
   try {
-    const creds = await getUserJiraCredentials(userId)
-    const url = creds?.jiraUrl?.trim() ?? ""
-    const email = creds?.jiraEmail?.trim() ?? ""
-    const token = creds?.apiToken?.trim() ?? ""
-    return !!(url && email && token)
+    const creds = await resolveJiraCredentialsForRequest(userId, sessionEmail)
+    return !!(creds?.jiraUrl && creds?.jiraEmail && creds?.apiToken)
   } catch {
     return false
   }

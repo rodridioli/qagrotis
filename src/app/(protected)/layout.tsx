@@ -34,7 +34,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       getLayoutMenuData(),
       checkIsAdmin(),
       getPendingDominioAvaliacao(),
-      userId ? getJiraConfiguredStatus(userId) : Promise.resolve(false),
+      userId ? getJiraConfiguredStatus(userId, userEmail) : Promise.resolve(false),
       clockworkTask,
     ])
     if (rData.status === "fulfilled") {
