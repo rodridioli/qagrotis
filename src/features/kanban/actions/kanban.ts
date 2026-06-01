@@ -127,11 +127,9 @@ export async function getUxTarefasForMainKanban(): Promise<UxTarefasResult> {
 
   console.log(`[kanban] getUxTarefasForMainKanban userId=${session.user.id} jiraBase=${creds.base}`)
 
-  // Quick sanity check: hit the Jira API directly to confirm credentials work
+  // Quick sanity check: hit /myself to confirm credentials work
   try {
-    const { default: fetch } = await import("node-fetch").catch(() => ({ default: globalThis.fetch }))
-    void fetch
-    const testRes = await globalThis.fetch(`${creds.base}/rest/api/3/myself`, {
+    const testRes = await fetch(`${creds.base}/rest/api/3/myself`, {
       signal: AbortSignal.timeout(8_000),
       headers: { Authorization: `Basic ${creds.credentials}`, Accept: "application/json" },
     })
