@@ -283,7 +283,7 @@ function InApprovalModal({
   onClose,
 }: {
   card: UserKanbanCard
-  onConfirm: (approver: MentionUser) => Promise<void>
+  onConfirm: (approver: MentionUser, prototypeLink?: string) => Promise<void>
   onClose: () => void
 }) {
   const [query, setQuery] = React.useState("")
@@ -291,6 +291,7 @@ function InApprovalModal({
   const [searching, setSearching] = React.useState(false)
   const [selected, setSelected] = React.useState<MentionUser | null>(null)
   const [submitting, setSubmitting] = React.useState(false)
+  const [prototypeLink, setPrototypeLink] = React.useState("")
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   React.useEffect(() => {
@@ -312,7 +313,7 @@ function InApprovalModal({
   const handleConfirm = async () => {
     if (!selected) return
     setSubmitting(true)
-    await onConfirm(selected)
+    await onConfirm(selected, prototypeLink.trim() || undefined)
     setSubmitting(false)
   }
 
@@ -409,8 +410,25 @@ function InApprovalModal({
             </div>
           )}
           <p className="text-xs text-text-secondary">
-            O aprovador receberá a mensagem: <em>"@aprovador, a tarefa de UX foi concluída e aguarda a sua aprovação."</em>
+            {prototypeLink.trim()
+              ? <>O aprovador receberá a mensagem: <em>"@aprovador, a tarefa de UX foi concluída e aguarda a sua aprovação. Link para o protótipo: [ Visualizar ]"</em></>
+              : <>O aprovador receberá a mensagem: <em>"@aprovador, a tarefa de UX foi concluída e aguarda a sua aprovação."</em></>
+            }
           </p>
+        </div>
+
+        {/* Link do protótipo (opcional) */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-text-primary">
+            Link do protótipo
+          </label>
+          <input
+            type="url"
+            value={prototypeLink}
+            onChange={(e) => setPrototypeLink(e.target.value)}
+            placeholder="https://www.figma.com/proto/…"
+            className="w-full rounded-xl border border-border-default bg-surface-input px-3 py-2 text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+          />
         </div>
 
         <div className="flex justify-end gap-2 pt-1">
@@ -926,7 +944,7 @@ export function UserKanbanClient({
     }
   }
 
-  async function handleInApprovalConfirm(approver: MentionUser) {
+  async function handleInApprovalConfirm(approver: MentionUser, prototypeLink?: string) {
     if (!pendingInApproval) return
     const card = pendingInApproval
     const prev = cards
@@ -947,6 +965,7 @@ export function UserKanbanClient({
         card.cardType,
         approver.accountId,
         approver.displayName,
+        prototypeLink,
       )
       if (!res.ok) {
         toast.error(res.error ?? "Erro ao enviar para aprovação.")

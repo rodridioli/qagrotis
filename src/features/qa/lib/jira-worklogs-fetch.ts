@@ -1915,6 +1915,52 @@ export function buildAdfCommentInline(
   return { version: 1, type: "doc", content: [{ type: "paragraph", content }] }
 }
 
+/**
+ * Builds an ADF comment with @mention + approval text, and optionally a second
+ * paragraph with a "Visualizar" hyperlink to the prototype.
+ *
+ * Without link:
+ *   @mention, a tarefa de UX foi concluída e aguarda a sua aprovação.
+ *
+ * With link:
+ *   @mention, a tarefa de UX foi concluída e aguarda a sua aprovação.
+ *   Link para o protótipo: [ Visualizar ]
+ */
+export function buildAdfApprovalComment(
+  mention: { accountId: string; displayName: string },
+  prototypeLink?: string,
+): object {
+  const firstParagraph = {
+    type: "paragraph",
+    content: [
+      {
+        type: "mention",
+        attrs: { id: mention.accountId, text: `@${mention.displayName}`, accessLevel: "APPLICATION" },
+      },
+      { type: "text", text: ", a tarefa de UX foi concluída e aguarda a sua aprovação." },
+    ],
+  }
+
+  if (!prototypeLink) {
+    return { version: 1, type: "doc", content: [firstParagraph] }
+  }
+
+  const secondParagraph = {
+    type: "paragraph",
+    content: [
+      { type: "text", text: "Link para o protótipo: [ " },
+      {
+        type: "text",
+        text: "Visualizar",
+        marks: [{ type: "link", attrs: { href: prototypeLink } }],
+      },
+      { type: "text", text: " ]" },
+    ],
+  }
+
+  return { version: 1, type: "doc", content: [firstParagraph, secondParagraph] }
+}
+
 /** Searches Jira users by display name or email (for @mention autocomplete). */
 export async function searchJiraUsersForMention(
   base: string,

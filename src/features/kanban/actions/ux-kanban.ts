@@ -8,6 +8,7 @@ import {
   jiraJson,
   buildAdfComment,
   buildAdfCommentInline,
+  buildAdfApprovalComment,
   postJiraComment,
   transitionIssueToStatus,
   searchJiraUsersForMention,
@@ -602,6 +603,7 @@ export async function confirmInApproval(
   cardType: "ux_tarefa" | "demanda",
   approverAccountId: string,
   approverDisplayName: string,
+  prototypeLink?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const session = await requireSession()
   const role = buildRole(session.user.type, session.user.accessProfile)
@@ -651,10 +653,9 @@ export async function confirmInApproval(
     },
   })
 
-  // Posta comentário: "@aprovador, a tarefa de UX foi concluída e aguarda a sua aprovação."
-  const body = buildAdfComment(
-    ", a tarefa de UX foi concluída e aguarda a sua aprovação.",
+  const body = buildAdfApprovalComment(
     { accountId: approverAccountId, displayName: approverDisplayName },
+    prototypeLink || undefined,
   )
   await postJiraComment(base, credentials, issueKey, body).catch(() => null)
 

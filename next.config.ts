@@ -11,7 +11,7 @@ const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://avatars.githubusercontent.com https://cdn.discordapp.com",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://avatars.githubusercontent.com https://cdn.discordapp.com https://secure.gravatar.com https://avatar-management--avatars.us-west-2.prod.atl-paas.net https://*.atlassian.net https://*.atlassian.com",
   "font-src 'self'",
   "connect-src 'self' https://api.stripe.com",
   "frame-src https://js.stripe.com https://hooks.stripe.com",
