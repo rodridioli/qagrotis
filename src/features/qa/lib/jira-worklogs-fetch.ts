@@ -1624,10 +1624,14 @@ export async function fetchKanbanSubtasks(
       })
     }
 
-    if (page.isLast) break
+    if (page.isLast) {
+      console.log(`[fetchKanbanSubtasks] isLast=true page.issues=${page.issues.length} total=${issues.length}`)
+      break
+    }
     nextPageToken = page.nextPageToken
   }
 
+  console.log(`[fetchKanbanSubtasks] done → ${issues.length} issue(s) | JQL: ${jql}`)
   return issues
 }
 
