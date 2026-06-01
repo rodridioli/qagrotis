@@ -127,7 +127,7 @@ export function OkrKeyResultCard({
 
         {/* Avatares + barra de progresso + valor — alinhados à direita */}
         {!isCanceled && (
-          <div className="shrink-0 flex items-center gap-3">
+          <div className="shrink-0 flex items-center gap-5">
             {/* Avatares dos responsáveis */}
             {kr.responsaveis.length > 0 && (
               <div className="flex -space-x-1.5">
@@ -149,10 +149,13 @@ export function OkrKeyResultCard({
             {/* Badge de risco */}
             <OkrRiscoBadge risco={kr.risco} />
 
-            {/* Barra de progresso + valor/meta */}
-            <div className="flex flex-col items-end gap-0.5 w-28">
-              <OkrProgressBar value={kr.progressoPercent} max={100} showLabel />
-              <span className="text-[11px] tabular-nums text-text-secondary">
+            {/* Barra + % + valor/meta — tudo na mesma linha */}
+            <div className="flex items-center gap-2">
+              <OkrProgressBar value={kr.progressoPercent} max={100} className="w-16" />
+              <span className="w-9 text-right text-xs font-medium tabular-nums text-text-secondary">
+                {Math.round(kr.progressoPercent)}%
+              </span>
+              <span className="text-[11px] tabular-nums text-text-secondary whitespace-nowrap">
                 {kr.valorAtual} / {kr.meta} {unidadeLabel}
               </span>
             </div>
