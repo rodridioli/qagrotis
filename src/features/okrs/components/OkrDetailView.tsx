@@ -128,27 +128,27 @@ export function OkrDetailView({
             </Button>
           )}
         </div>
-        <div className="rounded-xl border border-border-default bg-surface-card">
-          {okr.objetivos.length === 0 ? (
+        {okr.objetivos.length === 0 ? (
+          <div className="rounded-xl border border-border-default bg-surface-card">
             <EmptyState message="Nenhum registro encontrado." />
-          ) : (
-            <div className="divide-y divide-border-default">
-              {okr.objetivos.map((obj, idx) => (
-                <OkrObjetivoAccordion
-                  key={obj.id}
-                  objetivo={obj}
-                  canEditObjetivo={canEditObjetivo}
-                  canEditKr={canEditKr}
-                  canUpdateValue={canUpdateValue}
-                  currentUserId={currentUserId}
-                  okrEncerrado={okrEncerrado}
-                  onRefresh={load}
-                  defaultOpen={idx === 0}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {okr.objetivos.map((obj, idx) => (
+              <OkrObjetivoAccordion
+                key={obj.id}
+                objetivo={obj}
+                canEditObjetivo={canEditObjetivo}
+                canEditKr={canEditKr}
+                canUpdateValue={canUpdateValue}
+                currentUserId={currentUserId}
+                okrEncerrado={okrEncerrado}
+                onRefresh={load}
+                defaultOpen={idx === 0}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <OkrObjetivoFormModal
