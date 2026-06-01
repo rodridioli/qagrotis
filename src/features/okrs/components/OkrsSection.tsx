@@ -155,15 +155,14 @@ export function OkrsSection({ userType, userAccessProfile, currentUserId }: Okrs
   return (
     <div className="space-y-4">
       {/* Header externo ao card — padrão da plataforma */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-lg font-semibold text-text-primary">OKRs</p>
-        {canCreate && (
+      {canCreate && (
+        <div className="flex justify-end">
           <Button onClick={() => setFormOpen(true)} className="gap-2">
             <Plus className="size-4" />
             Adicionar OKR
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {loading ? (
         <SectionSpinner minHeight="min-h-[40vh]" />
