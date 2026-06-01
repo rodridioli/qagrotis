@@ -1309,9 +1309,7 @@ async function searchIssuesByJql(
     body: JSON.stringify(body),
   })
   if (!ok || !data?.issues) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error("[jira-worklogs-fetch] search failed", status, data)
-    }
+    console.error("[jira-worklogs-fetch] search failed", status, typeof data === "object" ? JSON.stringify(data)?.slice(0, 300) : data)
     return null
   }
   return {
@@ -1588,7 +1586,12 @@ export async function fetchKanbanSubtasks(
       "parent",
       "duedate",
     ])
-    if (!page) break
+    if (!page) {
+      if (issues.length === 0) {
+        throw new Error(`Kanban JQL falhou na primeira página — verifique os logs do servidor para o erro da API Jira.`)
+      }
+      break
+    }
 
     for (const issue of page.issues) {
       const f = issue.fields as Record<string, unknown> | undefined
