@@ -105,18 +105,17 @@ export async function POST(req: NextRequest) {
     if (e instanceof Error && e.message === "MISSING_TOKEN") {
       return new Response("Informe o API Token na primeira configuração ou ao trocar o token.", { status: 400 })
     }
-    if (process.env.NODE_ENV !== "production") console.error("[jira/credentials] POST: falha na BD — usando cookies (rode prisma migrate deploy).", e)
-    const token =
-      jiraToken?.trim() ||
-      (await getUserJiraCredentials(session.user.id))?.apiToken ||
-      (await readLegacyJiraCookies())?.apiToken ||
-      ""
+    console.error("[jira/credentials] POST: falha na BD — usando cookies.", e)
+    const token = jiraToken?.trim() || (await readLegacyJiraCookies())?.apiToken || ""
     if (!token.trim()) {
       return new Response(
-        "Não foi possível gravar no banco e não há token armazenado. Rode a migração Prisma ou informe o API Token.",
+        "Não foi possível gravar no banco e não há token armazenado. Informe o API Token.",
         { status: 503 },
       )
     }
+    // Apaga credenciais antigas do DB para que o fallback para cookies seja usado
+    // na próxima requisição (DB tem prioridade sobre cookies quando existe registro).
+    await deleteUserJiraCredentials(session.user.id).catch(() => null)
     await saveToLegacyCookies(jiraUrl.trim(), jiraEmail.trim(), token.trim())
   }
 
