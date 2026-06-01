@@ -1587,7 +1587,6 @@ export async function fetchKanbanSubtasks(
       "project",
       "parent",
       "duedate",
-      "issuetype",
     ])
     if (!page) break
 
@@ -1598,12 +1597,9 @@ export async function fetchKanbanSubtasks(
       const assigneeObj = f?.assignee as { accountId?: string; displayName?: string; avatarUrls?: Record<string, string> } | null
       const reporterObj = f?.reporter as { displayName?: string } | null
       const priorityObj = f?.priority as { name?: string; iconUrl?: string } | null
-      const issueTypeObj = f?.issuetype as { name?: string; iconUrl?: string; subtask?: boolean } | null
+      const issueTypeObj = f?.issuetype as { name?: string; iconUrl?: string } | null
       const projectObj = f?.project as { key?: string; name?: string } | null
       const parentObj = f?.parent as { key?: string; fields?: { summary?: string } } | null
-
-      // Ignorar subtarefas — o Jira sinaliza via issuetype.subtask = true
-      if (issueTypeObj?.subtask === true) continue
 
       issues.push({
         key: issue.key,
