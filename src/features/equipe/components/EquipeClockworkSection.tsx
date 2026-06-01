@@ -545,7 +545,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
 
         {/* Content */}
         {canViewOthersClockwork && membros.length === 0 ? (
-          <EmptyState message="Nenhum membro encontrado neste perfil." />
+          <EmptyState message="Nenhum membro encontrado neste perfil." className="mx-0" />
         ) : worklogsLoading ? (
           <SectionSpinner minHeight="min-h-[20rem]" />
         ) : worklogsError ? (
@@ -553,7 +553,7 @@ export function EquipeClockworkSection({ userAccessProfile, canFilterByProfile, 
             <p className="text-center text-sm text-destructive">{worklogsError}</p>
           </div>
         ) : worklogs.length === 0 ? (
-          <EmptyState message="Nenhum registro encontrado." />
+          <EmptyState message="Nenhum registro encontrado." className="mx-0" />
         ) : (
           <div className="flex flex-col gap-4">
             {grouped.map((day) => (
